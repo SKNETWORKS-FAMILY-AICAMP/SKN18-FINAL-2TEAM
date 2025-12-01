@@ -19,7 +19,7 @@ from typing import List, Dict, Optional
 load_dotenv()
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-EMBEDDING_MODEL = "text-embedding-3-large"
+EMBEDDING_MODEL = "text-embedding-3-small"
 EMB_DIM = 3072
 
 DB_CONFIG = {

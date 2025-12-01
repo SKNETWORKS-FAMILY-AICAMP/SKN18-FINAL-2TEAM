@@ -3,17 +3,16 @@ version: '3.8'
 services:
   postgres:
     image: pgvector/pgvector:pg16
-    container_name: skn4th_db
+    container_name: pmc
     environment:
-      POSTGRES_USER: skn4th
-      POSTGRES_PASSWORD: skn4th1234
-      POSTGRES_DB: skn4th_db
+      POSTGRES_USER: pmc
+      POSTGRES_PASSWORD: pmc1234
+      POSTGRES_DB: pmc_db
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./colleag.sql:/docker-entrypoint-initdb.d/01_colleag.sql
-      - ./interview.sql:/docker-entrypoint-initdb.d/02_interview.sql
+      - ./pmd.sql:/docker-entrypoint-initdb.d/pmc.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U interview_user -d skn4th_db"]
       interval: 10s
