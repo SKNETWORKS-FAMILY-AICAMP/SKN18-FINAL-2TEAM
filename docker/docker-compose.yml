@@ -1,26 +1,16 @@
-version: '3.8'
+version: "3.8"
 
 services:
   postgres:
-    image: pgvector/pgvector:pg16
-    container_name: skn4th_db
+    image: pgvector/pgvector:pg17
+    container_name: vectorDB
+    restart: always
     environment:
-      POSTGRES_USER: skn4th
-      POSTGRES_PASSWORD: skn4th1234
-      POSTGRES_DB: skn4th_db
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: root1234
+      POSTGRES_DB: sknfinalproject
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./colleag.sql:/docker-entrypoint-initdb.d/01_colleag.sql
-      - ./interview.sql:/docker-entrypoint-initdb.d/02_interview.sql
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U interview_user -d skn4th_db"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-
-volumes:
-  postgres_data:
-    driver: local
+      - ./db_data:/var/lib/postgresql/data
+      - ./initdb:/docker-entrypoint-initdb.d
