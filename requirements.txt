@@ -1,0 +1,82 @@
+########################################
+# 버전 고정 - 필수
+########################################
+numpy==1.26.4
+torch==2.2.2
+
+########################################
+# Django Web Framework
+########################################
+Django>=5.0,<6.0
+django-environ
+djangorestframework
+gunicorn
+django-sass-processor
+libsass
+
+# 환경변수 관리
+python-dotenv
+
+########################################
+# Database (PostgreSQL + pgvector)
+########################################
+psycopg
+pgvector
+
+
+########################################
+# LangGraph + LLM orchestration
+########################################
+langchain
+langchain-core
+langchain-community
+langchain-openai
+tiktoken
+
+langgraph
+
+
+########################################
+# RAG / Embedding / NLP
+########################################
+sentence-transformers
+transformers
+accelerate
+scipy
+pandas
+
+
+########################################
+# ETL / Crawling / Parsing
+########################################
+requests
+lxml
+markdownify
+python-dateutil
+
+
+########################################
+# Neo4j (Knowledge Graph)
+########################################
+neo4j
+py2neo
+
+
+########################################
+# Simulation tools (optional, utils)
+########################################
+biopython
+PyYAML
+
+
+########################################
+# sLLM / Local inference (vLLM/Ollama)
+########################################
+openai
+
+########################################
+# Testing / Dev Tools
+########################################
+pytest
+black
+isort

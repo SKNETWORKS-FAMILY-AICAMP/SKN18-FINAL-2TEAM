@@ -1,0 +1,129 @@
+name: SKN18-final-prod
+
+services:
+  ########################################
+  # 1) PostgreSQL + pgvector (RDB + 벡터DB)
+  ########################################
+  db:
+    image: pgvector/pgvector:pg18
+    container_name: pg-db
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-sknfinaldb}
+      POSTGRES_USER: ${POSTGRES_USER:-root}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-root1234}
+    ports:
+      # prod에서 외부에서 직접 DB 붙을 일 없으면 이 라인 지워도 됨
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgvector-data:/var/lib/postgresql/data
+      # 초기 스키마 + pgvector extension
+      - ./infra/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d ${POSTGRES_DB:-sknfinaldb} -U ${POSTGRES_USER:-root}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  ########################################
+  # 2) Neo4j (Knowledge Graph)
+  ########################################
+  neo4j:
+    image: neo4j:5.26.17-community
+    container_name: neo4j-final
+    environment:
+      # 계정/비밀번호: neo4j / neo4jpass
+      NEO4J_AUTH: neo4j/neo4jpass
+      # 필요시 메모리/튜닝 옵션 추가 가능
+      # NEO4J_dbms_memory_pagecache_size: 2G
+      # NEO4J_dbms_memory_heap_max__size: 2G
+    ports:
+      - "7474:7474"  # Neo4j Browser
+      - "7687:7687"  # Bolt
+    volumes:
+      - neo4j-data:/data
+      - neo4j-logs:/logs
+      - ./infra/neo4j/neo4j.conf:/config/neo4j.conf
+      - ./infra/neo4j/init.cypher:/docker-entrypoint-initdb.d/init.cypher
+    restart: unless-stopped
+
+  ########################################
+  # 3) Django + LangGraph Web (SSR + API)
+  ########################################
+  web:
+    # CI/CD에서 ECR에 푸시한 이미지 사용
+    # ex) 123456789012.dkr.ecr.ap-northeast-2.amazonaws.com/skn18-final-web:latest
+    image: ${ECR_WEB_IMAGE:-skn18-final-web:latest}
+    container_name: web-app
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+      neo4j:
+        condition: service_started
+    command: >
+      gunicorn config.wsgi:application
+      --bind 0.0.0.0:8000
+      --workers 3
+    ports:
+      # Nginx 앞단 붙이면 8000 포트는 내부용으로만 써도 됨
+      - "8000:8000"
+    restart: unless-stopped
+
+  ########################################
+  # 4) Worker (ETL / 배치 / 인덱싱)
+  ########################################
+  worker:
+    # CI/CD에서 따로 빌드한 worker 이미지
+    image: ${ECR_WORKER_IMAGE:-skn18-final-worker:latest}
+    container_name: etl-worker
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+    # 여기 command는 네가 실제로 돌릴 메인 워커로 바꾸면 됨
+    # 예시1: ETL 파이프라인 주기 실행
+    command: ["python", "-m", "jobs.manage_etl"]
+    # 예시2: Celery worker, RQ worker, LangGraph batch flow 등으로 변경 가능
+    restart: unless-stopped
+
+  ########################################
+  # 5) sLLM 서버 (옵션: vLLM/Ollama 등)
+  ########################################
+  sllm-server:
+    # 로컬 sLLM 서버를 ECR에 올린 경우 사용
+    image: ${ECR_SLLM_IMAGE:-skn18-final-sllm-server:latest}
+    container_name: sllm-server
+    env_file:
+      - .env
+    ports:
+      - "8001:8001"
+    restart: unless-stopped
+    # GPU가 필요한 경우 EC2 + compose에서 runtime/nvidia 설정 필요
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - capabilities: ["gpu"]
+
+  ########################################
+  # 6) Nginx (옵션: 프록시/도메인 붙일 때)
+  ########################################
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: skn18-nginx
+    depends_on:
+      - web
+    ports:
+      - "80:80"
+    volumes:
+      - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    restart: unless-stopped
+
+volumes:
+  pgvector-data:
+  neo4j-data:
+  neo4j-logs:

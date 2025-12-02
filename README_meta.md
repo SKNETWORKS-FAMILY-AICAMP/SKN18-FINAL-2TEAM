@@ -1,28 +1,5 @@
 # SKN18-FINAL-2TEAM
 
-## 실행
-
-- ENV
-> .env.example 복사하여 .env 생성
-
-- Python
-```bash
-uv venv .venv --python=3.12
-source ./.venv/bin/activate
-uv pip install -r requirements.txt
-```
-
-- Docker
-```bash
-# Window
-docker-compoe up -d
-# Mac
-docker compoe up -d
-```
-
-- **README_meta.md를 읽어주세요**
-
-
 ## 폴더 구조
 ```text
 SKN18-FINAL-2TEAM/
@@ -256,4 +233,82 @@ SKN18-FINAL-2TEAM/
 └─ assets/                           # ERD, Mermaid, 아키텍처 이미지
    └─ architecture/
 
+```
+
+
+## ETL 분리
+
+### 전략
+- **책임 분리 (가장 중요)**
+  - PDF 파싱 버그가 embedding에 영향 없이 수정 가능
+- **재처리 비용 최소화**
+  - chunk → embedding만 다시 할 수도 있음
+- **병렬 처리**
+  - 1~3단계는 CPU
+  - 5단계는 GPU
+- **장기 유지보수 / 확장성**
+  - PubMed ingest 추가해도 기존 chunker.py는 그대로 사용
+- **CI/CD & Airflow/Lambda와 바로 연동 가능**
+
+### 구분
+- **01_ingest/**
+  - 각 API에서 긁어오기만 하기
+  - PubMed / NIH / Protocols.io 각각 파일
+- **02_normalize/**
+  - 소스 제각각 포맷 👉 우리 통일 포맷으로 갈아입히기
+  - 소스별로 다른 파일이지만, 출력 스키마는 동일
+- **03_extract/**
+  - KG(Neo4j)용 뇌 수술: 엔터티/관계 뽑기
+- **04_chunk ~ 06_upsert**
+  - 여기부터는 소스 구분 X, 공통 파이프라인
+  - chunk → embed → pgvector upsert
+- **common/**
+  - ETL 공통 라이브러리 (loader, schema, text_cleaning)
+- **pipeline_runner.py**
+  - → python pipeline_runner.py --source=pubmed
+  - 이런 식으로 전체 파이프 orchestrator
+
+### RAG와 KG
+- **kg/etl은 rag의 output을 소비하는 쪽**
+  - rag/etl/02_normalize 결과 → 01_from_rag_docs
+  - rag/etl/03_extract 결과 → 02_from_rag_entities
+- 텍스트 전처리, 엔터티 추출 로직 자체를 kg 안에서 또 돌리지 않고,
+- 이미 rag에서 만들어 놓은 파일들을 읽어서 Neo4j에 반영만 한다.
+
+### Neo4J Conf
+
+🔍 주요 설정 설명 (필요한 만큼만 쉽게)
+1) dbms.default_database=neo4j
+Community Edition은 DB 이름이 neo4j로 고정
+KAG/RAG에서 기본적으로 여기에 데이터를 넣음
+
+2) listen_address=0.0.0.0
+EC2 환경에서 외부 접속을 위해 필요
+  `Browser(7474)`
+  `Bolt(7687)`
+둘 다 외부에서 접속 가능.
+
+3) 메모리 최적화
+현재 EC2 기준:
+ `pagecache: 2G`
+ `heap: 1G → 2G`
+Neo4j는 pagecache가 가장 중요한 요소.
+
+4) 절대 필요한 튜닝
+```ini
+dbms.security.procedures.unrestricted=apoc.*,gds.*
+```
+
+APOC 사용하려면 반드시 필요.
+
+5) 로그 디렉토리 경로
+
+Docker compose에서:
+```yml
+- neo4j-data:/data
+- neo4j-logs:/logs
+```
+이에 따라:
+```ini
+server.logs.dir=/logs
 ```
