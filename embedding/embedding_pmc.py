@@ -36,8 +36,8 @@ from tqdm import tqdm
 
 DEFAULT_EMBED_MODEL = "text-embedding-3-small"
 DEFAULT_EMBED_DIM = 1536
-DEFAULT_CHUNK_SIZE = 400
-DEFAULT_OVERLAP = 100
+DEFAULT_CHUNK_SIZE = 600
+DEFAULT_OVERLAP = 120
 RATE_LIMIT_DELAY = float(os.getenv("EMBED_RATE_DELAY", "0.2"))  # 초
 
 # .env 로드 (현재 디렉토리 또는 상위)
@@ -219,35 +219,25 @@ def load_existing_chunk_ids(out_path: Path) -> Set[str]:
 # Main embedder
 # -------------------
 
-class PMCSectionEmbedder:
+class ChunkGenerator:
+    """
+    Generate chunk CSV from a source sections CSV.
+
+    Input CSV must contain at least: `section_id`, `title`, `text`.
+    Output chunk CSV columns: chunk_id, section_id, chunk_seq, start_char, end_char, text_chunk
+    """
+
     def __init__(
         self,
         input_csv: str,
-        output_csv: str,
+        chunk_csv: str,
         chunk_size: int = DEFAULT_CHUNK_SIZE,
         overlap: int = DEFAULT_OVERLAP,
-        embed_model: str = DEFAULT_EMBED_MODEL,
-        embed_dim: int = DEFAULT_EMBED_DIM,
     ):
         self.input_csv = Path(input_csv)
-        self.output_csv = Path(output_csv)
+        self.chunk_csv = Path(chunk_csv)
         self.chunk_size = chunk_size
         self.overlap = overlap
-        self.embed_model = embed_model
-        self.embed_dim = embed_dim
-
-        if not OPENAI_API_KEY:
-            raise RuntimeError("OPENAI_API_KEY 가 설정되어 있지 않습니다 (.env 확인).")
-
-        self.client = OpenAI(api_key=OPENAI_API_KEY)
-
-    def embed(self, text: str) -> List[float]:
-        resp = self.client.embeddings.create(
-            model=self.embed_model,
-            input=text,
-            encoding_format="float",
-        )
-        return resp.data[0].embedding
 
     def run(self, resume: bool = True):
         if not self.input_csv.exists():
@@ -259,7 +249,6 @@ class PMCSectionEmbedder:
         if missing:
             raise ValueError(f"입력 CSV에 필요한 컬럼이 없습니다: {missing}")
 
-        # 🔹 1) title + text 미리 합치고, 비어 있는 row는 제거
         def _combine(row):
             return combine_title_text(row.get("title", ""), row.get("text", ""))
 
@@ -267,22 +256,121 @@ class PMCSectionEmbedder:
         df["combined"] = df["combined"].fillna("").astype(str).str.strip()
         df = df[df["combined"].str.len() > 0].copy()
 
+        existing_chunk_ids = set()
+        file_exists = self.chunk_csv.exists()
+        if resume and file_exists:
+            existing_chunk_ids = load_existing_chunk_ids(self.chunk_csv)
+            if existing_chunk_ids:
+                print(f"✓ Found {len(existing_chunk_ids)} existing chunks in {self.chunk_csv} (resume mode)")
+
+        fieldnames = [
+            "chunk_id",
+            "section_id",
+            "chunk_seq",
+            "start_char",
+            "end_char",
+            "text_chunk",
+        ]
+
+        out_f = self.chunk_csv.open("a", encoding="utf-8-sig", newline="")
+        writer = csv.DictWriter(out_f, fieldnames=fieldnames)
+        if not file_exists:
+            writer.writeheader()
+
         total_sections = len(df)
-        if total_sections == 0:
-            print("[WARN] 임베딩할 섹션이 없습니다 (title+text 모두 비어 있음).")
-            return
+        pbar = tqdm(total=total_sections, desc="Chunking sections", unit="sec")
+        new_chunks = 0
+        try:
+            for _, row in df.iterrows():
+                section_id = str(row.get("section_id"))
+                combined = row.get("combined", "")
+                if not combined:
+                    pbar.update(1)
+                    continue
+
+                chunks = sentence_chunks(combined, self.chunk_size, self.overlap)
+                for seq, (start, end, ch_text) in enumerate(chunks, start=1):
+                    chunk_id = make_chunk_id(section_id, seq)
+                    if resume and chunk_id in existing_chunk_ids:
+                        continue
+
+                    csv_text = re.sub(r"[\r\n]+", " ", ch_text)
+                    csv_text = re.sub(r"\s+", " ", csv_text).strip()
+
+                    writer.writerow(
+                        {
+                            "chunk_id": chunk_id,
+                            "section_id": section_id,
+                            "chunk_seq": seq,
+                            "start_char": start,
+                            "end_char": end,
+                            "text_chunk": csv_text,
+                        }
+                    )
+                    out_f.flush()
+                    existing_chunk_ids.add(chunk_id)
+                    new_chunks += 1
+
+                pbar.update(1)
+
+        except KeyboardInterrupt:
+            print("\n! Interrupted by user. Progress saved so far.")
+        finally:
+            pbar.close()
+            out_f.close()
+            print(f"\n✅ Chunking finished. new_chunks={new_chunks}")
 
 
+class ChunkEmbedder:
+    """
+    Load chunk CSV and create embeddings for each chunk, writing results to an output CSV.
 
-        # 기존 chunk_id 읽기 (resume)
-        existing_chunk_ids: Set[str] = set()
-        if resume:
+    Input chunk CSV columns must include: chunk_id, section_id, chunk_seq, start_char, end_char, text_chunk
+    Output CSV will contain embedding columns: emb_model, emb_dim, embedding
+    """
+
+    def __init__(
+        self,
+        chunk_csv: str,
+        output_csv: str,
+        embed_model: str = DEFAULT_EMBED_MODEL,
+        embed_dim: int = DEFAULT_EMBED_DIM,
+    ):
+        self.chunk_csv = Path(chunk_csv)
+        self.output_csv = Path(output_csv)
+        self.embed_model = embed_model
+        self.embed_dim = embed_dim
+
+        if not OPENAI_API_KEY:
+            raise RuntimeError("OPENAI_API_KEY 가 설정되어 있지 않습니다 (.env 확인).")
+        self.client = OpenAI(api_key=OPENAI_API_KEY)
+
+    def embed(self, text: str) -> List[float]:
+        resp = self.client.embeddings.create(
+            model=self.embed_model,
+            input=text,
+            encoding_format="float",
+        )
+        return resp.data[0].embedding
+
+    def run(self, resume: bool = True):
+        if not self.chunk_csv.exists():
+            raise FileNotFoundError(f"Chunk CSV not found: {self.chunk_csv}")
+
+        # load chunks
+        df = pd.read_csv(self.chunk_csv, encoding="utf-8-sig")
+        required = ["chunk_id", "section_id", "chunk_seq", "text_chunk"]
+        missing = [c for c in required if c not in df.columns]
+        if missing:
+            raise ValueError(f"Chunk CSV에 필요한 컬럼이 없습니다: {missing}")
+
+        existing_chunk_ids = set()
+        if resume and self.output_csv.exists():
             existing_chunk_ids = load_existing_chunk_ids(self.output_csv)
             if existing_chunk_ids:
-                print(f"✓ Found {len(existing_chunk_ids)} existing chunks (resume mode)")
+                print(f"✓ Found {len(existing_chunk_ids)} existing embeddings in {self.output_csv} (resume mode)")
 
-        # 출력 CSV 준비
-        fieldnames = [
+        out_fieldnames = [
             "chunk_id",
             "section_id",
             "chunk_seq",
@@ -293,112 +381,57 @@ class PMCSectionEmbedder:
             "text_chunk",
             "embedding",
         ]
+
         file_exists = self.output_csv.exists()
-        out_f = self.output_csv.open(
-            "a", encoding="utf-8-sig", newline=""
-        )
-        writer = csv.DictWriter(out_f, fieldnames=fieldnames)
+        out_f = self.output_csv.open("a", encoding="utf-8-sig", newline="")
+        writer = csv.DictWriter(out_f, fieldnames=out_fieldnames)
         if not file_exists:
             writer.writeheader()
 
-        done_sections = 0
-        skipped_sections = 0
-        error_count = 0
-        total_new_chunks = 0
-
-        pbar = tqdm(
-            total=total_sections,
-            desc="Embedding sections",
-            unit="sec",
-            bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]",
-        )
-
+        rows = df.to_dict(orient="records")
+        pbar = tqdm(total=len(rows), desc="Embedding chunks", unit="chunk")
+        new_embeddings = 0
         try:
-            for _, row in df.iterrows():
+            for r in rows:
+                chunk_id = str(r.get("chunk_id"))
+                if resume and chunk_id in existing_chunk_ids:
+                    pbar.update(1)
+                    continue
+
+                text = r.get("text_chunk", "") or ""
                 try:
-                    section_id_raw = row["section_id"]
-                    section_id = str(section_id_raw)
+                    emb = self.embed(text)
+                    emb_literal = to_pgvector_literal(emb)
 
-                    combined = row.get("combined", "")
-                    if not isinstance(combined, str):
-                        combined = str(combined)
-                    if not combined.strip():
-                        skipped_sections += 1
-                        pbar.update(1)
-                        pbar.set_postfix(
-                            {"done": done_sections, "skipped": skipped_sections, "errors": error_count}
-                        )
-                        continue
-
-                    chunks = sentence_chunks(combined, self.chunk_size, self.overlap)
-
-
-                    # 이미 존재하는 chunk_id는 제외
-                    new_chunks = []
-                    for seq, (start, end, ch_text) in enumerate(chunks, start=1):
-                        chunk_id = make_chunk_id(section_id, seq)
-                        if resume and chunk_id in existing_chunk_ids:
-                            continue
-                        new_chunks.append((chunk_id, seq, start, end, ch_text))
-
-                    if not new_chunks:
-                        # 이 섹션의 모든 chunk가 이미 있음
-                        skipped_sections += 1
-                        pbar.update(1)
-                        pbar.set_postfix(
-                            {"done": done_sections, "skipped": skipped_sections, "errors": error_count}
-                        )
-                        continue
-
-                    # 새 chunk들만 임베딩
-                    for (chunk_id, seq, start, end, ch_text) in new_chunks:
-                        emb = self.embed(ch_text)
-                        embedding_literal = to_pgvector_literal(emb)
-
-                        writer.writerow(
-                            {
-                                "chunk_id": chunk_id,
-                                "section_id": section_id,
-                                "chunk_seq": seq,
-                                "start_char": start,
-                                "end_char": end,
-                                "emb_model": self.embed_model,
-                                "emb_dim": self.embed_dim,
-                                "text_chunk": ch_text,
-                                "embedding": embedding_literal,
-                            }
-                        )
-                        out_f.flush()
-                        existing_chunk_ids.add(chunk_id)
-                        total_new_chunks += 1
-                        time.sleep(RATE_LIMIT_DELAY)
-
-                    done_sections += 1
+                    writer.writerow(
+                        {
+                            "chunk_id": chunk_id,
+                            "section_id": r.get("section_id"),
+                            "chunk_seq": r.get("chunk_seq"),
+                            "start_char": r.get("start_char"),
+                            "end_char": r.get("end_char"),
+                            "emb_model": self.embed_model,
+                            "emb_dim": self.embed_dim,
+                            "text_chunk": text,
+                            "embedding": emb_literal,
+                        }
+                    )
+                    out_f.flush()
+                    existing_chunk_ids.add(chunk_id)
+                    new_embeddings += 1
+                    time.sleep(RATE_LIMIT_DELAY)
 
                 except Exception as e:
-                    error_count += 1
-                    print(f"\n✗ section_id={row.get('section_id')}: {e}")
+                    print(f"\n✗ chunk_id={chunk_id}: {e}")
 
                 pbar.update(1)
-                pbar.set_postfix(
-                    {
-                        "done": done_sections,
-                        "skipped": skipped_sections,
-                        "errors": error_count,
-                        "chunks": total_new_chunks,
-                    }
-                )
 
         except KeyboardInterrupt:
             print("\n! Interrupted by user. Progress saved so far.")
         finally:
             pbar.close()
             out_f.close()
-            print(
-                f"\n✅ Finished. sections_done={done_sections}, "
-                f"sections_skipped={skipped_sections}, errors={error_count}, "
-                f"new_chunks={total_new_chunks}"
-            )
+            print(f"\n✅ Embedding finished. new_embeddings={new_embeddings}")
 
 
 # -------------------
@@ -406,52 +439,78 @@ class PMCSectionEmbedder:
 # -------------------
 
 def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument(
-        "--input",
-        required=True,
-        help="섹션 CSV 경로 (예: pmc_vector_source.csv 또는 section.csv)",
+    ap = argparse.ArgumentParser(description="Chunk and embed PMC sections")
+    sub = ap.add_subparsers(dest="cmd", required=False)
+
+    # chunk subcommand
+    p_chunk = sub.add_parser("chunk", help="Create chunk CSV from sections CSV")
+    p_chunk.add_argument("--input", required=True, help="sections CSV path")
+    p_chunk.add_argument(
+        "--chunk-out",
+        default="pmc_chunks.csv",
+        help="output chunk CSV path (default: pmc_chunks.csv)",
     )
-    ap.add_argument(
+    p_chunk.add_argument("--chunk", type=int, default=DEFAULT_CHUNK_SIZE, help="chunk char length")
+    p_chunk.add_argument("--overlap", type=int, default=DEFAULT_OVERLAP, help="overlap char length")
+    p_chunk.add_argument("--no-resume", action="store_true", help="regenerate chunks from scratch")
+
+    # embed subcommand
+    p_embed = sub.add_parser("embed", help="Embed chunks CSV and produce embedding CSV")
+    p_embed.add_argument("--chunks", required=True, help="chunk CSV path (from 'chunk' step)")
+    p_embed.add_argument(
         "--output",
         default="pmc_vector.csv",
-        help="임베딩 결과 CSV 경로 (default: pmc_vector.csv)",
+        help="embedding output CSV path (default: pmc_vector.csv)",
     )
-    ap.add_argument(
-        "--chunk",
-        type=int,
-        default=DEFAULT_CHUNK_SIZE,
-        help=f"chunk char length (default {DEFAULT_CHUNK_SIZE})",
+    p_embed.add_argument("--model", default=DEFAULT_EMBED_MODEL, help="embedding model")
+    p_embed.add_argument("--no-resume", action="store_true", help="re-embed from scratch")
+
+    # all: run chunk then embed
+    p_all = sub.add_parser("all", help="Run chunk then embed (one-shot)")
+    p_all.add_argument("--input", required=True, help="sections CSV path")
+    p_all.add_argument(
+        "--chunks-out",
+        default="pmc_chunks.csv",
+        help="intermediate chunk CSV path",
     )
-    ap.add_argument(
-        "--overlap",
-        type=int,
-        default=DEFAULT_OVERLAP,
-        help=f"overlap char length (default {DEFAULT_OVERLAP})",
+    p_all.add_argument(
+        "--output",
+        default="pmc_vector.csv",
+        help="final embedding output CSV path",
     )
-    ap.add_argument(
-        "--model",
-        default=DEFAULT_EMBED_MODEL,
-        help=f"OpenAI embedding model (default: {DEFAULT_EMBED_MODEL})",
-    )
-    ap.add_argument(
-        "--no-resume",
-        action="store_true",
-        help="기존 pmc_vector.csv를 무시하고 처음부터 다시 수행",
-    )
+    p_all.add_argument("--chunk", type=int, default=DEFAULT_CHUNK_SIZE, help="chunk char length")
+    p_all.add_argument("--overlap", type=int, default=DEFAULT_OVERLAP, help="overlap char length")
+    p_all.add_argument("--model", default=DEFAULT_EMBED_MODEL, help="embedding model")
+    p_all.add_argument("--no-resume", action="store_true", help="do not resume; start fresh")
 
     args = ap.parse_args()
 
-    embedder = PMCSectionEmbedder(
-        input_csv=args.input,
-        output_csv=args.output,
-        chunk_size=args.chunk,
-        overlap=args.overlap,
-        embed_model=args.model,
-        embed_dim=DEFAULT_EMBED_DIM,
-    )
-    embedder.run(resume=(not args.no_resume))
+    # default to 'all' if no subcommand provided (backwards-compatible)
+    cmd = args.cmd or "all"
+
+    if cmd == "chunk":
+        gen = ChunkGenerator(input_csv=args.input, chunk_csv=args.chunk_out, chunk_size=args.chunk, overlap=args.overlap)
+        gen.run(resume=(not args.no_resume))
+    elif cmd == "embed":
+        emb = ChunkEmbedder(chunk_csv=args.chunks, output_csv=args.output, embed_model=args.model)
+        emb.run(resume=(not args.no_resume))
+    elif cmd == "all":
+        # 1) chunk
+        gen = ChunkGenerator(input_csv=args.input, chunk_csv=args.chunks_out, chunk_size=args.chunk, overlap=args.overlap)
+        gen.run(resume=(not args.no_resume))
+        # 2) embed
+        emb = ChunkEmbedder(chunk_csv=args.chunks_out, output_csv=args.output, embed_model=args.model)
+        emb.run(resume=(not args.no_resume))
+    else:
+        ap.print_help()
 
 
 if __name__ == "__main__":
-    main()
+    # Backwards-compatible entrypoint: delegate to new run.py
+    try:
+        import run as _run
+        _run.main()
+    except Exception:
+        # fallback: import via package path
+        from .run import main as _main
+        _main()

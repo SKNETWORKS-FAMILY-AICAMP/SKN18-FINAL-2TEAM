@@ -12,9 +12,9 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./pmd.sql:/docker-entrypoint-initdb.d/pmc.sql
+      - ./pmc.sql:/docker-entrypoint-initdb.d/pmc.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U interview_user -d interview_chunking_db"]
+      test: ["CMD-SHELL", "pg_isready -U pmc -d pmc_db"]
       interval: 10s
       timeout: 5s
       retries: 5
