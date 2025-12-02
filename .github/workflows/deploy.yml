@@ -1,0 +1,19 @@
+name: Deploy to EC2 (placeholder)
+
+on:
+  # 배포도 아직은 실 구현 전이라 수동 실행만 허용
+  workflow_dispatch:
+
+jobs:
+  deploy_placeholder:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Show placeholder message
+        run: |
+          echo "deploy.yml placeholder workflow"
+          echo "👉 실제 AWS ECR/EC2 배포는 아직 세팅하지 않았습니다."
+          echo "👉 AWS IAM / ECR / EC2 설정이 완료되면 이 파일에"
+          echo "   - docker build & push"
+          echo "   - ssh로 EC2 접속 후 docker-compose up"
+          echo "   같은 진짜 배포 스텝을 추가하세요."

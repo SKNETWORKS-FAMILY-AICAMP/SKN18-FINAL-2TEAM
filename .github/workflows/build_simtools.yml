@@ -1,0 +1,16 @@
+name: Build sim_tools (placeholder)
+
+on:
+  # 초기 단계: 수동으로만 실행
+  workflow_dispatch:
+
+jobs:
+  build_simtools_placeholder:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Show placeholder message
+        run: |
+          echo "build_simtools.yml placeholder workflow"
+          echo "👉 sim_tools Docker build는 아직 구현 전입니다."
+          echo "👉 프로젝트 구조 안정화 이후에 실제 build step을 추가하세요."
