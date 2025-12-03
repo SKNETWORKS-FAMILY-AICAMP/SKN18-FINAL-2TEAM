@@ -2,9 +2,37 @@ import re
 import pandas as pd
 
 def split_into_sentences(text):
-    # 문장 끝 (. ! ?) 기준으로 split
-    sentences = re.split(r'(?<=[.!?])\s+', text.strip())
-    return [s for s in sentences if s]
+    protected = text
+
+    # URL 보호
+    protected = re.sub(r'(https?://\S+)', r'<URL>\1</URL>', protected)
+
+    # 약어 보호
+    protected = re.sub(r'\b(e\.g\.|i\.e\.|etc\.|Fig\.|Fig\s*\d+\.|No\.)', r'<ABBR>\1</ABBR>', protected)
+
+    # 숫자 목록 보호 (1. 2. 3.)
+    protected = re.sub(r'\b(\d+)\.(\s+)', r'<NUM>\1.</NUM>\2', protected)
+
+    # 괄호 안의 마침표 보호 (예: (e.g.)
+    protected = re.sub(r'\(([^)]+?)\)', lambda m: '(' + m.group(1).replace('.', '<DOT>') + ')', protected)
+
+    # ==== 기존 문장 분리보다 안전한 분리식 ====
+    sentences = re.split(
+        r'(?<=[.!?])\s+(?=[A-Z<])',   # 대문자나 태그 앞에서만 분리
+        protected
+    )
+
+    # 보호한 것 복원
+    cleaned = []
+    for sent in sentences:
+        sent = sent.replace('<URL>', '').replace('</URL>', '')
+        sent = sent.replace('<ABBR>', '').replace('</ABBR>', '')
+        sent = sent.replace('<NUM>', '').replace('</NUM>', '')
+        sent = sent.replace('<DOT>', '.')
+        cleaned.append(sent)
+
+    return [s for s in cleaned if s.strip()]
+
 
 def create_sentence_chunks(
     sentences, 
