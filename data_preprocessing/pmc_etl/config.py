@@ -59,6 +59,50 @@ CATEGORY_KEYWORDS = {
         "protein language model",
         "structure-based drug design",
     ],
+    "Cell & Molecular Mechanisms": [
+        # 신호 전달 (Signal Transduction)
+        "signal transduction",
+        "receptor binding",
+        "membrane receptor",
+        "kinase cascade",
+        # 세포 주기 및 사멸
+        "cell cycle regulation",
+        "apoptosis",
+        "autophagy",
+        # 분자 상호작용 및 ECM
+        "protein-lipid interaction",
+        "protein translocation",
+        "extracellular matrix",
+        "ecm remodeling",
+        "cell adhesion",
+        # 유전자 조절
+        "transcription factor",
+        "epigenetic regulation",
+
+    ],
+    "Omics & Systems Biology": [
+        # 유전체/후성유전체 (Genomics/Epigenomics)
+        "genome sequencing",
+        "genetic variation",
+        "chromatin accessibility",
+        "crispr screening",
+        # 단백질체/상호작용체 (Proteomics/Interactomics)
+        "protein-protein interaction",
+        "ppi network",
+        "post-translational modification",
+        "ptm mapping",
+        # 전사체 (Transcriptomics)
+        "rna sequencing",
+        "scrnaseq", # single cell rna-seq
+        "gene expression profiling",
+        "go enrichment", # gene ontology enrichment
+        # 시스템 생물학/데이터 분석
+        "systems biology modeling",
+        "metabolic pathway analysis",
+        "flux balance analysis",
+        "network topology",
+        "big data biology",
+    ],
 }
 
 MAX_PER_CATEGORY = 20  # 카테고리당 최대 논문 수

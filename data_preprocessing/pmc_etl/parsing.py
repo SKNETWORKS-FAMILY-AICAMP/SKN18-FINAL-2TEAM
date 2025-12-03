@@ -66,8 +66,6 @@ def extract_body_components(
     equations: List[Dict[str, Any]] = []
     eq_counter = [1]
 
-
-
     def extract_text_with_equations(
         node: ET.Element,
         current_path: Optional[List[str]] = None,
@@ -118,6 +116,25 @@ def extract_body_components(
                     )
                     parts.append(f"[EQ:{eq_id}]")
 
+                _append_clean(n.tail, parts)
+                return
+
+            # [수정됨] xref 태그(참고문헌, 그림 참조 등) 처리 로직 추가
+            if tag == "xref":
+                ref_type = n.get("ref-type")
+                # 태그 내부 텍스트 추출 (예: "7", "Fig 1")
+                ref_text = "".join(n.itertext()).strip()
+
+                if ref_text:
+                    if ref_type == "bibr":
+                        # 참고문헌(Bibliographic Reference)인 경우 [7] 처럼 대괄호 처리
+                        # 이렇게 해야 "development. 7" -> "development. [7]" 로 구분됨
+                        parts.append(f"[{ref_text}]")
+                    else:
+                        # 그 외(fig, table 등)는 텍스트 흐름을 위해 그대로 둠 (혹은 필요시 처리)
+                        parts.append(ref_text)
+                
+                # xref 태그 뒤에 오는 텍스트(tail) 처리
                 _append_clean(n.tail, parts)
                 return
 

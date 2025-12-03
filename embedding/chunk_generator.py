@@ -9,13 +9,15 @@ import re
 from tqdm import tqdm
 
 from chunking import (
-    combine_title_text,
     sentence_chunks,
     make_chunk_id,
-    load_existing_chunk_ids,
     DEFAULT_CHUNK_SIZE,
     DEFAULT_OVERLAP,
+    process_section_text_for_chunking,
 )
+
+# [수정됨] load_existing_chunk_ids를 pmc_data_loader에서 직접 임포트합니다.
+from pmc_data_loader import load_existing_chunk_ids 
 
 
 class ChunkGenerator:
@@ -26,12 +28,16 @@ class ChunkGenerator:
         chunk_size: int = DEFAULT_CHUNK_SIZE,
         overlap: int = DEFAULT_OVERLAP,
         batch_size: int = 100,
+        meta_csv: str = None,
+        split_meta: bool = False,
     ):
         self.input_csv = Path(input_csv)
         self.chunk_csv = Path(chunk_csv)
         self.chunk_size = chunk_size
         self.overlap = overlap
         self.batch_size = batch_size
+        self.meta_csv = Path(meta_csv) if meta_csv else None
+        self.split_meta = bool(split_meta)
 
     def run(self, resume: bool = True):
         if not self.input_csv.exists():
@@ -40,6 +46,7 @@ class ChunkGenerator:
         existing_chunk_ids = set()
         file_exists = self.chunk_csv.exists()
         if resume and file_exists:
+            # [수정됨] load_existing_chunk_ids 함수를 pmc_data_loader에서 가져와 사용
             existing_chunk_ids = load_existing_chunk_ids(self.chunk_csv)
             if existing_chunk_ids:
                 print(f"[OK] Found {len(existing_chunk_ids)} existing chunks in {self.chunk_csv} (resume mode)")
@@ -51,6 +58,8 @@ class ChunkGenerator:
             "start_char",
             "end_char",
             "text_chunk",
+            "fig_ref_markers",  # <-- 이 컬럼이 누락되어 있었습니다.
+            "ref_ids",          # <-- 이 컬럼이 누락되어 있었습니다.
         ]
 
         out_f = self.chunk_csv.open("a", encoding="utf-8-sig", newline="")
@@ -59,37 +68,45 @@ class ChunkGenerator:
             writer.writeheader()
 
         new_chunks = 0
-        batch = []
         total_sections = 0
         pbar = None
 
         try:
-            # First pass: count total rows (for progress bar)
             with self.input_csv.open("r", encoding="utf-8-sig", newline="") as f:
                 reader = csv.DictReader(f)
                 total_sections = sum(1 for _ in reader)
-            
-            # Estimate total chunks (rough: ~2-3 chunks per section on average)
-            est_total_chunks = max(total_sections * 2, 1000)
-            pbar = tqdm(total=est_total_chunks, desc="Chunking & writing", unit="chunk")
 
-            # Second pass: process in batches
+            if self.split_meta and self.meta_csv is not None:
+                meta_cols = [
+                    "section_id",
+                    "pmcid",
+                    "pmid",
+                    "topic_category",
+                    "path",
+                    "section_category",
+                    "article_category",
+                    "fig_ids",
+                    "table_ids",
+                    "ref_ids",
+                ]
+                with self.input_csv.open("r", encoding="utf-8-sig", newline="") as fr:
+                    rdr = csv.DictReader(fr)
+                    self.meta_csv.parent.mkdir(parents=True, exist_ok=True)
+                    with self.meta_csv.open("w", encoding="utf-8-sig", newline="") as fw:
+                        writer_meta = csv.DictWriter(fw, fieldnames=meta_cols)
+                        writer_meta.writeheader()
+                        for r in rdr:
+                            out = {k: (r.get(k) if k in r else None) for k in meta_cols}
+                            writer_meta.writerow(out)
+
+            est_total_chunks = max(total_sections * 2, 100)
+            pbar = tqdm(total=est_total_chunks, desc="데이터 분리 중", unit="chunk")
+
             with self.input_csv.open("r", encoding="utf-8-sig", newline="") as f:
                 reader = csv.DictReader(f)
-                
                 for row in reader:
-                    batch.append(row)
-                    
-                    # Process batch when it reaches batch_size
-                    if len(batch) >= self.batch_size:
-                        chunks_written = self._process_batch(batch, writer, out_f, existing_chunk_ids, resume, pbar)
-                        new_chunks += chunks_written
-                        batch = []
-                
-                # Process remaining rows
-                if batch:
-                    chunks_written = self._process_batch(batch, writer, out_f, existing_chunk_ids, resume, pbar)
-                    new_chunks += chunks_written
+                    written = self._process_row(row, writer, out_f, existing_chunk_ids, resume, pbar)
+                    new_chunks += written
 
         except KeyboardInterrupt:
             print("\n[!] Interrupted by user. Progress saved so far.")
@@ -99,47 +116,49 @@ class ChunkGenerator:
             out_f.close()
             print(f"\n[DONE] Chunking finished. new_chunks={new_chunks}")
 
-    def _process_batch(self, batch, writer, out_f, existing_chunk_ids, resume, pbar):
-        """Process a batch of rows and write chunks to CSV."""
+    def _process_row(self, row, writer, out_f, existing_chunk_ids, resume, pbar):
         new_count = 0
+        section_id = str(row.get("section_id", "")).strip()
+        raw_text = str(row.get("text", "")).strip() # <- [RAW 텍스트 로드]
+
+        if not section_id or not raw_text:
+            return 0
+
+        # [NEW] 청크 생성 직전에 chunking.py의 통합 함수 호출
+        processed = process_section_text_for_chunking(raw_text)
         
-        for row in batch:
-            section_id = str(row.get("section_id", "")).strip()
-            title = str(row.get("title", "")).strip()
-            text = str(row.get("text", "")).strip()
-            
-            if not section_id or (not title and not text):
+        combined = processed["clean_text"] # <- Clean Text로 청킹 시작
+
+        for seq, (start, end, ch_text) in enumerate(sentence_chunks(combined, self.chunk_size, self.overlap), start=1):
+            chunk_id = make_chunk_id(section_id, seq)
+
+            if resume and chunk_id in existing_chunk_ids:
                 continue
-            
-            combined = combine_title_text(title, text)
-            if not combined or not combined.strip():
+
+            csv_text = re.sub(r"[\r\n]+", " ", ch_text)
+            csv_text = re.sub(r"\s+", " ", csv_text).strip()
+            csv_text = csv_text.lstrip(" \t.,-−")
+
+            if not csv_text:
                 continue
+
+            writer.writerow(
+                {
+                    "chunk_id": chunk_id,
+                    "section_id": section_id,
+                    "chunk_seq": seq,
+                    "start_char": start,
+                    "end_char": end,
+                    "text_chunk": csv_text,
+                    "fig_ref_markers": processed["fig_ref_markers"], 
+                    "ref_ids": processed["ref_ids"],                 
+                }
+            )
+            existing_chunk_ids.add(chunk_id)
+            new_count += 1
             
-            chunks = sentence_chunks(combined, self.chunk_size, self.overlap)
-            
-            for seq, (start, end, ch_text) in enumerate(chunks, start=1):
-                chunk_id = make_chunk_id(section_id, seq)
-                
-                if resume and chunk_id in existing_chunk_ids:
-                    continue
-                
-                csv_text = re.sub(r"[\r\n]+", " ", ch_text)
-                csv_text = re.sub(r"\s+", " ", csv_text).strip()
-                
-                writer.writerow(
-                    {
-                        "chunk_id": chunk_id,
-                        "section_id": section_id,
-                        "chunk_seq": seq,
-                        "start_char": start,
-                        "end_char": end,
-                        "text_chunk": csv_text,
-                    }
-                )
-                out_f.flush()
-                existing_chunk_ids.add(chunk_id)
-                new_count += 1
-                # Update progress bar for each chunk written
+            if pbar:
                 pbar.update(1)
         
+        out_f.flush()
         return new_count

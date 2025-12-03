@@ -189,7 +189,7 @@ def save_as_json(data, path="pmc_articles_by_category.json"):
 
 if __name__ == "__main__":
     articles_by_cat = collect_articles_per_category()
-    save_as_json(articles_by_cat, "pmc_articles_by_category30.json")
+    save_as_json(articles_by_cat, "pmc_articles_by_category32.json")
 
     for cat, articles in articles_by_cat.items():
         print(f"{cat}: {len(articles)} articles")

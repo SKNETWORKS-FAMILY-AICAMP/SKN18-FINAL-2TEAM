@@ -1,8 +1,42 @@
-# pmc_processing_utils.py
+# pmc_processing_utils.py (최종 수정 버전 - 누락된 함수 정의 추가)
 
 import re
 import uuid 
 from typing import Any, Dict, Iterable, List
+
+# =========================
+#  0. 정규식 패턴 정의 (Reference Markers)
+# =========================
+
+# [NEW ADDITION] Figure/Table 참조 패턴 (Fig, Table, SI Appendix 등 키워드 포함)
+FIG_TABLE_REF_PATTERN = re.compile(
+    r"\(\s*(?:Fig|Figure|Table|Scheme|SI Appendix|Suppl\.)[^()]+?\)", 
+    re.IGNORECASE
+)
+
+# [기존] 영문/숫자 혼합 참조 삭제 패턴 (참조 제거에 사용)
+FIG_REF_PATTERN = re.compile(
+    r"\[\s*([A-Za-z0-9]+(?:[\s,\-–\.]\s*[A-Za-z0-9]+)*)\s*\]"
+)
+FIG_REF_PAREN_PATTERN = re.compile(
+    r"\(\s*([A-Za-z0-9]+(?:[\s,\-–\.]\s*[A-Za-z0-9]+)*)\s*\)"
+)
+
+# [기존] 숫자만 있는 대괄호/소괄호 패턴 (Bibliography)
+REF_SQUARE_PATTERN = re.compile(
+    r"\[\s*(\d+(\s*[-–]\s*\d+)?)(\s*,\s*(\d+(\s*[-–]\s*\d+)?))*\s*\]"
+)
+REF_PAREN_PATTERN = re.compile(
+    r"\(\s*(\d+(\s*[-–]\s*\d+)?)(\s*,\s*(\d+(\s*[-–]\s*\d+)?))*\s*\)"
+)
+# ... (나머지 인용 관련 패턴 생략: TRAILING_REF_CAPTURE_PATTERN 등) ...
+TRAILING_REF_CAPTURE_PATTERN = re.compile(r"(?:^|[;\.\)])\s*(\d+(?:\s*,\s*\d+)*)\s*$")
+TRAILING_REF_REMOVE_PATTERN = re.compile(r"([;\.\)])\s*\d+(?:\s*,\s*\d+)*\s*$")
+INLINE_REF_CLUSTER_PATTERN = re.compile(r"(?<!\d)(\d{2,}\s*(?:[-–]\s*\d{2,}|\s*,\s*\d{2,})+)(?!\d)")
+INLINE_SINGLE_SENT_REF_CAPTURE = re.compile(r"(?<=[\.\?\!])\s*(\d{1,3})\s+(?=[A-Z])")
+INLINE_SINGLE_SENT_REF_REMOVE = re.compile(r"([\.\?\!])\s*\d{1,3}(\s+)(?=[A-Z])")
+REF_SQUARE_EMPTY_PATTERN = re.compile(r"\[\s*[,;:/\.\-–\s]+\]")
+REF_PAREN_EMPTY_PATTERN  = re.compile(r"\(\s*[,;:/\.\-–\s]+\)")
 
 # =========================
 #  1. 텍스트 정제 헬퍼 (Single Line 강제)
@@ -11,84 +45,43 @@ from typing import Any, Dict, Iterable, List
 def clean_content(text: Any) -> str:
     """
     CSV 저장용 텍스트 정제 함수.
-    - None 처리
-    - 모든 줄바꿈 문자를 공백으로 치환하여 한 줄로 만듦
-    - 불필요한 공백 제거
     """
-    if text is None:
-        return ""
+    if text is None: return ""
     s = str(text)
-
-    # 1. 줄바꿈 및 이스케이프 문자 공백 치환
     s = re.sub(r"[\r\n]+|\\n|//n", " ", s)
-
-    # 2. 탭 제거
     s = s.replace("\t", " ")
-
-    # 3. 중복 공백 제거
     s = re.sub(r"\s+", " ", s)
-
+    s = re.sub(r"\s+\(", "(", s) 
+    s = re.sub(r"\(\s+", "(", s) 
+    s = re.sub(r"\s+\)", ")", s) 
+    s = re.sub(r"\)\s+", ")", s) 
     return s.strip()
 
 def normalize_title_spacing(text: Any) -> str:
     """
     섹션 제목/경로에서 숫자/구두점 주변 공백을 정리하고,
     맨 앞에 붙은 섹션 번호(예: 4.6., 2.1, 3.)는 통째로 제거한다.
-
-    예)
-      ",4.6. Isolation of Mouse Hepatic Cells"
-        -> "Isolation of Mouse Hepatic Cells"
-      "2.1. Introduction"
-        -> "Introduction"
-      "3 Results"
-        -> "Results"
-      "3D Reconstruction of Protein"
-        -> "3D Reconstruction of Protein"  (앞에 번호가 아니라서 유지)
     """
-    if text is None:
-        return ""
-
+    if text is None: return ""
     s = str(text).strip()
-
-    # 0) 맨 앞에 콤마만 있으면 제거: ",4.6. Isolation" -> "4.6. Isolation"
     s = re.sub(r"^,\s*", "", s)
-
-    # 1) 맨 앞 섹션 번호 블록 제거
-    #    - "4.6. " / "4.6 " / "4." / "4 " 등
-    #    - ^  숫자(.숫자)*  .(optional)  + 공백
     s = re.sub(r"^\s*\d+(?:\.\d+)*\.?\s+", "", s)
-
-    # 2) 구두점 앞 공백 제거: "Results ," -> "Results,"
     s = re.sub(r"\s+([,;:\.\?\!])", r"\1", s)
-
-    # 3) 여러 공백을 하나로
     s = re.sub(r"\s+", " ", s)
-
     return s.strip()
-
 
 
 def normalize_reference_spacing(text: Any) -> str:
     """
     참고문헌(raw) 문자열에서 공백만 정리하는 함수.
-    - 쉼표/세미콜론/콜론/마침표 앞 공백 제거
-    - en dash(–) 주변 공백 제거: "283 – 328" -> "283–328"
-    - 연속 공백은 하나로 축소
     """
-    if text is None:
-        return ""
-
+    if text is None: return ""
     s = str(text).strip()
-
-    # 1) 구두점 앞 공백 제거: "Feldman , D. ;" -> "Feldman, D.;"
+    s = re.sub(r"\s*([()\[\]])\s*", r"\1", s)
+    s = re.sub(r"\s*-\s*", "-", s) 
     s = re.sub(r"\s+([,;:\.\?\!])", r"\1", s)
-
-    # 2) en dash 주변 공백 제거: "283 – 328" -> "283–328"
     s = re.sub(r"\s*–\s*", "–", s)
-
-    # 3) 여러 공백을 하나로
     s = re.sub(r"\s+", " ", s)
-
     return s.strip()
 
 def _norm_for_class(s: str) -> str:
@@ -100,7 +93,6 @@ def _norm_for_class(s: str) -> str:
 def gen_section_id() -> int:
     """
     섹션용 UUID 기반 정수 ID (12자리 정도).
-    - fig_id / table_id와 비슷한 방식으로 전역적으로 유니크하게 사용 가능
     """
     return uuid.uuid4().int % 10**12
 
@@ -109,85 +101,55 @@ def gen_section_id() -> int:
 #  1-2. 섹션 텍스트에서 레퍼런스 인덱스 추출 + 삭제
 # =========================
 
-# [1], [1, 2, 3], [1–3], (1,2), (1-3) 등 패턴
-REF_SQUARE_PATTERN = re.compile(
-    r"\[\s*(\d+(\s*[-–]\s*\d+)?)(\s*,\s*(\d+(\s*[-–]\s*\d+)?))*\s*\]"
-)
-REF_PAREN_PATTERN = re.compile(
-    r"\(\s*(\d+(\s*[-–]\s*\d+)?)(\s*,\s*(\d+(\s*[-–]\s*\d+)?))*\s*\)"
-)
-# 숫자 없이 콤마/세미콜론/대시/공백/점만 들어 있는 괄호 (예: [,,], [ , , ], (,,))
-REF_SQUARE_EMPTY_PATTERN = re.compile(r"\[\s*[,;:/\.\-–\s]+\]")
-REF_PAREN_EMPTY_PATTERN  = re.compile(r"\(\s*[,;:/\.\-–\s]+\)")
-
-# 문장 끝에 괄호 없이 나열된 인용 번호: ". 46, 47" / "; 12, 13" / ") 3, 4"
-TRAILING_REF_CAPTURE_PATTERN = re.compile(
-    r"(?:^|[;\.\)])\s*(\d+(?:\s*,\s*\d+)*)\s*$"
-)
-TRAILING_REF_REMOVE_PATTERN = re.compile(
-    r"([;\.\)])\s*\d+(?:\s*,\s*\d+)*\s*$"
-)
-
-# 문장 안에 콤마/대시로 이어진 숫자 클러스터
-# 예: ", 46, 47", "; 23–25", ", 12, 13, 15"
-INLINE_REF_CLUSTER_PATTERN = re.compile(
-    r"(?<!\d)"  # 앞에 다른 숫자 없음
-    r"(\d{2,}\s*(?:[-–]\s*\d{2,}|\s*,\s*\d{2,})+)"  # 2자리 이상 숫자 + (콤마/대시 + 2자리 이상 숫자)+
-    r"(?!\d)"   # 뒤에도 숫자 없음
-)
-
-# "문장 끝 + 숫자 하나 + 다음 문장 시작" 패턴
-# 예: "CRC. 5 As reported" → 5를 ref로 인식
-INLINE_SINGLE_SENT_REF_CAPTURE = re.compile(
-    r"(?<=[\.\?\!])\s*(\d{1,3})\s+(?=[A-Z])"
-)
-INLINE_SINGLE_SENT_REF_REMOVE = re.compile(
-    r"([\.\?\!])\s*\d{1,3}(\s+)(?=[A-Z])"
-)
-
+def extract_figure_table_markers(text: str) -> str:
+    """
+    [NEW DEFINITION] Figure/Table 참조 표기(예: (Fig. 1), (Table S1))를 추출합니다.
+    """
+    if not text:
+        return ""
+    
+    # FIG_TABLE_REF_PATTERN을 사용해 괄호와 내용 전체를 추출
+    markers = FIG_TABLE_REF_PATTERN.findall(text)
+    
+    cleaned = [m.strip() for m in markers]
+    
+    return ";".join(cleaned)
 
 
 def extract_reference_markers(text: str) -> str:
     """
-    섹션/abstract 텍스트에서 레퍼런스 인덱스를 추출.
-    - [1], [1,2,3], [1–3], (1), (1,2,3)
-    - 문장 끝 ". 46, 47"
-    - 문장 안 숫자 클러스터 ", 46, 47"
-    - 문장 사이 숫자 하나 "CRC. 5 As reported"
-    => 숫자만 모아서 "1;2;3" 형태로 반환 (중복 제거).
+    섹션/abstract 텍스트에서 레퍼런스 인덱스를 추출. (숫자만)
     """
     if not text:
         return ""
 
     indices: List[str] = []
+    s = text
 
-    # 1) 대괄호 인용
-    for m in REF_SQUARE_PATTERN.finditer(text):
+    # 2) 소괄호 인용 (숫자만)
+    for m in REF_PAREN_PATTERN.finditer(s):
         chunk = m.group(0)
         for num in re.findall(r"\d+", chunk):
             indices.append(num)
 
-    # 2) 소괄호 인용
-    for m in REF_PAREN_PATTERN.finditer(text):
+    # 1) 대괄호 인용 (숫자만)
+    for m in REF_SQUARE_PATTERN.finditer(s):
         chunk = m.group(0)
         for num in re.findall(r"\d+", chunk):
             indices.append(num)
 
-    # 3) 문장 끝 ". 46, 47" 같은 꼬리 숫자
-    m = TRAILING_REF_CAPTURE_PATTERN.search(text)
-    if m:
-        chunk = m.group(1)  # "46, 47"
-        for num in re.findall(r"\d+", chunk):
-            indices.append(num)
-
-    # 4) 문장 안 숫자 클러스터 ", 46, 47", "; 23–25" 등
-    for m in INLINE_REF_CLUSTER_PATTERN.finditer(text):
+    # ... (나머지 숫자 인용 추출 로직 유지) ...
+    for m in TRAILING_REF_CAPTURE_PATTERN.finditer(s):
         chunk = m.group(1)
         for num in re.findall(r"\d+", chunk):
             indices.append(num)
 
-    # 5) "CRC. 5 As reported" 같은 단일 숫자
-    for m in INLINE_SINGLE_SENT_REF_CAPTURE.finditer(text):
+    for m in INLINE_REF_CLUSTER_PATTERN.finditer(s):
+        chunk = m.group(1)
+        for num in re.findall(r"\d+", chunk):
+            indices.append(num)
+
+    for m in INLINE_SINGLE_SENT_REF_CAPTURE.finditer(s):
         num = m.group(1)
         indices.append(num)
 
@@ -205,19 +167,22 @@ def extract_reference_markers(text: str) -> str:
 def remove_reference_markers(text: str) -> str:
     """
     본문 텍스트에서 레퍼런스 표기를 아예 제거.
-    예:
-      ".... proteins [1, 2, 3]."   → ".... proteins."
-      ".... (1,2,3)"               → "...."
-      ".... 00 kDa [,,]. Dex"      → ".... 00 kDa. Dex"
-      ".... Enrichr. 46, 47"       → ".... Enrichr."
-      ".... CRC. 5 As reported"    → ".... CRC. As reported"
+    - [10b] 와 같은 영문/숫자 혼합 Figure 참조도 삭제.
     """
     if not text:
         return ""
 
     s = text
 
-    # 1) [] / () 레퍼런스 삭제
+    # [NEW] 0) Figure/Table 참조 삭제 (FIG_TABLE_REF_PATTERN 사용)
+    s = re.sub(FIG_TABLE_REF_PATTERN, "", s) 
+    
+    # 기존의 일반적인 영문/숫자 혼합 참조 삭제
+    s = FIG_REF_PATTERN.sub("", s)
+    s = FIG_REF_PAREN_PATTERN.sub("", s)
+
+
+    # 1) [] / () 레퍼런스 삭제 (숫자만)
     s = REF_SQUARE_PATTERN.sub("", s)
     s = REF_PAREN_PATTERN.sub("", s)
 
@@ -242,14 +207,19 @@ def remove_reference_markers(text: str) -> str:
     s = re.sub(r"\[\s*[^0-9A-Za-z]*\]", "", s)
     s = re.sub(r"\(\s*[^0-9A-Za-z]*\)", "", s)
 
-    # 공백/구두점 정리
-    s = re.sub(r"\s+", " ", s)                    # 여러 공백 → 하나
-    s = re.sub(r"\s+([\]\)\.,;:])", r"\1", s)     # 구두점/괄호 앞 공백 제거
+    # ========================================================
+    # [잔여 구두점 통합 및 정리]
+    # ========================================================
+    s = re.sub(r"([\.\?!])\s*([\.\?!])+", r"\1", s)
+    s = re.sub(r"([,])\s*([\.\?!])", r"\2", s)
+    s = re.sub(r"([\.\?!])\s*([,;:])", r"\1", s)
+    s = re.sub(r"([,;:])\s*([,;:])", r"\1", s) 
+
+    # 공백/구두점 정리 (최종)
+    s = re.sub(r"\s+", " ", s)
+    s = re.sub(r"\s+([\]\)\.,;:])", r"\1", s)
 
     return s.strip()
-
-
-
 
 
 # =========================

@@ -2,12 +2,12 @@
 # -*- coding: utf-8 -*-
 """
 ChunkEmbedder: load chunk CSV, produce embeddings, write output CSV.
+- Refactored to use data loader utility.
 """
 from pathlib import Path
 import csv
 import time
-from typing import List, Optional
-import pandas as pd
+from typing import List, Optional, Tuple, Any, Dict
 from tqdm import tqdm
 from openai import OpenAI
 
@@ -17,14 +17,40 @@ try:
 except Exception:
     psycopg2 = None
 
+# [수정됨] 공용 유틸리티 임포트
 from chunking import (
-    load_existing_chunk_ids,
     to_pgvector_literal,
     DEFAULT_EMBED_DIM,
     DEFAULT_EMBED_MODEL,
     OPENAI_API_KEY,
     RATE_LIMIT_DELAY,
 )
+
+from pmc_data_loader import load_existing_chunk_ids, iter_chunk_csv_rows
+
+
+def _build_embedding_row(
+    chunk_row: Dict[str, Any],
+    embedding: List[float],
+    model: str,
+    dim: int,
+    emb_literal: str,
+) -> Dict[str, Any]:
+    """
+    [공용 데이터 노드 함수]
+    임베딩 결과를 포함하는 최종 Row 딕셔너리를 구성합니다.
+    """
+    return {
+        "chunk_id": chunk_row.get("chunk_id"),
+        "section_id": chunk_row.get("section_id"),
+        "chunk_seq": chunk_row.get("chunk_seq"),
+        "start_char": chunk_row.get("start_char"),
+        "end_char": chunk_row.get("end_char"),
+        "emb_model": model,
+        "emb_dim": dim,
+        "text_chunk": chunk_row.get("text_chunk"),
+        "embedding": emb_literal,
+    }
 
 
 class ChunkEmbedder:
@@ -49,6 +75,7 @@ class ChunkEmbedder:
         self.pg_batch_size = pg_batch_size
         self.pg_conn = None
         self.pg_cur = None
+        self._pg_batch_buffer = []
 
         if not OPENAI_API_KEY:
             raise RuntimeError("OPENAI_API_KEY 가 설정되어 있지 않습니다 (.env 확인).")
@@ -67,8 +94,6 @@ class ChunkEmbedder:
             )
             self.pg_conn.autocommit = True
             self.pg_cur = self.pg_conn.cursor()
-            # buffer for batch inserts
-            self._pg_batch_buffer = []
 
     def embed(self, text: str) -> List[float]:
         resp = self.client.embeddings.create(
@@ -78,44 +103,82 @@ class ChunkEmbedder:
         )
         return resp.data[0].embedding
 
+    def _build_pg_tuple(self, row: Dict[str, Any], emb_literal: str, text: str) -> Tuple[Any, ...]:
+        """Postgres batch insert를 위한 튜플 생성"""
+        return (
+            row.get("chunk_id"),
+            row.get("section_id"),
+            row.get("chunk_seq"),
+            row.get("start_char"),
+            row.get("end_char"),
+            self.embed_model,
+            self.embed_dim,
+            text,
+            emb_literal,
+        )
+
+    def _flush_pg_buffer(self, final: bool = False):
+        """
+        [DB 적재 전용 함수]
+        Postgres 배치 버퍼를 비우고 DB에 삽입합니다.
+        """
+        if not self.pg_cur or not self._pg_batch_buffer:
+            return
+
+        batch = self._pg_batch_buffer
+        if not final and len(batch) < self.pg_batch_size:
+            return
+
+        insert_sql = (
+            f"INSERT INTO {self.pg_table}"
+            " (chunk_id, section_id, chunk_seq, start_char, end_char, emb_model, emb_dim, text_chunk, embedding)"
+            " VALUES %s ON CONFLICT (chunk_id) DO NOTHING"
+        )
+        
+        try:
+            execute_values(self.pg_cur, insert_sql, batch, page_size=self.pg_batch_size)
+        except Exception as e:
+            print(f"\n! Batch insert failed: {e}; falling back to single-row inserts")
+            per_sql = (
+                f"INSERT INTO {self.pg_table}"
+                " (chunk_id, section_id, chunk_seq, start_char, end_char, emb_model, emb_dim, text_chunk, embedding)"
+                " VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s) ON CONFLICT (chunk_id) DO NOTHING"
+            )
+            for bt in batch:
+                try:
+                    self.pg_cur.execute(per_sql, bt)
+                except Exception as e2:
+                    print(f"\n! DB insert failed for chunk_id={bt[0]}: {e2}")
+        finally:
+            self._pg_batch_buffer = []
+
     def run(self, resume: bool = True):
         if not self.chunk_csv.exists():
             raise FileNotFoundError(f"Chunk CSV not found: {self.chunk_csv}")
 
-        # stream the chunk CSV row-by-row to avoid loading entire file into memory
         required = ["chunk_id", "section_id", "chunk_seq", "text_chunk"]
-
         existing_chunk_ids = set()
-        # collect existing ids from CSV output if present
+        
+        # [수정됨] 공용 메타데이터 로드
         if resume and self.write_csv and self.output_csv.exists():
             existing_chunk_ids = load_existing_chunk_ids(self.output_csv)
-            if existing_chunk_ids:
-                print(f"✓ Found {len(existing_chunk_ids)} existing embeddings in {self.output_csv} (resume mode)")
-
-        # if pg is enabled and resume, also fetch existing ids from DB to avoid duplicates
+            
         if resume and self.pg_cur is not None:
             try:
                 self.pg_cur.execute(f"SELECT chunk_id FROM {self.pg_table}")
                 for row in self.pg_cur.fetchall():
                     existing_chunk_ids.add(row[0])
-                print(f"✓ Found {len(existing_chunk_ids)} existing embeddings (including DB) (resume mode)")
             except Exception:
-                # silently ignore DB fetch errors (will rely on CSV)
                 pass
+        
+        if existing_chunk_ids:
+            print(f"✓ Found {len(existing_chunk_ids)} existing embeddings (resume mode)")
 
         out_fieldnames = [
-            "chunk_id",
-            "section_id",
-            "chunk_seq",
-            "start_char",
-            "end_char",
-            "emb_model",
-            "emb_dim",
-            "text_chunk",
-            "embedding",
+            "chunk_id", "section_id", "chunk_seq", "start_char", "end_char",
+            "emb_model", "emb_dim", "text_chunk", "embedding",
         ]
 
-        # prepare CSV writer if requested
         if self.write_csv:
             file_exists = self.output_csv.exists()
             out_f = self.output_csv.open("a", encoding="utf-8-sig", newline="")
@@ -130,117 +193,53 @@ class ChunkEmbedder:
         pbar = tqdm(desc="Embedding chunks", unit="chunk")
 
         try:
-            with self.chunk_csv.open("r", encoding="utf-8-sig", newline="") as inf:
-                reader = csv.DictReader(inf)
-                # validate header
-                missing = [c for c in required if c not in (reader.fieldnames or [])]
-                if missing:
-                    raise ValueError(f"Chunk CSV에 필요한 컬럼이 없습니다: {missing}")
-
-                for r in reader:
-                    chunk_id = str(r.get("chunk_id"))
-                    if resume and chunk_id in existing_chunk_ids:
-                        pbar.update(1)
-                        continue
-
-                    text = r.get("text_chunk", "") or ""
-                    try:
-                        emb = self.embed(text)
-                        emb_literal = to_pgvector_literal(emb)
-
-                        # write to CSV if enabled
-                        if writer is not None:
-                            writer.writerow(
-                                {
-                                    "chunk_id": chunk_id,
-                                    "section_id": r.get("section_id"),
-                                    "chunk_seq": r.get("chunk_seq"),
-                                    "start_char": r.get("start_char"),
-                                    "end_char": r.get("end_char"),
-                                    "emb_model": self.embed_model,
-                                    "emb_dim": self.embed_dim,
-                                    "text_chunk": text,
-                                    "embedding": emb_literal,
-                                }
-                            )
-                            out_f.flush()
-
-                        # insert into Postgres if connection available (buffered)
-                        if self.pg_cur is not None:
-                            try:
-                                row_tuple = (
-                                    chunk_id,
-                                    r.get("section_id"),
-                                    r.get("chunk_seq"),
-                                    r.get("start_char"),
-                                    r.get("end_char"),
-                                    self.embed_model,
-                                    self.embed_dim,
-                                    text,
-                                    emb_literal,
-                                )
-                                self._pg_batch_buffer.append(row_tuple)
-                                # flush buffer when reaching batch size
-                                if len(self._pg_batch_buffer) >= self.pg_batch_size:
-                                    insert_sql = (
-                                        f"INSERT INTO {self.pg_table}"
-                                        " (chunk_id, section_id, chunk_seq, start_char, end_char, emb_model, emb_dim, text_chunk, embedding)"
-                                        " VALUES %s ON CONFLICT (chunk_id) DO NOTHING"
-                                    )
-                                    try:
-                                        execute_values(self.pg_cur, insert_sql, self._pg_batch_buffer, page_size=self.pg_batch_size)
-                                    except Exception as e:
-                                        print(f"\n! Batch insert failed: {e}; falling back to single-row inserts")
-                                        per_sql = (
-                                            f"INSERT INTO {self.pg_table}"
-                                            " (chunk_id, section_id, chunk_seq, start_char, end_char, emb_model, emb_dim, text_chunk, embedding)"
-                                            " VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s) ON CONFLICT (chunk_id) DO NOTHING"
-                                        )
-                                        for bt in self._pg_batch_buffer:
-                                            try:
-                                                self.pg_cur.execute(per_sql, bt)
-                                            except Exception as e2:
-                                                print(f"\n! DB insert failed for chunk_id={bt[0]}: {e2}")
-                                    finally:
-                                        self._pg_batch_buffer = []
-                            except Exception as e:
-                                print(f"\n! DB buffering failed for chunk_id={chunk_id}: {e}")
-
-                        existing_chunk_ids.add(chunk_id)
-                        new_embeddings += 1
-                        time.sleep(RATE_LIMIT_DELAY)
-
-                    except Exception as e:
-                        print(f"\n✗ chunk_id={chunk_id}: {e}")
-
+            # [수정됨] CSV 파일 읽기 제너레이터 사용
+            for r in iter_chunk_csv_rows(self.chunk_csv, required):
+                chunk_id = str(r.get("chunk_id"))
+                if resume and chunk_id in existing_chunk_ids:
                     pbar.update(1)
+                    continue
+
+                text = r.get("text_chunk", "") or ""
+                try:
+                    emb = self.embed(text)
+                    emb_literal = to_pgvector_literal(emb)
+                    
+                    # [공용 데이터 노드 함수 사용]
+                    final_row = _build_embedding_row(r, emb, self.embed_model, self.embed_dim, emb_literal)
+
+                    # CSV 쓰기
+                    if writer is not None:
+                        writer.writerow(final_row)
+                        out_f.flush()
+
+                    # DB 적재 (버퍼링)
+                    if self.pg_cur is not None:
+                        row_tuple = self._build_pg_tuple(r, emb_literal, text)
+                        self._pg_batch_buffer.append(row_tuple)
+                        self._flush_pg_buffer(final=False)
+
+                    existing_chunk_ids.add(chunk_id)
+                    new_embeddings += 1
+                    time.sleep(RATE_LIMIT_DELAY)
+
+                except Exception as e:
+                    print(f"\n✗ chunk_id={chunk_id}: {e}")
+
+                pbar.update(1)
 
         except KeyboardInterrupt:
             print("\n! Interrupted by user. Progress saved so far.")
         finally:
-            # flush any remaining pg batch buffer
-            if getattr(self, "_pg_batch_buffer", None):
-                if self.pg_cur is not None and len(self._pg_batch_buffer) > 0:
-                    insert_sql = (
-                        f"INSERT INTO {self.pg_table}"
-                        " (chunk_id, section_id, chunk_seq, start_char, end_char, emb_model, emb_dim, text_chunk, embedding)"
-                        " VALUES %s ON CONFLICT (chunk_id) DO NOTHING"
-                    )
-                    try:
-                        execute_values(self.pg_cur, insert_sql, self._pg_batch_buffer, page_size=self.pg_batch_size)
-                    except Exception as e:
-                        print(f"\n! Final batch insert failed: {e}")
-
+            # 최종 버퍼 비우기
+            self._flush_pg_buffer(final=True)
+            
             pbar.close()
             if out_f is not None:
                 out_f.close()
-            if self.pg_cur is not None:
-                try:
-                    self.pg_cur.close()
-                except Exception:
-                    pass
             if self.pg_conn is not None:
                 try:
+                    self.pg_cur.close()
                     self.pg_conn.close()
                 except Exception:
                     pass

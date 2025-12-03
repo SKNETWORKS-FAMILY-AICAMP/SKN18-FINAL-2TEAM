@@ -1,3 +1,0 @@
-"""
-PMC embedding pipeline package.
-"""

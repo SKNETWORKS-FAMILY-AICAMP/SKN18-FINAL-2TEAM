@@ -8,10 +8,11 @@ from typing import Any, Dict, List
 
 from pmc_processing_utils import (
     clean_content, normalize_reference_spacing, normalize_title_spacing,
-    extract_reference_markers, gen_section_id,
-    remove_reference_markers,
+    # extract_reference_markers, remove_reference_markers, <-- 제거됨
+    gen_section_id,
     annotate_section_categories,
     iter_articles,
+    # extract_figure_table_markers는 제거됨
 )
 
 
@@ -42,7 +43,7 @@ def json_to_csv(input_json: str, out_dir: str) -> None:
         topic_category = art.get("topic_category")
         doi = art.get("doi")
 
-        # 섹션 분류
+        # 섹션 분류 (Title/Path만 사용하므로 유지)
         if art.get("sections"):
             annotate_section_categories(art)
 
@@ -59,13 +60,13 @@ def json_to_csv(input_json: str, out_dir: str) -> None:
             "pmcid": pmcid,
             "pmid": pmid,
             "topic_category": topic_category,
-            "title": clean_content(art.get("title")),
+            "title": normalize_title_spacing(clean_content(art.get("title"))),
             "journal": clean_content(art.get("journal")),
             "year": art.get("year"),
             "doi": doi,
             "article_category": art.get("article_category"),
             "article_type_raw": art.get("article_type_raw"),
-            "abstract": clean_content(art.get("abstract")),
+            "abstract": clean_content(art.get("abstract")), # RAW Abstract (only space cleaned)
             "n_sections": len(sections),
             "n_equations": len(equations),
             "n_figures": len(figures),
@@ -74,13 +75,11 @@ def json_to_csv(input_json: str, out_dir: str) -> None:
         })
 
         # ------------------------------------------------
-        # 2. Sections CSV (Abstract + 각 섹션)
+        # 2. Sections CSV (RAW 텍스트 저장 - 청크 단계로 이관)
         # ------------------------------------------------
         abstract_text = art.get("abstract")
         if abstract_text:
-            abstract_clean = clean_content(abstract_text)
-            abstract_ref_ids = extract_reference_markers(abstract_clean)
-            abstract_no_refs = remove_reference_markers(abstract_clean)
+            abstract_clean = clean_content(abstract_text) # <- RAW 텍스트 (최소 공백 정리만)
 
             section_rows.append({
                 "section_id": gen_section_id(),  
@@ -88,13 +87,13 @@ def json_to_csv(input_json: str, out_dir: str) -> None:
                 "pmid": pmid,
                 "topic_category": topic_category,
                 "title": "Abstract",
-                "text": abstract_no_refs,              # 레퍼런스 제거된 텍스트
+                "text": abstract_clean,              # RAW (마커 유지)
                 "path": "abstract",
                 "section_category": "abstract",
                 "article_category": art.get("article_category"),
                 "fig_ids": "",
                 "table_ids": "",
-                "ref_ids": abstract_ref_ids,          # 인용 인덱스
+                # "ref_ids"는 청크 단계로 이관되어 이 파일에서 저장하지 않음
             })
 
         for idx, sec in enumerate(sections):
@@ -110,9 +109,7 @@ def json_to_csv(input_json: str, out_dir: str) -> None:
                 if isinstance(fig_info.get("table_ids"), list):
                     table_ids = [str(x) for x in fig_info.get("table_ids")]
 
-            text_clean = clean_content(sec.get("text"))
-            ref_ids = extract_reference_markers(text_clean)
-            text_no_refs = remove_reference_markers(text_clean)
+            text_clean = clean_content(sec.get("text")) # <- RAW 텍스트 (최소 공백 정리만)
 
             raw_title = sec.get("title")
             title_clean = normalize_title_spacing(clean_content(raw_title))
@@ -123,15 +120,14 @@ def json_to_csv(input_json: str, out_dir: str) -> None:
                 "pmid": pmid,
                 "topic_category": topic_category,
                 "title": title_clean,
-                "text": text_no_refs,
+                "text": text_clean,                  # RAW (마커 유지)
                 "path": path_str,
                 "section_category": sec.get("section_category"),
                 "article_category": art.get("article_category"),
                 "fig_ids": ";".join(fig_ids),
                 "table_ids": ";".join(table_ids),
-                "ref_ids": ref_ids,
+                # "ref_ids"는 청크 단계로 이관되어 이 파일에서 저장하지 않음
             })
-
         # ------------------------------------------------
         # 3. Equations CSV (Display & URL 추가)
         # ------------------------------------------------
@@ -161,12 +157,13 @@ def json_to_csv(input_json: str, out_dir: str) -> None:
                 urls = fig.get("urls") or []
                 urls_str = ";".join(urls) if isinstance(urls, list) else str(urls)
 
+                # [수정됨] Figure Label/Caption에 normalize_title_spacing 적용
                 figure_rows.append({
                     "pmcid": pmcid,
                     "pmid": pmid,
                     "fig_ids": fig.get("fig_id") or fig.get("id"),
-                    "fig_label": clean_content(fig.get("label")),
-                    "fig_caption": clean_content(fig.get("caption")),
+                    "fig_label": normalize_title_spacing(clean_content(fig.get("label"))),
+                    "fig_caption": normalize_title_spacing(clean_content(fig.get("caption"))),
                     "fig_url": urls_str,
                 })
             else:
@@ -175,7 +172,7 @@ def json_to_csv(input_json: str, out_dir: str) -> None:
                     "pmid": pmid,
                     "fig_ids": None,
                     "fig_label": None,
-                    "fig_caption": clean_content(str(fig)),
+                    "fig_caption": normalize_title_spacing(clean_content(str(fig))),
                     "fig_url": "",
                 })
 
@@ -186,13 +183,14 @@ def json_to_csv(input_json: str, out_dir: str) -> None:
             if isinstance(tbl, dict):
                 table_url = tbl.get("binary_url") or tbl.get("url") or tbl.get("href")
 
+                # [수정됨] Table Label/Caption에 normalize_title_spacing 적용
                 table_rows.append({
                     "pmcid": pmcid,
                     "pmid": pmid,
                     "table_index": idx,
                     "table_ids": tbl.get("table_id") or tbl.get("id"),  # 숫자 table_id 우선
-                    "table_label": clean_content(tbl.get("label")),
-                    "table_caption": clean_content(tbl.get("caption")),
+                    "table_label": normalize_title_spacing(clean_content(tbl.get("label"))),
+                    "table_caption": normalize_title_spacing(clean_content(tbl.get("caption"))),
                     "table_url": table_url,
                 })
             else:
@@ -202,7 +200,7 @@ def json_to_csv(input_json: str, out_dir: str) -> None:
                     "table_index": idx,
                     "table_ids": None,
                     "table_label": None,
-                    "table_caption": clean_content(str(tbl)),
+                    "table_caption": normalize_title_spacing(clean_content(str(tbl))),
                     "table_url": "",
                 })
 
@@ -251,6 +249,7 @@ def json_to_csv(input_json: str, out_dir: str) -> None:
                 })
 
 
+
     # =========================
     #   CSV 파일 쓰기
     # =========================
@@ -274,7 +273,8 @@ def json_to_csv(input_json: str, out_dir: str) -> None:
     # 2) Sections
     write_csv("sections.csv", [
         "section_id", "pmcid", "pmid", "topic_category", "title", "text", "path",
-        "section_category", "article_category", "fig_ids", "table_ids", "ref_ids"
+        "section_category", "article_category", "fig_ids", "table_ids", 
+        # ref_ids 컬럼 제거됨
     ], section_rows)
 
     # 3) Equations
@@ -303,7 +303,7 @@ def json_to_csv(input_json: str, out_dir: str) -> None:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("input_json", help="pmc_api로 생성한 JSON 파일 경로")
+    parser.add_argument("--input_json", help="pmc_api로 생성한 JSON 파일 경로")
     parser.add_argument(
         "--out_dir",
         default="csv_output",
