@@ -8,23 +8,26 @@ def split_into_sentences(text):
     protected = re.sub(r'(https?://\S+)', r'<URL>\1</URL>', protected)
 
     # 약어 보호
-    protected = re.sub(r'\b(e\.g\.|i\.e\.|etc\.|Fig\.|Fig\s*\d+\.|No\.)', 
+    protected = re.sub(r'\b(e\.g\.|i\.e\.|etc\.|Fig\.|Fig\s*\d+\.|No\.|no\.)',
                        r'<ABBR>\1</ABBR>', protected)
 
-    # 🔥 No. 1 / No. 2. / No. 3) 보호
-    protected = re.sub(r'\bNo\.\s*\d+\.?', 
-                       lambda m: f"<NO>{m.group(0)}</NO>", 
-                       protected)
+    # 🚀 강력 보호: "No." → "NO_DOT"
+    # 예: "No. 1", "No. 2.", "No.3" 등
+    protected = re.sub(
+        r'\bNo\.(\s*\d+)',
+        r'<NO>No_DOT\1</NO>',
+        protected
+    )
 
     # 숫자 목록 보호 (1. 2. 3.)
     protected = re.sub(r'\b(\d+)\.(\s+)', r'<NUM>\1.</NUM>\2', protected)
 
-    # 괄호 안의 마침표 보호 (예: (e.g.)
+    # 괄호 안의 마침표 보호
     protected = re.sub(r'\(([^)]+?)\)', 
                        lambda m: '(' + m.group(1).replace('.', '<DOT>') + ')', 
                        protected)
 
-    # 기존 분리식 (대문자 또는 태그 앞에서만 분리)
+    # 문장 분리
     sentences = re.split(
         r'(?<=[.!?])\s+(?=[A-Z<])',
         protected
@@ -33,6 +36,7 @@ def split_into_sentences(text):
     # 보호 복원
     cleaned = []
     for sent in sentences:
+        sent = sent.replace('No_DOT', 'No.')
         sent = sent.replace('<URL>', '').replace('</URL>', '')
         sent = sent.replace('<ABBR>', '').replace('</ABBR>', '')
         sent = sent.replace('<NUM>', '').replace('</NUM>', '')
@@ -41,7 +45,6 @@ def split_into_sentences(text):
         cleaned.append(sent)
 
     return [s for s in cleaned if s.strip()]
-
 
 
 def create_sentence_chunks(
