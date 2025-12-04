@@ -11,21 +11,29 @@ def split_into_sentences(text):
     protected = re.sub(r'\b(e\.g\.|i\.e\.|etc\.|Fig\.|Fig\s*\d+\.|No\.|no\.)',
                        r'<ABBR>\1</ABBR>', protected)
 
-    # 🚀 강력 보호: "No." → "NO_DOT"
-    # 예: "No. 1", "No. 2.", "No.3" 등
+    # "No. 1" → "No_DOT" 형태 보호
     protected = re.sub(
         r'\bNo\.(\s*\d+)',
         r'<NO>No_DOT\1</NO>',
         protected
     )
 
-    # 숫자 목록 보호 (1. 2. 3.)
+    # 숫자 목록 (1. 2. 3.) 보호
     protected = re.sub(r'\b(\d+)\.(\s+)', r'<NUM>\1.</NUM>\2', protected)
 
+    # ✅ 로마 숫자 Heading (I. II. III. IV. 등) 보호
+    protected = re.sub(
+        r'\b([IVXLCDM]+)\.(\s+)',
+        r'<ROMAN>\1.</ROMAN>\2',
+        protected
+    )
+
     # 괄호 안의 마침표 보호
-    protected = re.sub(r'\(([^)]+?)\)', 
-                       lambda m: '(' + m.group(1).replace('.', '<DOT>') + ')', 
-                       protected)
+    protected = re.sub(
+        r'\(([^)]+?)\)',
+        lambda m: '(' + m.group(1).replace('.', '<DOT>') + ')',
+        protected
+    )
 
     # 문장 분리
     sentences = re.split(
@@ -41,6 +49,10 @@ def split_into_sentences(text):
         sent = sent.replace('<ABBR>', '').replace('</ABBR>', '')
         sent = sent.replace('<NUM>', '').replace('</NUM>', '')
         sent = sent.replace('<NO>', '').replace('</NO>', '')
+
+        # 🔥 로마 숫자 복원
+        sent = sent.replace('<ROMAN>', '').replace('</ROMAN>', '')
+
         sent = sent.replace('<DOT>', '.')
         cleaned.append(sent)
 
