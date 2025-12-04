@@ -37,7 +37,7 @@ for _, row in df.iterrows():
 
 # 5) 배열에 저장
     output_rows.append({
-        "protocol_id":f"{filename}_{protocol_id}",
+        "protocol_id":f"{protocol_id}",
         "url": row["url"],
         "title": row["title"],
         "chunking_id":f"{filename}_chunk_{protocol_id}",
