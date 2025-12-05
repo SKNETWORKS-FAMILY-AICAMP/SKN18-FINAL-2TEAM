@@ -1,0 +1,5 @@
+pandas
+requests
+jupyter
+bs4
+langchain_text_splitters
