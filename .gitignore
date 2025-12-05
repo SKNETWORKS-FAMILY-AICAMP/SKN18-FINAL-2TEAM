@@ -1,7 +1,4 @@
 .venv
 .history
-<<<<<<< HEAD
-.env.env
-=======
 .env
->>>>>>> 5b8de800ba74951d0e21ad49fb63a3c9b30536d8
+data/** 
