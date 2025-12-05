@@ -1,0 +1,779 @@
+[
+    {
+        "id": "Enzyme_Q1",
+        "question_kr": "베타-사이클로덱스트린(β-Cyclodextrin) 이량체가 비타민 D3의 이성질화 반응 속도를 40배 가속화시키는 물리화학적 원인은 무엇인가?",
+        "question_en": "What is the physicochemical reason for the β-Cyclodextrin dimer accelerating the isomerization reaction rate of vitamin D3 by 40 times?",
+        "target_keywords": [
+            "confinement",
+            "flexibility",
+            "isomerization",
+            "catalytic"
+        ],
+        "retrieved_chunks": [
+            {
+                "rank": 1,
+                "similarity": 0.7860449063222058,
+                "pmcid": "PMC12529775",
+                "chunk_id": "SEC635272063273_C01",
+                "section_category": "abstract",
+                "text_preview": "Abstract Previous experimental studies have shown that the isomerization reaction of previtamin D3 (..."
+            },
+            {
+                "rank": 2,
+                "similarity": 0.6729367971420288,
+                "pmcid": "PMC12529775",
+                "chunk_id": "SEC958251943746_C19",
+                "section_category": "introduction",
+                "text_preview": "Given the high excess of β-CD and the insolubility of free ProD3 in water, Holick and co-workers rep..."
+            },
+            {
+                "rank": 3,
+                "similarity": 0.6287421362842414,
+                "pmcid": "PMC12529775",
+                "chunk_id": "SEC902290971613_C21",
+                "section_category": "result",
+                "text_preview": "This conformational restriction leads to the seclusion of reactive −c−c conformers, manifested as a ..."
+            },
+            {
+                "rank": 4,
+                "similarity": 0.5570784211158752,
+                "pmcid": "PMC12529775",
+                "chunk_id": "SEC38334504447_C11",
+                "section_category": "result",
+                "text_preview": "Encapsulation within the β-CD dimer dramatically alters this conformational energy distribution ( Fi..."
+            },
+            {
+                "rank": 5,
+                "similarity": 0.5167060648413322,
+                "pmcid": "PMC12529775",
+                "chunk_id": "SEC891878339030_C05",
+                "section_category": "discussion",
+                "text_preview": "The crux of our findings is that the catalytic enhancement is primarily an entropic phenomenon rathe..."
+            }
+        ],
+        "final_status": "PASS",
+        "llm_eval": "YES | β-Cyclodextrin dimers accelerate the isomerization reaction rate of vitamin D3 by stabilizing reactive conformers of previtamin D3 (PreD3) through complexation, which reduces the variety of conformers and lowers the reaction energy barrier. This effect is primarily entropic, as the restricted rotation of the triene moiety within the β-CD dimer enhances the catalytic effect, leading to a 40-fold increase in the reaction rate compared to conventional isotropic solutions."
+    },
+    {
+        "id": "Enzyme_Q2",
+        "question_kr": "RBP-Albumin 융합 단백질(R31)의 생산성과 열안정성을 동시에 높이기 위해 도메인 IIIA에 어떤 구조적 변이를 도입했는가?",
+        "question_en": "What structural variations were introduced in domain IIIA to simultaneously enhance the productivity and thermal stability of the RBP-Albumin fusion protein (R31)?",
+        "target_keywords": [
+            "disulfide",
+            "mutation",
+            "stability",
+            "productivity",
+            "RBP"
+        ],
+        "retrieved_chunks": [
+            {
+                "rank": 1,
+                "similarity": 0.7799060344696045,
+                "pmcid": "PMC11720212",
+                "chunk_id": "SEC699631887914_C01",
+                "section_category": "result",
+                "text_preview": "The Productivity of R31 Was Improved by Incorporating an Additional Disulfide Bond, V231C/Y250C The ..."
+            },
+            {
+                "rank": 2,
+                "similarity": 0.5785947442054749,
+                "pmcid": "PMC11655909",
+                "chunk_id": "SEC798406393450_C10",
+                "section_category": "discussion",
+                "text_preview": "After the hydrophilic amino acid of Amp0279-R131A was changed to a hydrophobic amino acid. Its GRAVY..."
+            },
+            {
+                "rank": 3,
+                "similarity": 0.5571384097851281,
+                "pmcid": "PMC11655909",
+                "chunk_id": "SEC798406393450_C37",
+                "section_category": "discussion",
+                "text_preview": "These changes in the two folding angles made Y351 and H377, which are the active sites, more compact..."
+            },
+            {
+                "rank": 4,
+                "similarity": 0.5464166402816772,
+                "pmcid": "PMC11655909",
+                "chunk_id": "SEC436664307980_C02",
+                "section_category": "result",
+                "text_preview": "All mutants showed increased structural stability. The mutant Amp0279-R131H had a T m value 3.7 °C h..."
+            },
+            {
+                "rank": 5,
+                "similarity": 0.5460765957832336,
+                "pmcid": "PMC11655909",
+                "chunk_id": "SEC909571382884_C05",
+                "section_category": "result",
+                "text_preview": "coli BL21. Among the mutants, in terms of the spatial structure, Amp0279-R131A provided more space f..."
+            }
+        ],
+        "final_status": "FAIL",
+        "llm_eval": "NO | 사용자가 질문한 RBP-알부민 융합 단백질(R31)의 생산성과 열 안정성을 동시에 향상시키기 위해 도메인 IIIA에 도입된 구조적 변형에 대한 구체적인 정보가 부족합니다. 제공된 문맥에서는 R31의 생산성 향상과 관련된 추가 이황화 결합(V231C/Y250C)과 도메인 IIIA의 아미노산 서열 변경에 대한 언급이 있지만, 구체적인 구조적 변형이나 그 효과에 대한 세부 사항이 없습니다."
+    },
+    {
+        "id": "Enzyme_Q3",
+        "question_kr": "RNase J1과 J2 파라로그(Paralog) 사이에서 촉매 효율의 차이가 발생하는 구조적, 전자적 이유는 무엇이라고 설명되는가?",
+        "question_en": "What are the structural and electronic reasons that explain the differences in catalytic efficiency between the RNase J1 and J2 paralogs?",
+        "target_keywords": [
+            "RNase J",
+            "catalytic efficiency",
+            "active site",
+            "metal ion"
+        ],
+        "retrieved_chunks": [
+            {
+                "rank": 1,
+                "similarity": 0.8067778348922787,
+                "pmcid": "PMC11815676",
+                "chunk_id": "SEC118376224474_C06",
+                "section_category": "abstract",
+                "text_preview": "Structural and biochemical experiments performed in light of this observation revealed that the RNas..."
+            },
+            {
+                "rank": 2,
+                "similarity": 0.7670406519697944,
+                "pmcid": "PMC11815676",
+                "chunk_id": "SEC118376224474_C01",
+                "section_category": "abstract",
+                "text_preview": "Abstract Paralogs of the bifunctional nuclease, Ribonuclease J (RNase J), demonstrate varied catalyt..."
+            },
+            {
+                "rank": 3,
+                "similarity": 0.7466179879535457,
+                "pmcid": "PMC11815676",
+                "chunk_id": "SEC856607293620_C20",
+                "section_category": "discussion",
+                "text_preview": "Indeed, the structural and biochemical data strongly support the hypothesis that RNase J2 is not rea..."
+            },
+            {
+                "rank": 4,
+                "similarity": 0.732244567141262,
+                "pmcid": "PMC11815676",
+                "chunk_id": "SEC982013002999_C01",
+                "section_category": "method",
+                "text_preview": "Input files The structures of RNase J1 (PDB: 6K6S) and RNase J2 (PDB: 6K6W) paralogs were prepared u..."
+            },
+            {
+                "rank": 5,
+                "similarity": 0.7308051907056343,
+                "pmcid": "PMC11815676",
+                "chunk_id": "SEC118376224474_C02",
+                "section_category": "abstract",
+                "text_preview": "Of the two Staphylococcus aureus RNase J paralogues, RNase J1 is substantially more active than RNas..."
+            }
+        ],
+        "final_status": "PASS",
+        "llm_eval": "YES | RNase J1 and J2 paralogs exhibit differences in catalytic efficiency due to distinct catalytic mechanisms and electronic properties of their active site residues. RNase J1 is more catalytically active than RNase J2, which is attributed to the critical roles of specific residues (H80 and E166) in nuclease activity. Additionally, RNase J2's mechanism does not involve a direct role of the metal ion in catalysis, contrasting with RNase J1's mechanism. The electronic properties of these active site residues were analyzed using density functional theory, further elucidating the differences in their catalytic efficiencies."
+    },
+    {
+        "id": "Enzyme_Q4",
+        "question_kr": "거대 단백질의 접힘(Folding) 과정에서 오프-패스웨이(Off-pathway) 응집을 막고 올바른 접힘을 유도하는 '중간체(Intermediate)'의 역할은?",
+        "question_en": "What is the role of 'intermediates' in preventing off-pathway aggregation and promoting correct folding during the folding process of large proteins?",
+        "target_keywords": [
+            "folding",
+            "intermediate",
+            "aggregation",
+            "off-pathway"
+        ],
+        "retrieved_chunks": [
+            {
+                "rank": 1,
+                "similarity": 0.6562001314043931,
+                "pmcid": "PMC11720324",
+                "chunk_id": "SEC44980064280_C10",
+                "section_category": "main",
+                "text_preview": "Additionally, the prevention of misfolding can be experimentally supported by the increased folding ..."
+            },
+            {
+                "rank": 2,
+                "similarity": 0.6210951434913203,
+                "pmcid": "PMC11720324",
+                "chunk_id": "SEC184840044790_C06",
+                "section_category": "main",
+                "text_preview": "These native interactors or ligands play a crucial role in protein folding and stability. Fourthly, ..."
+            },
+            {
+                "rank": 3,
+                "similarity": 0.6146933389925986,
+                "pmcid": "PMC11761020",
+                "chunk_id": "SEC276867088155_C07",
+                "section_category": "introduction",
+                "text_preview": "Although less prone to misfolding in general, studies of small proteins have identified strategies t..."
+            },
+            {
+                "rank": 4,
+                "similarity": 0.608581410815552,
+                "pmcid": "PMC11720324",
+                "chunk_id": "SEC44980064280_C11",
+                "section_category": "main",
+                "text_preview": "Molecular chaperones can increase the folding rates of clients by lowering kinetic barriers, smoothi..."
+            },
+            {
+                "rank": 5,
+                "similarity": 0.5974314096651824,
+                "pmcid": "PMC11720324",
+                "chunk_id": "SEC511701466176_C07",
+                "section_category": "main",
+                "text_preview": "Therefore, targeting cellular macromolecules as native interactors represents a promising strategy f..."
+            }
+        ],
+        "final_status": "FAIL",
+        "llm_eval": "NO | 사용자가 질문한 '중간체'의 역할에 대한 구체적인 정보가 부족합니다. 중간체가 오프 경로 집합을 방지하고 올바른 접힘을 촉진하는 과정에서의 역할에 대한 명확한 설명이 필요합니다. 현재 제공된 정보는 분자 샤프론과 단백질 접힘의 일반적인 메커니즘에 대한 내용이지만, 중간체의 구체적인 기능이나 기여에 대한 언급이 없습니다."
+    },
+    {
+        "id": "Cancer_Q1",
+        "question_kr": "삼중 음성 유방암(TNBC) 치료에서 나노백신(Nanovaccine)과 면역관문억제제(예: anti-OX40)를 병용했을 때 어떤 시너지 효과가 나타나는가?",
+        "question_en": "What synergistic effects are observed when combining nanovaccines and immune checkpoint inhibitors (e.g., anti-OX40) in the treatment of triple-negative breast cancer (TNBC)?",
+        "target_keywords": [
+            "nanovaccine",
+            "TNBC",
+            "immune checkpoint",
+            "OX40",
+            "synergy"
+        ],
+        "retrieved_chunks": [
+            {
+                "rank": 1,
+                "similarity": 0.7143983415127801,
+                "pmcid": "PMC12581784",
+                "chunk_id": "SEC422947145597_C25",
+                "section_category": "introduction",
+                "text_preview": "This nano‐immunotherapy combining a nanovaccine with the mAb αOX40 could therefore potentiate key st..."
+            },
+            {
+                "rank": 2,
+                "similarity": 0.7124049663543701,
+                "pmcid": "PMC12581784",
+                "chunk_id": "SEC590244445045_C02",
+                "section_category": "other",
+                "text_preview": "The combination of αOX40 and PD‐1 blockade has already been studied in different cancer types, inclu..."
+            },
+            {
+                "rank": 3,
+                "similarity": 0.7079996292590887,
+                "pmcid": "PMC12581784",
+                "chunk_id": "SEC590244445045_C03",
+                "section_category": "other",
+                "text_preview": "[ 13c] However, the anti‐tumor immune‐mediated effect of this combination and the interaction of the..."
+            },
+            {
+                "rank": 4,
+                "similarity": 0.6965904235839844,
+                "pmcid": "PMC12581784",
+                "chunk_id": "SEC165103969476_C05",
+                "section_category": "abstract",
+                "text_preview": "It is reported that polymeric nanoparticle (NP)‐based cancer vaccines, co‐entrapping tumor‐associate..."
+            },
+            {
+                "rank": 5,
+                "similarity": 0.6705272394104469,
+                "pmcid": "PMC12581784",
+                "chunk_id": "SEC590244445045_C04",
+                "section_category": "other",
+                "text_preview": "In ovarian cancer and melanoma, the combination of these two immune checkpoint modulators induced a ..."
+            }
+        ],
+        "final_status": "PASS",
+        "llm_eval": "YES | Combining nanovaccines with immune checkpoint inhibitors like anti-OX40 in the treatment of triple-negative breast cancer (TNBC) can enhance the anti-tumor immune response by targeting both peripheral and tumor-infiltrating immune cells. This combination has been shown to sensitize TNBC to immune checkpoint modulation, leading to tumor growth inhibition and improved overall survival. Additionally, the combination of αOX40 and PD-1 blockade has been studied in TNBC, although the specific immune outcomes and interactions remain somewhat unclear. Overall, the synergistic effects observed include increased CD8+ T cell activity at the tumor site and a potential additive effect when administered in the correct sequence."
+    },
+    {
+        "id": "Cancer_Q2",
+        "question_kr": "비소세포폐암(NSCLC)에서 오시머티닙(Osimertinib) 내성을 극복하기 위해 안로티닙(Anlotinib)을 병용할 때, 억제되는 주요 기전은 무엇인가?",
+        "question_en": "What is the main mechanism of inhibition when combining Anlotinib with Osimertinib to overcome resistance in non-small cell lung cancer (NSCLC)?",
+        "target_keywords": [
+            "resistance",
+            "Anlotinib",
+            "EMT",
+            "angiogenesis",
+            "Osimertinib"
+        ],
+        "retrieved_chunks": [
+            {
+                "rank": 1,
+                "similarity": 0.5267212955091877,
+                "pmcid": "PMC12454513",
+                "chunk_id": "SEC921173515675_C08",
+                "section_category": "introduction",
+                "text_preview": "Further, Orillion A and Hashimoto A et al. have also shown that entinostat increases the antitumor e..."
+            },
+            {
+                "rank": 2,
+                "similarity": 0.5267212955091877,
+                "pmcid": "PMC12454513",
+                "chunk_id": "SEC922532750237_C08",
+                "section_category": "introduction",
+                "text_preview": "Further, Orillion A and Hashimoto A et al. have also shown that entinostat increases the antitumor e..."
+            },
+            {
+                "rank": 3,
+                "similarity": 0.4845943460110229,
+                "pmcid": "PMC12481689",
+                "chunk_id": "SEC647299786088_C01",
+                "section_category": "method",
+                "text_preview": "Colony formation assay PC9, HCC827, PC9-OR, and HCC827-OR cells in the log phase were seeded into si..."
+            },
+            {
+                "rank": 4,
+                "similarity": 0.4602764868571476,
+                "pmcid": "PMC12245994",
+                "chunk_id": "SEC761206127048_C01",
+                "section_category": "result",
+                "text_preview": "HG106 and HG110 inhibits the viability of NSCLC cells Following the outcomes of the virtual screenin..."
+            },
+            {
+                "rank": 5,
+                "similarity": 0.44551558630214916,
+                "pmcid": "PMC12245994",
+                "chunk_id": "SEC432431941646_C01",
+                "section_category": "result",
+                "text_preview": "HG106 and HG110 inhibits the proliferation of NSCLC cells HG106 and HG110 can efficiently suppress p..."
+            }
+        ],
+        "final_status": "FAIL",
+        "llm_eval": "NO | 사용자가 질문한 Anlotinib과 Osimertinib의 병용이 비소세포 폐암(NSCLC)에서 저항성을 극복하는 주요 억제 메커니즘에 대한 정보가 부족합니다. 제공된 문맥은 이 두 약물의 병용 효과나 저항성 극복 메커니즘에 대한 구체적인 내용을 포함하고 있지 않으며, 대신 다른 약물이나 실험 방법에 대한 정보만 포함되어 있습니다."
+    },
+    {
+        "id": "Cancer_Q3",
+        "question_kr": "폐선암 수술 중 흉막 전이가 발견된 환자에게 주 종양 절제(Main tumor resection)를 시행하는 것이 생존율 측면에서 어떤 이점이 있는가?",
+        "question_en": "What are the survival benefits of performing main tumor resection in patients with pleural metastasis discovered during lung cancer surgery?",
+        "target_keywords": [
+            "survival",
+            "resection",
+            "pleural metastasis",
+            "prognosis"
+        ],
+        "retrieved_chunks": [
+            {
+                "rank": 1,
+                "similarity": 0.7974843978881836,
+                "pmcid": "PMC12527613",
+                "chunk_id": "SEC2893822480_C04",
+                "section_category": "introduction",
+                "text_preview": "Patients with unforeseen pleural metastasis presented better survival than those with clinical pleur..."
+            },
+            {
+                "rank": 2,
+                "similarity": 0.7556904103940494,
+                "pmcid": "PMC12527613",
+                "chunk_id": "SEC170361354044_C18",
+                "section_category": "discussion",
+                "text_preview": "This evolving trend suggests a shift toward actively addressing the primary tumor lesion in patients..."
+            },
+            {
+                "rank": 3,
+                "similarity": 0.7456409486746236,
+                "pmcid": "PMC12527613",
+                "chunk_id": "SEC170361354044_C02",
+                "section_category": "discussion",
+                "text_preview": "Patients who underwent main tumor resection presented better OS and PFS, which was consistent with t..."
+            },
+            {
+                "rank": 4,
+                "similarity": 0.7423589672064179,
+                "pmcid": "PMC12527613",
+                "chunk_id": "SEC755071871506_C01",
+                "section_category": "abstract",
+                "text_preview": "Abstract PurposeThis study aimed to evaluate the clinical impact of main tumor resection on long-ter..."
+            },
+            {
+                "rank": 5,
+                "similarity": 0.716402368759969,
+                "pmcid": "PMC12527613",
+                "chunk_id": "SEC170361354044_C01",
+                "section_category": "discussion",
+                "text_preview": "Discussion In this study cohort, patients with lung adenocarcinoma who were intraoperatively diagnos..."
+            }
+        ],
+        "final_status": "PASS",
+        "llm_eval": "YES | 주된 종양 절제가 예상치 못한 흉막 전이가 발견된 폐암 환자에서 생존율을 개선하는 것으로 나타났습니다. 연구에 따르면, 주된 종양 절제를 받은 환자들은 생존 기간(OS)과 무병 생존 기간(PFS) 모두에서 더 나은 결과를 보였으며, 이는 이전 연구와 일치합니다. 그러나 대부분의 연구는 단기 또는 중간 결과에 초점을 맞추었고, 장기 생존에 대한 정확한 반영이 부족할 수 있습니다. 따라서, 주된 종양 절제는 장기적인 결과에서도 중요한 예후 인자로 작용할 수 있습니다."
+    },
+    {
+        "id": "Cancer_Q4",
+        "question_kr": "LncRNA H19이 폐동맥 내피세포에서 혈관신생(Angiogenesis)을 촉진하는 신호 전달 경로와 기전은 무엇인가?",
+        "question_en": "What are the signaling pathways and mechanisms by which lncRNA H19 promotes angiogenesis in pulmonary artery endothelial cells?",
+        "target_keywords": [
+            "H19",
+            "angiogenesis",
+            "VEGF",
+            "HIF-1",
+            "pathway"
+        ],
+        "retrieved_chunks": [
+            {
+                "rank": 1,
+                "similarity": 0.7788412803066161,
+                "pmcid": "PMC12602639",
+                "chunk_id": "SEC746736943581_C26",
+                "section_category": "discussion",
+                "text_preview": "It was found that hypoxia induced elevated expression of lncRNA H19 in pulmonary artery epithelial c..."
+            },
+            {
+                "rank": 2,
+                "similarity": 0.7752426862716675,
+                "pmcid": "PMC12602639",
+                "chunk_id": "SEC746736943581_C36",
+                "section_category": "discussion",
+                "text_preview": "However, it is not yet known whether lncRNA H19 affects endothelial cell function through regulating..."
+            },
+            {
+                "rank": 3,
+                "similarity": 0.7751389741897583,
+                "pmcid": "PMC12602639",
+                "chunk_id": "SEC231676228430_C05",
+                "section_category": "abstract",
+                "text_preview": "In addition, lncRNA H19 upregulated the hypoxia-inducible factor-1α (HIF-1α)/vascular endothelial gr..."
+            },
+            {
+                "rank": 4,
+                "similarity": 0.7740090624088621,
+                "pmcid": "PMC12602639",
+                "chunk_id": "SEC746736943581_C12",
+                "section_category": "discussion",
+                "text_preview": "Previous studies have demonstrated that lncRNA H19 regulates endothelial cell function and angiogene..."
+            },
+            {
+                "rank": 5,
+                "similarity": 0.7670248836599217,
+                "pmcid": "PMC12602639",
+                "chunk_id": "SEC746736943581_C37",
+                "section_category": "discussion",
+                "text_preview": "Therefore, miR-20a-5p siRNA or mimics were added while knocking down or overexpressing lncRNA H19. T..."
+            }
+        ],
+        "final_status": "PASS",
+        "llm_eval": "YES | lncRNA H19 promotes angiogenesis in pulmonary artery endothelial cells (MPAECs) primarily through the HIF-1α/VEGF signaling pathway. Under hypoxic conditions, lncRNA H19 expression is elevated, which upregulates HIF-1α and VEGF levels. Additionally, lncRNA H19 regulates endothelial cell function by targeting miR-20a-5p, indicating a regulatory axis of lncRNA H19/miR-20a-5p/HIF-1α/VEGF that plays a significant role in enhancing endothelial cell migration and function in the context of pulmonary artery endothelial cells."
+    },
+    {
+        "id": "AI_Q1",
+        "question_kr": "구조 기반 약물 설계(SBDD) 모델인 'DiffInt'는 기존 모델들과 달리 단백질-리간드 간의 어떤 상호작용을 명시적으로 학습에 반영하는가?",
+        "question_en": "What interactions between proteins and ligands does the structure-based drug design (SBDD) model 'DiffInt' explicitly incorporate into its learning, unlike existing models?",
+        "target_keywords": [
+            "DiffInt",
+            "hydrogen bond",
+            "interaction",
+            "diffusion"
+        ],
+        "retrieved_chunks": [
+            {
+                "rank": 1,
+                "similarity": 0.7322745700992801,
+                "pmcid": "PMC11733934",
+                "chunk_id": "SEC642995115164_C36",
+                "section_category": "introduction",
+                "text_preview": "In this study, we propose a new method, DiffInt, to reconstruct the interaction between protein and ..."
+            },
+            {
+                "rank": 2,
+                "similarity": 0.7258035756887075,
+                "pmcid": "PMC11733934",
+                "chunk_id": "SEC802412018225_C01",
+                "section_category": "introduction",
+                "text_preview": "Overview of DiffInt DiffInt has the ability to generate diverse ligand molecules based on the basis ..."
+            },
+            {
+                "rank": 3,
+                "similarity": 0.7124585721629436,
+                "pmcid": "PMC11733934",
+                "chunk_id": "SEC642995115164_C03",
+                "section_category": "introduction",
+                "text_preview": "Structure-based drug design (SBDD) began to attract attention in the 1980s to design ligand molecule..."
+            },
+            {
+                "rank": 4,
+                "similarity": 0.6324253647707732,
+                "pmcid": "PMC11733934",
+                "chunk_id": "SEC75613580668_C01",
+                "section_category": "discussion",
+                "text_preview": "Conclusions In this work, we propose DiffInt, preserving hydrogen bonds between protein pockets and ..."
+            },
+            {
+                "rank": 5,
+                "similarity": 0.6270458885146946,
+                "pmcid": "PMC11733934",
+                "chunk_id": "SEC642995115164_C01",
+                "section_category": "introduction",
+                "text_preview": "Introduction The primary goal of drug discovery is to identify novel molecules that bind to specific..."
+            }
+        ],
+        "final_status": "PASS",
+        "llm_eval": "YES | DiffInt explicitly incorporates hydrogen bonds between protein and ligand molecules into its learning by introducing interaction particles, which are pseudoparticles representing these bonds. This approach allows DiffInt to effectively reconstruct hydrogen bond interactions, distinguishing it from existing models that may not focus on this specific interaction."
+    },
+    {
+        "id": "AI_Q2",
+        "question_kr": "전복(Haliotis discus hannai) 유래 펩타이드를 이용해 고지혈증 치료 타겟인 HMGCR 억제제를 발굴한 가상 스크리닝 과정은?",
+        "question_en": "What is the virtual screening process for discovering HMGCR inhibitors targeting hyperlipidemia using peptides derived from abalone (Haliotis discus hannai)?",
+        "target_keywords": [
+            "HMGCR",
+            "peptide",
+            "virtual screening",
+            "hyperlipidemia"
+        ],
+        "retrieved_chunks": [
+            {
+                "rank": 1,
+                "similarity": 0.6686425209045458,
+                "pmcid": "PMC11730078",
+                "chunk_id": "SEC234452117083_C01",
+                "section_category": "result",
+                "text_preview": "HMGCR enzyme inhibition rate of abalone active peptides 3. Combining the results of the above peptid..."
+            },
+            {
+                "rank": 2,
+                "similarity": 0.5409855842590371,
+                "pmcid": "PMC11730078",
+                "chunk_id": "SEC696485050043_C01",
+                "section_category": "result",
+                "text_preview": "Peptide yield and HMGCR inhibition rate of enzymatic hydrolysates 3. Pepsin, acid protease, flavourz..."
+            },
+            {
+                "rank": 3,
+                "similarity": 0.4895189100217179,
+                "pmcid": "PMC11651584",
+                "chunk_id": "SEC417299618437_C01",
+                "section_category": "method",
+                "text_preview": "Molecular docking and validation of docking protocol In in silico drug design, molecular docking is ..."
+            },
+            {
+                "rank": 4,
+                "similarity": 0.47879704833031034,
+                "pmcid": "PMC12245994",
+                "chunk_id": "SEC254875970183_C06",
+                "section_category": "method",
+                "text_preview": "In the second step, an in-house developed scoring function, CYSCORE, was used to refine the selectio..."
+            },
+            {
+                "rank": 5,
+                "similarity": 0.4731981283305404,
+                "pmcid": "PMC12245994",
+                "chunk_id": "SEC254875970183_C04",
+                "section_category": "method",
+                "text_preview": "Initially, AutoDock Vina was employed to dock a large compound library into the target protein’s bin..."
+            }
+        ],
+        "final_status": "FAIL",
+        "llm_eval": "NO | 사용자가 요청한 HMGCR 억제제를 발견하기 위한 가상 스크리닝 과정에 대한 정보는 부족합니다. 특히, 아바론에서 유래한 펩타이드의 특성과 이들이 HMGCR 억제에 어떻게 기여하는지에 대한 구체적인 세부사항이 결여되어 있습니다. 또한, 가상 스크리닝 과정에서 펩타이드의 선택 및 평가 방법에 대한 명확한 설명이 필요합니다."
+    },
+    {
+        "id": "AI_Q3",
+        "question_kr": "효소의 열안정성 최적화를 위해 '단백질 언어 모델(Pro-PRIME)'을 사용했을 때, 다중 변이(Multiple mutations) 간의 어떤 효과를 예측하여 성공률을 높였는가?",
+        "question_en": "What effects between multiple mutations were predicted to increase the success rate when using the 'protein language model (Pro-PRIME)' for optimizing the thermal stability of enzymes?",
+        "target_keywords": [
+            "Pro-PRIME",
+            "epistasis",
+            "thermostability",
+            "language model"
+        ],
+        "retrieved_chunks": [
+            {
+                "rank": 1,
+                "similarity": 0.7601403987700744,
+                "pmcid": "PMC11685841",
+                "chunk_id": "SEC746779935634_C24",
+                "section_category": "introduction",
+                "text_preview": "In this study, we introduced a novel approach for enhancing enzyme thermostability by efficiently re..."
+            },
+            {
+                "rank": 2,
+                "similarity": 0.7601340639631174,
+                "pmcid": "PMC11685841",
+                "chunk_id": "SEC920614549501_C24",
+                "section_category": "introduction",
+                "text_preview": "In this study, we introduced a novel approach for enhancing enzyme thermostability by efficiently re..."
+            },
+            {
+                "rank": 3,
+                "similarity": 0.7481927348547669,
+                "pmcid": "PMC11685841",
+                "chunk_id": "SEC920614549501_C16",
+                "section_category": "introduction",
+                "text_preview": "Consequently, Pro‐PRIME excels in designing and optimizing enzymes that require high‐temperature tol..."
+            },
+            {
+                "rank": 4,
+                "similarity": 0.7481516153722052,
+                "pmcid": "PMC11685841",
+                "chunk_id": "SEC746779935634_C16",
+                "section_category": "introduction",
+                "text_preview": "Consequently, Pro‐PRIME excels in designing and optimizing enzymes that require high‐temperature tol..."
+            },
+            {
+                "rank": 5,
+                "similarity": 0.7391329407691956,
+                "pmcid": "PMC11685841",
+                "chunk_id": "SEC746779935634_C25",
+                "section_category": "introduction",
+                "text_preview": "We fine‐tuned the Pro‐PRIME model using thermostability data from multiple single‐point mutants and ..."
+            }
+        ],
+        "final_status": "PASS",
+        "llm_eval": "YES | Pro-PRIME was fine-tuned using thermostability data from multiple single-point mutants and low-order combinatorial mutants of creatinase, allowing it to accurately predict changes in protein stability and identify optimal combinations of single-point mutants. The model excels in predicting high-order epistasis, which involves interactions between three or more mutations, thereby enhancing the success rate in optimizing the thermal stability of enzymes. Additionally, a dynamic correlation matrix based on the three-dimensional structure was used to analyze complex epistasis in high-order combinatorial mutants, providing insights into how mutations influence thermostability."
+    },
+    {
+        "id": "AI_Q4",
+        "question_kr": "단백질-단백질 상호작용(PPI) 인터페이스의 품질을 평가하는 'EquiRank' 모델은 어떤 딥러닝 아키텍처와 특징(Feature)을 결합하여 성능을 높였는가?",
+        "question_en": "What deep learning architecture and features does the 'EquiRank' model combine to enhance the performance of evaluating the quality of protein-protein interaction (PPI) interfaces?",
+        "target_keywords": [
+            "EquiRank",
+            "graph neural network",
+            "GNN",
+            "interface",
+            "ESM"
+        ],
+        "retrieved_chunks": [
+            {
+                "rank": 1,
+                "similarity": 0.7608540654182488,
+                "pmcid": "PMC11755013",
+                "chunk_id": "SEC99373839017_C19",
+                "section_category": "introduction",
+                "text_preview": "Starting from a given protein complex, EquiRank extracts the interface graph of interacting residue ..."
+            },
+            {
+                "rank": 2,
+                "similarity": 0.7535219192504936,
+                "pmcid": "PMC11755013",
+                "chunk_id": "SEC99373839017_C17",
+                "section_category": "introduction",
+                "text_preview": "Here we present, an improved protein-protein interface quality estimation method EquiRank. EquiRank ..."
+            },
+            {
+                "rank": 3,
+                "similarity": 0.708225063998987,
+                "pmcid": "PMC11755013",
+                "chunk_id": "SEC965050368586_C03",
+                "section_category": "abstract",
+                "text_preview": "Here we present EquiRank, an improved protein-protein interface quality estimation method by leverag..."
+            },
+            {
+                "rank": 4,
+                "similarity": 0.5617901086807291,
+                "pmcid": "PMC11755013",
+                "chunk_id": "SEC172088237370_C01",
+                "section_category": "method",
+                "text_preview": "Estimation of protein-protein interface quality: 2. Fig. C shows the estimation of the protein-prote..."
+            },
+            {
+                "rank": 5,
+                "similarity": 0.5403898310196601,
+                "pmcid": "PMC11755013",
+                "chunk_id": "SEC99373839017_C10",
+                "section_category": "introduction",
+                "text_preview": "For instance, our recent method PIQLE successfully applies the Graph Attention Network to estimate t..."
+            }
+        ],
+        "final_status": "PASS",
+        "llm_eval": "YES | The 'EquiRank' model combines a symmetry-aware Equivariant Graph Neural Network (EGNN) with embeddings from the protein language model ESM-2 to enhance the evaluation of protein-protein interaction (PPI) interfaces. It utilizes a graph-based representation of interacting residue pairs and incorporates various features, including multimeric distance and orientation representations, to improve the accuracy of protein-protein interface quality estimation."
+    },
+    {
+        "id": "Trend_Q1",
+        "question_kr": "감초 추출물인 Isoliquiritigenin(ISL)이 유방암 세포의 폐 전이를 억제하는 구체적인 분자적 기전은 무엇인가?",
+        "question_en": "What is the specific molecular mechanism by which the licorice extract Isoliquiritigenin (ISL) inhibits lung metastasis in breast cancer cells?",
+        "target_keywords": [
+            "Isoliquiritigenin",
+            "metastasis",
+            "breast cancer",
+            "PI3K/Akt",
+            "MMP"
+        ],
+        "retrieved_chunks": [
+            {
+                "rank": 1,
+                "similarity": 0.6108618610583637,
+                "pmcid": "PMC12624662",
+                "chunk_id": "SEC944781217830_C01",
+                "section_category": "result",
+                "text_preview": "ISL prevents BC lung metastasis in the 4T1-luc xenograft model 3. The aim of this experiment was to ..."
+            },
+            {
+                "rank": 2,
+                "similarity": 0.6073853139510949,
+                "pmcid": "PMC12624662",
+                "chunk_id": "SEC402514773297_C01",
+                "section_category": "result",
+                "text_preview": "ISL suppresses tumor growth of BC cells through the expression of PI3K/AKT/mTOR pathways 3. The aim ..."
+            },
+            {
+                "rank": 3,
+                "similarity": 0.595993059754165,
+                "pmcid": "PMC12624662",
+                "chunk_id": "SEC534458960410_C05",
+                "section_category": "result",
+                "text_preview": "Thus, 20 μM (ISL-L) and 40 μM (ISL-H) were chosen for subsequent experiments. The colony formation a..."
+            },
+            {
+                "rank": 4,
+                "similarity": 0.5804285657150419,
+                "pmcid": "PMC12624662",
+                "chunk_id": "SEC534458960410_C04",
+                "section_category": "result",
+                "text_preview": "However, treatment with 5 and 10 μM ISL did not significantly reduce BC cell viability. Thus, 20 μM ..."
+            },
+            {
+                "rank": 5,
+                "similarity": 0.5736323936958558,
+                "pmcid": "PMC12624662",
+                "chunk_id": "SEC534458960410_C02",
+                "section_category": "result",
+                "text_preview": "The results were compared to those of DOX, a known chemotherapeutic drug. The results, as shown in F..."
+            }
+        ],
+        "final_status": "FAIL",
+        "llm_eval": "NO | 사용자가 질문한 \"Isoliquiritigenin (ISL)이 유방암 세포에서 폐 전이를 억제하는 특정 분자 기전\"에 대한 정보가 부족합니다. 제공된 문맥은 ISL의 효과와 PI3K/AKT/mTOR 경로에 대한 언급이 있지만, ISL이 폐 전이를 억제하는 구체적인 분자 기전이나 메커니즘에 대한 세부 정보는 포함되어 있지 않습니다."
+    },
+    {
+        "id": "Trend_Q2",
+        "question_kr": "자궁경부암이나 간암(HCC) 환자에게서 드물게 발생하는 위장관(Gastric) 또는 부신(Adrenal) 전이 사례의 임상적 특징과 진단 시 주의점은?",
+        "question_en": "What are the clinical characteristics and diagnostic considerations for rare cases of gastrointestinal or adrenal metastasis in patients with cervical cancer or hepatocellular carcinoma (HCC)?",
+        "target_keywords": [
+            "metastasis",
+            "gastric",
+            "adrenal",
+            "rare",
+            "case report"
+        ],
+        "retrieved_chunks": [
+            {
+                "rank": 1,
+                "similarity": 0.6811386143821918,
+                "pmcid": "PMC12481543",
+                "chunk_id": "SEC376071813020_C01",
+                "section_category": "introduction",
+                "text_preview": "Rationale and Knowledge Gap 1. HCC is a highly aggressive neoplasm often presenting with locally adv..."
+            },
+            {
+                "rank": 2,
+                "similarity": 0.6519806203865265,
+                "pmcid": "PMC12481543",
+                "chunk_id": "SEC101805969087_C04",
+                "section_category": "discussion",
+                "text_preview": "Adrenal metastases are usually found in advanced HCC stages, with poor liver function and patient pe..."
+            },
+            {
+                "rank": 3,
+                "similarity": 0.5715305719935212,
+                "pmcid": "PMC12478650",
+                "chunk_id": "SEC478820075528_C01",
+                "section_category": "discussion",
+                "text_preview": "DISCUSSION Literature regarding gastric metastasis is extremely limited, with the most frequent prim..."
+            },
+            {
+                "rank": 4,
+                "similarity": 0.565703272819523,
+                "pmcid": "PMC12478650",
+                "chunk_id": "SEC478820075528_C02",
+                "section_category": "discussion",
+                "text_preview": "Most patients with primary cervical cancer and simultaneous stomach metastasis also had other organs..."
+            },
+            {
+                "rank": 5,
+                "similarity": 0.5078322584729049,
+                "pmcid": "PMC12478650",
+                "chunk_id": "SEC478820075528_C06",
+                "section_category": "discussion",
+                "text_preview": "However, the majority of patients with this diagnosis are in poor general health and may not be suit..."
+            }
+        ],
+        "final_status": "FAIL",
+        "llm_eval": "NO | 사용자가 요청한 질문에 대한 답변을 구성하기 위해서는 다음과 같은 정보가 부족합니다: 자궁경부암 또는 간세포암(HCC) 환자에서의 위장관 또는 부신 전이의 임상적 특성과 진단 고려 사항에 대한 구체적인 세부사항. 특히, 이러한 전이의 진단 방법, 증상, 치료 옵션 및 예후에 대한 정보가 필요합니다. 현재 제공된 정보는 HCC의 부신 전이에 대한 일부 사례와 관련된 내용이지만, 자궁경부암과의 연관성 및 위장관 전이에 대한 구체적인 임상적 특성은 포함되어 있지 않습니다."
+    }
+]

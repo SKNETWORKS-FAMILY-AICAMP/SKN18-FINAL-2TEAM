@@ -78,6 +78,18 @@ def extract_body_components(
         def walk(n: ET.Element):
             tag = _local_name(n.tag)
 
+            if tag in ("sup", "sub"):
+            # pmc_math.py의 handle_sup_sub 로직을 직접 구현하거나 가져와서 사용
+                inner_text = "".join(n.itertext()).strip()
+                if tag == "sup":
+                    parts.append(f"^{{{inner_text}}}")
+                elif tag == "sub":
+                    parts.append(f"_{{{inner_text}}}")
+
+                # tail 텍스트(태그 닫힌 후 나오는 텍스트) 처리
+                _append_clean(n.tail, parts)
+                return
+            
             if tag == "sec" and skip_child_secs:
                 _append_clean(n.tail, parts)
                 return
