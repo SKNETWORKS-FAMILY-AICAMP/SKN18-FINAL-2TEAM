@@ -8,11 +8,9 @@ from typing import Any, Dict, List
 
 from pmc_processing_utils import (
     clean_content, normalize_reference_spacing, normalize_title_spacing,
-    # extract_reference_markers, remove_reference_markers, <-- 제거됨
-    gen_section_id,
+    # gen_section_id, # <- UUID 생성 함수 미사용으로 주석 처리
     annotate_section_categories,
     iter_articles,
-    # extract_figure_table_markers는 제거됨
 )
 
 
@@ -39,11 +37,12 @@ def json_to_csv(input_json: str, out_dir: str) -> None:
     for art in iter_articles(obj):
         count += 1
         pmcid = art.get("pmcid")
-        pmid = art.get("pmid")
+        # pmid가 없는 경우를 대비해 빈 문자열 처리 (ID 생성 시 에러 방지)
+        pmid = str(art.get("pmid") or "0") 
         topic_category = art.get("topic_category")
         doi = art.get("doi")
 
-        # 섹션 분류 (Title/Path만 사용하므로 유지)
+        # 섹션 분류
         if art.get("sections"):
             annotate_section_categories(art)
 
@@ -65,8 +64,7 @@ def json_to_csv(input_json: str, out_dir: str) -> None:
             "year": art.get("year"),
             "doi": doi,
             "article_category": art.get("article_category"),
-            "article_type_raw": art.get("article_type_raw"),
-            "abstract": clean_content(art.get("abstract")), # RAW Abstract (only space cleaned)
+            "abstract": clean_content(art.get("abstract")),
             "n_sections": len(sections),
             "n_equations": len(equations),
             "n_figures": len(figures),
@@ -75,31 +73,40 @@ def json_to_csv(input_json: str, out_dir: str) -> None:
         })
 
         # ------------------------------------------------
-        # 2. Sections CSV (RAW 텍스트 저장 - 청크 단계로 이관)
+        # 2. Sections CSV
+        # ID 형식: {pmid}_sec{index} (Abstract는 sec0, 본문은 sec1~)
         # ------------------------------------------------
         abstract_text = art.get("abstract")
         if abstract_text:
-            abstract_clean = clean_content(abstract_text) # <- RAW 텍스트 (최소 공백 정리만)
+            abstract_clean = clean_content(abstract_text)
+            
+            # Abstract ID 생성 (sec0)
+            abs_sec_id = f"{pmid}_sec0"
 
             section_rows.append({
-                "section_id": gen_section_id(),  
-                "pmcid": pmcid,
+                "section_id": abs_sec_id,  
                 "pmid": pmid,
                 "topic_category": topic_category,
-                "title": "Abstract",
-                "text": abstract_clean,              # RAW (마커 유지)
+                "section_title": "Abstract",
+                "section_text": abstract_clean,
                 "path": "abstract",
                 "section_category": "abstract",
                 "article_category": art.get("article_category"),
                 "fig_ids": "",
                 "table_ids": "",
-                # "ref_ids"는 청크 단계로 이관되어 이 파일에서 저장하지 않음
             })
 
         for idx, sec in enumerate(sections):
+            # 본문 ID 생성 (sec1, sec2, ...)
+            curr_sec_id = f"{pmid}_sec{idx + 1}"
+
             path = sec.get("path") or []
             path_str = " > ".join(path) if isinstance(path, list) else str(path or "")
 
+            # 참조하고 있는 fig/table ID들도 단순히 원본 ID를 가져오는 것이 아니라, 
+            # 여기서 생성 규칙을 맞추려면 매핑이 필요하지만, 
+            # 현재는 원본 파싱된 번호 목록(1, 2 등)을 가져오므로 유지합니다.
+            # (만약 연결성을 강화하려면 추후 fig_info 파싱 로직도 수정 필요)
             fig_ids = []
             table_ids = []
             fig_info = sec.get("figure_info") or {}
@@ -109,68 +116,67 @@ def json_to_csv(input_json: str, out_dir: str) -> None:
                 if isinstance(fig_info.get("table_ids"), list):
                     table_ids = [str(x) for x in fig_info.get("table_ids")]
 
-            text_clean = clean_content(sec.get("text")) # <- RAW 텍스트 (최소 공백 정리만)
-
+            text_clean = clean_content(sec.get("text"))
             raw_title = sec.get("title")
             title_clean = normalize_title_spacing(clean_content(raw_title))
 
             section_rows.append({
-                "section_id": gen_section_id(),  
-                "pmcid": pmcid,
+                "section_id": curr_sec_id,  
                 "pmid": pmid,
                 "topic_category": topic_category,
-                "title": title_clean,
-                "text": text_clean,                  # RAW (마커 유지)
+                "section_title": title_clean,
+                "section_text": text_clean,
                 "path": path_str,
                 "section_category": sec.get("section_category"),
                 "article_category": art.get("article_category"),
                 "fig_ids": ";".join(fig_ids),
                 "table_ids": ";".join(table_ids),
-                # "ref_ids"는 청크 단계로 이관되어 이 파일에서 저장하지 않음
             })
+
         # ------------------------------------------------
-        # 3. Equations CSV (Display & URL 추가)
+        # 3. Equations CSV
+        # ID 형식: {pmid}_eq{index}
         # ------------------------------------------------
         for idx, eq in enumerate(equations):
+            # Equation ID 생성
+            eq_id = f"{pmid}_eq{idx + 1}"
+
             latex = eq.get("latex") or eq.get("text")
-
-            # display 정보
             is_display = eq.get("display", False)
-
-            # image_url 처리
             image_url = eq.get("image_url") or eq.get("url") or ""
 
             equation_rows.append({
-                "pmcid": pmcid,
+                "equation_id": eq_id,  # [NEW]
                 "pmid": pmid,
                 "equation_index": idx,
                 "display": is_display,
-                "latex": clean_content(latex),
-                "image_url": image_url,
+                "equation_rep": clean_content(latex),
+                "equation_img": image_url,
             })
 
         # ------------------------------------------------
         # 4. Figures CSV
+        # ID 형식: {pmid}_fig{index}
         # ------------------------------------------------
         for idx, fig in enumerate(figures):
+            # Figure ID 생성
+            fig_unique_id = f"{pmid}_fig{idx + 1}"
+
             if isinstance(fig, dict):
                 urls = fig.get("urls") or []
                 urls_str = ";".join(urls) if isinstance(urls, list) else str(urls)
 
-                # [수정됨] Figure Label/Caption에 normalize_title_spacing 적용
                 figure_rows.append({
-                    "pmcid": pmcid,
+                    "fig_id": fig_unique_id, # [CHANGED] 기존 fig_ids 대체/통일
                     "pmid": pmid,
-                    "fig_ids": fig.get("fig_id") or fig.get("id"),
                     "fig_label": normalize_title_spacing(clean_content(fig.get("label"))),
                     "fig_caption": normalize_title_spacing(clean_content(fig.get("caption"))),
                     "fig_url": urls_str,
                 })
             else:
                 figure_rows.append({
-                    "pmcid": pmcid,
+                    "fig_id": fig_unique_id,
                     "pmid": pmid,
-                    "fig_ids": None,
                     "fig_label": None,
                     "fig_caption": normalize_title_spacing(clean_content(str(fig))),
                     "fig_url": "",
@@ -178,77 +184,77 @@ def json_to_csv(input_json: str, out_dir: str) -> None:
 
         # ------------------------------------------------
         # 5. Tables CSV
+        # ID 형식: {pmid}_tbl{index}
         # ------------------------------------------------
         for idx, tbl in enumerate(tables):
+            # Table ID 생성
+            tbl_unique_id = f"{pmid}_tbl{idx + 1}"
+
             if isinstance(tbl, dict):
                 table_url = tbl.get("binary_url") or tbl.get("url") or tbl.get("href")
 
-                # [수정됨] Table Label/Caption에 normalize_title_spacing 적용
                 table_rows.append({
-                    "pmcid": pmcid,
+                    "table_id": tbl_unique_id, # [CHANGED] 기존 table_ids 대체/통일
                     "pmid": pmid,
                     "table_index": idx,
-                    "table_ids": tbl.get("table_id") or tbl.get("id"),  # 숫자 table_id 우선
                     "table_label": normalize_title_spacing(clean_content(tbl.get("label"))),
                     "table_caption": normalize_title_spacing(clean_content(tbl.get("caption"))),
                     "table_url": table_url,
                 })
             else:
                 table_rows.append({
-                    "pmcid": pmcid,
+                    "table_id": tbl_unique_id,
                     "pmid": pmid,
                     "table_index": idx,
-                    "table_ids": None,
                     "table_label": None,
                     "table_caption": normalize_title_spacing(clean_content(str(tbl))),
                     "table_url": "",
                 })
 
         # ------------------------------------------------
-        # 6. References CSV (ref_index: 1부터 시작)
+        # 6. References CSV
+        # ID 형식: {pmid}_ref{index}
         # ------------------------------------------------
         for idx, ref in enumerate(refs):
             ref_idx_1based = idx + 1
+            # Ref ID 생성
+            ref_unique_id = f"{pmid}_ref{ref_idx_1based}"
+
             if isinstance(ref, dict):
-                # 대표 URL: JSON에 url이 있으면 그거, 없으면 urls[0] 시도
                 ref_url = ref.get("url")
                 if not ref_url:
                     urls = ref.get("urls") or []
                     if isinstance(urls, list) and urls:
                         ref_url = urls[0]
 
-                # title / journal 공백 정리
                 raw_title = ref.get("title")
                 raw_journal = ref.get("journal")
-
                 title_clean = normalize_reference_spacing(clean_content(raw_title))
                 journal_clean = normalize_reference_spacing(clean_content(raw_journal))
 
                 reference_rows.append({
-                    "pmcid": pmcid,
+                    "ref_id": ref_unique_id, # [NEW]
                     "pmid": pmid,
                     "ref_index": ref_idx_1based,
-                    "title": title_clean,
-                    "journal": journal_clean,
-                    "year": ref.get("year"),
-                    "doi": ref.get("doi"),
+                    "ref_title": title_clean,
+                    "ref_journal": journal_clean,
+                    "ref_year": ref.get("year"),
+                    "ref_doi": ref.get("doi"),
                     "ref_pmid": ref.get("pmid"),
                     "ref_url": ref_url,
                 })
             else:
                 reference_rows.append({
-                    "pmcid": pmcid,
+                    "ref_id": ref_unique_id, # [NEW]
                     "pmid": pmid,
                     "ref_index": ref_idx_1based,
-                    "title": None,
-                    "journal": None,
-                    "year": None,
-                    "doi": None,
+                    "ref_title": None,
+                    "ref_journal": None,
+                    "ref_year": None,
+                    "ref_doi": None,
                     "ref_pmid": None,
                     "ref_url": None,
                 })
-
-
 
     # =========================
     #   CSV 파일 쓰기
@@ -266,36 +272,35 @@ def json_to_csv(input_json: str, out_dir: str) -> None:
     # 1) Articles
     write_csv("articles.csv", [
         "pmcid", "pmid", "topic_category", "title", "journal", "year", "doi",
-        "article_category", "article_type_raw", "abstract",
+        "article_category", "abstract",
         "n_sections", "n_equations", "n_figures", "n_tables", "n_references"
     ], article_rows)
 
-    # 2) Sections
+    # 2) Sections (section_id가 변경됨)
     write_csv("sections.csv", [
-        "section_id", "pmcid", "pmid", "topic_category", "title", "text", "path",
+        "section_id", "pmid", "topic_category", "section_title", "section_text", "path",
         "section_category", "article_category", "fig_ids", "table_ids", 
-        # ref_ids 컬럼 제거됨
     ], section_rows)
 
-    # 3) Equations
+    # 3) Equations (equation_id 추가)
     write_csv("equations.csv", [
-        "pmcid", "pmid", "equation_index", "display", "latex", "image_url"
+        "equation_id", "pmid", "equation_index", "display", "equation_rep", "equation_img"
     ], equation_rows)
 
-    # 4) Figures
+    # 4) Figures (fig_id 변경 및 original_label_id 추가)
     write_csv("figures.csv", [
-        "pmcid", "pmid", "fig_ids", "fig_label", "fig_caption", "fig_url"
+        "fig_id", "pmid", "fig_label", "fig_caption", "fig_url"
     ], figure_rows)
 
-    # 5) Tables
+    # 5) Tables (table_id 변경 및 original_label_id 추가)
     write_csv("tables.csv", [
-        "pmcid", "pmid", "table_index", "table_ids", "table_label", "table_caption", "table_url"
+        "table_id", "pmid", "table_index", "table_label", "table_caption", "table_url"
     ], table_rows)
 
-    # 6) References
+    # 6) References (ref_id 추가)
     write_csv("references.csv", [
-        "pmcid", "pmid", "ref_index", "title", "journal",
-        "year", "doi", "ref_pmid", "ref_url"
+        "ref_id", "pmid", "ref_index", "ref_title", "ref_journal",
+        "ref_year", "ref_doi", "ref_pmid", "ref_url"
     ], reference_rows)
 
     print(f"[DONE] Processing complete. Output saved to '{out_dir}'")
