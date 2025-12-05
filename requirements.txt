@@ -11,3 +11,9 @@ playwright==1.56.0
 pandas==2.3.3
 numpy==2.3.5
 beautifulsoup4==4.14.3
+neo4j==5.15.0
+jupyter==1.0.0
+notebook==7.0.6
+sentence-transformers==2.2.2
+torch==2.1.2
+transformers==4.36.2

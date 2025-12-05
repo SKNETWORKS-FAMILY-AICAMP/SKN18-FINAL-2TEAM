@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  neo4j:
+    image: neo4j:5.15.0
+    container_name: neo4j-rag
+    ports:
+      - "7474:7474"  # HTTP
+      - "7687:7687"  # Bolt
+    environment:
+      - NEO4J_AUTH=neo4j/password
+      - NEO4J_PLUGINS=["apoc", "graph-data-science"]
+      - NEO4J_dbms_security_procedures_unrestricted=apoc.*,gds.*
+      - NEO4J_dbms_security_procedures_allowlist=apoc.*,gds.*
+      # 메모리 설정 (대용량 데이터 처리용)
+      # 힙 메모리: JVM이 사용할 수 있는 메모리 (노드/관계 저장)
+      - NEO4J_dbms_memory_heap_initial__size=4G
+      - NEO4J_dbms_memory_heap_max__size=8G
+      # 페이지 캐시: 디스크에서 읽은 데이터를 캐시하는 메모리
+      - NEO4J_dbms_memory_pagecache_size=4G
+      # 트랜잭션 메모리: 단일 트랜잭션에서 사용할 수 있는 최대 메모리
+      - NEO4J_dbms_memory_transaction_max__size=1G
+      # 참고: Neo4j 5.x에서는 오프힙 메모리 설정이 자동으로 관리됩니다
+    volumes:
+      - ./data:/data
+      - ./logs:/logs
+      - ./plugins:/plugins
+      - ./import:/var/lib/neo4j/import
+    restart: unless-stopped
+    # 참고: Docker 컨테이너 메모리 제한은 docker run 시 --memory 옵션으로 설정하거나
+    # Docker Desktop의 Resources 설정에서 조정할 수 있습니다.
+    # 권장: 최소 16GB RAM이 있는 시스템에서 실행
+
