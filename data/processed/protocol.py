@@ -2,7 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 
 # 토큰 설정 (발급받은 CLIENT_ACCESS_TOKEN) # https://www.protocols.io 로그인 => https://www.protocols.io/developers 하단에 client access token복사
-CLIENT_ACCESS_TOKEN = "de16b3557405a8ae5643170bbb110d58cc14a1ba4f6e3029f26985ef73d9cb0b481cc2ad44714a30b67671eb460fd1d4bc413fa5904e63706d2a08313627d7b4"
+CLIENT_ACCESS_TOKEN = ""
 
 # 공통 헤더 구성
 headers = {
