@@ -156,4 +156,4 @@ def process_csv(csv_path: str):
 # --------------------------
 if __name__ == "__main__":
     create_table()
-    process_csv("chunked_text_cleaned_data_Cell.csv")
+    process_csv("chunked_semantic_text_cleaned_data_Cell.csv")
