@@ -1,20 +1,13 @@
-<<<<<<< HEAD
 pandas>=2.1.4
 psycopg2-binary>=2.9.9
 openai>=2.7.0
+python-dotenv>=1.0.1
 tqdm>=4.66.1
 numpy>=1.26.3
 tiktoken>=0.12.0
 httpx>=0.28.0
-requests==2.32.5
-python-dotenv==1.2.1
-playwright==1.56.0
-pandas==2.3.3
-numpy==2.3.5
-beautifulsoup4==4.14.3
-=======
-psycopg2-binary
-openai
-dotenv
-pandas
->>>>>>> 5b8de800ba74951d0e21ad49fb63a3c9b30536d8
+requests>=2.32.5
+playwright>=1.56.0
+beautifulsoup4>=4.14.3
+nltk>=3.8.1
+

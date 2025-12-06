@@ -235,7 +235,7 @@ if __name__ == "__main__":
         "--condition", "-c",  # --condition 또는 -c로 사용 가능
         type=str,              # 문자열 타입
         required=False,        # 필수 입력 아님 (기본값 사용 가능)
-        default="cardiovascular_diseases",   #######여기를 바꿔야 해####### 질병명 변경: "Neoplasms", "Cardiovascular Diseases", "Autoimmune Diseases", "Diabetes" 등
+        default="neoplasms",   #######여기를 바꿔야 해####### 질병명 변경: "Neoplasms", "Cardiovascular Diseases", "Autoimmune Diseases", "Diabetes" 등
         help="질병/조건명 (예: 'Neoplasms', 'Cardiovascular Diseases', 'Autoimmune Diseases', 'Diabetes' 등)"
     )
     
@@ -244,7 +244,7 @@ if __name__ == "__main__":
         "--country", "-l",     # --country 또는 -l로 사용 가능
         type=str,
         required=False,
-        default="china",     #######여기를 바꿔야 해####### 국가명 변경: "United States", "South Korea", "Japan", "China", "Mexico" 등
+        default="united states",     #######여기를 바꿔야 해####### 국가명 변경: "United States", "South Korea", "Japan", "China", "Mexico" 등
         help="국가명 (예: 'United States', 'South Korea', 'Japan', 'China' 등)"
     )
     
