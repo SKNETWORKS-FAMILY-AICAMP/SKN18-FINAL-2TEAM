@@ -18,7 +18,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 # Now import local modules
 from chunk_embedder import ChunkEmbedder
 from chunking import DEFAULT_EMBED_MODEL
-import load_pmc_meta as load_pmc_meta
+import load.load_pmc_meta as load_pmc_meta
 
 
 def get_pg_connect_info(args):
