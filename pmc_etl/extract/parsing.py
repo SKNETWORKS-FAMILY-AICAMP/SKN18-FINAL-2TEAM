@@ -5,7 +5,7 @@ import xml.etree.ElementTree as ET
 from typing import Tuple, Dict, List, Any, Optional
 
 from config import XLINK_NS
-from utils import (
+from pmc_etl.extract.utils import (
     _local_name,
     _dedup_preserve,
     _append_clean,
@@ -19,7 +19,7 @@ from utils import (
     categorize_article,
 )
 from html_scraper import get_html_image_map
-from utils import extract_formula_text 
+from pmc_etl.extract.utils import extract_formula_text 
 
 # -------------------- 본문 + 섹션 추출 -------------------- #
 
