@@ -105,4 +105,4 @@ CATEGORY_KEYWORDS = {
     ],
 }
 
-MAX_PER_CATEGORY = 20  # 카테고리당 최대 논문 수
+MAX_PER_CATEGORY = 200  # 카테고리당 최대 논문 수

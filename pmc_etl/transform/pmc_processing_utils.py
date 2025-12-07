@@ -1,4 +1,4 @@
-# pmc_processing_utils.py (최종 수정 버전 - 누락된 함수 정의 추가)
+# pmc_processing_utils.py (수정됨)
 
 import re
 import uuid 
@@ -8,28 +8,22 @@ from typing import Any, Dict, Iterable, List
 #  0. 정규식 패턴 정의 (Reference Markers)
 # =========================
 
-# [NEW ADDITION] Figure/Table 참조 패턴 (Fig, Table, SI Appendix 등 키워드 포함)
 FIG_TABLE_REF_PATTERN = re.compile(
     r"\(\s*(?:Fig|Figure|Table|Scheme|SI Appendix|Suppl\.)[^()]+?\)", 
     re.IGNORECASE
 )
-
-# [기존] 영문/숫자 혼합 참조 삭제 패턴 (참조 제거에 사용)
 FIG_REF_PATTERN = re.compile(
     r"\[\s*([A-Za-z0-9]+(?:[\s,\-–\.]\s*[A-Za-z0-9]+)*)\s*\]"
 )
 FIG_REF_PAREN_PATTERN = re.compile(
     r"\(\s*([A-Za-z0-9]+(?:[\s,\-–\.]\s*[A-Za-z0-9]+)*)\s*\)"
 )
-
-# [기존] 숫자만 있는 대괄호/소괄호 패턴 (Bibliography)
 REF_SQUARE_PATTERN = re.compile(
     r"\[\s*(\d+(\s*[-–]\s*\d+)?)(\s*,\s*(\d+(\s*[-–]\s*\d+)?))*\s*\]"
 )
 REF_PAREN_PATTERN = re.compile(
     r"\(\s*(\d+(\s*[-–]\s*\d+)?)(\s*,\s*(\d+(\s*[-–]\s*\d+)?))*\s*\)"
 )
-# ... (나머지 인용 관련 패턴 생략: TRAILING_REF_CAPTURE_PATTERN 등) ...
 TRAILING_REF_CAPTURE_PATTERN = re.compile(r"(?:^|[;\.\)])\s*(\d+(?:\s*,\s*\d+)*)\s*$")
 TRAILING_REF_REMOVE_PATTERN = re.compile(r"([;\.\)])\s*\d+(?:\s*,\s*\d+)*\s*$")
 INLINE_REF_CLUSTER_PATTERN = re.compile(r"(?<!\d)(\d{2,}\s*(?:[-–]\s*\d{2,}|\s*,\s*\d{2,})+)(?!\d)")
@@ -39,22 +33,58 @@ REF_SQUARE_EMPTY_PATTERN = re.compile(r"\[\s*[,;:/\.\-–\s]+\]")
 REF_PAREN_EMPTY_PATTERN  = re.compile(r"\(\s*[,;:/\.\-–\s]+\)")
 
 # =========================
-#  1. 텍스트 정제 헬퍼 (Single Line 강제)
+#  1. 텍스트 정제 헬퍼 (LaTeX 보정 및 정규화)
 # =========================
+
+def normalize_latex_spacing(text: str) -> str:
+    """
+    [NEW] LaTeX 수식 변환 과정에서 발생한 공백 및 텍스트 붙음 문제를 보정합니다.
+    예: 2^ ^{ΔΔCt} -> 2^{ΔΔCt}, 10 ^{5} -> 10^{5}, M)an -> M) an
+    """
+    if not text:
+        return ""
+    
+    s = text
+
+    # 1. [Case A] 중복된 Caret 제거 (2^ ^{...} -> 2^{...})
+    # 설명: 글자(\S) 뒤에 '^'가 있고, 공백(\s*) 뒤에 또 '^{'가 나오는 패턴
+    # \s* 로 변경하여 공백이 없거나(2^^{) 여러 개여도(2^  ^{) 모두 잡도록 함
+    s = re.sub(r"(\S)\^\s*\^\{", r"\1^{", s)
+    
+    # 2. [Case B] 숫자/문자 뒤 불필요한 공백 제거 (2 ^{...} -> 2^{...})
+    # 설명: Caret이 하나만 있는데, 앞에 공백이 있는 경우 붙여줌
+    s = re.sub(r"(\w)\s+\^\{", r"\1^{", s)
+    
+    # 3. [Case C] 괄호 뒤 텍스트 붙음 방지 (M)an -> M) an)
+    # 영어 대소문자([a-zA-Z])가 2글자 이상 이어질 때만 띄어쓰기 (단위 등 오탐 방지)
+    s = re.sub(r"\)([a-zA-Z]{2,})", r") \1", s)
+
+    return s
 
 def clean_content(text: Any) -> str:
     """
     CSV 저장용 텍스트 정제 함수.
+    기본 공백 정리 + normalize_latex_spacing 적용
     """
     if text is None: return ""
     s = str(text)
+    
+    # 1. 줄바꿈 및 탭 정리
     s = re.sub(r"[\r\n]+|\\n|//n", " ", s)
     s = s.replace("\t", " ")
-    s = re.sub(r"\s+", " ", s)
+    
+    # 2. 괄호 주변 공백 정리 (소괄호 안쪽 공백 제거)
     s = re.sub(r"\s+\(", "(", s) 
     s = re.sub(r"\(\s+", "(", s) 
     s = re.sub(r"\s+\)", ")", s) 
     s = re.sub(r"\)\s+", ")", s) 
+    
+    # 3. [적용] LaTeX 및 텍스트 붙음 보정
+    s = normalize_latex_spacing(s)
+
+    # 4. 다중 공백 정리
+    s = re.sub(r"\s+", " ", s)
+    
     return s.strip()
 
 def normalize_title_spacing(text: Any) -> str:
@@ -107,12 +137,8 @@ def extract_figure_table_markers(text: str) -> str:
     """
     if not text:
         return ""
-    
-    # FIG_TABLE_REF_PATTERN을 사용해 괄호와 내용 전체를 추출
     markers = FIG_TABLE_REF_PATTERN.findall(text)
-    
     cleaned = [m.strip() for m in markers]
-    
     return ";".join(cleaned)
 
 
@@ -126,19 +152,16 @@ def extract_reference_markers(text: str) -> str:
     indices: List[str] = []
     s = text
 
-    # 2) 소괄호 인용 (숫자만)
     for m in REF_PAREN_PATTERN.finditer(s):
         chunk = m.group(0)
         for num in re.findall(r"\d+", chunk):
             indices.append(num)
 
-    # 1) 대괄호 인용 (숫자만)
     for m in REF_SQUARE_PATTERN.finditer(s):
         chunk = m.group(0)
         for num in re.findall(r"\d+", chunk):
             indices.append(num)
 
-    # ... (나머지 숫자 인용 추출 로직 유지) ...
     for m in TRAILING_REF_CAPTURE_PATTERN.finditer(s):
         chunk = m.group(1)
         for num in re.findall(r"\d+", chunk):
@@ -153,7 +176,6 @@ def extract_reference_markers(text: str) -> str:
         num = m.group(1)
         indices.append(num)
 
-    # 중복 제거 + 순서 유지
     seen = set()
     uniq: List[str] = []
     for idx in indices:
@@ -167,55 +189,35 @@ def extract_reference_markers(text: str) -> str:
 def remove_reference_markers(text: str) -> str:
     """
     본문 텍스트에서 레퍼런스 표기를 아예 제거.
-    - [10b] 와 같은 영문/숫자 혼합 Figure 참조도 삭제.
     """
     if not text:
         return ""
 
     s = text
 
-    # [NEW] 0) Figure/Table 참조 삭제 (FIG_TABLE_REF_PATTERN 사용)
     s = re.sub(FIG_TABLE_REF_PATTERN, "", s) 
-    
-    # 기존의 일반적인 영문/숫자 혼합 참조 삭제
     s = FIG_REF_PATTERN.sub("", s)
     s = FIG_REF_PAREN_PATTERN.sub("", s)
 
-
-    # 1) [] / () 레퍼런스 삭제 (숫자만)
     s = REF_SQUARE_PATTERN.sub("", s)
     s = REF_PAREN_PATTERN.sub("", s)
-
-    # 숫자 없이 콤마/공백만 있는 괄호 [,,], ( , , ) 삭제
     s = REF_SQUARE_EMPTY_PATTERN.sub("", s)
     s = REF_PAREN_EMPTY_PATTERN.sub("", s)
-
-    # 완전 빈 괄호 삭제
     s = re.sub(r"\[\s*\]", "", s)
     s = re.sub(r"\(\s*\)", "", s)
 
-    # 2) 문장 끝 ". 46, 47" 꼬리 숫자 삭제
     s = TRAILING_REF_REMOVE_PATTERN.sub(r"\1", s)
-
-    # 3) 문장 안 숫자 클러스터 ", 46, 47" 삭제
     s = INLINE_REF_CLUSTER_PATTERN.sub(" ", s)
-
-    # 4) "CRC. 5 As reported" 같은 단일 숫자 삭제 → ". 5 As" → ". As"
     s = INLINE_SINGLE_SENT_REF_REMOVE.sub(r"\1 ", s)
 
-    # 5) 최후 방어: 괄호 안에 영문/숫자 하나도 없는 경우 통으로 제거
     s = re.sub(r"\[\s*[^0-9A-Za-z]*\]", "", s)
     s = re.sub(r"\(\s*[^0-9A-Za-z]*\)", "", s)
 
-    # ========================================================
-    # [잔여 구두점 통합 및 정리]
-    # ========================================================
     s = re.sub(r"([\.\?!])\s*([\.\?!])+", r"\1", s)
     s = re.sub(r"([,])\s*([\.\?!])", r"\2", s)
     s = re.sub(r"([\.\?!])\s*([,;:])", r"\1", s)
     s = re.sub(r"([,;:])\s*([,;:])", r"\1", s) 
 
-    # 공백/구두점 정리 (최종)
     s = re.sub(r"\s+", " ", s)
     s = re.sub(r"\s+([\]\)\.,;:])", r"\1", s)
 
@@ -227,31 +229,21 @@ def remove_reference_markers(text: str) -> str:
 # =========================
 
 def _classify_section_common(title_norm: str, merged_text: str) -> str:
-    # 1) Abstract
     if "abstract" in merged_text:
         return "abstract"
-
-    # 2) Introduction
     if any(k in merged_text for k in ["introduction", "background", "overview"]):
         return "introduction"
-
-    # 3) Results [최우선 순위]
     if any(k in merged_text for k in ["result", "finding"]):
         return "result"
-
-    # 4) Discussion & Conclusion
     if any(k in merged_text for k in [
         "discussion", "conclusion", "concluding", "future direction", "summary"
     ]):
         return "discussion"
-
-    # 5) Method
     if any(k in merged_text for k in [
         "method", "materials and methods", "experimental",
         "experiment", "procedure", "computational details"
     ]):
         return "method"
-
     return "other"
 
 
@@ -261,7 +253,6 @@ def _classify_section_for_review(sec: Dict[str, Any]) -> str:
     title_norm = _norm_for_class(title)
     top_norm = _norm_for_class(path[0]) if isinstance(path, list) and path else ""
     merged = f"{top_norm} {title_norm}".strip()
-
     category = _classify_section_common(title_norm, merged)
     if category in ["result", "other"]:
         return "main"
@@ -296,15 +287,6 @@ def annotate_section_categories(article: Dict[str, Any]) -> None:
 # =========================
 
 def iter_articles(obj: Any) -> Iterable[Dict[str, Any]]:
-    """
-    pmc_articles_by_category.json 형태:
-    {
-      "topic1": [ article_dict, ...],
-      "topic2": [ ... ],
-      ...
-    }
-    또는 그냥 [article_dict, ...] 인 경우까지 처리.
-    """
     if isinstance(obj, dict):
         for topic, articles in obj.items():
             if not isinstance(articles, list):

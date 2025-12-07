@@ -72,6 +72,7 @@ def normalize_text(s: str) -> str:
     s = re.sub(r"\s+", " ", s)
     return s
 
+
 def make_chunk_id(section_id: str, seq: int) -> str:
     return f"SEC{section_id}_C{seq:02d}"
 
