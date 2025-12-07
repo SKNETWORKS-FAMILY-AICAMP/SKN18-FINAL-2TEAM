@@ -53,7 +53,6 @@ def split_sections(input_csv, meta_out, chunk_prep_out):
     # 메타데이터 컬럼 정의
     meta_columns = [
         "section_id",
-        "pmcid",
         "pmid",
         "topic_category",
         "path",
@@ -61,14 +60,14 @@ def split_sections(input_csv, meta_out, chunk_prep_out):
         "article_category",
         "fig_ids",
         "table_ids",
-        "ref_ids",
+        "section_title",
+    
     ]
     
     # 청킹용 컬럼 정의 (청킹에 필요한 것들)
     chunk_prep_columns = [
         "section_id",
-        "title",
-        "text",
+        "section_text",
     ]
     
     try:
@@ -106,19 +105,11 @@ def split_sections(input_csv, meta_out, chunk_prep_out):
                     writer_meta.writerow(meta_row)
 
                     # 청킹용 데이터: chunking.py의 combine/normalize 로직 사용
-                    title = row.get("title", "")
-                    body = row.get("text", "")
-                    combined = combine_title_text(title, body)
-                    combined_norm = normalize_text(combined)
-
-                    # 길이가 100자 이하이면 청킹용 CSV에는 쓰지 않고 건너뜀
-                    if combined_norm and len(combined_norm) > 70:
-                        chunk_row = {
+                    chunk_row = {
                             "section_id": row.get("section_id", ""),
-                            "title": "",
-                            "text": combined_norm,
+                            "section_text": row.get("section_text", "")
                         }
-                        writer_chunk.writerow(chunk_row)
+                    writer_chunk.writerow(chunk_row)
 
                     pbar.update(1)
             finally:

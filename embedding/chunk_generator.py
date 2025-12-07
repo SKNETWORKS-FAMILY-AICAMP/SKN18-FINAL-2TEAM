@@ -79,7 +79,6 @@ class ChunkGenerator:
             if self.split_meta and self.meta_csv is not None:
                 meta_cols = [
                     "section_id",
-                    "pmcid",
                     "pmid",
                     "topic_category",
                     "path",
@@ -87,7 +86,7 @@ class ChunkGenerator:
                     "article_category",
                     "fig_ids",
                     "table_ids",
-                    "ref_ids",
+                    "section_title",
                 ]
                 with self.input_csv.open("r", encoding="utf-8-sig", newline="") as fr:
                     rdr = csv.DictReader(fr)
@@ -119,7 +118,7 @@ class ChunkGenerator:
     def _process_row(self, row, writer, out_f, existing_chunk_ids, resume, pbar):
         new_count = 0
         section_id = str(row.get("section_id", "")).strip()
-        raw_text = str(row.get("text", "")).strip() # <- [RAW 텍스트 로드]
+        raw_text = str(row.get("section_text", "")).strip() # <- [RAW 텍스트 로드]
 
         if not section_id or not raw_text:
             return 0
