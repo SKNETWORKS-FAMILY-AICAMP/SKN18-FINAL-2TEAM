@@ -2,90 +2,134 @@ import re
 import pandas as pd
 
 
-# ==============================
-# 🔥 1) 표 감지 함수 추가
-# ==============================
+# ================================================================
+# 🔥 [1] 고급 표 감지 함수 (False Positive 제거)
+# ================================================================
 def detect_table_blocks(text):
     lines = text.split("\n")
     table_blocks = []
     current_block = []
 
+    # -----------------------------
+    # ① 라인 단위: 표 형태 여부 감지
+    # -----------------------------
     def is_table_line(line):
-        # 빈 줄 제외
         if not line.strip():
             return False
-        # 탭 포함: TSV 형태
-        if "\t" in line:
+
+        # TSV
+        if "\t" in line and len(line.split("\t")) >= 2:
             return True
-        # 쉼표가 2개 이상 → CSV 형태
-        if line.count(",") >= 2:
-            return True
-        # 공백 2개 이상으로 구분된 열 구조
+
+        # CSV — 쉼표가 있어도 단순 나열 문장일 수도 있으므로 stricter check
+        if "," in line:
+            cols = [c.strip() for c in line.split(",")]
+            # 최소 2열 이상 + 각 열이 너무 긴 문장이 아니어야 함
+            if len(cols) >= 2 and all(len(c) < 80 for c in cols):
+                return True
+
+        # 공백 2개 이상으로 정렬된 테이블
         if re.search(r"\S+\s{2,}\S+", line):
             return True
+
         return False
 
+    # -----------------------------
+    # ② block 단위: 진짜 테이블인지 검증
+    # -----------------------------
+    def is_block_table(block_lines):
+        if len(block_lines) < 2:
+            return False
+
+        col_counts = []
+        for l in block_lines:
+            if "\t" in l:
+                col_counts.append(len(l.split("\t")))
+            elif "," in l:
+                col_counts.append(len(l.split(",")))
+            else:
+                col_counts.append(len(re.split(r"\s{2,}", l)))
+
+        # 열 개수가 일정하거나 거의 일정해야 표로 인정
+        return len(set(col_counts)) <= 2
+
+    # -----------------------------
+    # ③ 표 block 분리
+    # -----------------------------
     for line in lines:
         if is_table_line(line):
             current_block.append(line)
         else:
             if current_block:
-                table_blocks.append("\n".join(current_block))
+                if is_block_table(current_block):
+                    table_blocks.append("\n".join(current_block))
+                else:
+                    table_blocks.extend(current_block)
                 current_block = []
             table_blocks.append(line)
 
     if current_block:
-        table_blocks.append("\n".join(current_block))
+        if is_block_table(current_block):
+            table_blocks.append("\n".join(current_block))
+        else:
+            table_blocks.extend(current_block)
 
     return table_blocks
 
 
 
-# ==============================
-# 🔥 2) split_into_sentences 수정 (표 블록 우선 처리)
-# ==============================
+# ================================================================
+# 🔥 [2] 문장 split (표 block은 split 금지)
+# ================================================================
 def split_into_sentences(text):
-    blocks = detect_table_blocks(text)   # ← 먼저 표 block으로 1차 분리됨
+    blocks = detect_table_blocks(text)
     sentences = []
 
     for block in blocks:
-        # table block이면 그대로 추가 (문장 split 금지)
-        if "\n" in block and ("," in block or "\t" in block):
+
+        # 📌 진짜 표 block → 문장 split 절대 금지
+        if "\n" in block and (
+            ("," in block and len(block.split("\n")) > 1)
+            or ("\t" in block)
+        ):
             sentences.append(block)
             continue
 
-        # 🚨 이하 기존 문장 split 로직 그대로 실행
+        # -----------------------------
+        # 기존 문장 split 로직
+        # -----------------------------
         protected = block
 
-        protected = re.sub(r'(https?://\S+)', r'<URL>\1</URL>', protected)
-
-        protected = re.sub(r'\b(e\.g\.|i\.e\.|etc\.|Fig\.|Fig\s*\d+\.|No\.|no\.)',
-                           r'<ABBR>\1</ABBR>', protected)
-
-        protected = re.sub(r'\bNo\.(\s*\d+)', r'<NO>No_DOT\1</NO>', protected)
-
-        protected = re.sub(r'\b(\d+)\.(\s+)', r'<NUM>\1.</NUM>\2', protected)
-
-        protected = re.sub(r'\b([IVXLCDM]+)\.(\s+)',
-                           r'<ROMAN>\1.</ROMAN>\2', protected)
-
+        protected = re.sub(r"(https?://\S+)", r"<URL>\1</URL>", protected)
         protected = re.sub(
-            r'\(([^)]+?)\)',
-            lambda m: '(' + m.group(1).replace('.', '<DOT>') + ')',
+            r"\b(e\.g\.|i\.e\.|etc\.|Fig\.|Fig\s*\d+\.|No\.|no\.)",
+            r"<ABBR>\1</ABBR>",
+            protected
+        )
+        protected = re.sub(r"\bNo\.(\s*\d+)", r"<NO>No_DOT\1</NO>", protected)
+        protected = re.sub(r"\b(\d+)\.(\s+)", r"<NUM>\1.</NUM>\2", protected)
+        protected = re.sub(
+            r"\b([IVXLCDM]+)\.(\s+)",
+            r"<ROMAN>\1.</ROMAN>\2",
+            protected
+        )
+        protected = re.sub(
+            r"\(([^)]+?)\)",
+            lambda m: "(" + m.group(1).replace(".", "<DOT>") + ")",
             protected
         )
 
-        split_sents = re.split(r'(?<=[.!?])\s+(?=[A-Z<])', protected)
+        split_sents = re.split(r"(?<=[.!?])\s+(?=[A-Z<])", protected)
 
         cleaned = []
         for sent in split_sents:
-            sent = sent.replace('No_DOT', 'No.')
-            sent = sent.replace('<URL>', '').replace('</URL>', '')
-            sent = sent.replace('<ABBR>', '').replace('</ABBR>', '')
-            sent = sent.replace('<NUM>', '').replace('</NUM>', '')
-            sent = sent.replace('<NO>', '').replace('</NO>', '')
-            sent = sent.replace('<ROMAN>', '').replace('</ROMAN>', '')
-            sent = sent.replace('<DOT>', '.')
+            sent = sent.replace("No_DOT", "No.")
+            sent = sent.replace("<URL>", "").replace("</URL>", "")
+            sent = sent.replace("<ABBR>", "").replace("</ABBR>", "")
+            sent = sent.replace("<NUM>", "").replace("</NUM>", "")
+            sent = sent.replace("<NO>", "").replace("</NO>", "")
+            sent = sent.replace("<ROMAN>", "").replace("</ROMAN>", "")
+            sent = sent.replace("<DOT>", ".")
             cleaned.append(sent)
 
         sentences.extend([s for s in cleaned if s.strip()])
@@ -94,13 +138,13 @@ def split_into_sentences(text):
 
 
 
-# ==============================
-# create_sentence_chunks (기존 그대로)
-# ==============================
+# ================================================================
+# 🔥 [3] Chunking: 표 block은 단독 chunk로 보존
+# ================================================================
 def create_sentence_chunks(
-    sentences, 
-    chunk_size=400, 
-    chunk_overlap=100, 
+    sentences,
+    chunk_size=400,
+    chunk_overlap=100,
     min_chunk_size=300
 ):
     chunks = []
@@ -108,8 +152,11 @@ def create_sentence_chunks(
 
     for sentence in sentences:
 
-        # TABLE block은 그대로 하나의 chunk로 밀어 넣음
-        if "\n" in sentence and ("," in sentence or "\t" in sentence):
+        # 📌 표 block이면 바로 chunk로 저장
+        if "\n" in sentence and (
+            ("," in sentence and len(sentence.split("\n")) > 1)
+            or ("\t" in sentence)
+        ):
             if current_chunk.strip():
                 chunks.append(current_chunk.strip())
                 current_chunk = ""
@@ -140,9 +187,9 @@ def create_sentence_chunks(
 
 
 
-# ==============================
-# ===== 메인 실행 코드 (동일)
-# ==============================
+# ================================================================
+# 🔥 [4] CSV → chunked text 생성 (Main)
+# ================================================================
 filename = "cleaned_data_Cell"
 df = pd.read_csv(f"{filename}.csv")
 
