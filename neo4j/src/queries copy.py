@@ -157,12 +157,18 @@ class PrimeKGQueries:
     """
 
 
+    # src/queries.py
+
+# src/queries.py
+
+# src/queries.py
+
 class PaperRAGQueries:
     """
-    article_cleaned.csv 및 section_meta.csv의 실제 컬럼 반영 쿼리셋
+    사용자 데이터의 모든 컬럼 정보를 반영한 하이브리드 RAG 쿼리셋
     """
 
-    # 1. 제약 조건 & 인덱스 (기존 유지)
+    # 1. 제약 조건 (데이터 무결성)
     CREATE_CONSTRAINTS = [
         "CREATE CONSTRAINT article_pmid IF NOT EXISTS FOR (n:Article) REQUIRE n.pmid IS UNIQUE;",
         "CREATE CONSTRAINT section_id IF NOT EXISTS FOR (n:Section) REQUIRE n.section_id IS UNIQUE;",
@@ -171,27 +177,27 @@ class PaperRAGQueries:
         "CREATE CONSTRAINT table_id IF NOT EXISTS FOR (n:Table) REQUIRE n.uid IS UNIQUE;",
         "CREATE CONSTRAINT equation_id IF NOT EXISTS FOR (n:Equation) REQUIRE n.uid IS UNIQUE;",
         "CREATE CONSTRAINT reference_id IF NOT EXISTS FOR (n:Reference) REQUIRE n.uid IS UNIQUE;",
+        
+        # 지식 그래프용 제약조건
         "CREATE CONSTRAINT entity_name IF NOT EXISTS FOR (n:Entity) REQUIRE n.name IS UNIQUE;",
         "CREATE CONSTRAINT keyword_word IF NOT EXISTS FOR (n:Keyword) REQUIRE n.word IS UNIQUE;",
         "CREATE CONSTRAINT study_design_name IF NOT EXISTS FOR (n:StudyDesign) REQUIRE n.name IS UNIQUE;"
     ]
 
+    # 2. 벡터 인덱스
     CREATE_VECTOR_INDEX = [
         """
         CREATE VECTOR INDEX chunk_vector_index IF NOT EXISTS
         FOR (c:Chunk) ON (c.embedding)
         OPTIONS {indexConfig: {
-        `vector.dimensions`: 1536,
-        `vector.similarity_function`: 'cosine'
+         `vector.dimensions`: 1536,
+         `vector.similarity_function`: 'cosine'
         }}
         """
     ]
 
-    # ... (LOAD_ARTICLES, LOAD_FIGURES, LOAD_TABLES, LOAD_EQUATIONS 등은 기존 article_cleaned.csv 기준 유지) ...
-    # 편의를 위해 LOAD_SECTIONS만 수정된 버전을 강조하고 나머지는 생략하지 않고 포함합니다.
-
-# src/queries.py
-
+    # 3. 논문(Article) 로딩 - article.csv
+    # 모든 메타데이터(n_sections 등) 포함
     LOAD_ARTICLES = """
     CALL apoc.periodic.iterate(
     "LOAD CSV WITH HEADERS FROM 'file:///article_enriched.csv' AS row RETURN row",
@@ -202,79 +208,88 @@ class PaperRAGQueries:
             a.doi = row.doi,
             a.year = toInteger(row.year),
             a.abstract = row.abstract,
+            // 추가 메타 정보 저장
             a.n_sections = toInteger(row.n_sections),
             a.n_equations = toInteger(row.n_equations),
             a.n_figures = toInteger(row.n_figures),
             a.n_tables = toInteger(row.n_tables),
             a.n_references = toInteger(row.n_references)
 
-        // 1. Journal 연결
-        FOREACH (ignoreMe IN CASE WHEN row.journal IS NOT NULL THEN [1] ELSE [] END |
-            MERGE (j:Journal {name: row.journal}) 
-            MERGE (a)-[:PUBLISHED_IN]->(j)
-        )
-        
-        // 2. [대분류] Topic Category (기존 컬럼)
-        FOREACH (ignoreMe IN CASE WHEN row.topic_category IS NOT NULL AND row.topic_category <> '' THEN [1] ELSE [] END |
+        // Topic Category
+        FOREACH (ignoreMe IN CASE WHEN row.topic_category IS NOT NULL THEN [1] ELSE [] END |
             MERGE (t:Topic {name: row.topic_category})
             MERGE (a)-[:BELONGS_TO]->(t)
         )
-        
-        // 3. [상세] Detailed Topics (세미콜론 분리 -> Topic 노드 연결)
-        // 예: 'Lung Cancer; Immunotherapy' -> 각각 별도 Topic 노드로 연결
-        FOREACH (topic IN split(row.detailed_topics, ';') | 
-            MERGE (dt:Topic {name: trim(topic)}) 
-            MERGE (a)-[:BELONGS_TO]->(dt)
-        )
 
-        // 4. [대분류] Study Design (article_category 컬럼 활용)
-        // 예: 'Research Article', 'Review' 등 큰 범주
-        FOREACH (ignoreMe IN CASE WHEN row.article_category IS NOT NULL AND row.article_category <> '' THEN [1] ELSE [] END |
-            MERGE (d:StudyDesign {name: row.article_category}) 
+        // Study Design (article_category 활용)
+        FOREACH (ignoreMe IN CASE WHEN row.article_category IS NOT NULL THEN [1] ELSE [] END |
+            MERGE (d:StudyDesign {name: row.article_category})
             MERGE (a)-[:HAS_DESIGN]->(d)
         )
 
-        // 5. [상세] Detailed Design (세미콜론 분리 -> StudyDesign 노드 연결)
-        // 예: 'In Vivo; Clinical Trial' -> 구체적인 실험 설계 연결
-        FOREACH (design IN split(row.detailed_design, ';') | 
-            MERGE (dd:StudyDesign {name: trim(design)}) 
-            MERGE (a)-[:HAS_DESIGN]->(dd)
+        // Journal
+        FOREACH (ignoreMe IN CASE WHEN row.journal IS NOT NULL THEN [1] ELSE [] END |
+            MERGE (j:Journal {name: row.journal})
+            MERGE (a)-[:PUBLISHED_IN]->(j)
         )
     ", {batchSize: 1000, parallel: true})
     """
 
+    # 4. 그림(Figure) 로딩 - figures.csv
     LOAD_FIGURES = """
     CALL apoc.periodic.iterate(
     "LOAD CSV WITH HEADERS FROM 'file:///figures.csv' AS row RETURN row",
     "
         MERGE (f:Asset:Figure {uid: row.fig_id})
-        SET f.pmid = toInteger(row.pmid), f.label = row.fig_label, f.caption = row.fig_caption, f.url = row.fig_url
-        WITH f, row MATCH (a:Article {pmid: toInteger(row.pmid)}) MERGE (a)-[:CONTAINS]->(f)
+        SET f.pmid = toInteger(row.pmid),
+            f.label = row.fig_label,
+            f.caption = row.fig_caption,
+            f.url = row.fig_url
+        
+        WITH f, row
+        MATCH (a:Article {pmid: toInteger(row.pmid)})
+        MERGE (a)-[:CONTAINS]->(f)
     ", {batchSize: 1000})
     """
 
+    # 5. 표(Table) 로딩 - table.csv
     LOAD_TABLES = """
     CALL apoc.periodic.iterate(
-    "LOAD CSV WITH HEADERS FROM 'file:///tables.csv' AS row RETURN row",
+    "LOAD CSV WITH HEADERS FROM 'file:///table.csv' AS row RETURN row",
     "
         MERGE (t:Asset:Table {uid: row.table_id})
-        SET t.pmid = toInteger(row.pmid), t.label = row.table_label, t.caption = row.table_caption, t.url = row.table_url
-        WITH t, row MATCH (a:Article {pmid: toInteger(row.pmid)}) MERGE (a)-[:CONTAINS]->(t)
+        SET t.pmid = toInteger(row.pmid),
+            t.index = toInteger(row.table_index),
+            t.label = row.table_label,
+            t.caption = row.table_caption,
+            t.url = row.table_url
+        
+        WITH t, row
+        MATCH (a:Article {pmid: toInteger(row.pmid)})
+        MERGE (a)-[:CONTAINS]->(t)
     ", {batchSize: 1000})
     """
 
+    # 6. 수식(Equation) 로딩 - equartion.csv (오타 반영)
     LOAD_EQUATIONS = """
     CALL apoc.periodic.iterate(
-    "LOAD CSV WITH HEADERS FROM 'file:///equations.csv' AS row RETURN row",
+    "LOAD CSV WITH HEADERS FROM 'file:///equartion.csv' AS row RETURN row",
     "
         MERGE (e:Asset:Equation {uid: row.equation_id})
-        SET e.pmid = toInteger(row.pmid), e.expression = row.equation_rep, e.img_url = row.equation_img
-        WITH e, row MATCH (a:Article {pmid: toInteger(row.pmid)}) MERGE (a)-[:CONTAINS]->(e)
+        SET e.pmid = toInteger(row.pmid),
+            e.index = toInteger(row.equation_index),
+            e.display = row.display,
+            e.expression = row.equation_rep,
+            e.img_url = row.equation_img
+        
+        WITH e, row
+        MATCH (a:Article {pmid: toInteger(row.pmid)})
+        MERGE (a)-[:CONTAINS]->(e)
     ", {batchSize: 1000})
     """
 
-    # [핵심 수정] 섹션 로딩 (section_meta.csv 컬럼 반영)
-    # 컬럼: section_id, pmid, topic_category, path, section_category, article_category, fig_ids, table_ids, section_title
+    # 7. 섹션(Section) 로딩 - section_meta.csv
+    # fig_ids, table_ids 파싱하여 자산과 연결
     LOAD_SECTIONS = """
     CALL apoc.periodic.iterate(
     "LOAD CSV WITH HEADERS FROM 'file:///section_meta.csv' AS row RETURN row",
@@ -283,16 +298,31 @@ class PaperRAGQueries:
         MERGE (s:Section {section_id: row.section_id})
         SET s.title = row.section_title,
             s.category = row.section_category,
-            s.article_category = row.article_category, // 섹션에도 메타정보 저장
-            s.topic_category = row.topic_category,     // 섹션에도 메타정보 저장
+            s.topic_category = row.topic_category,
             s.path = row.path
         MERGE (a)-[:HAS_SECTION]->(s)
+
+        // Figure 연결 (세미콜론 구분자 가정)
+        WITH s, row
+        WHERE row.fig_ids IS NOT NULL AND row.fig_ids <> ''
+        UNWIND split(row.fig_ids, ';') AS fig_uid
+        MATCH (f:Asset:Figure {uid: trim(fig_uid)})
+        MERGE (s)-[:CONTAINS]->(f)
+        
+        // Table 연결 (세미콜론 구분자 가정)
+        WITH s, row
+        WHERE row.table_ids IS NOT NULL AND row.table_ids <> ''
+        UNWIND split(row.table_ids, ';') AS tab_uid
+        MATCH (t:Asset:Table {uid: trim(tab_uid)})
+        MERGE (s)-[:CONTAINS]->(t)
     ", {batchSize: 1000, parallel: false})
     """
 
+    # 8. 청크(Chunk) 로딩 - section_embedding.csv
+    # 임베딩 모델 정보 등 상세 속성 모두 저장
     LOAD_CHUNKS = """
     CALL apoc.periodic.iterate(
-    "LOAD CSV WITH HEADERS FROM 'file:///embedding_new_v2.csv' AS row RETURN row",
+    "LOAD CSV WITH HEADERS FROM 'file:///section_embedding.csv' AS row RETURN row",
     "
         MATCH (s:Section {section_id: row.section_id})
         MERGE (c:Chunk {chunk_id: row.chunk_id})
@@ -307,6 +337,7 @@ class PaperRAGQueries:
     ", {batchSize: 1000, parallel: true})
     """
 
+    # 9. 청크 순서 연결
     LINK_CHUNKS_NEXT = """
     CALL apoc.periodic.iterate(
     "MATCH (s:Section)-[:HAS_CHUNK]->(c) RETURN s, c ORDER BY s.section_id, c.seq",
@@ -319,93 +350,65 @@ class PaperRAGQueries:
                 )))
     ", {batchSize: 100, parallel: false})
     """
+
+    # 10. 참고문헌(Reference) 로딩 - ref_id.csv
+    # 저널명, 연도, DOI 등 상세 정보 저장
     LOAD_REFERENCES = """
-        CALL apoc.periodic.iterate(
-        "LOAD CSV WITH HEADERS FROM 'file:///references.csv' AS row RETURN row",
-        "
-            MATCH (source:Article {pmid: toInteger(row.pmid)})
-            
-            // 1. 개별 Reference 노드 (원본 보존용) - 항상 생성
-            MERGE (ref:Reference {uid: row.ref_id})
-            SET ref.title = row.ref_title, 
-                ref.year = toInteger(row.ref_year),
-                ref.journal = row.ref_journal
-            MERGE (source)-[:HAS_BIBLIO]->(ref)
+    CALL apoc.periodic.iterate(
+    "LOAD CSV WITH HEADERS FROM 'file:///ref_id.csv' AS row RETURN row",
+    "
+        MATCH (source:Article {pmid: toInteger(row.pmid)})
+        
+        MERGE (ref:Reference {uid: row.ref_id})
+        SET ref.index = toInteger(row.ref_index),
+            ref.title = row.ref_title,
+            ref.journal = row.ref_journal,
+            ref.year = toInteger(row.ref_year),
+            ref.doi = row.ref_doi,
+            ref.url = row.ref_url,
+            ref.target_pmid = toInteger(row.ref_pmid)
 
-            // =========================================================
-            // 2. [핵심] 통합 ID 생성 (우선순위 로직)
-            // 가장 확실한 식별자 하나를 골라서 'master_key'로 삼습니다.
-            // =========================================================
-            WITH source, ref, row,
-                CASE 
-                    // (1) PMID가 있으면 무조건 이걸로 묶음
-                    WHEN row.ref_pmid IS NOT NULL AND row.ref_pmid <> '' 
-                    THEN 'pmid:' + row.ref_pmid
-                    
-                    // (2) PMID 없고 DOI 있으면 이걸로 묶음
-                    WHEN row.ref_doi IS NOT NULL AND row.ref_doi <> '' 
-                    THEN 'doi:' + row.ref_doi
-                    
-                    // (3) DOI도 없고 URL 있으면 이걸로 묶음
-                    WHEN row.ref_url IS NOT NULL AND row.ref_url <> '' 
-                    THEN 'url:' + row.ref_url
-                    
-                    // (4) [요청하신 부분] 다 없으면 '저널+제목(정규화)+년도'로 묶음
-                    // 제목은 특수문자 제거된 title_norm을 쓰는 게 안전합니다.
-                    WHEN row.ref_journal IS NOT NULL AND row.ref_title_norm IS NOT NULL AND row.ref_year IS NOT NULL 
-                    THEN 'meta:' + toLower(trim(row.ref_journal)) + '_' + row.ref_title_norm + '_' + toString(row.ref_year)
-                    
-                    ELSE null 
-                END as master_key
+        MERGE (source)-[:HAS_BIBLIO]->(ref)
 
-            // 키가 만들어진 경우에만 통합 노드 생성
-            WHERE master_key IS NOT NULL
-
-            // 3. 'CitedWork' (공통 문헌) 노드 병합
-            // master_key가 같으면, 서로 다른 논문의 참고문헌이어도 이 노드 하나로 모입니다.
-            MERGE (work:CitedWork {uid: master_key})
-            ON CREATE SET 
-                work.title = row.ref_title,
-                work.year = toInteger(row.ref_year),
-                work.doi = row.ref_doi,
-                work.type = 'CitedWork'
-
-            // 4. 연결: Reference(개별) -> CitedWork(공통)
-            MERGE (ref)-[:POINTS_TO]->(work)
-            
-            // 5. (옵션) 논문 -> CitedWork 직접 연결 (분석 편의성)
-            // 논문 A가 CitedWork B를 인용함 (이게 진짜 인용 네트워크)
-            MERGE (source)-[:CITES_WORK]->(work)
-
+        // 타겟 논문이 DB에 있다면 연결
+        WITH ref, row
+        WHERE row.ref_pmid IS NOT NULL AND row.ref_pmid <> ''
+        MATCH (target:Article {pmid: toInteger(row.ref_pmid)})
+        MERGE (ref)-[:RESOLVES_TO]->(target)
     ", {batchSize: 2000})
     """
 
-    # ... (LOAD_ENTITIES, LOAD_KEYWORDS_RELATION, CONNECT_TO_PRIMEKG는 이전과 동일) ...
-    # (Entities, Keywords 로딩 쿼리는 생략하지 않고 포함해야 완벽합니다.)
+    # 11. 엔티티 노드 생성 (entities.csv)
     LOAD_ENTITIES = """
     CALL apoc.periodic.iterate(
     "LOAD CSV WITH HEADERS FROM 'file:///entities.csv' AS row RETURN row",
     "
         MERGE (e:Entity {name: row.normalized_entity})
-        SET e.type = row.entity_type, e.cui = row.umls_cui, e.source = 'UMLS'
+        SET e.type = row.entity_type,
+            e.cui = row.umls_cui,
+            e.source = 'UMLS'
     ", {batchSize: 2000})
     """
 
+    # 12. 키워드 생성 및 연결 (section_keywords.csv)
     LOAD_KEYWORDS_RELATION = """
     CALL apoc.periodic.iterate(
     "LOAD CSV WITH HEADERS FROM 'file:///section_keywords.csv' AS row RETURN row",
     "
         MATCH (s:Section {section_id: row.section_id})
         MATCH (e:Entity {name: row.normalized_entity})
+        
         MERGE (k:Keyword {word: row.raw_keyword})
         MERGE (s)-[:HAS_KEYWORD {score: toFloat(row.score)}]->(k)
         MERGE (k)-[:NORMALIZES_TO]->(e)
     ", {batchSize: 2000})
     """
 
+    # 13. PrimeKG 통합
     CONNECT_TO_PRIMEKG = """
     CALL apoc.periodic.iterate(
     "MATCH (e:Entity) MATCH (b:BaseNode) WHERE toLower(e.name) = toLower(b.name) RETURN e, b",
     "MERGE (e)-[:REFERS_TO]->(b)",
-    {batchSize: 1000})
+    {batchSize: 1000}
+    )
     """
