@@ -2,29 +2,6 @@ version: "3.8"
 
 services:
   postgres:
-<<<<<<< HEAD
-    image: pgvector/pgvector:pg16
-    container_name: pmc
-    environment:
-      POSTGRES_USER: pmc
-      POSTGRES_PASSWORD: pmc1234
-      POSTGRES_DB: pmc_db
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./pmd.sql:/docker-entrypoint-initdb.d/pmc.sql
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U interview_user -d skn4th_db"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-
-volumes:
-  postgres_data:
-    driver: local
-=======
     image: pgvector/pgvector:pg17
     container_name: vectorDB
     restart: always
@@ -37,4 +14,3 @@ volumes:
     volumes:
       - ./db_data:/var/lib/postgresql/data
       - ./initdb:/docker-entrypoint-initdb.d
->>>>>>> 5b8de800ba74951d0e21ad49fb63a3c9b30536d8
