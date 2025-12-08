@@ -43,7 +43,7 @@ def create_table():
     cur.execute("CREATE EXTENSION IF NOT EXISTS vector")
 
     cur.execute("""
-        CREATE TABLE IF NOT EXISTS documents1 (
+        CREATE TABLE IF NOT EXISTS documents (
             id SERIAL PRIMARY KEY,
             chunking_id TEXT,
             url TEXT,
@@ -77,7 +77,7 @@ def insert_row(chunking_id: str, url: str, title: str, text: str, embedding: lis
     cur = conn.cursor()
 
     cur.execute("""
-        INSERT INTO documents1 (chunking_id, url, title, text, embedding)
+        INSERT INTO documents (chunking_id, url, title, text, embedding)
         VALUES (%s, %s, %s, %s, %s);
     """, (chunking_id, url, title, text, embedding))
 
