@@ -6,6 +6,8 @@ import json
 import os
 from typing import Any, Dict, List
 
+from sympy import re
+
 from pmc_processing_utils import (
     clean_content, normalize_reference_spacing, normalize_title_spacing,
     annotate_section_categories,
@@ -107,8 +109,26 @@ def json_to_csv(input_json: str, out_dir: str) -> None:
             # ID 생성 (원본 인덱스 유지하여 추적 용이하게 함)
             curr_sec_id = f"{pmid}_sec{idx + 1}"
 
-            path = sec.get("path") or []
-            path_str = " > ".join(path) if isinstance(path, list) else str(path or "")
+            # [수정됨] Path 처리: 기존 유틸리티(clean/normalize) + 번호 제거 정규식 결합
+            raw_path = sec.get("path") or []
+            if isinstance(raw_path, list):
+                cleaned_path_list = []
+                for p in raw_path:
+                    # 1단계: 기존 텍스트/타이틀 정제 로직 사용 (HTML 제거, 공백 정리)
+                    temp_p = normalize_title_spacing(clean_content(p))
+                    
+                    # 2단계: 맨 앞의 섹션 번호 제거 (예: "4. Materials" -> "Materials")
+                    # ^[\d\.]+\s* : 시작 부분의 숫자와 점, 그리고 뒤따르는 공백 제거
+                    cleaned_item = re.sub(r'^[\d\.]+\s*', '', temp_p).strip()
+                    
+                    if cleaned_item:
+                        cleaned_path_list.append(cleaned_item)
+                
+                path_str = " > ".join(cleaned_path_list)
+            else:
+                # 리스트가 아닌 경우에도 동일한 정제 로직 적용
+                temp_p = normalize_title_spacing(clean_content(str(raw_path or "")))
+                path_str = re.sub(r'^[\d\.]+\s*', '', temp_p).strip()
 
             fig_ids = []
             table_ids = []

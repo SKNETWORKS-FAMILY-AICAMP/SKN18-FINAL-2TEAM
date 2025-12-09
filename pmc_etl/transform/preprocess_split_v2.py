@@ -67,7 +67,8 @@ def split_sections(input_csv, meta_out, chunk_prep_out):
     # 청킹용 컬럼 정의 (청킹에 필요한 것들)
     chunk_prep_columns = [
         "section_id",
-        "section_text"
+        "path",
+        "section_text",
     ]
     
     try:
@@ -107,7 +108,8 @@ def split_sections(input_csv, meta_out, chunk_prep_out):
                     # 청킹용 데이터: chunking.py의 combine/normalize 로직 사용
                     chunk_row = {
                             "section_id": row.get("section_id", ""),
-                            "section_text": row.get("section_text", "")
+                            "path": row.get("path", ""),
+                            "section_text": row.get("section_text", ""),
                         }
                     writer_chunk.writerow(chunk_row)
 

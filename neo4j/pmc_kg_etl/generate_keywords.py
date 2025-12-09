@@ -1,40 +1,28 @@
-"""
-generate_keywords_llm_umls.py
-
-목적: 
-  1. 섹션별로 텍스트를 병합하여 LLM에게 전체 문맥을 제공
-  2. 섹션 성격(Abstract, Results, Main 등)에 맞는 정교한 프롬프트로 엔티티 추출
-  3. 추출된 엔티티를 scispaCy(UMLS)를 통해 정규화(Normalization)
-  4. Knowledge Graph 구축용 CSV 2종 생성
-
-입력: 
-  - import/section_meta.csv
-  - import/section_embedding.csv (파일명 주의: 공백이 있다면 수정 필요)
-
-출력:
-  - import/entities.csv
-  - import/section_keywords.csv
-"""
-
 import pandas as pd
 import spacy
-import scispacy.linking  # 필수: 링커 파이프 등록용
+import scispacy.linking
 from scispacy.linking import EntityLinker
 from openai import OpenAI
 import os
 import json
 from tqdm import tqdm
+from dotenv import load_dotenv  # [추가] .env 로드용
 
 # ==============================================================================
-# 1. 설정
+# 1. 설정 및 상수 정의
 # ==============================================================================
 
-# OpenAI API 키 설정 (환경변수에 없다면 아래에 직접 입력)
-# client = OpenAI(api_key="sk-...")
-client = OpenAI() # API Key는 환경변수(OPENAI_API_KEY)에 설정되어 있다고 가정
+# [수정] .env 파일 로드 (현재 디렉토리의 .env 파일을 찾아 환경변수로 설정)
+load_dotenv()
 
+# API 키 확인 (디버깅용, 실제 키 출력은 보안상 주의)
+if not os.getenv("OPENAI_API_KEY"):
+    print("❌ Error: OPENAI_API_KEY가 .env 파일이나 환경변수에 없습니다.")
+    exit(1)
 
-# 분석할 섹션 카테고리 (사용자 데이터 기준)
+client = OpenAI() # 환경변수 OPENAI_API_KEY 사용
+
+# 분석할 섹션 카테고리
 TARGET_CATS = ['result', 'discussion', 'introduction', 'methods', 'abstract', 'main']
 
 # UMLS 의미 타입 매핑 (T-Code -> Readable Type)
@@ -45,76 +33,52 @@ UMLS_SEMTYPE_TO_ENTITY_TYPE = {
 }
 
 # ==============================================================================
-# 2. 초기화 및 헬퍼 함수
+# 2. 핵심 기능 분리 (LLM 추출 / 엔티티 정규화)
 # ==============================================================================
 
 def init_umls_pipeline():
-    """scispaCy + UMLS 링커 초기화"""
+    """scispaCy + UMLS 링커 초기화 (한 번만 로딩)"""
     print("⚙️ scispaCy 모델 로딩 중 (en_core_sci_lg)...")
     try:
         nlp = spacy.load("en_core_sci_lg")
     except OSError:
-        print("❌ 모델이 없습니다. 설치 필요: pip install https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.5.1/en_core_sci_lg-0.5.1.tar.gz")
+        print("❌ 모델 설치 필요: pip install https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.5.1/en_core_sci_lg-0.5.1.tar.gz")
         exit(1)
         
     print("🔗 UMLS Entity Linker 연결 중...")
-    # config 방식으로 링커 추가 (spaCy v3 호환)
-    nlp.add_pipe("scispacy_linker", config={"resolve_abbreviations": True, "linker_name": "umls"})
-    linker = nlp.get_pipe("scispacy_linker")
-    return nlp, linker
+    if "scispacy_linker" not in nlp.pipe_names:
+        nlp.add_pipe("scispacy_linker", config={"resolve_abbreviations": True, "linker_name": "umls"})
+    return nlp, nlp.get_pipe("scispacy_linker")
 
-def extract_keywords_with_llm(text, section_type):
+def extract_raw_entities_llm(text, section_type):
     """
-    LLM을 사용하여 섹션 텍스트에서 '지식 그래프 노드'로 사용할 고품질 엔티티 추출
-    (모든 섹션 타입 커버: result, discussion, introduction, methods, abstract, main)
+    [기능 1] LLM을 사용하여 텍스트에서 원시 엔티티 정보를 구조화하여 추출
+    - 역할: 텍스트 이해, 문맥 파악, 변이-단백질 연결, 축약어 풀기
     """
     if len(text) < 50: return []
 
-    section_lower = str(section_type).lower()
-    section_guide = ""
-
-    # 섹션별 맞춤형 가이드 설정
-    if "method" in section_lower:
-        section_guide = "- **METHODS** section: Prioritize Specific assays, Cell lines (e.g., HeLa), Antibodies, Reagents, Equipment, Model organisms, and Software tools."
-    elif "result" in section_lower:
-        section_guide = "- **RESULTS** section: Prioritize Target molecules (Genes/Proteins), Observed Phenotypes, Statistical metrics (only critical ones), Chemicals tested, and quantitative findings."
-    elif any(x in section_lower for x in ["intro", "discussion", "conclu"]):
-        section_guide = "- **INTRO/DISCUSSION** section: Prioritize Diseases, Biological Pathways, Mechanisms of Action, Hypothesis, and Broader biological concepts."
-    elif "abstract" in section_lower:
-        section_guide = "- **ABSTRACT** section: Prioritize the Core Research Topic, Primary Target (Gene/Drug), Main Disease/Condition, and Key Methodological approach. Capture the 'Big Picture' entities."
-    elif "main" in section_lower:
-        section_guide = "- **MAIN BODY** (Review/General): Prioritize Broad Topics, Historical Concepts, classifications of Drugs/Diseases, and comparative mechanisms."
-    else:
-        section_guide = "- **GENERAL** section: Extract the most significant scientific entities mentioned."
+    section_guide = get_section_guide(section_type)
 
     prompt = f"""
-    You are a Senior Biocurator building a high-precision Biomedical Knowledge Graph. 
-    Your task is to extract **Specific Named Entities** from the following research paper text.
+    You are a Senior Biocurator. Extract specific Named Entities from the text for a Knowledge Graph.
 
-    **Current Section Type:** {str(section_type).upper()}
+    **Current Section:** {str(section_type).upper()}
     {section_guide}
 
-    **[Extraction Rules]**
-    1. **Target Categories:** Extract entities belonging strictly to:
-       - **Genes/Proteins:** Use standard symbols (e.g., TP53, EGFR) or full names.
-       - **Chemicals/Drugs:** Specific drug names, inhibitors, metabolites.
-       - **Diseases/Phenotypes:** Specific conditions (e.g., Non-small cell lung cancer), symptoms.
-       - **Species/Cell Lines:** e.g., Mus musculus, HEK293T.
-       - **Methods/Techniques:** e.g., Western Blot, CRISPR-Cas9, RNA-seq.
-       
-    2. **Granularity:** - PREFER specific terms over general ones (e.g., "Lung Cancer" instead of "Cancer", "Cisplatin" instead of "Chemotherapy").
-       - Extract **compound entities** if necessary (e.g., "EGFR mutation", "p53 signaling pathway").
+    **[CRITICAL RULES for Normalization]**
+    1. **Mutations:** ALWAYS link a mutation to its target protein.
+       - Bad: "H70", "L858R" (Ambiguous)
+       - Good: "TP53 p.His70", "EGFR p.Leu858Arg" (Contextualized)
+    2. **Amino Acids:** Convert 1-letter codes to 3-letter codes.
+       - "H70" -> "p.His70", "V600E" -> "p.Val600Glu"
+    3. **General:** Prefer specific names ("Gefitinib") over classes ("TKI").
 
-    3. **[STRICT EXCLUSION LIST] - DO NOT EXTRACT:**
-       - Generic nouns: "study", "data", "result", "analysis", "patient", "group", "level", "effect", "role", "evidence".
-       - Vague biological terms: "cell", "tissue", "protein", "gene", "expression", "activity".
-       - Units/Numbers alone: "mg/ml", "p<0.05", "24h".
-       - Verbs/Adjectives: "increased", "significant", "inhibited", "associated".
+    **[Output Format]**
+    Return a JSON object with a key "keywords". Each item must have:
+    - "entity": The standardized, full name (e.g., "EGFR p.Leu858Arg").
+    - "type": One of ["mutation", "protein", "drug", "disease", "method", "other"].
+    - "raw_text": The exact text found in the paper.
 
-    **Output Requirement:**
-    - Extract between **5 to 15** most distinct and important entities.
-    - Return ONLY a valid JSON object with a single key "keywords".
-    
     Text:
     {text[:3500]}
     """
@@ -135,149 +99,176 @@ def extract_keywords_with_llm(text, section_type):
         print(f"⚠️ LLM Error: {e}")
         return []
 
-def normalize_with_umls(keyword_list, nlp, linker):
-    """LLM이 뽑은 키워드를 UMLS로 정규화"""
+def normalize_entity_generation(llm_results, nlp, linker):
+    """
+    [기능 2] LLM 추출 결과를 바탕으로 최종 엔티티 생성 및 UMLS ID 매핑
+    - 역할: LLM이 준 정보 검증, UMLS CUI 찾기, 최종 데이터 포맷팅
+    """
     results = []
     
-    for kw in keyword_list:
-        doc = nlp(kw)
-        
-        # 가장 적합한 엔티티 찾기 (Best Match)
-        best_cui, best_score, best_name, best_type = None, 0.0, kw, "other" # 기본값
-        
-        for ent in doc.ents:
-            if not ent._.kb_ents: continue
-            
-            # scispacy는 점수순으로 정렬해서 줌. 첫 번째가 가장 유력.
-            cui, score = ent._.kb_ents[0]
-            
-            if score > best_score:
-                best_cui = cui
-                best_score = score
-                
-                # 상세 정보 조회
-                umls_ent = linker.kb.cui_to_entity[cui]
-                best_name = umls_ent.canonical_name # 정규화된 이름
-                
-                # 타입 매핑
-                for t in umls_ent.types:
-                    if t in UMLS_SEMTYPE_TO_ENTITY_TYPE:
-                        best_type = UMLS_SEMTYPE_TO_ENTITY_TYPE[t]
-                        break
-        
-        # 정규화 성공 여부와 상관없이 저장 (실패하면 원문 그대로 Entity 생성)
-        # 단, 점수가 너무 낮거나 매핑 안된 건 'other' 타입으로 저장되거나 필터링 가능
-        if best_cui:
-            results.append({
-                "raw_keyword": kw,
-                "normalized_entity": best_name,
-                "entity_type": best_type,
-                "umls_cui": best_cui,
-                "score": best_score
-            })
+    for item in llm_results:
+        # LLM이 정제해준 표준 이름 사용
+        query_text = item.get('entity', '')
+        entity_type_llm = item.get('type', 'other')
+        raw_text = item.get('raw_text', query_text)
+
+        best_cui = None
+        best_name = query_text 
+        best_type = entity_type_llm
+        score = 0.0
+
+        # 전략: Mutation은 UMLS에 없을 확률이 높으므로 LLM을 전적으로 신뢰
+        if entity_type_llm == 'mutation':
+            best_cui = "MUTATION_NODE" # 혹은 None
+            score = 1.0 # LLM 신뢰
         else:
-            # UMLS에 없지만 LLM이 중요하다고 뽑은 단어 -> 그대로 사용
-            results.append({
-                "raw_keyword": kw,
-                "normalized_entity": kw.title(), # 첫글자 대문자화 정도만
-                "entity_type": "custom",
-                "umls_cui": "N/A",
-                "score": 1.0 # LLM 신뢰
-            })
+            # 그 외(단백질, 약물 등)는 scispaCy로 UMLS ID 조회 시도
+            doc = nlp(query_text)
+            best_score = 0.0
+            
+            for ent in doc.ents:
+                if not ent._.kb_ents: continue
+                cui, sc = ent._.kb_ents[0]
+                
+                # 점수가 더 높으면 갱신
+                if sc > best_score:
+                    best_score = sc
+                    best_cui = cui
+                    
+                    # UMLS 표준명으로 교체 (선택사항)
+                    umls_ent = linker.kb.cui_to_entity[cui]
+                    best_name = umls_ent.canonical_name 
+                    
+                    # 타입 매핑
+                    for t in umls_ent.types:
+                        if t in UMLS_SEMTYPE_TO_ENTITY_TYPE:
+                            best_type = UMLS_SEMTYPE_TO_ENTITY_TYPE[t]
+                            break
+            score = best_score if best_score > 0 else 0.8 # 매칭 안돼도 LLM이 뽑았으니 기본 점수 부여
+
+        results.append({
+            "raw_keyword": raw_text,
+            "normalized_entity": best_name,
+            "entity_type": best_type,
+            "umls_cui": best_cui if best_cui else "N/A",
+            "score": score
+        })
             
     return results
 
+def get_section_guide(section_type):
+    """섹션별 프롬프트 가이드 반환 헬퍼"""
+    s = str(section_type).lower()
+    if "result" in s: return "Focus on: Target molecules (Genes/Proteins), Observed Phenotypes, Chemicals."
+    if "method" in s: return "Focus on: Assays, Cell lines, Reagents, Equipment."
+    if "abstract" in s: return "Focus on: Core Research Topic, Primary Target, Main Disease."
+    return "Extract the most significant scientific entities."
+
 # ==============================================================================
-# 3. 메인 프로세스
+# 3. 배치 실행 파이프라인
 # ==============================================================================
 
-def run_pipeline(meta_csv, embedding_csv, out_entities, out_keywords):
-    # 1. 데이터 로드 및 병합
+def run_batch_pipeline(meta_csv, embedding_csv, out_entities, out_keywords, batch_size=10):
+    # 1. 데이터 준비
     if not os.path.exists(meta_csv) or not os.path.exists(embedding_csv):
-        print("❌ 입력 파일이 없습니다.")
+        print("❌ 입력 파일 확인 필요")
         return
 
-    print("📂 데이터 로딩 및 병합 중...")
-    
-    # A. 섹션 메타 (카테고리 필터링)
+    print("📂 데이터 병합 중...")
     df_meta = pd.read_csv(meta_csv)
-    pat = '|'.join(TARGET_CATS)
-    mask = df_meta['section_category'].astype(str).str.lower().str.contains(pat, na=False)
-    target_sections = df_meta[mask][['section_id', 'section_category']]
-    
-    # B. 텍스트 청크 병합 (Chunk -> Full Section Text)
-    # section_embedding.csv 읽기 (파일명 주의: 공백이 있으면 수정 필요)
+    mask = df_meta['section_category'].astype(str).str.lower().str.contains('|'.join(TARGET_CATS), na=False)
+    target_ids = df_meta[mask]['section_id'].unique()
+
     df_chunk = pd.read_csv(embedding_csv)
+    # Target Section만 필터링 및 텍스트 병합
+    df_chunk = df_chunk[df_chunk['section_id'].isin(target_ids)]
+    df_process = df_chunk.sort_values(['section_id', 'chunk_seq']).groupby('section_id')['text_chunk'].apply(lambda x: " ".join(x.astype(str))).reset_index()
     
-    # section_id별로 텍스트 합치기 (순서 보장)
-    df_text = df_chunk.sort_values(['section_id', 'chunk_seq']).groupby('section_id')['text_chunk'].apply(lambda x: " ".join(x.astype(str))).reset_index()
-    
-    # C. 조인 (Target Section만 남김)
-    df_process = pd.merge(target_sections, df_text, on='section_id', how='inner')
-    
-    print(f"🎯 분석 대상 섹션: {len(df_process)}개 (LLM 비용 고려하여 필요시 샘플링하세요)")
-    
-    # 2. 파이프라인 초기화
+    # 카테고리 정보 다시 결합
+    df_process = pd.merge(df_process, df_meta[['section_id', 'section_category']], on='section_id', how='left')
+
+    # 2. 이어하기(Resume) 체크
+    processed_ids = set()
+    if os.path.exists(out_keywords):
+        try:
+            processed_ids = set(pd.read_csv(out_keywords, usecols=['section_id'])['section_id'].unique())
+            print(f"⏭️  기존 완료된 {len(processed_ids)}개 섹션 건너뜀")
+        except: pass
+
+    df_remaining = df_process[~df_process['section_id'].isin(processed_ids)]
+    if len(df_remaining) == 0:
+        print("✅ 모든 작업이 완료되어 있습니다.")
+        return
+
+    print(f"🚀 {len(df_remaining)}개 섹션 처리 시작 (Batch: {batch_size})")
+
+    # 3. 모델 로드
     nlp, linker = init_umls_pipeline()
-    
-    # 3. 실행 루프
-    all_entities = []
-    all_keywords = []
-    
-    print("🚀 Extraction & Normalization 시작...")
-    for idx, row in tqdm(df_process.iterrows(), total=len(df_process)):
+
+    # 4. 배치 루프
+    batch_kw = []
+    batch_ent = []
+
+    for idx, row in tqdm(df_remaining.iterrows(), total=len(df_remaining)):
         sec_id = row['section_id']
         text = row['text_chunk']
         cat = row['section_category']
-        
-        # Step 1: LLM (Keyword Extraction)
-        raw_keywords = extract_keywords_with_llm(text, cat)
-        if not raw_keywords: continue
-        
-        # Step 2: UMLS (Normalization)
-        normalized_data = normalize_with_umls(raw_keywords, nlp, linker)
-        
-        for item in normalized_data:
-            # 관계 (Section -> Keyword -> Entity)
-            all_keywords.append({
-                "section_id": sec_id,
-                "raw_keyword": item['raw_keyword'],
-                "normalized_entity": item['normalized_entity'],
-                "score": item['score']
-            })
-            
-            # 노드 (Entity Definition)
-            all_entities.append({
-                "normalized_entity": item['normalized_entity'],
-                "entity_type": item['entity_type'],
-                "umls_cui": item['umls_cui']
-            })
 
-    # 4. 저장
-    if all_entities:
-        # 중복 제거 후 저장
-        df_ent = pd.DataFrame(all_entities).drop_duplicates(subset=['normalized_entity'])
-        df_ent.to_csv(out_entities, index=False)
-        
-        df_kw = pd.DataFrame(all_keywords).drop_duplicates()
-        df_kw.to_csv(out_keywords, index=False)
-        
-        print(f"\n✅ 완료!")
-        print(f"   - entities.csv: {len(df_ent)}개 엔티티")
-        print(f"   - section_keywords.csv: {len(df_kw)}개 관계")
-    else:
-        print("⚠️ 데이터가 생성되지 않았습니다.")
+        try:
+            # [Step 1] LLM Extraction
+            llm_results = extract_raw_entities_llm(text, cat)
+            
+            if llm_results:
+                # [Step 2] Entity Normalization
+                final_entities = normalize_entity_generation(llm_results, nlp, linker)
+
+                # 결과 수집
+                for item in final_entities:
+                    batch_kw.append({
+                        "section_id": sec_id,
+                        **item # raw_keyword, normalized_entity, score 등 포함
+                    })
+                    batch_ent.append({
+                        "normalized_entity": item['normalized_entity'],
+                        "entity_type": item['entity_type'],
+                        "umls_cui": item['umls_cui']
+                    })
+            else:
+                # 결과가 없어도 처리했다는 표시를 남기려면 빈 값이라도 저장하거나 로그 필요
+                # 여기서는 그냥 넘어감 (나중에 재시도 가능하게)
+                pass
+
+        except Exception as e:
+            print(f"Error processing {sec_id}: {e}")
+            continue
+
+        # [Step 3] 중간 저장
+        if len(batch_kw) >= batch_size or idx == df_remaining.index[-1]:
+            if batch_kw:
+                # 파일 저장 (Append 모드)
+                mode = 'a'
+                header_kw = not os.path.exists(out_keywords)
+                header_ent = not os.path.exists(out_entities)
+
+                pd.DataFrame(batch_kw).to_csv(out_keywords, mode=mode, header=header_kw, index=False)
+                pd.DataFrame(batch_ent).to_csv(out_entities, mode=mode, header=header_ent, index=False)
+                
+                # 버퍼 초기화
+                batch_kw = []
+                batch_ent = []
+
+    print("\n✅ 전체 작업 완료! (entities.csv의 중복 제거를 권장합니다)")
+
 
 if __name__ == "__main__":
     BASE = "import"
     if not os.path.exists(BASE): os.makedirs(BASE)
+
+
+    # 윈도우 경로 사용 시 r"..." 스트링을 쓰거나 / 슬래시 사용 권장
+    META = r"C:\dev\study\skn18_fianl-2team\SKN18-FINAL-2TEAM\data\pmc_data\meta_new.csv"
+    CHUNK = r"C:\dev\study\skn18_fianl-2team\SKN18-FINAL-2TEAM\data\pmc_data\before_embedding.csv"
     
-    # 파일명은 사용자 환경에 맞게 수정
-    # section_embedding.csv 파일명이 실제로는 'section _embedding.csv'인지 확인 필요
-    META_CSV = os.path.join(BASE, "C:\\dev\\study\\skn18_fianl-2team\\SKN18-FINAL-2TEAM\\data\\pmc_data\\meta_new.csv")
-    CHUNK_CSV = os.path.join(BASE, "C:\\dev\\study\\skn18_fianl-2team\\SKN18-FINAL-2TEAM\\data\\pmc_data\\before_embedding.csv") 
-    
-    OUT_ENTITIES = os.path.join(BASE, "C:\\dev\\study\\skn18_fianl-2team\\SKN18-FINAL-2TEAM\\import\\entities.csv")
-    OUT_KEYWORDS = os.path.join(BASE, "C:\\dev\\study\\skn18_fianl-2team\\SKN18-FINAL-2TEAM\\import\\section_keywords.csv")
-    
-    run_pipeline(META_CSV, CHUNK_CSV, OUT_ENTITIES, OUT_KEYWORDS)
+    OUT_ENT = r"C:\dev\study\skn18_fianl-2team\SKN18-FINAL-2TEAM\import\entities_v2.csv"
+    OUT_KW = r"C:\dev\study\skn18_fianl-2team\SKN18-FINAL-2TEAM\import\section_keywords_v2.csv"
+    run_batch_pipeline(META, CHUNK, OUT_ENT, OUT_KW, batch_size=10)
