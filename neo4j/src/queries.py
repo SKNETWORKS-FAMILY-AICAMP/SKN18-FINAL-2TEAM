@@ -403,9 +403,72 @@ class PaperRAGQueries:
     ", {batchSize: 2000})
     """
 
+# 13. 실험(Experiment) 로딩 - paper_experiments_table.csv
+    # Article과 직접 연결되도록 수정된 버전
+    LOAD_EXPERIMENTS = """
+    CALL apoc.periodic.iterate(
+    "LOAD CSV WITH HEADERS FROM 'file:///paper_experiments_table.csv' AS row RETURN row",
+    "
+        // 1) 기본 값 정리
+        WITH
+        row,
+        toInteger(row.pmid) AS pmid_int,
+        trim(row.method)    AS method,
+        trim(row.condition) AS condition,
+        trim(row.category_parent) AS cat_parent,
+        trim(row.category_leaf)   AS cat_leaf,
+        trim(row.materials)  AS materials,
+        trim(row.equipment)  AS equipment,
+          // 실험 고유 ID (문자열) 생성: pmid|method|condition
+        toString(toInteger(row.pmid)) + '|' +
+        coalesce(trim(row.method), '') + '|' +
+        coalesce(trim(row.condition), '') AS exp_id
+
+        // 2) 논문(Article) 찾아오기
+        MATCH (a:Article {pmid: pmid_int})
+
+        // 3) Experiment 노드 생성/업데이트
+        MERGE (e:Experiment {experiment_id: exp_id})
+        SET e.method    = method,
+            e.condition = condition
+
+        // Article - Experiment 관계
+        MERGE (a)-[:HAS_EXPERIMENT]->(e)
+
+        // 4) 카테고리 노드 생성 및 연결
+        MERGE (cp:CategoryParent {name: cat_parent})
+        MERGE (cl:CategoryLeaf   {name: cat_leaf})
+        MERGE (cp)-[:HAS_LEAF]->(cl)
+        MERGE (e)-[:HAS_PARENT_CATEGORY]->(cp)
+        MERGE (e)-[:HAS_LEAF_CATEGORY]->(cl)
+
+        // 5) 재료(Material) 노드/관계
+        FOREACH (m IN CASE
+                        WHEN materials IS NULL OR materials = '' THEN []
+                        ELSE split(materials, ',')
+                    END |
+        MERGE (mat:Material {name: trim(m)})
+        MERGE (e)-[:USES_MATERIAL]->(mat)
+        )
+
+        // 6) 장비(Equipment) 노드/관계
+        FOREACH (eq IN CASE
+                        WHEN equipment IS NULL OR equipment = '' THEN []
+                        ELSE split(equipment, ',')
+                    END |
+        MERGE (equip:Equipment {name: trim(eq)})
+        MERGE (e)-[:USES_EQUIPMENT]->(equip)
+        )
+    ",
+    {batchSize: 1000, parallel: true}
+    )
+    """
+
+    # 14. PrimeKG 통합
     CONNECT_TO_PRIMEKG = """
     CALL apoc.periodic.iterate(
     "MATCH (e:Entity) MATCH (b:BaseNode) WHERE toLower(e.name) = toLower(b.name) RETURN e, b",
     "MERGE (e)-[:REFERS_TO]->(b)",
-    {batchSize: 1000})
+    {batchSize: 1000}
+    )
     """

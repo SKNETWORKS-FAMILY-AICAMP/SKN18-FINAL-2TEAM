@@ -78,11 +78,12 @@ class PaperLoader:
             
             # [참고문헌 로딩] - 통합 로직 적용된 쿼리 사용
             ("9. 참고문헌(Reference) 로딩", PaperRAGQueries.LOAD_REFERENCES),
-            
+            # ✅ 여기 추가
+            ("11. 실험(Experiment) 로딩", PaperRAGQueries.LOAD_EXPERIMENTS),
             # [지식 연결]
-            ("10. 엔티티(Entity) 노드 생성", PaperRAGQueries.LOAD_ENTITIES),
-            ("11. 키워드 관계 연결", PaperRAGQueries.LOAD_KEYWORDS_RELATION),
-            ("12. PrimeKG 지식 연결", PaperRAGQueries.CONNECT_TO_PRIMEKG)
+            ("12. 엔티티(Entity) 노드 생성", PaperRAGQueries.LOAD_ENTITIES),
+            ("13. 키워드 관계 연결", PaperRAGQueries.LOAD_KEYWORDS_RELATION),
+            ("14. PrimeKG 지식 연결", PaperRAGQueries.CONNECT_TO_PRIMEKG)
         ]
 
         # 작업 실행

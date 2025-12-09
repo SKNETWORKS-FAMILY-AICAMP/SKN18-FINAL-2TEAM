@@ -403,7 +403,7 @@ class PaperRAGQueries:
         MERGE (k)-[:NORMALIZES_TO]->(e)
     ", {batchSize: 2000})
     """
-
+    
     # 13. PrimeKG 통합
     CONNECT_TO_PRIMEKG = """
     CALL apoc.periodic.iterate(
