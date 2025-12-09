@@ -338,13 +338,33 @@ $RECYCLE.BIN/
 #scss
 staticfiles/
 
+# data
+data/**
+rag/data/**
+
 # ETC
 .history
-rag/data/**
 django_app/uploads/**
+infra/aws/lambda_build/*.zip
+
+# NLTK 데이터 (로컬 개발 환경에서 생성될 수 있음)
+nltk_data/
+
+# AWS SAM 빌드 아티팩트, config
+.aws-sam/
+samconfig.toml
+
+# Lambda invoke 출력 파일
+output.json
 
 # Cursor/Claude AI local settings
 .claude/
 *.local.json
+
+# Lambda 빌드 디렉토리 (자동 생성)
+infra/aws/lambda_build/protocols/
+infra/aws/lambda_build/nih/
+infra/aws/lambda_build/pubmed/
+
 
 # End of https://www.toptal.com/developers/gitignore/api/python,django,windows,macos,jupyternotebooks
