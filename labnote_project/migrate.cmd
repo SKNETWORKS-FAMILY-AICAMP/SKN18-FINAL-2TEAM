@@ -1,2 +1,2 @@
-python manage.py makemigrations accounts
+python manage.py makemigrations accounts notes folders bookmarks attachments
 python manage.py migrate

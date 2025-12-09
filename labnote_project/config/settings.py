@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'notes',
     'attachments',
     'bookmarks',
+    'folders',
 ]
 
 MIDDLEWARE = [
