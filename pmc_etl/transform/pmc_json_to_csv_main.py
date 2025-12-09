@@ -5,8 +5,7 @@ import csv
 import json
 import os
 from typing import Any, Dict, List
-
-from sympy import re
+import re
 
 from pmc_processing_utils import (
     clean_content, normalize_reference_spacing, normalize_title_spacing,
@@ -109,16 +108,16 @@ def json_to_csv(input_json: str, out_dir: str) -> None:
             # ID 생성 (원본 인덱스 유지하여 추적 용이하게 함)
             curr_sec_id = f"{pmid}_sec{idx + 1}"
 
-            # [수정됨] Path 처리: 기존 유틸리티(clean/normalize) + 번호 제거 정규식 결합
+            # [수정됨] Path 처리: clean/normalize 후 정규식으로 앞부분 번호 제거
             raw_path = sec.get("path") or []
             if isinstance(raw_path, list):
                 cleaned_path_list = []
                 for p in raw_path:
-                    # 1단계: 기존 텍스트/타이틀 정제 로직 사용 (HTML 제거, 공백 정리)
+                    # 1단계: 텍스트 정제
                     temp_p = normalize_title_spacing(clean_content(p))
                     
-                    # 2단계: 맨 앞의 섹션 번호 제거 (예: "4. Materials" -> "Materials")
-                    # ^[\d\.]+\s* : 시작 부분의 숫자와 점, 그리고 뒤따르는 공백 제거
+                    # 2단계: 맨 앞 번호 제거 (re 모듈 사용)
+                    # 여기서 에러가 났다면 re가 표준 모듈인지 확인해야 합니다.
                     cleaned_item = re.sub(r'^[\d\.]+\s*', '', temp_p).strip()
                     
                     if cleaned_item:
@@ -126,7 +125,6 @@ def json_to_csv(input_json: str, out_dir: str) -> None:
                 
                 path_str = " > ".join(cleaned_path_list)
             else:
-                # 리스트가 아닌 경우에도 동일한 정제 로직 적용
                 temp_p = normalize_title_spacing(clean_content(str(raw_path or "")))
                 path_str = re.sub(r'^[\d\.]+\s*', '', temp_p).strip()
 
