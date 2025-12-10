@@ -1,0 +1,16 @@
+<h2>연구 노트 목록</h2>
+
+<a href="{% url 'labnote:note_create' %}">+ 새 노트 작성</a>
+
+<ul>
+{% for note in notes %}
+    <li>
+        <a href="{% url 'labnote:note_update' note.note_sid %}">
+            {{ note.title }}
+        </a>
+        ({{ note.created_at|date:"Y-m-d" }})
+    </li>
+{% empty %}
+    <li>작성된 노트가 없습니다.</li>
+{% endfor %}
+</ul>
