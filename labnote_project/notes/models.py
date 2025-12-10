@@ -68,7 +68,7 @@ class NoteImage(models.Model):
         return f"Image for {self.note.title}"
 
 
-class NoteComment(models.Model):
+class t_note_comment(models.Model):
     # PK: note_comment_sid
     note_comment_sid = models.AutoField(primary_key=True)
 
@@ -110,20 +110,24 @@ class NoteComment(models.Model):
         return f"Comment {self.note_comment_sid} on Note {self.note_id}"
 
 
-class NoteShare(models.Model):
+class t_note_share(models.Model):
     PERMISSION_CHOICES = [
-        ("read", "Read Only"),
-        ("edit", "Edit Permission"),
+        ("view", "View"),
+        ("comment", "Comment"),
+        ("edit", "Edit"),
     ]
+    # PK: note_share_sid
+    note_share_sid = models.AutoField(primary_key=True)
 
-    note = models.ForeignKey(t_note, on_delete=models.CASCADE)
-    shared_to = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    permission = models.CharField(max_length=10, choices=PERMISSION_CHOICES, default="read")
-
-    shared_at = models.DateTimeField(auto_now_add=True)
+    note = models.ForeignKey('t_note', on_delete=models.CASCADE, db_column="note_sid")
+    sharer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, db_column="sharer_id")
+    permission = models.CharField(max_length=10, choices=PERMISSION_CHOICES, default="view")
+    shared_at = models.DateTimeField(auto_now_add=True, db_column="shared_at")
+    expires_at = models.DateTimeField(null=True, blank=True, db_column="expires_at")
 
     class Meta:
-        unique_together = ("note", "shared_to")
+        db_table = "t_note_share"
+        unique_together = ("note", "sharer")
 
     def __str__(self):
-        return f"{self.note.title} → {self.shared_to.username} ({self.permission})"
+        return f"{self.note.title} → {self.sharer.username} ({self.permission})"
