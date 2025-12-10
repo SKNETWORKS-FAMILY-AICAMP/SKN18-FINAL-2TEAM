@@ -58,14 +58,20 @@ class NoteFile(models.Model):
         return f"{self.note.title} - {self.file.name}"
 
 
-class NoteImage(models.Model):
-    note = models.ForeignKey(t_note, on_delete=models.CASCADE, related_name="images")
-    image = models.ImageField(upload_to="note_images/")
-    annotation_data = models.JSONField(null=True, blank=True)  # Excalidraw/Canvas 데이터 저장
-    uploaded_at = models.DateTimeField(auto_now_add=True)
+class t_note_tag(models.Model):
+    # PK: note_tag_sid
+    note_tag_sid = models.AutoField(primary_key=True)
+
+    note = models.ForeignKey('t_note', on_delete=models.CASCADE, related_name='tags', db_column="note_sid")  # ForeignKey to t_note
+    tag = models.CharField(max_length=255)  # Store tag name
+    created_at = models.DateTimeField(auto_now_add=True)  # Automatically set the timestamp when created
+
+    class Meta:
+        db_table = "t_note_tag"
+        ordering = ["-created_at"]
 
     def __str__(self):
-        return f"Image for {self.note.title}"
+        return f"Tag {self.tag} for {self.note.title}"
 
 
 class t_note_comment(models.Model):
