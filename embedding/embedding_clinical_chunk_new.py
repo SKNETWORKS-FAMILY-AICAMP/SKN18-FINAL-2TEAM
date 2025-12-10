@@ -12,11 +12,11 @@ import os
 # --------------------------
 load_dotenv()
 
-POSTGRES_HOST = os.getenv("POSTGRES_HOST", "localhost")
-POSTGRES_PORT = os.getenv("POSTGRES_PORT", "5432")
-POSTGRES_DB = os.getenv("POSTGRES_DB", "pmc_db")
-POSTGRES_USER = os.getenv("POSTGRES_USER", "pmc")
-POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "pmc1234")
+POSTGRES_HOST = os.getenv("POSTGRES_HOST")
+POSTGRES_PORT = os.getenv("POSTGRES_PORT")
+POSTGRES_DB = os.getenv("POSTGRES_DB")
+POSTGRES_USER = os.getenv("POSTGRES_USER")
+POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 # OpenAI 초기화
