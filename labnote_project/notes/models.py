@@ -2,12 +2,7 @@
 from django.db import models
 from django.conf import settings
 
-# notes/models.py
-
-from django.db import models
-from django.conf import settings
-
-class Note(models.Model):
+class t_note(models.Model):
 
     # ERD의 note_sid를 직접 PK로 지정
     note_sid = models.AutoField(primary_key=True)
@@ -53,7 +48,7 @@ class Note(models.Model):
 
 
 class NoteFile(models.Model):
-    note = models.ForeignKey(Note, on_delete=models.CASCADE, related_name="files")
+    note = models.ForeignKey(t_note, on_delete=models.CASCADE, related_name="files")
     file = models.FileField(upload_to="note_files/")
     uploaded_at = models.DateTimeField(auto_now_add=True)
     uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
@@ -63,7 +58,7 @@ class NoteFile(models.Model):
 
 
 class NoteImage(models.Model):
-    note = models.ForeignKey(Note, on_delete=models.CASCADE, related_name="images")
+    note = models.ForeignKey(t_note, on_delete=models.CASCADE, related_name="images")
     image = models.ImageField(upload_to="note_images/")
     annotation_data = models.JSONField(null=True, blank=True)  # Excalidraw/Canvas 데이터 저장
     uploaded_at = models.DateTimeField(auto_now_add=True)
@@ -73,17 +68,45 @@ class NoteImage(models.Model):
 
 
 class NoteComment(models.Model):
-    note = models.ForeignKey(Note, on_delete=models.CASCADE, related_name="comments")
-    author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    comment = models.TextField()
+    # PK: note_comment_sid
+    note_comment_sid = models.AutoField(primary_key=True)
 
+    # FK: 노트 번호
+    note = models.ForeignKey(
+        't_note',
+        on_delete=models.CASCADE,
+        related_name='comments',
+        db_column="note_sid"
+    )
+
+    # 댓글 내용
+    content = models.TextField()
+
+    # 상위 댓글 (스레드형 구조)
+    parent_comment = models.ForeignKey(
+        'self',
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name='replies'
+    )
+
+    # 생성일 / 수정일
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    # 생성자
+    creator = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE
+    )
 
     class Meta:
+        db_table = "t_note_comment"
         ordering = ["-created_at"]
 
     def __str__(self):
-        return f"Comment by {self.author} on {self.note}"
+        return f"Comment {self.note_comment_sid} on Note {self.note_id}"
 
 
 class NoteShare(models.Model):
@@ -92,7 +115,7 @@ class NoteShare(models.Model):
         ("edit", "Edit Permission"),
     ]
 
-    note = models.ForeignKey(Note, on_delete=models.CASCADE)
+    note = models.ForeignKey(t_note, on_delete=models.CASCADE)
     shared_to = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     permission = models.CharField(max_length=10, choices=PERMISSION_CHOICES, default="read")
 

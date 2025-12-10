@@ -1,11 +1,11 @@
 # bookmarks/models.py
 from django.db import models
 from django.conf import settings
-from notes.models import Note
+from notes.models import t_note
 
 class Bookmark(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    note = models.ForeignKey(Note, on_delete=models.CASCADE)
+    note = models.ForeignKey(t_note, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

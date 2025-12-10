@@ -20,7 +20,7 @@ class Folder(models.Model):
 
 class FolderNote(models.Model):
     folder = models.ForeignKey(Folder, on_delete=models.CASCADE)
-    note = models.ForeignKey("notes.Note", on_delete=models.CASCADE)
+    note = models.ForeignKey("notes.t_note", on_delete=models.CASCADE)
 
     class Meta:
         unique_together = ("folder", "note")
