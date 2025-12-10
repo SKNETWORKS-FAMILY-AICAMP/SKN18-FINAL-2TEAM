@@ -4,7 +4,7 @@ LangGraph의 StateGraph를 생성하고 노드 간 엣지 정의
 
 '''
 # create_workflow에 맞게 파일과 함수 임포트하기
-from langgraph.graph import StateGraph, END
+from langgraph.graph import END
 
 # 노드 함수 import
 from .state import BioRAGState
@@ -23,11 +23,11 @@ from .nodes.generate_answer import generate_answer_node
 # 🔹  Routing Logic (Main Flow)
 # ============================================
 
-def route_case(state: SelfRAGState):
+def route_case(state: BioRAGState):
     return state["case_type"]
 
 
-def route_retrieval_or_web(state: SelfRAGState):
+def route_retrieval_or_web(state: BioRAGState):
     if not state["retrieval_results"]:
         return "web_search"
     if state["chunk_is_relevant"] is False:
