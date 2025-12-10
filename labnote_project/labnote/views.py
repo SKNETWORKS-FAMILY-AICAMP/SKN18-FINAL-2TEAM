@@ -8,7 +8,7 @@ from .forms import NoteForm  # 아래에서 제공
 @login_required
 def research_note_list(request):
     notes = t_note.objects.filter(owner=request.user, deleted_at__isnull=True)
-    return render(request, "labnote/note_list.html", {"notes": notes})
+    return render(request, "note_list.html", {"notes": notes})
 
 # 연구 노트 생성
 @login_required
@@ -23,7 +23,7 @@ def research_note_create(request):
     else:
         form = NoteForm()
 
-    return render(request, "labnote/note_form.html", {"form": form})
+    return render(request, "note_form.html", {"form": form})
 
 # 연구 노트 수정
 @login_required
@@ -38,4 +38,4 @@ def research_note_update(request, note_id):
     else:
         form = NoteForm(instance=note)
 
-    return render(request, "labnote/note_form.html", {"form": form})
+    return render(request, "note_form.html", {"form": form})
