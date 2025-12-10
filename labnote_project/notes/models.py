@@ -137,3 +137,62 @@ class t_note_share(models.Model):
 
     def __str__(self):
         return f"{self.note.title} → {self.sharer.username} ({self.permission})"
+    
+class t_schedule(models.Model):
+    STATUS_CHOICES = [
+        ('planned', 'Planned'),
+        ('ongoing', 'Ongoing'),
+        ('completed', 'Completed'),
+    ]
+
+    schedule_sid = models.AutoField(primary_key=True)
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True, null=True)
+    location = models.CharField(max_length=255, blank=True, null=True)
+    type = models.CharField(max_length=255, blank=True, null=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='planned')
+
+    start_at = models.DateTimeField()
+    end_at = models.DateTimeField()
+
+    # 종료 여부(Field)
+    Field = models.BooleanField(default=False)
+
+    # 반복 규칙
+    recurrence_rule = models.CharField(max_length=255, blank=True, null=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    creator_id = models.CharField(max_length=255)
+
+    class Meta:
+        db_table = 't_schedule'
+
+    def __str__(self):
+        return self.title
+
+
+class t_schedule_notes(models.Model):
+    schedule_note_sid = models.AutoField(primary_key=True)
+
+    # FK: 관련된 노트
+    note_sid = models.ForeignKey(
+        t_note,
+        on_delete=models.CASCADE,
+        db_column='note_sid'
+    )
+
+    # FK: 스케줄
+    schedule = models.ForeignKey(
+        t_schedule,
+        on_delete=models.CASCADE,
+        db_column='schedule_sid'
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 't_schedule_notes'
+
+    def __str__(self):
+        return f"ScheduleNote {self.schedule_note_sid}"
