@@ -8,7 +8,7 @@ from langgraph.graph import END
 
 # 노드 함수 import
 from .state import BioRAGState
-from .nodes.memory import memory_read_node
+from .nodes.memory import memory_read_node, memory_write_node
 from .nodes.keyword_extraction import keyword_extract_node
 from .nodes.classifier import classifier_node
 from .nodes.rewrite_query import rewrite_query_node
@@ -58,6 +58,7 @@ def create_workflow():
     graph.add_node("web_search", web_search_node)
     graph.add_node("evaluate_web", evaluate_web_node)
     graph.add_node("generate_answer", generate_answer_node)
+    graph.add_node("memory_write", memory_write_node)
 
 
     # case_type 기반 라우팅 
@@ -91,8 +92,9 @@ def create_workflow():
     graph.add_edge("web_search", "evaluate_web")
     graph.add_edge("evaluate_web", "generate_answer")
 
-    # 마지막 종료
-    graph.add_edge("generate_answer", END)
+    # 마지막에 메모리 저장 후 종료
+    graph.add_edge("generate_answer", "memory_write")
+    graph.add_edge("memory_write", END)
 
     # Compile
     app = graph.compile()
