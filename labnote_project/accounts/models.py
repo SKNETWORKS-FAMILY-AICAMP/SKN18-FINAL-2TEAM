@@ -1,16 +1,41 @@
-# accounts/models.py
-from django.contrib.auth.models import AbstractUser, Group, Permission
+from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 from django.db import models
+from django.contrib.auth.base_user import BaseUserManager
 
-class User(AbstractUser):
-    # 추가 필드
-    department = models.CharField(max_length=100, blank=True, null=True)
-    position = models.CharField(max_length=100, blank=True, null=True)
-    employee_id = models.CharField(max_length=50, unique=True, null=True, blank=True)
 
-    # 강제: username 대신 email 로그인 가능 시
-    # USERNAME_FIELD = "email"
-    # REQUIRED_FIELDS = ["username"]
+class CustomUserManager(BaseUserManager):
+    def create_user(self, user_id, password=None, **extra_fields):
+        if not user_id:
+            raise ValueError("user_id must be provided")
+        user = self.model(user_id=user_id, **extra_fields)
+        user.set_password(password)
+        user.save(using=self._db)
+        return user
+
+    def create_superuser(self, user_id, password=None, **extra_fields):
+        extra_fields.setdefault('is_staff', True)
+        extra_fields.setdefault('is_superuser', True)
+
+        return self.create_user(user_id, password, **extra_fields)
+
+
+class CustomUser(AbstractBaseUser, PermissionsMixin):
+    # PK를 varchar로 변경
+    user_id = models.CharField(max_length=255, primary_key=True)
+
+    # 필요한 필드 정의
+    username = models.CharField(max_length=255, unique=True)
+    email = models.EmailField(unique=True)
+    is_active = models.BooleanField(default=True)
+    is_staff = models.BooleanField(default=False)
+
+    objects = CustomUserManager()
+
+    USERNAME_FIELD = 'user_id'       # 로그인 ID로 사용
+    REQUIRED_FIELDS = ['username', 'email']
+
+    class Meta:
+        db_table = 't_user'
 
     def __str__(self):
-        return f"{self.username} ({self.email})"
+        return self.user_id

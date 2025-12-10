@@ -11,7 +11,8 @@ class t_note(models.Model):
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        db_column="owner_id"
+        db_column="owner_id",
+        to_field='user_id'
     )
 
     title = models.CharField(max_length=255)
