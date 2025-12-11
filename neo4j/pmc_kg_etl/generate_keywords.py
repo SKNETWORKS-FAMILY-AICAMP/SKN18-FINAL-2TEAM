@@ -266,9 +266,9 @@ if __name__ == "__main__":
 
 
     # 윈도우 경로 사용 시 r"..." 스트링을 쓰거나 / 슬래시 사용 권장
-    META = r"C:\dev\study\skn18_fianl-2team\SKN18-FINAL-2TEAM\data\pmc_1000\meta_new.csv"
-    CHUNK = r"C:\dev\study\skn18_fianl-2team\SKN18-FINAL-2TEAM\data\pmc_1000\embedding_new.csv"
+    META = r"C:\dev\study\skn18_fianl-2team\SKN18-FINAL-2TEAM\data\pmc_data\meta_new.csv"
+    CHUNK = r"C:\dev\study\skn18_fianl-2team\SKN18-FINAL-2TEAM\data\pmc_data\before_embedding.csv"
     
-    OUT_ENT = r"C:\dev\study\skn18_fianl-2team\SKN18-FINAL-2TEAM\data\pmc_1000\entities.csv"
-    OUT_KW = r"C:\dev\study\skn18_fianl-2team\SKN18-FINAL-2TEAM\data\pmc_1000\section_keywords.csv"
+    OUT_ENT = r"C:\dev\study\skn18_fianl-2team\SKN18-FINAL-2TEAM\import\entities_v2.csv"
+    OUT_KW = r"C:\dev\study\skn18_fianl-2team\SKN18-FINAL-2TEAM\import\section_keywords_v2.csv"
     run_batch_pipeline(META, CHUNK, OUT_ENT, OUT_KW, batch_size=10)
