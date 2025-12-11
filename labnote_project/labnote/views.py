@@ -39,3 +39,8 @@ def research_note_update(request, note_id):
         form = NoteForm(instance=note)
 
     return render(request, "note_form.html", {"form": form})
+
+@login_required
+def note_detail(request, note_id):
+    note = get_object_or_404(t_note, note_sid=note_id, owner=request.user)
+    return render(request, "note_detail.html", {"note": note})
