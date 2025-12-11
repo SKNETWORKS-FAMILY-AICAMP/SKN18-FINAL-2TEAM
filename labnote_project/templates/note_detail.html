@@ -1,0 +1,98 @@
+<!-- labnote/templates/labnote/note_detail.html -->
+
+<!-- Font Awesome 아이콘 CDN -->
+<link rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+<style>
+    .note-title {
+        font-size: 26px;
+        font-weight: bold;
+        margin-bottom: 16px;
+    }
+
+    .note-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 18px;
+        border-bottom: 1px solid #ddd;
+        padding-bottom: 8px;
+    }
+
+    .note-meta {
+        font-size: 14px;
+        color: #666;
+    }
+
+    .btn-group a {
+        margin-left: 10px;
+        padding: 6px 10px;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        background-color: #fafafa;
+        text-decoration: none;
+        font-size: 14px;
+        color: #333;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: 0.2s;
+    }
+
+    .btn-group a:hover {
+        background-color: #e7e7e7;
+    }
+
+    .note-content {
+        margin-top: 16px;
+        white-space: pre-line;
+        font-size: 16px;
+        line-height: 1.6;
+    }
+</style>
+
+<div class="note-title">
+    {{ note.title }}
+</div>
+
+<div class="note-header">
+    <div class="note-meta">
+        <i class="fa-solid fa-user"></i>
+        {{ note.owner.username }}
+        •
+        {{ note.created_at|date:"Y-m-d" }}
+    </div>
+
+    <div class="btn-group">
+
+        <!-- 공유 -->
+        <a href="#">
+            <i class="fa-solid fa-share-nodes"></i>
+            공유
+        </a>
+
+        <!-- 댓글 -->
+        <a href="#">
+            <i class="fa-solid fa-comment-dots"></i>
+            댓글
+        </a>
+
+        <!-- 첨부 -->
+        <a href="#">
+            <i class="fa-solid fa-paperclip"></i>
+            첨부
+        </a>
+
+        <!-- 노트 수정 -->
+        <a href="{% url 'labnote:note_update' note.note_sid %}">
+            <i class="fa-solid fa-pen-to-square"></i>
+            수정
+        </a>
+
+    </div>
+</div>
+
+<div class="note-content">
+    {{ note.content }}
+</div>

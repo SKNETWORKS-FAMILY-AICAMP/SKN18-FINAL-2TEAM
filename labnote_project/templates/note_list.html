@@ -4,12 +4,29 @@
 
 <ul>
 {% for note in notes %}
+
     <li>
-        <a href="{% url 'labnote:note_update' note.note_sid %}">
-            {{ note.title }}
-        </a>
+        {% if note.note_sid %}
+            <!-- note_detail 페이지로 이동 -->
+            <a href="{% url 'labnote:note_detail' note.note_sid %}">
+                {{ note.title }}
+            </a>
+        {% else %}
+            <!-- note_sid 없는 데이터(이상 데이터) -->
+            {{ note.title }} (SID 없음)
+        {% endif %}
+
+        <!-- 수정 버튼 -->
+        {% if note.note_sid %}
+            <a href="{% url 'labnote:note_update' note.note_sid %}"
+               style="margin-left: 10px;">
+                수정
+            </a>
+        {% endif %}
+
         ({{ note.created_at|date:"Y-m-d" }})
     </li>
+
 {% empty %}
     <li>작성된 노트가 없습니다.</li>
 {% endfor %}
