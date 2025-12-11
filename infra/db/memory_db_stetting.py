@@ -60,8 +60,7 @@ def init_db():
     모든 ORM 모델의 테이블을 생성한다.
     """
     print("▶️ Creating PostgreSQL tables...")
-    print("   - conversation_memory (채팅창 메타데이터)")
-    print("   - conversation_messages (개별 대화)")
+    print("   - conversation_memory (각 질문마다 새 row, 케이스별 컬럼에 answer_summary 저장)")
     
     Base.metadata.create_all(bind=engine)
     print("✅ Tables created successfully!")

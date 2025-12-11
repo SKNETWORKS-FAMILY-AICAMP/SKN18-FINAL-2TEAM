@@ -6,10 +6,10 @@
 '''
 
 from sqlalchemy import (
-    Column, String, DateTime, Text, Integer, Sequence
+    Column, String, DateTime, Text, Integer, Sequence, ForeignKey
 )
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import declarative_base, relationship
 from datetime import datetime
 
 Base = declarative_base()
@@ -17,8 +17,9 @@ Base = declarative_base()
 
 class ConversationMemory(Base):
     """
-    케이스 타입별 대화 히스토리 저장 테이블.
-    각 케이스 타입마다 JSONB 배열로 대화 저장.
+    각 질문-답변을 개별 row로 저장하는 테이블.
+    chat_room_id는 채팅방을 구분하고, 각 질문마다 새 row 생성.
+    케이스 타입별 컬럼에 answer_summary만 저장.
     """
 
     __tablename__ = "conversation_memory"
@@ -27,28 +28,27 @@ class ConversationMemory(Base):
     # 기본 정보
     # ---------------------------
     chat_id = Column(Integer, Sequence('chat_id_seq'), primary_key=True, autoincrement=True)  # 자동증가 PK
-    chat_room_id = Column(String, nullable=False, unique=True)  # 채팅창 ID (유니크)
+    chat_room_id = Column(String, nullable=False, index=True)  # 채팅방 ID (같은 방에 여러 row 가능)
     user_id = Column(String, nullable=False)            # 유저 ID
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # ---------------------------
-    # 슬롯 메모리 (요약 정보)
+    # 메타 정보
     # ---------------------------
-    original_question = Column(Text)         # 대화의 첫 질문 또는 주제 전환 시점의 질문
+    original_question = Column(Text)         # 질문 원문
     topic = Column(String)                   # 1줄 주제 요약
     entities = Column(JSONB, default=list)   # 추출된 엔티티들
     latest_keywords = Column(JSONB, default=list)  # 최근 키워드들
     context_window = Column(Integer, default=0)  # 전체 대화 수
 
     # ---------------------------
-    # 케이스 타입별 대화 히스토리 (JSONB 배열)
+    # 케이스 타입별 답변 요약 (각 컬럼에 answer_summary만 저장)
     # ---------------------------
-   # no_relation = Column(JSONB, default=list)    # 관계없는 질문
-    simulation_q = Column(JSONB, default=list)   # 시뮬레이션 질문
-    inference_q = Column(JSONB, default=list)    # 추론 질문
-    bio_q = Column(JSONB, default=list)          # 생물학 질문
-    protocal_q = Column(JSONB, default=list)     # 프로토콜 질문
+    simulation_q = Column(Text, nullable=True)   # SIMULATION_Q 답변 요약
+    inference_q = Column(Text, nullable=True)    # INFERENCE_Q 답변 요약
+    bio_q = Column(Text, nullable=True)          # BIO_Q 답변 요약
+    protocal_q = Column(Text, nullable=True)     # PROTOCOL_Q 답변 요약
 
     # 확장 필드
     extra = Column(JSONB, default=dict)
@@ -66,16 +66,17 @@ class ConversationMemory(Base):
             "latest_keywords": self.latest_keywords or [],
             "entities": self.entities or [],
             "context_window": self.context_window,
-          #  "no_relation": self.no_relation or [],
-            "simulation_q": self.simulation_q or [],
-            "inference_q": self.inference_q or [],
-            "bio_q": self.bio_q or [],
-            "protocal_q": self.protocal_q or [],
+            "simulation_q": self.simulation_q,
+            "inference_q": self.inference_q,
+            "bio_q": self.bio_q,
+            "protocal_q": self.protocal_q,
             "extra": self.extra or {}
         }
 
     def __repr__(self):
         return f"<ConversationMemory(chat_id={self.chat_id}, chat_room_id={self.chat_room_id}, user_id={self.user_id})>"
+
+
 
 
 # ---------------------------
