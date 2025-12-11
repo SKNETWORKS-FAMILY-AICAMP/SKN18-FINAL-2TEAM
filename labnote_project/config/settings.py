@@ -44,6 +44,8 @@ INSTALLED_APPS = [
     'bookmarks',
     'folders',
     'labnote',
+    'ckeditor',
+    'ckeditor_uploader',  # 업로더 기능이 필요하면 추가
 ]
 
 MIDDLEWARE = [
@@ -136,3 +138,5 @@ AUTH_USER_MODEL = 'accounts.CustomUser'
 LOGIN_URL = "/accounts/login/"
 LOGIN_REDIRECT_URL = "/notes/"
 LOGOUT_REDIRECT_URL = "/accounts/login/"
+
+CKEDITOR_UPLOAD_PATH = "uploads/"
