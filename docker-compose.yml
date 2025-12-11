@@ -11,10 +11,10 @@ services:
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
-      - pgvector-data:/var/lib/postgresql/data
+      - pgvector-data:/var/lib/postgresql
       - ./infra/db/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -d ${POSTGRES_DB:-sknproject5th} -U ${POSTGRES_USER:-root}"]
+      test: ["CMD-SHELL", "pg_isready -d ${POSTGRES_DB:-sknfinaldb} -U ${POSTGRES_USER:-root}"]
       interval: 10s
       timeout: 5s
       retries: 5

@@ -4,19 +4,19 @@ LangGraph의 StateGraph를 생성하고 노드 간 엣지 정의
 
 '''
 # create_workflow에 맞게 파일과 함수 임포트하기
-from langgraph.graph import END
+from langgraph.graph import END, StateGraph
 
 # 노드 함수 import
-from .state import BioRAGState
-from .nodes.memory import memory_read_node, memory_write_node
-from .nodes.keyword_extraction import keyword_extract_node
-from .nodes.classifier import classifier_node
-from .nodes.rewrite_query import rewrite_query_node
-from .nodes.retrieval import retrieval_node
-from .nodes.evaluate_chunk import evaluate_chunk_node
-from .nodes.web_search import web_search_node
-from .nodes.evaluate_web import evaluate_web_node
-from .nodes.generate_answer import generate_answer_node
+from graph.state import BioRAGState
+from graph.nodes.memory import memory_read_node, memory_write_node
+from graph.nodes.keyword_extraction import keyword_extract_node
+from graph.nodes.classifier import classify_node
+from graph.nodes.rewrite_query import rewrite_query_node
+from graph.nodes.retrieval import retrieval_node
+from graph.nodes.evaluate_chunk import evaluate_chunk_node
+from graph.nodes.web_search import web_search_node
+from graph.nodes.evaluate_web import evaluate_web_node
+from graph.nodes.generate_answer import generate_answer_node
 
 
 # ============================================
@@ -42,14 +42,26 @@ def create_workflow():
     graph = StateGraph(BioRAGState)
 
     # 1단계: 공통 전처리
+    graph.add_node("classify", classify_node)
     graph.add_node("memory_read", memory_read_node)
     graph.add_node("keyword_extract", keyword_extract_node)
-    graph.add_node("classify", classifier_node)
     graph.add_node("rewrite_query", rewrite_query_node)
 
+    # classify에서 조건부 분기 추가
+    graph.add_conditional_edges(
+        "classify",
+        route_case,
+        {
+            "NO_RELATION": END,  # 바로 종료 (메모리 저장 안함)
+            "BIO_Q": "memory_read",
+            "SIMULATION_Q": "generate_answer",  # 일관성을 위해 memory_read로 변경
+            "PROTOCOL_Q": "memory_read",
+            "INFERENCE_Q": "generate_answer",
+        }
+    )
+    
     graph.add_edge("memory_read", "keyword_extract")
-    graph.add_edge("keyword_extract", "classify")
-    graph.add_edge("classify", "rewrite_query")
+    graph.add_edge("keyword_extract", "rewrite_query")
 
 
     # 2단계: bio_q 로 분류된 경우 RAG → Evaluate → Fallback → Answer
@@ -61,16 +73,13 @@ def create_workflow():
     graph.add_node("memory_write", memory_write_node)
 
 
-    # case_type 기반 라우팅 
+    # case_type 기반 라우팅 (rewrite_query 이후)
     graph.add_conditional_edges(
         "rewrite_query",
         route_case,
         {
-            "bio_q": "retrieval",
-            "simulation_q": "generate_answer",
-            "protocol_q": "retrieval",
-            "inference_q": "generate_answer",
-            "no_relation": "generate_answer",
+            "BIO_Q": "retrieval",
+            "PROTOCOL_Q": "retrieval",
         }
     )
 
@@ -96,6 +105,9 @@ def create_workflow():
     graph.add_edge("generate_answer", "memory_write")
     graph.add_edge("memory_write", END)
 
+    # 시작점 설정
+    graph.set_entry_point("classify")
+    
     # Compile
     app = graph.compile()
     return app

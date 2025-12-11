@@ -20,7 +20,8 @@ python-dotenv
 ########################################
 # Database (PostgreSQL + pgvector)
 ########################################
-psycopg
+sqlalchemy       # 메모리 디비 ORM
+psycopg2-binary  # 메모리 디비 연결
 pgvector
 
 

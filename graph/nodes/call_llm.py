@@ -20,7 +20,7 @@ load_dotenv()
 
 # OpenAI / Gemini 공식 클라이언트
 from openai import OpenAI
-import google.generativeai as genai
+# import google.generativeai as genai
 
 
 # -----------------------------------------
@@ -29,7 +29,7 @@ import google.generativeai as genai
 load_dotenv()
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+# GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 if not OPENAI_API_KEY:
     raise ValueError("❌ OPENAI_API_KEY not found in .env")

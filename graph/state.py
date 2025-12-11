@@ -53,12 +53,12 @@ class BioRAGState(TypedDict, total=False):
     # -----------------------------
     is_follow_up: bool                  # 후속 질문 여부 - 메모리 + 질문 + original_question 종합고려하여 결정
     case_type: Literal[
-        "no_relation",
-        "bio_q",                        # 논문, 임상 실험 결과, 근거 검색
-        "simulation_q",                 # 단백질 실험 Tool 경로 안내
-        "protocal_q",
-        "inference_q"
-    ]                                   # classifier가 반환하는 CAS
+        "NO_RELATION",
+        "BIO_Q",                        # 논문, 임상 실험 결과, 근거 검색
+        "SIMULATION_Q",                 # 단백질 실험 Tool 경로 안내
+        "PROTOCOL_Q",
+        "INFERENCE_Q"
+    ]                                   # classifier가 반환하는 CASE
 
 
     # -----------------------------
