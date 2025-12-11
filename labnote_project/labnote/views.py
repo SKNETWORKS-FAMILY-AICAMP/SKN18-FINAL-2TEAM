@@ -7,8 +7,9 @@ from .forms import NoteForm  # 아래에서 제공
 # 연구 노트 목록 - 로그인 사용자 기반
 @login_required
 def research_note_list(request):
-    notes = t_note.objects.filter(owner=request.user, deleted_at__isnull=True)
-    return render(request, "note_list.html", {"notes": notes})
+    view_mode = request.GET.get("view", "card")  # view_mode 받아오기
+    notes = t_note.objects.filter(owner=request.user, deleted_at__isnull=True).order_by('-created_at')
+    return render(request, "note_list.html", {"notes": notes, "view_mode": view_mode})
 
 # 연구 노트 생성
 @login_required
@@ -47,10 +48,10 @@ def note_detail(request, note_id):
 
 @login_required
 def note_list(request):
-    view = request.GET.get("view", "card")
+    view_mode = request.GET.get("view", "card")
     notes = t_note.objects.all().order_by('-created_at')
 
-    return render(request, "labnote/note_list.html", {
+    return render(request, "note_list.html", {
         "notes": notes,
-        "view": view,
+        "view_mode": view_mode,
     })
