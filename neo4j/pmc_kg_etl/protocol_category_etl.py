@@ -178,7 +178,7 @@ def main():
     base_df = pd.read_csv(input_path)
     
     # Resume 로직
-    if output_path.exists():
+    if os.path.exists(output_path):
         print("resume 모드: 기존 파일 병합 중...")
         labeled_df = pd.read_csv(output_path)
         # 인덱스 기준으로 병합 (또는 protocol_sid가 있다면 그것 사용 권장)
