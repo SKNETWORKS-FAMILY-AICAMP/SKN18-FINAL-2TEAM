@@ -5,6 +5,23 @@
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
 <style>
+    .back-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        text-decoration: none;
+        font-size: 16px;
+        color: #333;
+        margin-bottom: 20px;
+        padding: 6px 10px;
+        border-radius: 6px;
+        background-color: #f1f1f1;
+        border: 1px solid #ccc;
+    }
+    .back-btn:hover {
+        background-color: #e4e4e4;
+    }
+
     .note-title {
         font-size: 26px;
         font-weight: bold;
@@ -52,6 +69,11 @@
     }
 </style>
 
+<!-- ▶ 뒤로가기 버튼 추가 -->
+<a href="{% url 'labnote:note_list' %}" class="back-btn">
+    <i class="fa-solid fa-arrow-left"></i> 뒤로가기
+</a>
+
 <div class="note-title">
     {{ note.title }}
 </div>
@@ -66,30 +88,14 @@
 
     <div class="btn-group">
 
-        <!-- 공유 -->
-        <a href="#">
-            <i class="fa-solid fa-share-nodes"></i>
-            공유
-        </a>
+        <a href="#"><i class="fa-solid fa-share-nodes"></i> 공유</a>
+        <a href="#"><i class="fa-solid fa-comment-dots"></i> 댓글</a>
+        <a href="#"><i class="fa-solid fa-paperclip"></i> 첨부</a>
 
-        <!-- 댓글 -->
-        <a href="#">
-            <i class="fa-solid fa-comment-dots"></i>
-            댓글
-        </a>
-
-        <!-- 첨부 -->
-        <a href="#">
-            <i class="fa-solid fa-paperclip"></i>
-            첨부
-        </a>
-
-        <!-- 노트 수정 -->
+        <!-- 수정 버튼 -->
         <a href="{% url 'labnote:note_update' note.note_sid %}">
-            <i class="fa-solid fa-pen-to-square"></i>
-            수정
+            <i class="fa-solid fa-pen-to-square"></i> 수정
         </a>
-
     </div>
 </div>
 
