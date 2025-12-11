@@ -213,7 +213,7 @@
                 <div class="note-card">
                     <div class="note-title">{{ note.title }}</div>
 
-                    <div class="note-content">{{ note.content|truncatechars:80 }}</div>
+                    <div class="note-content">{{ note.content|safe|truncatechars:80 }}</div>
 
                     <div class="note-tag">#{{ note.tag }}</div>
 
