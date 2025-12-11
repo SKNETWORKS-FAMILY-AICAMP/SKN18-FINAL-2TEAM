@@ -134,7 +134,6 @@
     }
 </style>
 
-
 <!-- 헤더 영역 -->
 <div class="page-header">
     <div class="page-title">연구 노트</div>
@@ -142,7 +141,6 @@
         <i class="fa-solid fa-plus"></i> 노트 생성
     </a>
 </div>
-
 
 <!-- 검색/필터 영역 -->
 <div class="search-bar">
@@ -159,13 +157,15 @@
     </div>
 
     <div class="search-right">
-        <label>표시 개수:</label>
-        <select>
-            <option>10개</option>
-            <option>20개</option>
-            <option>50개</option>
-            <option>100개</option>
-        </select>
+        <form id="perPageForm" method="get" style="display:inline;">
+            <label>표시 개수:</label>
+            <select name="per_page" onchange="document.getElementById('perPageForm').submit()">
+                {% for option in per_page_options %}
+                    <option value="{{ option }}" {% if per_page == option %}selected{% endif %}>{{ option }}개</option>
+                {% endfor %}
+            </select>
+            <input type="hidden" name="view" value="{{ view_mode }}">
+        </form>
 
         <a href="?view=card" class="btn">
             <i class="fa-solid fa-table-cells"></i> 카드 보기
@@ -176,11 +176,9 @@
     </div>
 </div>
 
-
-<!-- 카드 보기 모드 -->
+<!-- 카드/테이블 보기 분기 -->
 {% if view_mode == "table" %}
     <!-- ============== 테이블 보기 ============== -->
-
     <table>
         <thead>
             <tr>
@@ -207,7 +205,6 @@
         {% endfor %}
         </tbody>
     </table>
-
 {% else %}
     <!-- ============== 카드 보기 ============== -->
     <div class="card-grid">
@@ -234,7 +231,6 @@
         {% endfor %}
     </div>
 {% endif %}
-
 
 <!-- 페이지네이션 -->
 <div class="pagination">

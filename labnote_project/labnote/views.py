@@ -59,9 +59,8 @@ def note_list(request):
 
 @login_required
 def research_note_list(request):
-    view_mode = request.GET.get("view", "card")  
+    view_mode = request.GET.get("view", "card")
 
-    # 표시 개수 쿼리 파라미터로 받아오기, 기본 10개
     per_page = request.GET.get('per_page', '10')
     try:
         per_page = int(per_page)
@@ -82,8 +81,11 @@ def research_note_list(request):
     except EmptyPage:
         notes_page = paginator.page(paginator.num_pages)
 
+    per_page_options = [10, 20, 50, 100]  # 표시 개수 옵션
+
     return render(request, "note_list.html", {
-        "notes": notes_page,  # 페이징 된 객체 전달
+        "notes": notes_page,
         "view_mode": view_mode,
         "per_page": per_page,
+        "per_page_options": per_page_options,
     })
