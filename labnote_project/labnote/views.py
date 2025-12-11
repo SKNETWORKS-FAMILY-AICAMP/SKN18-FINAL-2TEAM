@@ -44,3 +44,13 @@ def research_note_update(request, note_id):
 def note_detail(request, note_id):
     note = get_object_or_404(t_note, note_sid=note_id, owner=request.user)
     return render(request, "note_detail.html", {"note": note})
+
+@login_required
+def note_list(request):
+    view = request.GET.get("view", "card")
+    notes = t_note.objects.all().order_by('-created_at')
+
+    return render(request, "labnote/note_list.html", {
+        "notes": notes,
+        "view": view,
+    })
