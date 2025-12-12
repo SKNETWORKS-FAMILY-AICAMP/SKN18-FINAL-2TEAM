@@ -14,7 +14,7 @@ urlpatterns = [
     # 기존 앱들
     path("accounts/", include("accounts.urls")), 
     path('ckeditor/', include('ckeditor_uploader.urls')),  # 업로더 필요시 
-    # path("notes/", include("notes.urls")),  
+    path("notes/", include("notes.urls")),  
     # path("attachments/", include("attachments.urls")),  
     # path("bookmarks/", include("bookmarks.urls")),
     # path("folders/", include("folders.urls")),
