@@ -109,20 +109,20 @@ def sllm(prompt: str):
 # -----------------------------------------
 # 6) Local LLM (프로토콜 제시 모델)
 # -----------------------------------------
-def local_llm(prompt: str):
-    """
-    vLLM 등 로컬 모델 호출
-    — REST API 라고 가정.
-    """
-    import requests
-    url = "http://localhost:8000/generate"
-    data = {"prompt": prompt}
+# def local_llm(prompt: str):
+#     """
+#     vLLM 등 로컬 모델 호출
+#     — REST API 라고 가정.
+#     """
+#     import requests
+#     url = "http://localhost:8000/generate"
+#     data = {"prompt": prompt}
 
-    try:
-        resp = requests.post(url, json=data)
-        return resp.json().get("text")
-    except Exception as e:
-        return f"[LOCAL LLM ERROR] {e}"
+#     try:
+#         resp = requests.post(url, json=data)
+#         return resp.json().get("text")
+#     except Exception as e:
+#         return f"[LOCAL LLM ERROR] {e}"
 
 
 

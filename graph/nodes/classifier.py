@@ -3,6 +3,37 @@ from graph.nodes.call_llm import gpt5_nano
 from graph.nodes.memory import memory_read_basic_tool
 
 
+def _check_needs_previous_context(q: str) -> bool:
+    """
+    LLM을 사용하여 질문이 이전 대화를 참조하는지 판단합니다.
+    
+    Args:
+        q: 사용자 질문
+        
+    Returns:
+        bool: 이전 대화 참조가 필요하면 True, 아니면 False
+    """
+    prompt = f"""다음 질문이 이전 대화 내용을 참조하고 있는지 판단하세요.
+
+질문: {q}
+
+이전 대화 참조 판단 기준:
+- 지시대명사 사용 ("그거", "저거", "그것", "그 단백질", "그 논문" 등)
+- 시간적 참조 ("앞에서", "방금", "위에서", "전에" 등)
+- 생략된 주어나 목적어 ("구조는?", "어떻게 진행해?", "결과는?" 등)
+- 대화의 연속성을 전제로 한 질문
+
+반드시 "YES" 또는 "NO"만 출력하세요:"""
+
+    try:
+        response = gpt5_nano(prompt).strip().upper()
+        return response == "YES"
+    except Exception as e:
+        print(f"[Check previous context error] {e}")
+        # 오류 시 안전하게 False 반환 (메모리 없이 진행)
+        return False
+
+
 def _classify_with_llm(q: str, chat_room_id: str = None, user_id: str = "default") -> str:
     """
     GPT-5-nano를 사용하여 질문을 5가지 카테고리 중 하나로 분류합니다.
@@ -12,10 +43,11 @@ def _classify_with_llm(q: str, chat_room_id: str = None, user_id: str = "default
         str: 분류된 카테고리 이름 (NO_RELATION, BIO_Q, SIMULATION_Q, PROTOCOL_Q, INFERENCE_Q 중 하나)
     """
     
-    # 이전 대화 참조 여부 확인
+    # LLM에게 이전 대화 참조 여부를 판단하도록 요청
     previous_context = ""
-    reference_keywords = ["그거", "저거", "그것", "저것", "앞에서", "이전에", "방금", "위에서", "전에"]
-    needs_previous = any(keyword in q for keyword in reference_keywords)
+    needs_previous = _check_needs_previous_context(q)
+    
+    print(f"[Classifier] 이전 대화 참조 필요: {needs_previous}")
     
     if needs_previous and chat_room_id:
         try:
@@ -28,6 +60,7 @@ def _classify_with_llm(q: str, chat_room_id: str = None, user_id: str = "default
 - 이전 케이스 타입: {prev_data['last_case_type']}
 - 이전 주제: {prev_data['last_topic']}
 """
+                print(f"[Classifier] 이전 대화 로드 완료")
         except Exception as e:
             print(f"[Previous context error] {e}")
     
@@ -98,7 +131,14 @@ def _classify_with_llm(q: str, chat_room_id: str = None, user_id: str = "default
         return "NO_RELATION"
 
 
-def classify_node(state: Dict[str, Any]) -> Dict[str, Any]:
+def classify_agent_node(state: Dict[str, Any]) -> Dict[str, Any]:
+    
+    # 노드 진입 로그
+    print(f"\n{'='*60}")
+    print(f"[CLASSIFIER NODE] 시작")
+    print(f"  question: {str(state.get('question', ''))[:30]}...")
+    print(f"  conversation_id: {state.get('conversation_id', '')}")
+    print(f"{'='*60}\n")
 
     # state 딕셔너리에서 'question' 키의 값을 가져옵니다
     # 만약 값이 없으면 빈 문자열("")을 사용합니다
@@ -120,6 +160,19 @@ def classify_node(state: Dict[str, Any]) -> Dict[str, Any]:
     # 분류 결과를 state 딕셔너리에 'case_type'이라는 키로 저장합니다
     # 이렇게 하면 다른 함수에서도 이 분류 결과를 사용할 수 있습니다
     state["case_type"] = case_label
+    
+    # NO_RELATION일 때 안내 메시지 추가
+    if case_label == "NO_RELATION":
+        state["final_answer"] = (
+            "죄송합니다. 해당 질문은 생물학/단백질 관련 질문이 아닌 것으로 판단됩니다.\n"
+            "생물학, 단백질, 임상연구, 실험 프로토콜 등에 관한 질문을 해주세요."
+        )
 
+    # 노드 종료 로그
+    print(f"\n[CLASSIFIER NODE] 종료")
+    print(f"  case_type: {state.get('case_type', '')}")
+    print(f"  final_answer: {str(state.get('final_answer', ''))[:30]}...")
+    print(f"{'='*60}\n")
+    
     # 분류 결과가 저장된 state를 반환합니다
     return state

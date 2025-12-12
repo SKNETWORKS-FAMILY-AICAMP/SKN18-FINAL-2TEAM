@@ -12,7 +12,7 @@ generate_answer.py
 """
 
 from typing import Dict, Any
-from graph.nodes.call_llm import gpt4o_mini, sllm, local_llm
+from graph.nodes.call_llm import gpt4o_mini, sllm
 import json
 
 
@@ -28,6 +28,15 @@ def generate_answer_node(state: Dict[str, Any]) -> Dict[str, Any]:
     """
     case_type = state.get("case_type", "")
     question = state.get("question", "")
+    
+    # 노드 진입 로그
+    print(f"\n{'='*60}")
+    print(f"[GENERATE_ANSWER NODE] 시작")
+    print(f"  question: {str(question)[:30]}...")
+    print(f"  case_type: {case_type}")
+    print(f"  selected_chunks: {len(state.get('selected_chunks', []))}개")
+    print(f"  web_selected_chunks: {len(state.get('web_selected_chunks', []))}개")
+    print(f"{'='*60}\n")
     
     # NO_RELATION은 classifier에서 이미 처리됨
     if case_type == "NO_RELATION":
@@ -45,7 +54,13 @@ def generate_answer_node(state: Dict[str, Any]) -> Dict[str, Any]:
     else:
         # 알 수 없는 케이스 타입
         state["final_answer"] = "죄송합니다. 질문을 처리할 수 없습니다."
-        return state
+    
+    # 노드 종료 로그
+    print(f"\n[GENERATE_ANSWER NODE] 종료")
+    print(f"  final_answer: {str(state.get('final_answer', ''))[:30]}...")
+    print(f"{'='*60}\n")
+    
+    return state
 
 
 def _generate_bio_answer(state: Dict[str, Any]) -> Dict[str, Any]:
@@ -87,6 +102,7 @@ def _generate_bio_answer(state: Dict[str, Any]) -> Dict[str, Any]:
 {final_context}
 
 위 자료를 바탕으로 정확하고 상세한 답변을 작성해주세요. 
+- web search 노드를 거쳤음에도 불구하고 적절한 내용이 없었다면 해당 질문에 대한 답변은 제공하지 않아도 됩니다.
 - 과학적 근거를 바탕으로 설명해주세요
 - 가능한 한 구체적인 정보를 포함해주세요
 - 출처가 있는 정보는 해당 출처를 언급해주세요
@@ -215,14 +231,14 @@ def _generate_protocol_answer(state: Dict[str, Any]) -> Dict[str, Any]:
 답변:"""
 
     try:
-        # Local LLM (프로토콜 특화 모델) 사용
-        answer = local_llm(prompt)
+        # sllm (프로토콜 특화 모델) 사용
+        answer = sllm(prompt)
         state["final_answer"] = answer
         state["final_context"] = final_context
         state["answer_sources"] = answer_sources
         
     except Exception as e:
-        # Local LLM 실패 시 GPT-4o-mini로 fallback
+        # sllm 실패 시 GPT-4o-mini로 fallback
         try:
             answer = gpt4o_mini(prompt)
             state["final_answer"] = answer

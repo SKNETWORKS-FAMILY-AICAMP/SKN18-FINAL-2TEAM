@@ -47,6 +47,13 @@ def keyword_extract_node(state: Dict[str, Any]) -> Dict[str, Any]:
         3. 결과를 파싱하여 state에 저장합니다
     """
     
+    # 노드 진입 로그
+    print(f"\n{'='*60}")
+    print(f"[KEYWORD_EXTRACT NODE] 시작")
+    print(f"  question: {str(state.get('question', ''))[:30]}...")
+    print(f"  case_type: {state.get('case_type', '')}")
+    print(f"{'='*60}\n")
+    
     # state에서 사용자 질문을 가져옵니다
     question = state.get("question", "")
     
@@ -120,7 +127,12 @@ def keyword_extract_node(state: Dict[str, Any]) -> Dict[str, Any]:
         state["extracted_keywords"] = keywords
         state["extracted_entities"] = entities
         
-        print(f"[KeywordExtract] keywords: {keywords}, entities: {entities}")
+        # 노드 종료 로그
+        print(f"\n[KEYWORD_EXTRACT NODE] 종료")
+        print(f"  keywords: {keywords}")
+        print(f"  entities: {entities}")
+        print(f"{'='*60}\n")
+        
         return state
         
     except Exception as e:

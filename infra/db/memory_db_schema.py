@@ -43,12 +43,13 @@ class ConversationMemory(Base):
     context_window = Column(Integer, default=0)  # 전체 대화 수
 
     # ---------------------------
-    # 케이스 타입별 답변 요약 (각 컬럼에 answer_summary만 저장)
+    # 케이스 타입별 답변 (JSONB 형태로 요약 + 원본 함께 저장)
     # ---------------------------
-    simulation_q = Column(Text, nullable=True)   # SIMULATION_Q 답변 요약
-    inference_q = Column(Text, nullable=True)    # INFERENCE_Q 답변 요약
-    bio_q = Column(Text, nullable=True)          # BIO_Q 답변 요약
-    protocal_q = Column(Text, nullable=True)     # PROTOCOL_Q 답변 요약
+    # 각 컬럼에 {"full_response": "원본", "summarize_response": "요약"} 형태로 저장
+    simulation_q = Column(JSONB, nullable=True)   # SIMULATION_Q 답변 (JSON)
+    inference_q = Column(JSONB, nullable=True)    # INFERENCE_Q 답변 (JSON)
+    bio_q = Column(JSONB, nullable=True)          # BIO_Q 답변 (JSON)
+    protocal_q = Column(JSONB, nullable=True)     # PROTOCOL_Q 답변 (JSON)
 
     # 확장 필드
     extra = Column(JSONB, default=dict)
@@ -66,52 +67,12 @@ class ConversationMemory(Base):
             "latest_keywords": self.latest_keywords or [],
             "entities": self.entities or [],
             "context_window": self.context_window,
-            "simulation_q": self.simulation_q,
-            "inference_q": self.inference_q,
-            "bio_q": self.bio_q,
-            "protocal_q": self.protocal_q,
+            "simulation_q": self.simulation_q or {},
+            "inference_q": self.inference_q or {},
+            "bio_q": self.bio_q or {},
+            "protocal_q": self.protocal_q or {},
             "extra": self.extra or {}
         }
 
     def __repr__(self):
         return f"<ConversationMemory(chat_id={self.chat_id}, chat_room_id={self.chat_room_id}, user_id={self.user_id})>"
-
-
-
-
-# ---------------------------
-# 응답 요약 함수
-# ---------------------------
-def summarize_llm_response(full_response: str, max_length: int = 200) -> str:
-    """
-    LLM 응답을 요약해서 저장용으로 변환
-    
-    Args:
-        full_response: 전체 LLM 응답
-        max_length: 최대 요약 길이
-    
-    Returns:
-        요약된 응답
-    """
-    if not full_response:
-        return ""
-    
-    # 1. 기본 길이 제한
-    if len(full_response) <= max_length:
-        return full_response
-    
-    # 2. 문장 단위로 자르기
-    sentences = full_response.split('.')
-    summary = ""
-    
-    for sentence in sentences:
-        if len(summary + sentence + ".") <= max_length:
-            summary += sentence + "."
-        else:
-            break
-    
-    # 3. 빈 요약이면 강제로 자르기
-    if not summary.strip():
-        summary = full_response[:max_length-3] + "..."
-    
-    return summary.strip()

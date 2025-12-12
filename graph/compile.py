@@ -9,11 +9,11 @@ from langgraph.graph import END, StateGraph
 # 노드 함수 import
 from graph.state import BioRAGState
 from graph.nodes.memory import memory_read_node, memory_write_node
-from graph.nodes.keyword_extraction import keyword_extract_node
-from graph.nodes.classifier import classify_node
-from graph.nodes.rewrite_query import rewrite_query_node
-from graph.nodes.retrieval import retrieval_node
-from graph.nodes.evaluate_chunk import evaluate_chunk_node
+from graph.nodes.classifier import classify_agent_node
+from graph.nodes.rewrite_query import query_rewrite_agent_node
+from graph.nodes.retrieval import retriever_protocol_node, retriever_bio_node
+from graph.nodes.rerank import rerank_node
+from graph.nodes.evaluate_chunk import bio_evaluate_chunk_node, protocol_evaluate_chunk_node
 from graph.nodes.web_search import web_search_node
 from graph.nodes.evaluate_web import evaluate_web_node
 from graph.nodes.generate_answer import generate_answer_node
@@ -42,14 +42,16 @@ def create_workflow():
     graph = StateGraph(BioRAGState)
 
     # 1단계: 공통 전처리
-    graph.add_node("classify", classify_node)
+    graph.add_node("classify_agent", classify_agent_node)
     graph.add_node("memory_read", memory_read_node)
-    graph.add_node("keyword_extract", keyword_extract_node)
-    graph.add_node("rewrite_query", rewrite_query_node)
+    graph.add_node("query_rewrite_agent", query_rewrite_agent_node)
+
+    # 시작점 설정
+    graph.set_entry_point("classify_agent")
 
     # classify에서 조건부 분기 추가
     graph.add_conditional_edges(
-        "classify",
+        "classify_agent",
         route_case,
         {
             "NO_RELATION": END,  # 바로 종료 (메모리 저장 안함)
@@ -60,42 +62,58 @@ def create_workflow():
         }
     )
     
-    graph.add_edge("memory_read", "keyword_extract")
-    graph.add_edge("keyword_extract", "rewrite_query")
+    graph.add_edge("memory_read", "query_rewrite_agent")
 
 
     # 2단계: bio_q 로 분류된 경우 RAG → Evaluate → Fallback → Answer
-    graph.add_node("retrieval", retrieval_node)
-    graph.add_node("evaluate_chunk", evaluate_chunk_node)
+    graph.add_node("retriever_bio_node", retriever_bio_node)
+    graph.add_node("retriever_protocol_node", retriever_protocol_node)
+    graph.add_node("rerank", rerank_node)
+    graph.add_node("bio_evaluate_chunk_node", bio_evaluate_chunk_node)
+    graph.add_node("protocol_evaluate_chunk_node", protocol_evaluate_chunk_node)
     graph.add_node("web_search", web_search_node)
     graph.add_node("evaluate_web", evaluate_web_node)
     graph.add_node("generate_answer", generate_answer_node)
     graph.add_node("memory_write", memory_write_node)
 
 
-    # case_type 기반 라우팅 (rewrite_query 이후)
+    # case_type 기반 라우팅 (query_rewrite_agent 이후)
     graph.add_conditional_edges(
-        "rewrite_query",
+        "query_rewrite_agent",
         route_case,
         {
-            "BIO_Q": "retrieval",
-            "PROTOCOL_Q": "retrieval",
+            "BIO_Q": "retriever_bio_node",
+            "PROTOCOL_Q": "retriever_protocol_node",
         }
     )
 
 
-    # retrieval → evaluate_chunk
-    graph.add_edge("retrieval", "evaluate_chunk")
-
-    # evaluate_chunk → web fallback or skip_web
+    # retrieval → rerank → case별 evaluate
+    graph.add_edge("retriever_bio_node", "rerank")
+    graph.add_edge("retriever_protocol_node", "rerank")
+    
+    # rerank → case_type에 따라 적절한 evaluate 노드로 분기
     graph.add_conditional_edges(
-        "evaluate_chunk",
+        "rerank",
+        route_case,
+        {
+            "BIO_Q": "bio_evaluate_chunk_node",
+            "PROTOCOL_Q": "protocol_evaluate_chunk_node",
+        }
+    )
+
+    # BIO_Q: evaluate_chunk → web fallback or skip_web
+    graph.add_conditional_edges(
+        "bio_evaluate_chunk_node",
         route_retrieval_or_web,
         {
             "web_search": "web_search",
             "skip_web": "generate_answer"
         }
     )
+
+    # PROTOCOL_Q: evaluate_chunk → generate_answer (web fallback 없음)
+    graph.add_edge("protocol_evaluate_chunk_node", "generate_answer")
 
     # web_search → evaluate_web → generate_answer
     graph.add_edge("web_search", "evaluate_web")
@@ -104,9 +122,6 @@ def create_workflow():
     # 마지막에 메모리 저장 후 종료
     graph.add_edge("generate_answer", "memory_write")
     graph.add_edge("memory_write", END)
-
-    # 시작점 설정
-    graph.set_entry_point("classify")
     
     # Compile
     app = graph.compile()

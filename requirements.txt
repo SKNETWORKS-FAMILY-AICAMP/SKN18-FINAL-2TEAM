@@ -35,6 +35,7 @@ langchain-openai
 tiktoken
 
 langgraph
+dateparser # 날짜 파싱 - 리라이트쿼리 tool
 
 
 ########################################
@@ -60,6 +61,7 @@ python-dateutil
 # Neo4j (Knowledge Graph)
 ########################################
 neo4j
+neo4j-graphrag  # Neo4j TextRetriever
 py2neo
 
 
@@ -74,6 +76,13 @@ PyYAML
 # sLLM / Local inference (vLLM/Ollama)
 ########################################
 openai
+
+########################################
+# Jupyter Notebook Support
+########################################
+jupyter
+ipywidgets  # tqdm 진행률 표시용
+notebook
 
 ########################################
 # Testing / Dev Tools

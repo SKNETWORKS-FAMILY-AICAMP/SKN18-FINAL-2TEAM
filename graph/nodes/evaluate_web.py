@@ -22,6 +22,13 @@ def evaluate_web_node(state: Dict[str, Any]) -> Dict[str, Any]:
         - state["web_selected_chunks"]: 선별된 웹 검색 청크들
     """
     
+    # 노드 진입 로그
+    print(f"\n{'='*60}")
+    print(f"[EVALUATE_WEB NODE] 시작")
+    print(f"  question: {str(state.get('question', ''))[:30]}...")
+    print(f"  web_results: {len(state.get('web_results', []))}개")
+    print(f"{'='*60}\n")
+    
     question = state.get("question", "")
     web_results = state.get("web_results", [])
     
@@ -39,6 +46,11 @@ def evaluate_web_node(state: Dict[str, Any]) -> Dict[str, Any]:
         title = result.get("title", "")
         snippet = result.get("snippet", "")
         url = result.get("url", "")
+        
+        # 각 웹 검색 결과의 앞 50글자 로그 출력
+        snippet_preview = snippet[:50] if snippet else ""
+        print(f"  [웹자료 {i}] {title[:40]}")
+        print(f"      내용: {snippet_preview}...")
         
         content = f"제목: {title}\n내용: {snippet}"
         if url:
@@ -95,5 +107,10 @@ def evaluate_web_node(state: Dict[str, Any]) -> Dict[str, Any]:
                 web_selected_chunks.append(f"웹자료 {i}: {content[:200]}...")
         
         state["web_selected_chunks"] = web_selected_chunks
+    
+    # 노드 종료 로그
+    print(f"\n[EVALUATE_WEB NODE] 종료")
+    print(f"  web_selected_chunks: {len(state.get('web_selected_chunks', []))}개")
+    print(f"{'='*60}\n")
     
     return state

@@ -22,6 +22,10 @@ import traceback
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
 
+# DB 초기화 모듈 임포트
+sys.path.append(os.path.join(os.path.dirname(__file__), '../../infra/db'))
+from memory_db_stetting import init_db
+
 def print_banner():
     """프로그램 시작 배너"""
     print("=" * 80)
@@ -31,6 +35,19 @@ def print_banner():
     print("💬 질문을 입력하면 분류부터 답변 생성까지 전체 과정을 실행합니다")
     print("🔄 'quit' 또는 'exit'를 입력하면 종료됩니다")
     print("=" * 80)
+
+
+def initialize_db():
+    """DB 테이블 초기화"""
+    try:
+        print("\n🔧 DB 테이블 초기화 중...")
+        init_db()
+        print("✅ DB 테이블 초기화 완료!")
+        return True
+    except Exception as e:
+        print(f"⚠️  DB 초기화 실패: {e}")
+        print("   계속 진행합니다 (기존 테이블 사용)")
+        return False
 
 
 def test_graph_compilation():
@@ -59,7 +76,6 @@ def create_test_state(question, conversation_id="test_room_001"):
         "question": question,
         "conversation_id": conversation_id,
         "user_id": "test_user",
-        "original_question": question,
     }
 
 
@@ -111,6 +127,9 @@ def run_workflow_test(app, question):
 def main():
     """메인 함수"""
     print_banner()
+    
+    # DB 초기화 (테이블이 없으면 자동 생성)
+    initialize_db()
     
     # 그래프 컴파일 테스트
     app = test_graph_compilation()
