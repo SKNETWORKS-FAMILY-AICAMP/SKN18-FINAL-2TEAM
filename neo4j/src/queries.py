@@ -380,27 +380,79 @@ class PaperRAGQueries:
     ", {batchSize: 2000})
     """
 
-    # ... (LOAD_ENTITIES, LOAD_KEYWORDS_RELATION, CONNECT_TO_PRIMEKG는 이전과 동일) ...
-    # (Entities, Keywords 로딩 쿼리는 생략하지 않고 포함해야 완벽합니다.)
+
+    # =========================================================================
     LOAD_ENTITIES = """
     CALL apoc.periodic.iterate(
-    "LOAD CSV WITH HEADERS FROM 'file:///entities.csv' AS row RETURN row",
+    "LOAD CSV WITH HEADERS FROM 'file:///entity_dedup.csv' AS row RETURN row",
     "
-        MERGE (e:Entity {name: row.normalized_entity})
-        SET e.type = row.entity_type, e.cui = row.umls_cui, e.source = 'UMLS'
+      // 1. Entity 노드 생성 (normalized_entity가 ID 역할)
+    MERGE (e:Entity {name: row.normalized_entity})
+
+      // 2. 메타데이터 설정
+    SET e.type = row.entity_type,
+        e.umls_cui = row.umls_cui,
+        e.mapped_db = row.mapped_db,
+        e.mapped_id = row.mapped_id,
+        e.standard_name = row.standard_name,
+        e.match_score = toFloat(row.match_score)
+    ",
+    {batchSize: 2000, parallel: true}
+    )
+    """
+
+    # 17. 키워드 관계 연결 (기존 유지 - 파일명이 keyword_relation.csv 등이라면)
+    LOAD_KEYWORDS_RELATION = """
+    CALL apoc.periodic.iterate(
+    "LOAD CSV WITH HEADERS FROM 'file:///section_keywords_v2.csv' AS row RETURN row",
+    "
+    MATCH (s:Section {section_id: row.section_id})
+    MATCH (e:Entity {name: row.normalized_entity}) 
+    MERGE (k:Keyword {word: row.raw_keyword})
+    MERGE (s)-[:HAS_KEYWORD {score: toFloat(row.score)}]->(k)
+    MERGE (k)-[:NORMALIZES_TO]->(e)
     ", {batchSize: 2000})
     """
 
-    LOAD_KEYWORDS_RELATION = """
+    # (주의: 키워드/엔티티 관계 파일명이 정확해야 합니다. 위는 예시입니다.)
+
+    # =========================================================================
+    # [수정됨] 18. PrimeKG 지식 연결 (1차: 이름 기준)
+    # 설명: Entity 이름과 BaseNode 이름이 정확히 같은 경우 연결
+    # =========================================================================
+    CONNECT_TO_PRIMEKG = """
     CALL apoc.periodic.iterate(
-    "LOAD CSV WITH HEADERS FROM 'file:///section_keywords.csv' AS row RETURN row",
     "
-        MATCH (s:Section {section_id: row.section_id})
-        MATCH (e:Entity {name: row.normalized_entity})
-        MERGE (k:Keyword {word: row.raw_keyword})
-        MERGE (s)-[:HAS_KEYWORD {score: toFloat(row.score)}]->(k)
-        MERGE (k)-[:NORMALIZES_TO]->(e)
-    ", {batchSize: 2000})
+    MATCH (e:Entity)
+    WHERE NOT (e)-[:REFERS_TO]->(:BaseNode)
+    RETURN e
+    ",
+    "
+    MATCH (b:BaseNode {name: e.name})
+    MERGE (e)-[:REFERS_TO]->(b)
+    ",
+    {batchSize: 1000, parallel: false}
+    )
+    """
+
+    # =========================================================================
+    # [신규] 19. PrimeKG 지식 연결 (2차: standard_name 기준)
+    # 설명: 1차에서 연결 안 된 것들 중, standard_name이 BaseNode 이름과 같은 경우 연결
+    # =========================================================================
+    CONNECT_TO_PRIMEKG_SECONDARY = """
+    CALL apoc.periodic.iterate(
+    "
+    MATCH (e:Entity)
+    WHERE NOT (e)-[:REFERS_TO]->(:BaseNode) 
+        AND e.standard_name IS NOT NULL
+    RETURN e
+    ",
+    "
+    MATCH (b:BaseNode {name: e.standard_name})
+    MERGE (e)-[:REFERS_TO]->(b)
+    ",
+    {batchSize: 1000, parallel: false}
+    )
     """
 
 # 13. 실험(Experiment) 로딩 - paper_experiments_table.csv
@@ -464,11 +516,130 @@ class PaperRAGQueries:
     )
     """
 
-    # 14. PrimeKG 통합
-    CONNECT_TO_PRIMEKG = """
+
+class ProtocolQueries:
+    """
+    Protocol 데이터용 쿼리셋
+    """
+    CREATE_CONSTRAINTS = [
+        "CREATE CONSTRAINT protocol_sid IF NOT EXISTS FOR (p:Protocol) REQUIRE p.protocol_sid IS UNIQUE;",
+        "CREATE CONSTRAINT protocol_chunk_id IF NOT EXISTS FOR (c:ProtocolChunk) REQUIRE c.chunking_id IS UNIQUE;",
+        "CREATE CONSTRAINT protocol_ref_sid IF NOT EXISTS FOR (r:ProtocolReference) REQUIRE r.reference_sid IS UNIQUE;"
+    ]
+
+    CREATE_VECTOR_INDEX = [
+        """
+        CREATE VECTOR INDEX protocol_chunk_vector_index IF NOT EXISTS
+        FOR (c:ProtocolChunk) ON (c.embedding)
+        OPTIONS {indexConfig: {
+        `vector.dimensions`: 1024,
+        `vector.similarity_function`: 'cosine'
+        }}
+        """
+    ]
+
+    LOAD_PROTOCOL_METADATA = """
     CALL apoc.periodic.iterate(
-    "MATCH (e:Entity) MATCH (b:BaseNode) WHERE toLower(e.name) = toLower(b.name) RETURN e, b",
-    "MERGE (e)-[:REFERS_TO]->(b)",
-    {batchSize: 1000}
+    "LOAD CSV WITH HEADERS FROM 'file:///t_protocol_metadata_Cell_labeled.csv' AS row RETURN row",
+    "MERGE (p:Protocol {protocol_sid: row.protocol_sid})
+     SET p.title = row.title, p.url = row.url, p.type = 'Protocol'
+     MERGE (cp:CategoryParent {name: trim(row.category_parent)})
+     MERGE (cl:CategoryLeaf {name: trim(row.category_leaf)})
+     MERGE (cp)-[:HAS_LEAF]->(cl)
+     MERGE (p)-[:HAS_PARENT_CATEGORY]->(cp)
+     MERGE (p)-[:HAS_LEAF_CATEGORY]->(cl)",
+    {batchSize: 1000, parallel: true}
+    )
+    """
+    
+    LOAD_PROTOCOL_MATERIALS = """
+    CALL apoc.periodic.iterate(
+    "LOAD CSV WITH HEADERS FROM 'file:///t_protocol_materials_Cell.csv' AS row RETURN row",
+    "MATCH (p:Protocol {protocol_sid: row.protocol_sid})
+     MERGE (m:Material {name: trim(row.materials)})
+     MERGE (p)-[:USES_MATERIAL]->(m)",
+    {batchSize: 2000, parallel: false}
+    )
+    """
+
+    LOAD_PROTOCOL_REFERENCES = """
+    CALL apoc.periodic.iterate(
+    "LOAD CSV WITH HEADERS FROM 'file:///t_protocol_references_Cell.csv' AS row RETURN row",
+    "MATCH (p:Protocol {protocol_sid: row.protocol_sid})
+     MERGE (r:ProtocolReference {reference_sid: row.reference_sid})
+     SET r.title = row.reference
+     MERGE (p)-[:HAS_REFERENCE]->(r)",
+    {batchSize: 2000, parallel: false}
+    )
+    """
+
+    LOAD_PROTOCOL_CHUNKS = """
+    CALL apoc.periodic.iterate(
+    "LOAD CSV WITH HEADERS FROM 'file:///embedded_vectors_bge_m3_dense.csv' AS row RETURN row",
+    "MATCH (p:Protocol {protocol_sid: row.protocol_id})
+     MERGE (c:ProtocolChunk {chunking_id: row.chunking_id})
+     SET c.text = row.text, c.url = row.url, c.title = row.title,
+         c.embedding = apoc.convert.fromJsonList(row.embedding)
+     MERGE (p)-[:HAS_CHUNK]->(c)",
+    {batchSize: 1000, parallel: true}
+    )
+    """
+# src/queries.py (맨 아래에 추가)
+
+class ClinicalTrialQueries:
+    """
+    ClinicalTrials.gov 데이터 로딩 및 연결 쿼리
+    """
+    
+    # 1. 제약 조건
+    CREATE_CONSTRAINTS = [
+        "CREATE CONSTRAINT nct_id IF NOT EXISTS FOR (c:ClinicalTrial) REQUIRE c.nct_id IS UNIQUE;"
+    ]
+
+    # 2. 임상실험 메타데이터 로딩
+    # 파일명: clinical_metadata.csv
+    # 컬럼: nctId, officialTitle, briefSummary, conditions, keywords, interventions, ...
+    LOAD_METADATA = """
+    CALL apoc.periodic.iterate(
+    "LOAD CSV WITH HEADERS FROM 'file:///nih_metadata1208.csv' AS row RETURN row",
+    "
+    MERGE (ct:ClinicalTrial {nct_id: row.nctId})
+    SET ct.title = row.officialTitle,
+        ct.summary = row.briefSummary,
+        ct.study_type = row.studyType,
+        ct.phase = row.phases,
+        ct.status = row.overallStatus,
+        ct.start_date = row.startDate,
+        ct.completion_date = row.completionDate,
+        ct.conditions = split(row.conditions, '|'),  // 구분자가 | 또는 , 인지 확인 필요 (여기선 | 가정)
+        ct.keywords = split(row.keywords, '|'),
+        ct.interventions = split(row.interventions, '|')
+    ",
+    {batchSize: 1000, parallel: true}
+    )
+    """
+
+    # 3. 임상실험 엔티티 연결 (ClinicalTrial -> Entity)
+    # 파일명: clinical_meta_entity.csv
+    # 컬럼: nctId, entityName, entityType, score, ...
+    # 핵심: 기존 Entity 노드와 이름(name)으로 병합하여 논문 데이터와 연결점 생성
+    LOAD_CLINICAL_ENTITIES = """
+    CALL apoc.periodic.iterate(
+    "LOAD CSV WITH HEADERS FROM 'file:///nih_mapped_metadata_entities_1208.csv' AS row RETURN row",
+    "
+    MATCH (ct:ClinicalTrial {nct_id: row.nctId})
+    
+      // 1. Entity 노드 병합 (논문에서 생성된 것과 동일한 이름이면 재사용)
+    MERGE (e:Entity {name: row.entityName})
+    ON CREATE SET 
+        e.type = row.entityType, 
+        e.source = 'ClinicalTrial' // 출처 표시 (기존에 없던 경우만)
+    
+      // 2. 관계 생성 (ClinicalTrial -> Entity)
+    MERGE (ct)-[r:HAS_CLINICAL_ENTITY]->(e)
+    SET r.score = toFloat(row.score),
+        r.source_type = row.sourceType
+    ",
+    {batchSize: 2000, parallel: false}
     )
     """
