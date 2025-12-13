@@ -1,16 +1,27 @@
+# rag/etl/experiment_table_llm.py
 """
 sections.csv를 기반으로
 
-pmid(논문아이디), method(방법), condition(조건),
+pmid(논문아이디), experiment_id(고유 실험 ID), experiment_index(논문 내 실험 번호),
+method(방법), condition(조건),
 category_parent(상위 카테고리), category_leaf(하위 카테고리),
-materials(재료), equipment(장비)
+materials(재료 문자열), equipment(장비 문자열)
 
 형태의 실험 테이블을 생성하는 스크립트.
 각 논문의 실험 정보를 OpenAI LLM으로 추출한다.
-"""
 
+추가로:
+- paper_experiments_materials.csv
+    pmid, experiment_id, experiment_index, method, category_parent, category_leaf, material
+- paper_experiments_equipment.csv
+    pmid, experiment_id, experiment_index, method, category_parent, category_leaf, equipment
+
+두 개의 세부 테이블도 생성한다.
+"""
+import argparse
 from pathlib import Path
 import os
+import sys
 import time
 import json
 import re
@@ -19,200 +30,49 @@ import pandas as pd
 from dotenv import load_dotenv
 from openai import OpenAI
 
-# 디버그용 플래그 (RAW 응답 보고 싶으면 True)
-DEBUG = False
+# ─────────────────────────────────────
+# 0) 경로 및 OpenAI 클라이언트 설정
+# ─────────────────────────────────────
 
-# -----------------------------------
-# 경로 및 OpenAI 클라이언트 설정
-# -----------------------------------
+# 프로젝트 루트 추론
 ROOT_DIR = Path(__file__).resolve().parents[2]
 
-# sections.csv 경로 (미누 프로젝트 구조 기준)
-SECTIONS_PATH = ROOT_DIR / "data" / "pmc_data" / "pmc" / "sections.csv"
-OUTPUT_PATH = ROOT_DIR / "data" / "pmc_data" / "paper_experiments_table.csv"
+# common_experiment_categories 모듈 import 가능하도록 sys.path에 추가
+if str(ROOT_DIR) not in sys.path:
+    sys.path.append(str(ROOT_DIR))
 
-# .env 로드 (프로젝트 루트에 있는 .env)
+from common_experiment_categories import (
+    CATEGORY_TREE,
+    LEAF_TO_PARENT,
+    PARENT_DEFAULT_LEAF,
+    CATEGORIES_BLOCK,
+)
+
+DEBUG = False
+
+# sections.csv / 출력 경로
+SECTIONS_PATH = ROOT_DIR / "data" / "pmc_1000" / "t_sections_filtered.csv"
+OUTPUT_PATH = ROOT_DIR / "data" / "pmc_1000" / "ts_paper_experiments_table.csv"
+
+# .env 로드
 load_dotenv(ROOT_DIR / ".env")
 
-api_key = os.getenv("OPENAI_API_KEY")
+api_key = os.getenv("OPENAI_OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
 if not api_key:
     raise RuntimeError("OPENAI_API_KEY가 .env에서 로드되지 않았습니다. .env 파일을 확인해주세요.")
 
 client = OpenAI(api_key=api_key)
 
-# -----------------------------------
-# 카테고리 후보 (상위 → 하위 리스트)
-# -----------------------------------
-CATEGORY_TREE: dict[str, list[str]] = {
-    # 1) 컴퓨터 기반 연구 (시뮬레이션 + 계산 분석)
-    "computational_and_in_silico_studies": [
-        "protein_ligand_docking",
-        "protein_protein_or_protein_dna_docking",
-        "molecular_dynamics_simulation",
-        "structure_prediction_or_homology_modeling",
-        "quantum_chemistry_or_qm_mm_simulation",
-        "systems_biology_or_network_modeling",
-        "other_computational_modeling_or_simulation",
-    ],
-
-    # 2) 분자·생화학 수준 실험 (assay 단어 적극 사용)
-    "molecular_and_biochemical_assays": [
-        "biochemical_enzyme_activity_or_kinetics_assay",
-        "binding_affinity_assay_itc_spr_fret_etc",
-        "spectrophotometric_or_fluorescence_based_assay",
-        "protein_purification_and_biophysical_characterization",
-        "molecular_biology_assay_pcr_cloning_western_blot",
-        "protein_stability_or_thermal_shift_assay",
-        "adme_in_vitro_biochemical_assay",
-        "other_molecular_or_biochemical_assay",
-    ],
-
-    # 3) 세포 기반 assay
-    "cell_based_assays": [
-        "cell_culture_and_viability_or_proliferation_assay",
-        "cell_based_functional_or_signaling_reporter_assay",
-        "cytotoxicity_or_apoptosis_assay",
-        "cell_migration_or_invasion_assay",
-        "high_content_cell_imaging_assay",
-        "flow_cytometry_or_facs_based_assay",
-        "cellular_adme_or_transport_assay",
-        "cell_based_toxicology_assay",
-        "other_cell_based_assay",
-    ],
-
-    # 4) 조직·오가노이드 / ex vivo 모델
-    "tissue_and_organoid_models": [
-        "tissue_slice_or_ex_vivo_assay",
-        "3d_culture_or_spheroid_assay",
-        "organoid_model_assay",
-        "ex_vivo_functional_assay",
-        "other_tissue_or_organoid_model_assay",
-    ],
-
-    # 5) in vivo 동물 / 전임상
-    "in_vivo_animal_models": [
-        "disease_model_in_vivo_efficacy_study",
-        "pk_pd_in_vivo_study",
-        "in_vivo_toxicology_or_safety_study",
-        "biodistribution_or_in_vivo_imaging_study",
-        "behavioral_or_functional_in_vivo_assay",
-        "other_in_vivo_preclinical_model",
-    ],
-
-    # 6) 오믹스 / high-throughput 분석
-    "omics_and_high_throughput_analyses": [
-        "ngs_or_genome_sequencing_analysis",
-        "transcriptomics_or_bulk_rna_seq_analysis",
-        "single_cell_omics_analysis",
-        "proteomics_or_phosphoproteomics_analysis",
-        "metabolomics_or_lipidomics_analysis",
-        "chromatin_or_epigenomics_analysis",
-        "multi_omics_integration_or_network_analysis",
-        "high_throughput_screening_readout_analysis",
-        "microscopy_image_analysis_or_hcs_analysis",
-        "electrophysiology_or_signal_processing_analysis",
-        "other_omics_or_high_throughput_analysis",
-    ],
-
-    # 7) ML/딥러닝/알고리즘
-    "ml_and_algorithm_development": [
-        "ml_or_dl_prediction_model_for_biology",
-        "de_novo_molecule_or_protein_design_model",
-        "representation_learning_or_pretraining",
-        "generative_modeling_or_diffusion_model",
-        "reinforcement_learning_or_optimization",
-        "benchmark_or_baseline_comparison",
-        "ablation_study_or_hyperparameter_optimization",
-        "model_interpretability_or_feature_importance_analysis",
-        "production_deployment_or_model_serving_pipeline",
-    ],
-
-    # 8) 데이터셋 / 리소스 / 스크리닝
-    "data_resources_and_screening": [
-        "dataset_construction_or_curation",
-        "dataset_statistics_or_descriptive_analysis",
-        "data_quality_control_or_preprocessing",
-        "knowledgebase_or_database_construction",
-        "compound_library_design_or_enumeration",
-        "virtual_screening_or_in_silico_screening",
-        "high_throughput_experimental_screening",
-        "target_prioritization_or_hit_identification",
-    ],
-
-    # 9) 임상 / 사람 대상 연구
-    "clinical_and_human_studies": [
-        "clinical_trial_interventional",
-        "clinical_observational_or_cohort_study",
-        "case_report_or_case_series",
-        "registry_or_real_world_data_analysis",
-        "pharmacovigilance_or_safety_signal_detection",
-        "diagnostic_or_biomarker_validation_study",
-        "health_economics_or_outcomes_research",
-        "implementation_or_practice_change_study",
-    ],
-
-    # 10) 방법론 / 이론 / 리뷰
-    "methodological_and_theoretical_work": [
-        "new_experimental_method_or_protocol_development",
-        "new_computational_method_or_algorithm",
-        "statistical_modeling_or_theoretical_analysis",
-        "guideline_or_workflow_or_best_practice",
-        "meta_analysis_or_systematic_review",
-        "position_paper_or_conceptual_framework",
-    ],
-
-    # 11) 기타 / 혼합
-    "other_or_not_specified": [
-        "mixed_or_multimodal_study_not_easily_classified",
-        "insufficient_information_to_classify",
-        "other",
-    ],
-}
-
-# -----------------------------------
-# leaf 카테고리 → 상위 카테고리 매핑
-# -----------------------------------
-LEAF_TO_PARENT_CATEGORY: dict[str, str] = {}
-for parent, labels in CATEGORY_TREE.items():
-    for leaf in labels:
-        LEAF_TO_PARENT_CATEGORY[leaf] = parent
-
-# parent → 기본 leaf (LLM이 parent만 줬을 때 쓸 fallback)
-PARENT_DEFAULT_LEAF: dict[str, str] = {
-    "computational_and_in_silico_studies": "other_computational_modeling_or_simulation",
-    "molecular_and_biochemical_assays": "other_molecular_or_biochemical_assay",
-    "cell_based_assays": "other_cell_based_assay",
-    "tissue_and_organoid_models": "other_tissue_or_organoid_model_assay",
-    "in_vivo_animal_models": "other_in_vivo_preclinical_model",
-    "omics_and_high_throughput_analyses": "other_omics_or_high_throughput_analysis",
-    "ml_and_algorithm_development": "benchmark_or_baseline_comparison",
-    "data_resources_and_screening": "dataset_construction_or_curation",
-    "clinical_and_human_studies": "clinical_observational_or_cohort_study",
-    "methodological_and_theoretical_work": "new_computational_method_or_algorithm",
-    "other_or_not_specified": "other",
-}
-
-# -----------------------------------
-# 카테고리 문자열 생성 (프롬프트용)
-# -----------------------------------
-def _build_categories_block() -> str:
-    """
-    CATEGORY_TREE를 사람이 보기 좋은 문자열 블록으로 변환.
-    프롬프트 안에 그대로 넣어줄 문자열을 만든다.
-    """
-    lines: list[str] = []
-    for group, labels in CATEGORY_TREE.items():
-        lines.append(f"- {group}:")
-        for label in labels:
-            lines.append(f"  - {label}")
-    return "\n".join(lines)
-
-
-CATEGORIES = _build_categories_block()
-
-# -----------------------------------
+# ─────────────────────────────────────
 # 1) sections.csv 로드 & 실험 섹션 필터링
-# -----------------------------------
+# ─────────────────────────────────────
+def chunk_df(df: pd.DataFrame, batch_size: int):
+    """DataFrame을 batch_size 단위로 나누어 yield."""
+    n = len(df)
+    for i in range(0, n, batch_size):
+        yield df.iloc[i : i + batch_size]
+
+
 def load_sections() -> pd.DataFrame:
     if not SECTIONS_PATH.exists():
         raise FileNotFoundError(f"{SECTIONS_PATH} 가 존재하지 않습니다.")
@@ -229,13 +89,12 @@ def filter_experiment_sections(df: pd.DataFrame) -> pd.DataFrame:
     sec_cat = df["section_category"].fillna("").str.lower()
     sec_title = df["section_title"].fillna("").str.lower()
 
-    target_cats = ["method", "methods", "result", "results", "main"]
+    target_cats = ["method", "methods", "experiment", "experiments"]
 
     mask = (
         sec_cat.isin(target_cats)
         | sec_title.str.contains("method")
         | sec_title.str.contains("experiment")
-        | sec_title.str.contains("result")
     )
 
     exp_df = df[mask].copy()
@@ -262,9 +121,12 @@ def build_paper_texts(exp_df: pd.DataFrame) -> pd.DataFrame:
     print(f"[INFO] 실험 텍스트가 만들어진 논문 수: {len(grouped)}")
     return grouped
 
-# -----------------------------------
+
+# ─────────────────────────────────────
 # 2) LLM 프롬프트 & 호출 함수
-# -----------------------------------
+# ─────────────────────────────────────
+
+
 def build_prompt_for_table(text: str) -> str:
     return f"""
 너는 생명과학/화학/바이오 논문의 실험 설계를 정리하는 전문가야.
@@ -286,27 +148,27 @@ def build_prompt_for_table(text: str) -> str:
 각 행은 하나의 실험 설정을 의미하며 다음 정보를 포함해야 한다:
 
 - method: 어떤 실험 방법/기법/모델을 사용했는지
-          (예: "molecular docking", "GNN-based prediction model", "cell viability assay")
+          (예: "ELISA", "Western blot", "dose–response viability assay", "molecular docking")
 - condition: 그 방법을 어떤 조건/설정/데이터 범위에서 사용했는지
-             (예: "300 K, 100 ns simulation repeated 3 times",
-                  "PDBbind v2019 dataset, train/valid/test = 8:1:1")
+             (예: "HEK293T cells treated with 0.01–100 µM compound for 48 h",
+                  "C57BL/6 mice dosed at 1–50 mg/kg and monitored for 21 days")
 - category: 아래 "가능한 category 라벨" 중에서
            **항상 하위 카테고리(leaf) 라벨 하나만** 선택해야 한다.
 
   중요:
-  - 상위 카테고리(group) 이름(예: "in_vivo_animal_models", "cell_based_assays")은 절대 사용하지 마라.
-  - 반드시 들여쓰기된 하위 라벨(예: "disease_model_in_vivo_efficacy_study") 중 하나만 선택해라.
+  - 상위 카테고리(group) 이름(예: "cell_based_assays", "in_vivo_models")은 절대 사용하지 마라.
+  - 반드시 들여쓰기된 하위 라벨(예: "dose_response_viability_assay") 중 하나만 선택해라.
 
 가능한 category 라벨 (트리 구조, 예시는 다음과 같음)
 - 맨 앞이 '-' 로 시작하는 줄은 상위 카테고리 이름이고,
 - 그 아래 '  -' 로 시작하는 줄이 실제로 선택해야 하는 하위 카테고리 이름이다.
 
-{CATEGORIES}
+{CATEGORIES_BLOCK}
 
 - materials: 주요 재료/시료/시약/데이터셋 등을 영어로 요약
-             (예: "HEK293T cells, doxorubicin, PDBbind v2019 dataset")
+             (예: "HEK293T cells, compound X, C57BL/6 mice")
 - equipment: 실험에 핵심적으로 사용된 장비/플랫폼/하드웨어
-             (예: "confocal microscope", "HPLC system", "GPU server with 4×A100")
+             (예: "CO2 incubator, plate reader, flow cytometer, Cryo-EM")
 
 반드시 JSON 배열(JSON array) 형태로만 답해줘.
 JSON 배열 외에 어떤 텍스트도 출력하지 마.
@@ -314,18 +176,18 @@ JSON 배열 외에 어떤 텍스트도 출력하지 마.
 
 [
   {{
-    "method": "molecular docking",
-    "condition": "Docking performed on 500 protein–ligand complexes from the PDBbind v2019 dataset",
-    "category": "protein_ligand_docking",
-    "materials": "PDBbind v2019 dataset, protein–ligand complexes",
-    "equipment": "docking software, GPU server"
+    "method": "dose-response viability assay",
+    "condition": "HEK293T cells treated with 0.01–100 µM compound X for 48 h; EC50 estimated by nonlinear regression",
+    "category": "dose_response_viability_assay",
+    "materials": "HEK293T cells, compound X, culture medium",
+    "equipment": "CO2 incubator, plate reader"
   }},
   {{
-    "method": "cell viability assay",
-    "condition": "HEK293T cells treated with a concentration gradient of candidate compounds and incubated for 48 h",
-    "category": "cell_culture_and_viability_or_proliferation_assay",
-    "materials": "HEK293T cells, candidate small-molecule compounds",
-    "equipment": "cell culture incubator, plate reader"
+    "method": "molecular docking",
+    "condition": "Docking performed on 500 protein–ligand complexes from the PDBbind v2019 dataset",
+    "category": "molecular_docking",
+    "materials": "protein–ligand structures from PDBbind v2019",
+    "equipment": "docking software, GPU server"
   }}
 ]
 
@@ -355,9 +217,24 @@ def _extract_json_array(content: str) -> str:
     end = content.rfind("]")
 
     if start != -1 and end != -1 and start < end:
-        content = content[start : end + 1]
+        content = content[start: end + 1]
 
     return content.strip()
+
+
+def split_items(s: str) -> list[str]:
+    """
+    materials / equipment 같이 여러 개가 한 문자열에 들어있을 때
+    콤마, 세미콜론, ' and ' 등을 기준으로 잘라서 리스트로 변환.
+    """
+    if not s:
+        return []
+    if not isinstance(s, str):
+        s = str(s)
+
+    # 쉼표, 세미콜론, ' and ' 로 분할
+    parts = re.split(r"[;,]| and ", s)
+    return [p.strip() for p in parts if p.strip()]
 
 
 def call_llm_for_table(text: str) -> list[dict]:
@@ -384,7 +261,6 @@ def call_llm_for_table(text: str) -> list[dict]:
         print(raw_content[:500])
         print("================================")
 
-    # 코드블록/불필요한 텍스트 제거 후 JSON 배열 문자열만 추출
     cleaned_str = _extract_json_array(raw_content)
 
     try:
@@ -408,26 +284,20 @@ def call_llm_for_table(text: str) -> list[dict]:
 
         leaf_category = (item.get("category") or "").strip()
 
-        # --- parent/leaf 안전 처리 로직 ---
-        # 1) 아무것도 없으면 other 계열로
+        # ── parent/leaf 안전 처리 ──
         if not leaf_category:
             parent_category = "other_or_not_specified"
             leaf_category = "other"
-
-        # 2) 정상적인 leaf 라벨인 경우
-        elif leaf_category in LEAF_TO_PARENT_CATEGORY:
-            parent_category = LEAF_TO_PARENT_CATEGORY[leaf_category]
-
-        # 3) leaf에는 없지만, parent 이름인 경우 (지금 문제 케이스)
+        elif leaf_category in LEAF_TO_PARENT:
+            parent_category = LEAF_TO_PARENT[leaf_category]
         elif leaf_category in CATEGORY_TREE:
+            # parent 이름이 들어온 경우 → 해당 parent의 기본 leaf로 교체
             parent_category = leaf_category
             leaf_category = PARENT_DEFAULT_LEAF.get(parent_category, "other")
-
-        # 4) 완전 모르는 값이면 other로
         else:
             parent_category = "other_or_not_specified"
             leaf_category = "other"
-        # ----------------------------------
+        # ──────────────────────────
 
         materials = (item.get("materials") or "").strip()
         equipment = (item.get("equipment") or "").strip()
@@ -450,61 +320,206 @@ def call_llm_for_table(text: str) -> list[dict]:
     return cleaned
 
 
-# -----------------------------------
+# ─────────────────────────────────────
 # 3) 메인: 논문별로 호출해서 최종 테이블 생성
-# -----------------------------------
+# ─────────────────────────────────────
+
+
+import argparse  # 파일 상단 import 구역에 추가되어 있어야 함
+
+
 def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=20,
+        help="한 번에 처리할 논문(pmid) 수 (기본값: 20)",
+    )
+    parser.add_argument(
+        "--no-resume",
+        action="store_true",
+        help="기존 output CSV를 무시하고 처음부터 다시 처리",
+    )
+    args = parser.parse_args()
+
+    batch_size = args.batch_size
+    resume = not args.no_resume
+
     sections_df = load_sections()
     exp_sections_df = filter_experiment_sections(sections_df)
     paper_texts_df = build_paper_texts(exp_sections_df)
 
-    rows: list[dict] = []
+    # ─────────────────────────────
+    # 0) 이미 처리된 pmid (resume용)
+    # ─────────────────────────────
+    processed_pmids: set[str] = set()
 
-    for _, row in paper_texts_df.iterrows():
-        pmid = row["pmid"]
-        text = row["experiment_text"]
+    mat_path = ROOT_DIR / "data" / "pmc_1000" / "ts_paper_experiments_materials.csv"
+    eq_path = ROOT_DIR / "data" / "pmc_1000" / "ts_paper_experiments_equipment.csv"
 
-        if not isinstance(text, str) or not text.strip():
-            print(f"[WARN] pmid {pmid}: experiment_text 비어 있음, 건너뜀")
-            continue
-
-        print(f"[INFO] pmid {pmid} -> LLM 호출 중...")
-
+    if resume and OUTPUT_PATH.exists():
         try:
-            exp_list = call_llm_for_table(text)
+            prev = pd.read_csv(OUTPUT_PATH, usecols=["pmid"])
+            processed_pmids = set(prev["pmid"].astype(str).unique())
+            print(f"[INFO] 기존 결과에서 이미 처리된 pmid 수: {len(processed_pmids)}")
         except Exception as e:
-            print(f"[ERROR] pmid {pmid}: LLM 호출/파싱 실패: {e}")
+            print("[WARN] 기존 OUTPUT_PATH 읽기 실패, resume 무시:", e)
+
+    # ─────────────────────────────
+    # 1) 배치 단위로 처리
+    # ─────────────────────────────
+    total_papers = len(paper_texts_df)
+    print(f"[INFO] 전체 실험 텍스트 논문 수: {total_papers}")
+    print(f"[INFO] batch_size={batch_size}, resume={resume}")
+
+    first_write_main = not (resume and OUTPUT_PATH.exists())
+    first_write_mat = not (resume and mat_path.exists())
+    first_write_eq = not (resume and eq_path.exists())
+
+    processed_count = 0
+
+    for batch_idx, batch_df in enumerate(chunk_df(paper_texts_df, batch_size), start=1):
+        # 이미 처리한 pmid는 건너뜀
+        if processed_pmids:
+            batch_df = batch_df[
+                ~batch_df["pmid"].astype(str).isin(processed_pmids)
+            ]
+
+        if batch_df.empty:
             continue
 
-        if not exp_list:
-            print(f"[INFO] pmid {pmid}: 추출된 실험 없음")
-            continue
+        print(
+            f"\n[INFO] ====== 배치 {batch_idx} 시작 (논문 수: {len(batch_df)}) ======"
+        )
 
-        for exp in exp_list:
-            rows.append(
-                {
-                    "pmid": pmid,
-                    "method": exp["method"],
-                    "condition": exp["condition"],
-                    "category_parent": exp["category_parent"],
-                    "category_leaf": exp["category_leaf"],
-                    "materials": exp["materials"],
-                    "equipment": exp["equipment"],
-                }
+        batch_rows: list[dict] = []
+        batch_material_rows: list[dict] = []
+        batch_equipment_rows: list[dict] = []
+
+        for _, row in batch_df.iterrows():
+            pmid = row["pmid"]
+            text = row["experiment_text"]
+
+            if not isinstance(text, str) or not text.strip():
+                print(f"[WARN] pmid {pmid}: experiment_text 비어 있음, 건너뜀")
+                continue
+
+            print(f"[INFO] pmid {pmid} -> LLM 호출 중.")
+
+            try:
+                exp_list = call_llm_for_table(text)
+            except Exception as e:
+                print(f"[ERROR] pmid {pmid}: LLM 호출/파싱 실패: {e}")
+                continue
+
+            if not exp_list:
+                print(f"[INFO] pmid {pmid}: 추출된 실험 없음")
+                continue
+
+            # 논문 내 실험을 1,2,3,... 순서로 index 부여
+            for exp_idx, exp in enumerate(exp_list, start=1):
+                method = exp["method"]
+                condition = exp["condition"]
+                category_parent = exp["category_parent"]
+                category_leaf = exp["category_leaf"]
+                materials_str = exp["materials"]
+                equipment_str = exp["equipment"]
+
+                experiment_id = f"{pmid}_{exp_idx}"
+
+                # 1) 메인 실험 테이블
+                batch_rows.append(
+                    {
+                        "pmid": pmid,
+                        "experiment_id": experiment_id,
+                        "experiment_index": exp_idx,
+                        "method": method,
+                        "condition": condition,
+                        "category_parent": category_parent,
+                        "category_leaf": category_leaf,
+                        "materials": materials_str,
+                        "equipment": equipment_str,
+                    }
+                )
+
+                # 2) materials 분리 테이블
+                for m in split_items(materials_str):
+                    batch_material_rows.append(
+                        {
+                            "pmid": pmid,
+                            "experiment_id": experiment_id,
+                            "experiment_index": exp_idx,
+                            "method": method,
+                            "category_parent": category_parent,
+                            "category_leaf": category_leaf,
+                            "material": m,
+                        }
+                    )
+
+                # 3) equipment 분리 테이블
+                for eq in split_items(equipment_str):
+                    batch_equipment_rows.append(
+                        {
+                            "pmid": pmid,
+                            "experiment_id": experiment_id,
+                            "experiment_index": exp_idx,
+                            "method": method,
+                            "category_parent": category_parent,
+                            "category_leaf": category_leaf,
+                            "equipment": eq,
+                        }
+                    )
+
+            processed_pmids.add(str(pmid))
+            processed_count += 1
+
+            # 과금/속도 조절용 텀 (원하면 줄이거나 없애도 됨)
+            time.sleep(0.3)
+
+        # ─────────────────────────────
+        # 2) 배치 결과를 바로 CSV에 append
+        # ─────────────────────────────
+        if batch_rows:
+            out_df = pd.DataFrame(batch_rows)
+            OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
+            out_df.to_csv(
+                OUTPUT_PATH,
+                index=False,
+                mode="w" if first_write_main else "a",
+                header=first_write_main,
             )
+            first_write_main = False
+            print(f"[INFO] 배치 {batch_idx} 메인 테이블 {len(out_df)}행 저장")
 
-        # API 과금/속도 조절용 텀
-        time.sleep(0.3)
+        if batch_material_rows:
+            mat_df = pd.DataFrame(batch_material_rows)
+            mat_df.to_csv(
+                mat_path,
+                index=False,
+                mode="w" if first_write_mat else "a",
+                header=first_write_mat,
+            )
+            first_write_mat = False
+            print(f"[INFO] 배치 {batch_idx} 재료 테이블 {len(mat_df)}행 저장")
 
-    if not rows:
-        print("[WARN] 추출된 실험 정보가 없습니다.")
-        return
+        if batch_equipment_rows:
+            eq_df = pd.DataFrame(batch_equipment_rows)
+            eq_df.to_csv(
+                eq_path,
+                index=False,
+                mode="w" if first_write_eq else "a",
+                header=first_write_eq,
+            )
+            first_write_eq = False
+            print(f"[INFO] 배치 {batch_idx} 장비 테이블 {len(eq_df)}행 저장")
 
-    out_df = pd.DataFrame(rows)
-    OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
-    out_df.to_csv(OUTPUT_PATH, index=False)
-    print(f"[INFO] 최종 실험 테이블 저장 완료: {OUTPUT_PATH}")
-    print(out_df.head())
+        print(
+            f"[INFO] ====== 배치 {batch_idx} 종료, 누적 처리 논문 수: {processed_count} ======"
+        )
+
+    print(f"\n[INFO] 전체 처리 완료. 총 처리 논문 수: {processed_count}")
+
 
 
 if __name__ == "__main__":
