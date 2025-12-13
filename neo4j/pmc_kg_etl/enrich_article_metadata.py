@@ -32,7 +32,7 @@ DESIGN_FILE = "/content/drive/MyDrive/final_project/ts_article_designs.csv"
 
 BATCH_SIZE = 20  # 한 번에 처리할 논문 수 (LLM 속도 고려하여 작게 설정 권장)
 
-client = OpenAI(api_key="")  # OPENAI_API_KEY는 환경변수에 있다고 가정
+client = OpenAI()  # OPENAI_API_KEY는 환경변수에 있다고 가정
 
 
 # ======================================================================
