@@ -21,21 +21,35 @@ class BioRAGState(TypedDict, total=False):
     user_id: str                        # 사용자 ID
 
     # -----------------------------
-    # 🔹 2. Memory (Slot Memory)
+    # 🔹 2. Guardrail (Safety Check)
+    # guardrail_input 노드에서 유해성 검사
+    # -----------------------------
+    guardrail_passed: bool                      # 가드레일 통과 여부 (True: 안전, False: 차단)
+
+    # -----------------------------
+    # 🔹 3. Memory (Slot Memory)
     # memory_read 노드에서 DB → State 로드
     # -----------------------------
-    memory_slot: Dict[str, Any]         # DB Slot 통합 구조
+    memory_slot: Dict[str, Any]         # DB Slot 통합 구조 (last_case, last_summary)
+    
+    # 꼬리질문 판단 (classifier에서 설정)
+    is_follow_up: bool                  # 이전 대화를 참조하는 꼬리질문 여부
+    reference_case_type: NotRequired[str]  # 참조하는 이전 대화의 case_type
+    
+    # 관련 대화 히스토리 (memory_read에서 설정, 최대 5개)
+    relevant_history: NotRequired[List[Dict[str, Any]]]  # 현재 질문과 관련된 과거 대화
+    history_source: NotRequired[str]    # "CURRENT_TYPE" | "FOLLOW_UP_TYPE"
 
 
     # -----------------------------
-    # 🔹 3. Keyword Extraction - 질문 + 메모리 기반으로 "검색용 토큰"을 뽑는다
+    # 🔹 4. Keyword Extraction - 질문 + 메모리 기반으로 "검색용 토큰"을 뽑는다
     # -----------------------------
     extracted_keywords: List[str]       # 키워드 - 엔티티보다 의미적이고 추상적인것. pgvextor에 적합 (query_rewrite_agent에서 한 번만 설정)
     extracted_entities: List[str]       # NER/Entity 추출 결과 - 엔티티는 고유 명사 혹은 객체 이름. neo4j에 적합 (query_rewrite_agent에서 한 번만 설정)
 
 
     # -----------------------------
-    # 🔹 4. Classifier Result (Main Routing)
+    # 🔹 5. Classifier Result (Main Routing)
     # -----------------------------
     case_type: Literal[
         "NO_RELATION",
@@ -47,12 +61,12 @@ class BioRAGState(TypedDict, total=False):
 
 
     # -----------------------------
-    # 🔹 5. Query Rewrite
+    # 🔹 6. Query Rewrite
     # -----------------------------
     rewritten_query: str                # rewrite_query 결과
 
     # -----------------------------
-    # 🔹 6. Retrieval Results
+    # 🔹 7. Retrieval Results
     # -----------------------------
     retrieval_results: Annotated[List[Dict[str, Any]], operator.add]   # VectorDB/Neo4j RAW 검색 결과
     reranked_results: Annotated[List[Dict[str, Any]], operator.add]    # rerank 이후 정렬된 문서
@@ -61,13 +75,13 @@ class BioRAGState(TypedDict, total=False):
     used_search_db: NotRequired[str]                                    # 사용된 검색 DB ("pgvector" 또는 "neo4j")
 
     # -----------------------------
-    # 🔹 7. Chunk Evaluation
+    # 🔹 8. Chunk Evaluation
     # -----------------------------
     chunk_is_relevant: bool              # evaluate_chunk 결과
     chunk_relevance_score: float         # LLM relevance score
 
     # -----------------------------
-    # 🔹 8. Web Search Fallback
+    # 🔹 9. Web Search Fallback
     # -----------------------------
     used_web_search: bool                                                       # 검색 실패 시 fallback 여부
     web_results: NotRequired[Annotated[List[Dict[str, Any]], operator.add]]    # 웹 검색 결과 (optional)
@@ -75,19 +89,9 @@ class BioRAGState(TypedDict, total=False):
 
 
     # -----------------------------
-    # 🔹 9. Answer Generation
+    # 🔹 10. Answer Generation
     # -----------------------------
     final_context: str                                  # generate_answer prompt에 들어갈 context 전체
     final_answer: str                                   # 최종 답변(평문)
     answer_sources: Annotated[List[str], operator.add] # 출처 리스트 - rag, web 모두 누적 입력
 
-    # -----------------------------
-    # 🔹 10. System Debug Log (선택)
-    # -----------------------------
-    system_log: Annotated[List[str], operator.add]
-
-    '''
-    syste`m_log는 “필수는 아니지만, 넣지 않으면 프로덕션에서 디버깅이 극단적으로 어려워짐.”
-    실제 서비스에서는 99% 시스템이 이런 형태의 state-level debug log를 둔다.
-    스위칭이 많고 fa`llback이 있는 시스템에서는 매우 강력한 기능이다
-    '''
