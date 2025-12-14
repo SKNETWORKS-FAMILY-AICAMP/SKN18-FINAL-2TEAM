@@ -6,7 +6,7 @@ BioRAGState 구조에 맞게 구현
 """
 
 from typing import Dict, Any
-from graph.nodes.call_llm import gpt4o_mini
+from graph.llm_config import evaluate_web_node_llm
 
 
 def evaluate_web_node(state: Dict[str, Any]) -> Dict[str, Any]:
@@ -80,7 +80,7 @@ def evaluate_web_node(state: Dict[str, Any]) -> Dict[str, Any]:
 
     try:
         # GPT-4o-mini를 사용하여 웹 검색 결과 정제
-        result = gpt4o_mini(prompt)
+        result = evaluate_web_node_llm(prompt)
         
         # 결과를 청크 단위로 분리
         web_selected_chunks = []

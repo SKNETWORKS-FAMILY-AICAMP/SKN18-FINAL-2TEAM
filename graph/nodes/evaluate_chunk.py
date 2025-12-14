@@ -8,7 +8,10 @@ evaluate_chunk.py
 """
 
 from typing import Dict, Any, List
-from graph.nodes.call_llm import gpt4o_mini, sllm
+from graph.llm_config import (
+    evaluate_chunk_bio_node_llm,
+    evaluate_chunk_protocol_node_llm
+)
 
 
 def _build_evaluation_prompt(question: str, context: str) -> str:
@@ -90,6 +93,7 @@ def bio_evaluate_chunk_node(state: Dict[str, Any]) -> Dict[str, Any]:
     
     Input:
         - state["question"]: 사용자 질문
+        - state["rewritten_query"]: 실제 검색에 사용된 질문 (우선 사용)
         - state["retrieval_results"]: 검색 결과
         - state["reranked_results"]: 재순위 결과 (선택적)
     
@@ -103,15 +107,18 @@ def bio_evaluate_chunk_node(state: Dict[str, Any]) -> Dict[str, Any]:
     print(f"\n{'='*60}")
     print(f"[OPEN_EVALUATE_CHUNK NODE] 시작 (GPT-4o-mini)")
     print(f"  question: {str(state.get('question', ''))[:30]}...")
+    print(f"  rewritten_query: {str(state.get('rewritten_query', ''))[:30]}...")
     print(f"  retrieval_results: {len(state.get('retrieval_results', []))}개")
     print(f"{'='*60}\n")
     
+    # 실제 검색에 사용된 질문 사용 (rewritten_query 우선, 없으면 question)
+    search_query = state.get("rewritten_query", state.get("question", "")).strip()
     question = state.get("question", "").strip()
     retrieval_results = state.get("retrieval_results", [])
     reranked_results = state.get("reranked_results", retrieval_results)
     
     # 검색 결과가 없는 경우
-    if not question or not retrieval_results:
+    if not search_query or not retrieval_results:
         state["chunk_is_relevant"] = False
         state["chunk_relevance_score"] = 0.0
         state["selected_chunks"] = []
@@ -129,13 +136,13 @@ def bio_evaluate_chunk_node(state: Dict[str, Any]) -> Dict[str, Any]:
     
     context = "\n\n".join(context_parts)
     
-    # 평가 프롬프트 생성
-    prompt = _build_evaluation_prompt(question, context)
+    # 평가 프롬프트 생성 (실제 검색에 사용된 질문 사용)
+    prompt = _build_evaluation_prompt(search_query, context)
 
     try:
         # GPT-4o-mini를 사용하여 관련성 평가
         print(f"[OpenEvaluate] GPT-4o-mini로 평가 중...")
-        result = gpt4o_mini(prompt)
+        result = evaluate_chunk_bio_node_llm(prompt)
         
         # 결과 파싱
         is_relevant, relevance_score = _parse_evaluation_result(result)
@@ -183,6 +190,7 @@ def protocol_evaluate_chunk_node(state: Dict[str, Any]) -> Dict[str, Any]:
     
     Input:
         - state["question"]: 사용자 질문
+        - state["rewritten_query"]: 실제 검색에 사용된 질문 (우선 사용)
         - state["retrieval_results"]: 검색 결과
         - state["reranked_results"]: 재순위 결과 (선택적)
     
@@ -196,15 +204,18 @@ def protocol_evaluate_chunk_node(state: Dict[str, Any]) -> Dict[str, Any]:
     print(f"\n{'='*60}")
     print(f"[SLLM_EVALUATE_CHUNK NODE] 시작 (로컬 sllm)")
     print(f"  question: {str(state.get('question', ''))[:30]}...")
+    print(f"  rewritten_query: {str(state.get('rewritten_query', ''))[:30]}...")
     print(f"  retrieval_results: {len(state.get('retrieval_results', []))}개")
     print(f"{'='*60}\n")
     
+    # 실제 검색에 사용된 질문 사용 (rewritten_query 우선, 없으면 question)
+    search_query = state.get("rewritten_query", state.get("question", "")).strip()
     question = state.get("question", "").strip()
     retrieval_results = state.get("retrieval_results", [])
     reranked_results = state.get("reranked_results", retrieval_results)
     
     # 검색 결과가 없는 경우
-    if not question or not retrieval_results:
+    if not search_query or not retrieval_results:
         state["chunk_is_relevant"] = False
         state["chunk_relevance_score"] = 0.0
         state["selected_chunks"] = []
@@ -222,13 +233,13 @@ def protocol_evaluate_chunk_node(state: Dict[str, Any]) -> Dict[str, Any]:
     
     context = "\n\n".join(context_parts)
     
-    # 평가 프롬프트 생성
-    prompt = _build_evaluation_prompt(question, context)
+    # 평가 프롬프트 생성 (실제 검색에 사용된 질문 사용)
+    prompt = _build_evaluation_prompt(search_query, context)
 
     try:
         # sllm (로컬 모델)을 사용하여 관련성 평가
         print(f"[SLLMEvaluate] 로컬 sllm으로 평가 중 (보안)...")
-        result = sllm(prompt)
+        result = evaluate_chunk_protocol_node_llm(prompt)
         
         # 결과 파싱
         is_relevant, relevance_score = _parse_evaluation_result(result)

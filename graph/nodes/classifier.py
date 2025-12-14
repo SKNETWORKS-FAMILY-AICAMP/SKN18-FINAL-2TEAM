@@ -1,5 +1,8 @@
 from typing import Dict, Any
-from graph.nodes.call_llm import gpt5_nano
+from graph.llm_config import (
+    classifier_is_bio_related_simple_check_llm,
+    classifier_classify_question_node_llm
+)
 from graph.nodes.memory import memory_read_basic_tool
 
 
@@ -26,7 +29,7 @@ def _check_needs_previous_context(q: str) -> bool:
 반드시 "YES" 또는 "NO"만 출력하세요:"""
 
     try:
-        response = gpt5_nano(prompt).strip().upper()
+        response = classifier_is_bio_related_simple_check_llm(prompt).strip().upper()
         return response == "YES"
     except Exception as e:
         print(f"[Check previous context error] {e}")
@@ -67,13 +70,17 @@ def _classify_with_llm(q: str, chat_room_id: str = None, user_id: str = "default
     # AI에게 보낼 프롬프트(Prompt)를 만듭니다
     system_prompt = (
         "다음 사용자 질문을 5가지 카테고리 중 하나로 분류하세요.\n\n"
+        "⚠️ 중요: 꼬리질문(이전 대화 참조)이어도, 원본 질문의 주제와 의도를 먼저 파악하세요.\n"
+        "예: '내가 최근에 물어봤던 논문 내용이 뭐더라?' → '논문'이 핵심이므로 BIO_Q로 분류\n\n"
+        
         "NO_RELATION\n"
         " - 단백질 등 생물학적 관련 질문이 아닌 질문\n"
         " - 예: '오늘 날씨?', '파이썬 코드 작성해줘', '점심 메뉴 추천해줘'\n\n"
 
         "BIO_Q (단백질 등 생물학적 관련 논문, 임상연구 관련 질문)\n"
         " - 논문 내용, 단백질 구조/기능, 생물학적 메커니즘, 임상연구 배경에 대한 질문\n"
-        " - 예: '단백질 폴딩 논문 정리해줘', 'CAR-T 치료 기전은?', 'PD-1 inhibitor 임상연구 결과는?'\n\n"
+        " - 키워드: '논문', '연구', '임상', '단백질 구조', '메커니즘' 등\n"
+        " - 예: '단백질 폴딩 논문 정리해줘', 'CAR-T 치료 기전은?', 'PD-1 inhibitor 임상연구 결과는?', '내가 최근에 물어봤던 논문 내용이 뭐더라?'\n\n"
 
         "SIMULATION_Q (단백질 등 생물학적 실험 경로 안내 질문)\n"
         " - 단백질 실험이나 시뮬레이션의 절차, 방법, 경로를 묻는 질문\n"
@@ -89,6 +96,11 @@ def _classify_with_llm(q: str, chat_room_id: str = None, user_id: str = "default
         
         f"{previous_context}"
         
+        "분류 기준:\n"
+        "1. 원본 질문의 핵심 키워드와 주제를 먼저 파악\n"
+        "2. 이전 대화 정보는 참고용일 뿐, 분류 결정에 과도하게 영향주지 않음\n"
+        "3. 꼬리질문이어도 원본 질문의 의도(논문, 프로토콜, 시뮬레이션 등)를 기준으로 분류\n\n"
+        
         "반드시 아래 중 하나만 출력하세요:\n"
         "NO_RELATION, BIO_Q, SIMULATION_Q, PROTOCOL_Q, INFERENCE_Q"
     )
@@ -100,7 +112,7 @@ def _classify_with_llm(q: str, chat_room_id: str = None, user_id: str = "default
         # GPT-5-nano를 사용하여 질문을 분류합니다
         # 전체 프롬프트를 하나로 합쳐서 전달합니다
         full_prompt = f"{system_prompt}\n\n{user_prompt}"
-        response = gpt5_nano(full_prompt)
+        response = classifier_classify_question_node_llm(full_prompt)
         
         # AI가 반환한 답변에서 카테고리 이름을 추출합니다
         # .strip()은 앞뒤 공백을 제거하는 함수입니다
@@ -149,12 +161,28 @@ def classify_agent_node(state: Dict[str, Any]) -> Dict[str, Any]:
     if not q:
         # 질문이 없으면 기본값으로 "NO_RELATION"을 설정합니다
         state["case_type"] = "NO_RELATION"
+        state["is_follow_up"] = False
         return state  # 결과를 반환하고 함수를 종료합니다
 
     # 질문이 있으면 AI를 사용해서 질문을 분류합니다
     # _classify_with_llm 함수를 호출하여 카테고리 이름을 받아옵니다
     chat_room_id = state.get("conversation_id")
     user_id = state.get("user_id", "default")
+    
+    # 꼬리질문 여부 판단
+    needs_previous = _check_needs_previous_context(q)
+    state["is_follow_up"] = needs_previous
+    
+    # 꼬리질문인 경우 이전 대화의 case_type 가져오기
+    if needs_previous and chat_room_id:
+        try:
+            prev_data = memory_read_basic_tool(chat_room_id, user_id)
+            if prev_data["has_previous"] and prev_data["last_case_type"]:
+                state["reference_case_type"] = prev_data["last_case_type"]
+                print(f"[Classifier] 꼬리질문 감지: 참조 케이스 타입 = {prev_data['last_case_type']}")
+        except Exception as e:
+            print(f"[Classifier] 참조 케이스 타입 가져오기 실패: {e}")
+    
     case_label = _classify_with_llm(q, chat_room_id, user_id)
     
     # 분류 결과를 state 딕셔너리에 'case_type'이라는 키로 저장합니다
@@ -171,6 +199,8 @@ def classify_agent_node(state: Dict[str, Any]) -> Dict[str, Any]:
     # 노드 종료 로그
     print(f"\n[CLASSIFIER NODE] 종료")
     print(f"  case_type: {state.get('case_type', '')}")
+    print(f"  is_follow_up: {state.get('is_follow_up', False)}")
+    print(f"  reference_case_type: {state.get('reference_case_type', 'N/A')}")
     print(f"  final_answer: {str(state.get('final_answer', ''))[:30]}...")
     print(f"{'='*60}\n")
     

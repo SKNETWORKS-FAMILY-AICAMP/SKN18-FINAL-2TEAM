@@ -382,7 +382,7 @@ def decide_search_strategy(query: str, case_type: str) -> str:
     Returns:
         "pgvector" 또는 "neo4j"
     """
-    from graph.nodes.call_llm import gpt4o_mini
+    from graph.llm_config import retrieval_decide_search_strategy_llm
     
     prompt = f"""다음 질문에 답하기 위해 어떤 검색 전략이 더 적합한지 결정하세요.
 
@@ -398,7 +398,7 @@ def decide_search_strategy(query: str, case_type: str) -> str:
 반드시 "pgvector" 또는 "neo4j" 중 하나만 출력하세요:"""
 
     try:
-        response = gpt4o_mini(prompt).strip().lower()
+        response = retrieval_decide_search_strategy_llm(prompt).strip().lower()
         
         if "neo4j" in response:
             print(f"[Search Strategy] neo4j 선택")

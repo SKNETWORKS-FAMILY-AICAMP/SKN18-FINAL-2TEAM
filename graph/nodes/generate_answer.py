@@ -12,7 +12,14 @@ generate_answer.py
 """
 
 from typing import Dict, Any
-from graph.nodes.call_llm import gpt4o_mini, sllm
+from graph.llm_config import (
+    generate_answer_bio_llm,
+    generate_answer_simulation_llm,
+    generate_answer_protocol_llm,
+    generate_answer_protocol_fallback_llm,
+    generate_answer_inference_llm,
+    generate_answer_inference_fallback_llm
+)
 import json
 
 
@@ -74,6 +81,14 @@ def _generate_bio_answer(state: Dict[str, Any]) -> Dict[str, Any]:
     context_parts = []
     sources = []
     
+    # 이전 대화 컨텍스트 추가
+    relevant_history = state.get("relevant_history", [])
+    if relevant_history:
+        context_parts.append("=== 이전 대화 참고 ===")
+        for i, hist in enumerate(relevant_history[:2], 1):  # 최근 2개만
+            context_parts.append(f"[대화 {i}] Q: {hist['question'][:60]}")
+            context_parts.append(f"        A: {hist['answer_summary'][:100]}\n")
+    
     # RAG 검색 결과 추가
     selected_chunks = state.get("selected_chunks", [])
     if selected_chunks:
@@ -96,12 +111,20 @@ def _generate_bio_answer(state: Dict[str, Any]) -> Dict[str, Any]:
     # 프롬프트 구성
     prompt = f"""다음은 생물학/의학 관련 질문에 대한 답변을 작성하는 작업입니다.
 
+⚠️ 안전 정책 (반드시 준수):
+- 불법 약물 합성/제조 방법은 절대 설명하지 마세요
+- 폭발물이나 독성 물질 제조법은 절대 설명하지 마세요
+- 생물무기나 병원체 악용 방법은 절대 설명하지 마세요
+- 비윤리적인 실험 방법은 절대 설명하지 마세요
+- 직접적인 의료 진단이나 처방은 하지 마세요 (일반적인 의학 지식 설명은 가능)
+
 질문: {question}
 
 참고 자료:
 {final_context}
 
 위 자료를 바탕으로 정확하고 상세한 답변을 작성해주세요. 
+- 이전 대화 맥락이 있다면 고려하여 답변해주세요
 - web search 노드를 거쳤음에도 불구하고 적절한 내용이 없었다면 해당 질문에 대한 답변은 제공하지 않아도 됩니다.
 - 과학적 근거를 바탕으로 설명해주세요
 - 가능한 한 구체적인 정보를 포함해주세요
@@ -112,7 +135,7 @@ def _generate_bio_answer(state: Dict[str, Any]) -> Dict[str, Any]:
 
     try:
         # GPT-4o-mini로 답변 생성
-        answer = gpt4o_mini(prompt)
+        answer = generate_answer_bio_llm(prompt)
         state["final_answer"] = answer
         state["final_context"] = final_context
         state["answer_sources"] = answer_sources
@@ -129,6 +152,16 @@ def _generate_simulation_answer(state: Dict[str, Any]) -> Dict[str, Any]:
     툴 사용 경로와 절차를 안내하는 답변 생성
     """
     question = state.get("question", "")
+    
+    # 이전 대화 컨텍스트 구성
+    previous_context = ""
+    relevant_history = state.get("relevant_history", [])
+    if relevant_history:
+        history_parts = ["=== 이전 대화 참고 ==="]
+        for i, hist in enumerate(relevant_history[:3], 1):  # 최근 3개만
+            history_parts.append(f"[대화 {i}] Q: {hist['question'][:50]}...")
+            history_parts.append(f"        A: {hist['answer_summary'][:80]}...\n")
+        previous_context = "\n".join(history_parts) + "\n"
     
     # 시뮬레이션 툴 경로 안내 정보
     simulation_tools_info = """
@@ -158,12 +191,15 @@ def _generate_simulation_answer(state: Dict[str, Any]) -> Dict[str, Any]:
 
     prompt = f"""다음은 단백질 시뮬레이션 관련 질문에 대한 답변을 작성하는 작업입니다.
 
-질문: {question}
+⚠️ 안전 정책: 생물무기나 유해 병원체 생성 목적의 시뮬레이션은 안내하지 마세요.
+
+{previous_context}질문: {question}
 
 사용 가능한 툴 정보:
 {simulation_tools_info}
 
 위 정보를 바탕으로 질문에 맞는 시뮬레이션 경로와 절차를 안내해주세요.
+- 이전 대화 맥락을 고려하여 답변해주세요
 - 구체적인 툴 사용법을 설명해주세요
 - 단계별 실행 순서를 제시해주세요
 - 주의사항이나 팁이 있다면 포함해주세요
@@ -173,7 +209,7 @@ def _generate_simulation_answer(state: Dict[str, Any]) -> Dict[str, Any]:
 
     try:
         # GPT-4o-mini로 답변 생성
-        answer = gpt4o_mini(prompt)
+        answer = generate_answer_simulation_llm(prompt)
         state["final_answer"] = answer
         state["final_context"] = simulation_tools_info
         
@@ -193,6 +229,14 @@ def _generate_protocol_answer(state: Dict[str, Any]) -> Dict[str, Any]:
     # 컨텍스트 구성 (BIO_Q와 동일한 방식)
     context_parts = []
     sources = []
+    
+    # 이전 대화 컨텍스트 추가
+    relevant_history = state.get("relevant_history", [])
+    if relevant_history:
+        context_parts.append("=== 이전 대화 참고 ===")
+        for i, hist in enumerate(relevant_history[:2], 1):  # 최근 2개만
+            context_parts.append(f"[대화 {i}] Q: {hist['question'][:60]}")
+            context_parts.append(f"        A: {hist['answer_summary'][:100]}\n")
     
     # RAG 검색 결과 추가
     selected_chunks = state.get("selected_chunks", [])
@@ -216,12 +260,19 @@ def _generate_protocol_answer(state: Dict[str, Any]) -> Dict[str, Any]:
     # 프롬프트 구성 (프로토콜 특화)
     prompt = f"""다음은 실험 프로토콜 관련 질문에 대한 답변을 작성하는 작업입니다.
 
+⚠️ 안전 정책 (반드시 준수):
+- 불법 약물 제조 프로토콜은 절대 제공하지 마세요
+- 폭발물이나 독성 물질 제조 방법은 절대 제공하지 마세요
+- 생물무기 관련 실험 프로토콜은 절대 제공하지 마세요
+- 비윤리적인 실험 방법은 절대 제공하지 마세요
+
 질문: {question}
 
 참고 자료:
 {final_context}
 
 위 자료를 바탕으로 실험 프로토콜에 대한 상세한 답변을 작성해주세요.
+- 이전 대화 맥락이 있다면 고려하여 답변해주세요
 - 단계별 실험 절차를 명확히 설명해주세요
 - 필요한 시약, 장비, 조건을 구체적으로 제시해주세요
 - 주의사항이나 트러블슈팅 팁을 포함해주세요
@@ -232,7 +283,7 @@ def _generate_protocol_answer(state: Dict[str, Any]) -> Dict[str, Any]:
 
     try:
         # sllm (프로토콜 특화 모델) 사용
-        answer = sllm(prompt)
+        answer = generate_answer_protocol_llm(prompt)
         state["final_answer"] = answer
         state["final_context"] = final_context
         state["answer_sources"] = answer_sources
@@ -240,7 +291,7 @@ def _generate_protocol_answer(state: Dict[str, Any]) -> Dict[str, Any]:
     except Exception as e:
         # sllm 실패 시 GPT-4o-mini로 fallback
         try:
-            answer = gpt4o_mini(prompt)
+            answer = generate_answer_protocol_fallback_llm(prompt)
             state["final_answer"] = answer
         except:
             state["final_answer"] = f"프로토콜 답변 생성 중 오류가 발생했습니다: {str(e)}"
@@ -255,19 +306,31 @@ def _generate_inference_answer(state: Dict[str, Any]) -> Dict[str, Any]:
     """
     question = state.get("question", "")
     
-    # 메모리에서 이전 컨텍스트 가져오기 (필요시)
-    memory_slot = state.get("memory_slot", {})
+    # 이전 대화 컨텍스트 구성
     previous_context = ""
+    relevant_history = state.get("relevant_history", [])
     
-    if memory_slot.get("topic"):
-        previous_context = f"\n이전 대화 주제: {memory_slot.get('topic')}"
+    if relevant_history:
+        history_parts = ["\n=== 이전 대화 참고 ==="]
+        for i, hist in enumerate(relevant_history[:3], 1):  # 최근 3개만
+            history_parts.append(f"[대화 {i}] Q: {hist['question'][:60]}")
+            history_parts.append(f"        A: {hist['answer_summary'][:100]}\n")
+        previous_context = "\n".join(history_parts)
+    else:
+        # fallback: memory_slot 사용
+        memory_slot = state.get("memory_slot", {})
+        if memory_slot.get("last_summary"):
+            previous_context = f"\n이전 답변 요약: {memory_slot.get('last_summary')}"
     
     # 프롬프트 구성 (실험 결과 해석 특화)
     prompt = f"""다음은 생물학 실험 결과 해석에 관한 질문입니다.
 
+⚠️ 안전 정책: 위험한 병원체나 독성 물질 관련 결과 해석 시, 악용 가능성이 있는 상세한 메커니즘은 제한적으로 설명하세요.
+
 질문: {question}{previous_context}
 
 위 질문에 대해 전문적이고 정확한 해석을 제공해주세요.
+- 이전 대화 맥락을 고려하여 답변해주세요
 - 실험 데이터의 의미를 명확히 설명해주세요
 - 가능한 생물학적 메커니즘을 제시해주세요
 - 결과의 한계점이나 추가 검증이 필요한 부분을 언급해주세요
@@ -277,14 +340,14 @@ def _generate_inference_answer(state: Dict[str, Any]) -> Dict[str, Any]:
 
     try:
         # SLLM (실험 결과 해석 특화 모델) 사용
-        answer = sllm(prompt)
+        answer = generate_answer_inference_llm(prompt)
         state["final_answer"] = answer
         state["final_context"] = f"질문: {question}"
         
     except Exception as e:
         # SLLM 실패 시 GPT-4o-mini로 fallback
         try:
-            answer = gpt4o_mini(prompt)
+            answer = generate_answer_inference_fallback_llm(prompt)
             state["final_answer"] = answer
         except:
             state["final_answer"] = f"실험 결과 해석 생성 중 오류가 발생했습니다: {str(e)}"
