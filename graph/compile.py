@@ -8,6 +8,7 @@ from langgraph.graph import END, StateGraph
 
 # 노드 함수 import
 from graph.state import BioRAGState
+from graph.nodes.guardrail import guardrail_input_node
 from graph.nodes.memory import memory_read_node, memory_write_node
 from graph.nodes.classifier import classify_agent_node
 from graph.nodes.rewrite_query import query_rewrite_agent_node
@@ -22,6 +23,13 @@ from graph.nodes.generate_answer import generate_answer_node
 # ============================================
 # 🔹  Routing Logic (Main Flow)
 # ============================================
+
+def route_guardrail(state: BioRAGState):
+    """가드레일 통과 여부에 따른 라우팅"""
+    if not state.get("guardrail_passed", True):
+        return "blocked"
+    return "continue"
+
 
 def route_case(state: BioRAGState):
     return state["case_type"]
@@ -41,13 +49,26 @@ def route_retrieval_or_web(state: BioRAGState):
 def create_workflow(): 
     graph = StateGraph(BioRAGState)
 
+    # 0단계: 입력 가드레일 (안전성 검사)
+    graph.add_node("guardrail_input", guardrail_input_node)
+    
     # 1단계: 공통 전처리
     graph.add_node("classify_agent", classify_agent_node)
     graph.add_node("memory_read", memory_read_node)
     graph.add_node("query_rewrite_agent", query_rewrite_agent_node)
 
-    # 시작점 설정
-    graph.set_entry_point("classify_agent")
+    # 시작점 설정: 가드레일부터 시작
+    graph.set_entry_point("guardrail_input")
+    
+    # 가드레일 통과 여부에 따른 분기
+    graph.add_conditional_edges(
+        "guardrail_input",
+        route_guardrail,
+        {
+            "blocked": END,      # 차단된 경우 즉시 종료
+            "continue": "classify_agent"  # 통과한 경우 분류로 진행
+        }
+    )
 
     # classify에서 조건부 분기 추가
     graph.add_conditional_edges(
