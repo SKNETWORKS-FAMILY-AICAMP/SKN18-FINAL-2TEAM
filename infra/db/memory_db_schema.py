@@ -1,8 +1,10 @@
 '''
 메모리 데이터베이스 스키마
 - chat_room_id: 채팅창 ID (conversation_id와 동일)
-- 케이스 타입별 컬럼으로 대화 관리
-- 각 타입별 최근 대화를 효율적으로 조회
+- case_type: 데이터 타입 구분 (SIMULATION_Q, INFERENCE_Q, BIO_Q, PROTOCOL_Q)
+- full_response: 원본 답변 저장
+- summarize_response: 요약 답변 저장
+- 단순화된 3컬럼 구조로 효율적인 조회 및 관리
 '''
 
 from sqlalchemy import (
@@ -19,7 +21,7 @@ class ConversationMemory(Base):
     """
     각 질문-답변을 개별 row로 저장하는 테이블.
     chat_room_id는 채팅방을 구분하고, 각 질문마다 새 row 생성.
-    케이스 타입별 컬럼에 answer_summary만 저장.
+    case_type으로 데이터 타입 구분, full_response와 summarize_response에 답변 저장.
     """
 
     __tablename__ = "conversation_memory"
@@ -40,39 +42,14 @@ class ConversationMemory(Base):
     topic = Column(String)                   # 1줄 주제 요약
     entities = Column(JSONB, default=list)   # 추출된 엔티티들
     latest_keywords = Column(JSONB, default=list)  # 최근 키워드들
-    context_window = Column(Integer, default=0)  # 전체 대화 수
+    referenced_memory_count = Column(Integer, default=0)  # 답변 생성 시 참고한 이전 대화 개수
 
     # ---------------------------
-    # 케이스 타입별 답변 (JSONB 형태로 요약 + 원본 함께 저장)
+    # 답변 정보 (단순화된 구조)
     # ---------------------------
-    # 각 컬럼에 {"full_response": "원본", "summarize_response": "요약"} 형태로 저장
-    simulation_q = Column(JSONB, nullable=True)   # SIMULATION_Q 답변 (JSON)
-    inference_q = Column(JSONB, nullable=True)    # INFERENCE_Q 답변 (JSON)
-    bio_q = Column(JSONB, nullable=True)          # BIO_Q 답변 (JSON)
-    protocal_q = Column(JSONB, nullable=True)     # PROTOCOL_Q 답변 (JSON)
-
-    # 확장 필드
-    extra = Column(JSONB, default=dict)
-
-    def to_dict(self):
-        """ORM 객체를 딕셔너리로 변환"""
-        return {
-            "chat_id": self.chat_id,
-            "chat_room_id": self.chat_room_id,
-            "user_id": self.user_id,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
-            "original_question": self.original_question,
-            "topic": self.topic,
-            "latest_keywords": self.latest_keywords or [],
-            "entities": self.entities or [],
-            "context_window": self.context_window,
-            "simulation_q": self.simulation_q or {},
-            "inference_q": self.inference_q or {},
-            "bio_q": self.bio_q or {},
-            "protocal_q": self.protocal_q or {},
-            "extra": self.extra or {}
-        }
+    case_type = Column(String, nullable=False, index=True)  # 데이터 타입: SIMULATION_Q, INFERENCE_Q, BIO_Q, PROTOCOL_Q
+    full_response = Column(Text, nullable=True)             # 원본 답변 전체
+    summarize_response = Column(Text, nullable=True)        # 요약된 답변
 
     def __repr__(self):
         return f"<ConversationMemory(chat_id={self.chat_id}, chat_room_id={self.chat_room_id}, user_id={self.user_id})>"

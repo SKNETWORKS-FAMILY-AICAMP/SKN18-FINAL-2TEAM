@@ -61,7 +61,9 @@ def init_db():
     """
     print("▶️ Creating PostgreSQL tables...")
     print("   - conversation_memory (각 질문마다 새 row)")
-    print("   - 각 케이스 컬럼: JSONB 형태로 full_response + summarize_response 저장")
+    print("   - case_type: 데이터 타입 컬럼 (SIMULATION_Q, INFERENCE_Q, BIO_Q, PROTOCOL_Q)")
+    print("   - full_response: 원본 답변 컬럼")
+    print("   - summarize_response: 요약 답변 컬럼")
     
     Base.metadata.create_all(bind=engine)
     print("✅ Tables created successfully!")
