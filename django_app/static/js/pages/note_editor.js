@@ -1,11 +1,15 @@
+/* django_app/static/js/pages/note_editor.js */
 // Note Editor Page JavaScript
 
 // State variables
 let editingNoteId = null;
 let isEditMode = false;
-let noteTitle = "";
-let noteContent = "";
-let noteTags = "";
+let isSaving = false;
+let isLoading = false;
+
+let noteTitle = '';
+let noteContent = '';
+let noteTags = '';
 let isBookmarkSidebarOpen = false;
 let openBookmarkCategories = {};
 let attachedFiles = [];
@@ -25,7 +29,7 @@ let noteTitleInput, noteTagsInput;
 let btnFileAttach, btnGraphAttach, attachedFilesList;
 let bookmarkSidebar, bookmarkContent;
 
-// Bookmarks data
+// Bookmarks data (sample)
 const bookmarks = [
     {
         category: '실험 프로토콜',
@@ -85,10 +89,9 @@ function initNoteEditor() {
     if (btnFileAttach) btnFileAttach.addEventListener('click', handleFileAttach);
     if (btnGraphAttach) btnGraphAttach.addEventListener('click', handleGraphAttach);
 
-    // Check if editing existing note (에디터 초기화 전에 설정)
+    // Check if editing existing note (before editor init)
     const urlParams = new URLSearchParams(window.location.search);
     editingNoteId = urlParams.get('id');
-    
     if (editingNoteId) {
         isEditMode = true;
         if (editorTitle) editorTitle.textContent = '노트 수정';
@@ -112,7 +115,7 @@ function initTagify() {
         return;
     }
 
-    // 기존 인스턴스가 있으면 파괴 (중복 초기화 방지)
+    // Destroy existing instance to prevent duplicates
     if (tagifyInstance) {
         tagifyInstance.destroy();
         tagifyInstance = null;
@@ -121,25 +124,19 @@ function initTagify() {
     tagifyInstance = new window.Tagify(noteTagsInput, {
         maxTags: 5,
         placeholder: '태그 추가 (최대 5개)',
-        delimiters: ',| ',  // 쉼표 또는 스페이스로 구분
+        delimiters: ',| ',
         trim: true,
         dropdown: {
-            enabled: 0,  // 자동완성 비활성화 (추후 활성화 가능)
+            enabled: 0,
             maxItems: 10,
             closeOnSelect: true,
             highlightFirst: true
         },
         callbacks: {
-            add: (e) => {
-                console.log('[NoteEditor] Tag added:', e.detail.data.value);
-            },
-            remove: (e) => {
-                console.log('[NoteEditor] Tag removed:', e.detail.data.value);
-            },
-            invalid: (e) => {
-                if (window.notyf) {
-                    window.notyf.error('태그는 최대 5개까지 추가할 수 있습니다.');
-                }
+            add: (e) => console.log('[NoteEditor] Tag added:', e.detail.data.value),
+            remove: (e) => console.log('[NoteEditor] Tag removed:', e.detail.data.value),
+            invalid: () => {
+                if (window.notyf) window.notyf.error('태그는 최대 5개까지 추가할 수 있습니다.');
             }
         }
     });
@@ -155,17 +152,12 @@ function initCKEditor() {
         return;
     }
 
-    // Check if CKEditor is available from bundle (window.CKEditor)
     if (!window.CKEditor) {
         console.error('[NoteEditor] window.CKEditor not available');
         editorElement.innerHTML = '<p style="color: #ef4444; padding: 1rem;">에디터를 로드할 수 없습니다. 페이지를 새로고침해주세요.</p>';
         return;
     }
 
-    console.log('[NoteEditor] Initializing CKEditor5 with bundled version...');
-    console.log('[NoteEditor] Available CKEditor exports:', Object.keys(window.CKEditor));
-
-    // CKEditor5 모듈에서 필요한 클래스 가져오기
     const {
         ClassicEditor,
         Essentials,
@@ -195,79 +187,34 @@ function initCKEditor() {
         MediaEmbed
     } = window.CKEditor;
 
-    // ClassicEditor가 있는지 확인
     if (!ClassicEditor) {
         console.error('[NoteEditor] ClassicEditor not found in window.CKEditor');
         editorElement.innerHTML = '<p style="color: #ef4444; padding: 1rem;">에디터 클래스를 찾을 수 없습니다.</p>';
         return;
     }
 
-    // 사용 가능한 플러그인만 필터링
     const availablePlugins = [
-        Essentials,
-        Bold,
-        Italic,
-        Underline,
-        Strikethrough,
-        Paragraph,
-        Heading,
-        Link,
-        List,
-        BlockQuote,
-        Table,
-        TableToolbar,
-        Alignment,
-        Indent,
-        Image,
-        ImageToolbar,
-        ImageCaption,
-        ImageStyle,
-        ImageUpload,
-        Base64UploadAdapter,
-        CodeBlock,
-        HorizontalLine,
-        Highlight,
-        Font,
-        MediaEmbed
-    ].filter(plugin => plugin !== undefined);
-
-    console.log('[NoteEditor] Using plugins:', availablePlugins.length);
+        Essentials, Bold, Italic, Underline, Strikethrough,
+        Paragraph, Heading, Link, List, BlockQuote,
+        Table, TableToolbar, Alignment, Indent,
+        Image, ImageToolbar, ImageCaption, ImageStyle, ImageUpload,
+        Base64UploadAdapter, CodeBlock, HorizontalLine, Highlight, Font, MediaEmbed
+    ].filter(Boolean);
 
     ClassicEditor.create(editorElement, {
-        licenseKey: 'GPL', // GPL 오픈소스 라이선스 사용
+        licenseKey: 'GPL',
         plugins: availablePlugins,
         toolbar: {
             items: [
-                'heading',
-                '|',
-                'bold',
-                'italic',
-                'underline',
-                'strikethrough',
-                '|',
-                'fontSize',
-                'fontColor',
-                '|',
-                'alignment',
-                '|',
-                'bulletedList',
-                'numberedList',
-                'outdent',
-                'indent',
-                '|',
-                'blockQuote',
-                'insertTable',
-                'codeBlock',
-                'horizontalLine',
-                '|',
-                'link',
-                'uploadImage',
-                'mediaEmbed',
-                '|',
-                'highlight',
-                '|',
-                'undo',
-                'redo'
+                'heading', '|',
+                'bold', 'italic', 'underline', 'strikethrough', '|',
+                'fontSize', 'fontColor', '|',
+                'alignment', '|',
+                'bulletedList', 'numberedList', 'outdent', 'indent', '|',
+                'blockQuote', 'insertTable', 'codeBlock', 'horizontalLine', '|',
+                'link', 'uploadImage', 'mediaEmbed', '|',
+                'highlight', '|',
+                'undo', 'redo'
             ],
             shouldNotGroupWhenFull: true
         },
@@ -279,60 +226,57 @@ function initCKEditor() {
                 { model: 'heading3', view: 'h3', title: '제목 3', class: 'ck-heading_heading3' }
             ]
         },
-        table: {
-            contentToolbar: ['tableColumn', 'tableRow', 'mergeTableCells']
-        },
-        image: {
-            toolbar: [
-                'imageTextAlternative',
-                'toggleImageCaption',
-                'imageStyle:inline',
-                'imageStyle:block',
-                'imageStyle:side'
-            ]
-        },
+        table: { contentToolbar: ['tableColumn', 'tableRow', 'mergeTableCells'] },
+        image: { toolbar: ['imageTextAlternative', 'toggleImageCaption', 'imageStyle:inline', 'imageStyle:block', 'imageStyle:side'] },
         placeholder: '연구 내용을 작성하세요... 실험 방법, 결과, 분석 내용 등을 자유롭게 기록할 수 있습니다.',
         language: 'ko'
     })
-    .then(editor => {
-        editorInstance = editor;
-        console.log('[NoteEditor] CKEditor5 initialized successfully');
-        
-        // 편집 모드인 경우 데이터 로드
-        if (editingNoteId) {
-            loadNoteForEdit(editingNoteId);
-        }
-    })
-    .catch(error => {
-        console.error('[NoteEditor] CKEditor5 initialization failed:', error);
-        editorElement.innerHTML = `<p style="color: #ef4444; padding: 1rem;">에디터 초기화 실패: ${error.message}</p>`;
-    });
+        .then(editor => {
+            editorInstance = editor;
+            console.log('[NoteEditor] CKEditor5 initialized successfully');
+
+            // Load data in edit mode
+            if (editingNoteId) {
+                loadNoteForEdit(editingNoteId);
+            }
+        })
+        .catch(error => {
+            console.error('[NoteEditor] CKEditor5 initialization failed:', error);
+            editorElement.innerHTML = `<p style="color: #ef4444; padding: 1rem;">에디터 초기화 실패: ${error.message}</p>`;
+        });
 }
 
-// Load note for editing
-function loadNoteForEdit(noteId) {
-    // TODO: API 호출로 노트 데이터 가져오기
-    // 현재는 mock 데이터 사용
-    const mockNote = {
-        id: noteId,
-        title: 'CRISPR-Cas9 유전자 가위 기술',
-        content: '<h2>유전자 편집 실험 결과</h2><p>CRISPR-Cas9 시스템을 이용한 유전자 편집 실험을 진행하였습니다.</p><h3>실험 방법</h3><ul><li>가이드 RNA 설계</li><li>Cas9 단백질 발현</li><li>표적 유전자 편집</li></ul><h3>결과</h3><p>목표 유전자에서 <strong>95%의 편집 효율</strong>을 달성하였습니다.</p>',
-        tags: ['CRISPR', '유전자편집']
-    };
+// Load note for editing (real API)
+async function loadNoteForEdit(noteId) {
+    if (isLoading) return;
+    isLoading = true;
+    try {
+        const resp = await fetch(`/notes/api/detail/?id=${noteId}`);
+        if (!resp.ok) throw new Error(`Failed to load note: ${resp.status}`);
+        const note = await resp.json();
 
-    if (noteTitleInput) noteTitleInput.value = mockNote.title;
-    
-    // Tagify에 태그 설정
-    if (tagifyInstance) {
-        tagifyInstance.removeAllTags();
-        tagifyInstance.addTags(mockNote.tags);
-    } else if (noteTagsInput) {
-        noteTagsInput.value = mockNote.tags.join(', ');
-    }
-    
-    // CKEditor에 컨텐츠 설정
-    if (editorInstance) {
-        editorInstance.setData(mockNote.content);
+        // title
+        if (noteTitleInput) noteTitleInput.value = note.title || '';
+
+        // tags
+        const tagList = Array.isArray(note.tags) ? note.tags : [];
+        if (tagifyInstance) {
+            tagifyInstance.removeAllTags();
+            tagifyInstance.addTags(tagList);
+        } else if (noteTagsInput) {
+            noteTagsInput.value = tagList.join(', ');
+        }
+
+        // content
+        if (editorInstance) {
+            editorInstance.setData(note.content || '');
+        }
+
+    } catch (err) {
+        console.error('[NoteEditor] loadNoteForEdit error:', err);
+        if (window.notyf) window.notyf.error('노트 불러오기에 실패했습니다.');
+    } finally {
+        isLoading = false;
     }
 }
 
@@ -340,13 +284,13 @@ function loadNoteForEdit(noteId) {
 function handleCancelNote() {
     const editorContent = editorInstance ? editorInstance.getData().trim() : '';
     const hasTags = tagifyInstance ? tagifyInstance.value.length > 0 : (noteTagsInput && noteTagsInput.value.trim());
-    const hasContent = (noteTitleInput && noteTitleInput.value.trim()) ||
-                       editorContent ||
-                       hasTags ||
-                       attachedFiles.length > 0;
+    const hasContent =
+        (noteTitleInput && noteTitleInput.value.trim()) ||
+        editorContent ||
+        hasTags ||
+        attachedFiles.length > 0;
 
     if (hasContent) {
-        // Use SweetAlert2 for confirmation
         if (window.Swal) {
             window.Swal.fire({
                 title: '취소하시겠습니까?',
@@ -364,81 +308,82 @@ function handleCancelNote() {
                 }
             });
         } else {
-            // Fallback to confirm if SweetAlert2 is not available
             if (confirm('작성 중인 내용이 저장되지 않습니다. 정말 취소하시겠습니까?')) {
                 window.location.href = '/notes/';
             }
         }
     } else {
-        // No content, just navigate
         window.location.href = '/notes/';
     }
 }
 
-// Handle save note
+// Handle save note (create or update)
 async function handleSaveNote() {
-    const title = noteTitleInput?.value.trim() || "";
-    const content = editorInstance ? editorInstance.getData().trim() : "";
-    
-    // Tagify에서 태그 값 가져오기
+    if (isSaving) return;
+    const title = noteTitleInput?.value.trim() || '';
+    const content = editorInstance ? editorInstance.getData().trim() : '';
+
+    // tags
     let tags = [];
     if (tagifyInstance) {
         tags = tagifyInstance.value.map(tag => tag.value);
     } else {
-        const tagsStr = noteTagsInput?.value.trim() || "";
+        const tagsStr = noteTagsInput?.value.trim() || '';
         tags = tagsStr.split(',').map(t => t.trim()).filter(t => t.length > 0).slice(0, 5);
     }
 
     if (!title) {
-        if (window.notyf) {
-            window.notyf.error('제목을 입력해주세요.');
-        } else {
-            alert('제목을 입력해주세요.');
-        }
+        if (window.notyf) window.notyf.error('제목을 입력해주세요.');
+        else alert('제목을 입력해주세요.');
         if (noteTitleInput) noteTitleInput.focus();
         return;
     }
 
-    // API 호출로 저장
     const noteData = {
         title: title,
         content: content,
         tags: tags,
         attachedFiles: attachedFiles
     };
-    
+
+    const isUpdate = isEditMode && editingNoteId;
+    const url = isUpdate ? '/notes/api/update/' : '/notes/api/create/';
+    const method = isUpdate ? 'POST' : 'POST'; // 백엔드가 PUT/PATCH이면 변경
+    if (isUpdate) noteData.id = editingNoteId;
+
     try {
-        const response = await fetch('/notes/api/create/', {
-            method: 'POST',
+        isSaving = true;
+        const response = await fetch(url, {
+            method,
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
             },
             body: JSON.stringify(noteData)
         });
-        
-        if (response.ok) {
-            const result = await response.json();
-            console.log('Note saved:', result);
-            
-            if (window.notyf) {
-                window.notyf.success(isEditMode ? '노트가 수정되었습니다.' : '노트가 저장되었습니다.');
-            }
-            
-            // Redirect to notes list
-            setTimeout(() => {
-                window.location.href = '/notes/?refresh=true';
-            }, 1000);
-        } else {
-            throw new Error('Failed to save note');
+
+        if (!response.ok) throw new Error('Failed to save note');
+
+        const result = await response.json();
+        console.log('Note saved:', result);
+
+        if (window.notyf) {
+            window.notyf.success(isUpdate ? '노트가 수정되었습니다.' : '노트가 저장되었습니다.');
         }
+
+        setTimeout(() => {
+            if (isUpdate) {
+                window.location.href = `/notes/detail/?id=${editingNoteId}`;
+            } else {
+                window.location.href = '/notes/?refresh=true';
+            }
+        }, 600);
     } catch (error) {
         console.error('Error saving note:', error);
-        if (window.notyf) {
-            window.notyf.error('노트 저장에 실패했습니다.');
-        } else {
-            alert('노트 저장에 실패했습니다.');
-        }
+        if (window.notyf) window.notyf.error('노트 저장에 실패했습니다.');
+        else alert('노트 저장에 실패했습니다.');
+    } finally {
+        isSaving = false;
     }
 }
 
@@ -461,21 +406,15 @@ function handleShareNote() {
 // Handle toggle bookmark sidebar
 function handleToggleBookmark() {
     isBookmarkSidebarOpen = !isBookmarkSidebarOpen;
-    
+
     if (bookmarkSidebar) {
-        if (isBookmarkSidebarOpen) {
-            bookmarkSidebar.classList.remove('hidden');
-        } else {
-            bookmarkSidebar.classList.add('hidden');
-        }
+        if (isBookmarkSidebarOpen) bookmarkSidebar.classList.remove('hidden');
+        else bookmarkSidebar.classList.add('hidden');
     }
-    
+
     if (btnBookmarkToggle) {
-        if (isBookmarkSidebarOpen) {
-            btnBookmarkToggle.classList.add('active');
-        } else {
-            btnBookmarkToggle.classList.remove('active');
-        }
+        if (isBookmarkSidebarOpen) btnBookmarkToggle.classList.add('active');
+        else btnBookmarkToggle.classList.remove('active');
     }
 }
 
@@ -503,13 +442,10 @@ function handleFileAttach() {
 function handleGraphAttach() {
     if (window.GraphCreateModal && typeof window.GraphCreateModal.open === 'function') {
         window.GraphCreateModal.open((chartData) => {
-            // Insert chart into CKEditor
             insertChartToEditor(chartData);
         });
     } else {
-        if (window.notyf) {
-            window.notyf.error('그래프 생성 모달을 로드할 수 없습니다.');
-        }
+        if (window.notyf) window.notyf.error('그래프 생성 모달을 로드할 수 없습니다.');
         console.error('[NoteEditor] GraphCreateModal not available');
     }
 }
@@ -517,13 +453,10 @@ function handleGraphAttach() {
 // Insert chart to CKEditor
 function insertChartToEditor(chartData) {
     if (!editorInstance) {
-        if (window.notyf) {
-            window.notyf.error('에디터가 초기화되지 않았습니다.');
-        }
+        if (window.notyf) window.notyf.error('에디터가 초기화되지 않았습니다.');
         return;
     }
 
-    // Create HTML for the chart
     const chartHtml = `
         <figure class="chart-figure">
             <img src="${chartData.imageDataUrl}" alt="${escapeHtml(chartData.title)}" style="max-width: 100%; height: auto;" />
@@ -531,11 +464,8 @@ function insertChartToEditor(chartData) {
         </figure>
     `;
 
-    // Get current content and append chart
     const currentContent = editorInstance.getData();
     editorInstance.setData(currentContent + chartHtml);
-    
-    // Focus editor
     editorInstance.focus();
 }
 
@@ -548,14 +478,9 @@ function handleFileRemove(fileId) {
 // Render attached files
 function renderAttachedFiles() {
     const attachedCount = document.getElementById('attachedCount');
-    
-    // Update attached count display
+
     if (attachedCount) {
-        if (attachedFiles.length > 0) {
-            attachedCount.textContent = `${attachedFiles.length}개 첨부됨`;
-        } else {
-            attachedCount.textContent = '';
-        }
+        attachedCount.textContent = attachedFiles.length > 0 ? `${attachedFiles.length}개 첨부됨` : '';
     }
 
     if (!attachedFilesList) return;
@@ -585,8 +510,6 @@ function formatFileSize(bytes) {
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + 'KB';
     return (bytes / (1024 * 1024)).toFixed(1) + 'MB';
 }
-
-// CKEditor5 handles toolbar internally - no custom toolbar needed
 
 // Render bookmarks
 function renderBookmarks() {
@@ -635,27 +558,16 @@ function toggleBookmarkCategory(index) {
 // Add bookmark to note
 function addBookmarkToNote(title, url) {
     if (!editorInstance) {
-        if (window.notyf) {
-            window.notyf.error('에디터가 초기화되지 않았습니다.');
-        }
+        if (window.notyf) window.notyf.error('에디터가 초기화되지 않았습니다.');
         return;
     }
 
-    // 현재 에디터 내용 가져오기
     const currentContent = editorInstance.getData();
-    
-    // 참고 자료 HTML 추가
     const referenceHtml = `<p><strong>📌 참고 자료:</strong> <a href="${url}" target="_blank" rel="noopener noreferrer">${escapeHtml(title)}</a></p>`;
-    
-    // 에디터에 새 내용 설정
     editorInstance.setData(currentContent + referenceHtml);
-    
-    // 에디터에 포커스
     editorInstance.focus();
-    
-    if (window.notyf) {
-        window.notyf.success('북마크가 노트에 추가되었습니다.');
-    }
+
+    if (window.notyf) window.notyf.success('북마크가 노트에 추가되었습니다.');
 }
 
 // Escape HTML
