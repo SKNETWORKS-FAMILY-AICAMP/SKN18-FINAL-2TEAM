@@ -20,7 +20,7 @@ load_dotenv()
 
 # OpenAI / Gemini 공식 클라이언트
 from openai import OpenAI
-import google.generativeai as genai
+# import google.generativeai as genai
 
 
 # -----------------------------------------
@@ -29,7 +29,7 @@ import google.generativeai as genai
 load_dotenv()
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+# GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 if not OPENAI_API_KEY:
     raise ValueError("❌ OPENAI_API_KEY not found in .env")
@@ -109,20 +109,20 @@ def sllm(prompt: str):
 # -----------------------------------------
 # 6) Local LLM (프로토콜 제시 모델)
 # -----------------------------------------
-def local_llm(prompt: str):
-    """
-    vLLM 등 로컬 모델 호출
-    — REST API 라고 가정.
-    """
-    import requests
-    url = "http://localhost:8000/generate"
-    data = {"prompt": prompt}
+# def local_llm(prompt: str):
+#     """
+#     vLLM 등 로컬 모델 호출
+#     — REST API 라고 가정.
+#     """
+#     import requests
+#     url = "http://localhost:8000/generate"
+#     data = {"prompt": prompt}
 
-    try:
-        resp = requests.post(url, json=data)
-        return resp.json().get("text")
-    except Exception as e:
-        return f"[LOCAL LLM ERROR] {e}"
+#     try:
+#         resp = requests.post(url, json=data)
+#         return resp.json().get("text")
+#     except Exception as e:
+#         return f"[LOCAL LLM ERROR] {e}"
 
 
 
