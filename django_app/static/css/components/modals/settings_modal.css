@@ -1,0 +1,248 @@
+/* Settings Modal Styles */
+
+/* Modal overlay - matching React: backgroundColor: 'rgba(0, 0, 0, 0.7)' */
+#settingsModal.modal-overlay {
+    background: rgba(0, 0, 0, 0.7) !important; /* backgroundColor: 'rgba(0, 0, 0, 0.7)' */
+    z-index: 50; /* z-50 */
+}
+
+/* Modal size - matching React: max-w-2xl (672px) */
+#settingsModal .modal-container.modal-medium {
+    max-width: 672px; /* max-w-2xl */
+    width: 100%;
+    margin: 0 1rem; /* mx-4 */
+    border-radius: 0.5rem; /* rounded-lg */
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); /* shadow-xl */
+    background: white; /* bg-white */
+}
+
+/* Modal header - matching React */
+#settingsModal .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.5rem; /* p-6 */
+    border-bottom: 1px solid #e5e7eb; /* border-b border-gray-200 */
+}
+
+#settingsModal .modal-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #111827;
+    margin: 0;
+}
+
+#settingsModal .modal-close-btn {
+    padding: 0.25rem; /* p-1 */
+    border: none;
+    background: transparent;
+    color: #374151;
+    cursor: pointer;
+    border-radius: 0.25rem; /* rounded */
+    transition: background-color 0.2s;
+}
+
+#settingsModal .modal-close-btn:hover {
+    background: #f3f4f6; /* hover:bg-gray-100 */
+}
+
+#settingsModal .modal-close-btn i {
+    width: 1.5rem; /* w-6 h-6 */
+    height: 1.5rem;
+    font-size: 1.5rem;
+}
+
+/* Modal body - matching React */
+#settingsModal .modal-body {
+    padding: 1.5rem; /* p-6 */
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem; /* space-y-6 */
+}
+
+/* Settings section - matching React: space-y-4 */
+.settings-section {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem; /* space-y-4 */
+}
+
+.settings-section-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #111827;
+    margin: 0;
+}
+
+.settings-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0;
+}
+
+.settings-item-select {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0;
+}
+
+.settings-item-content {
+    flex: 1;
+    margin-right: 1rem;
+}
+
+.settings-label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #111827;
+    margin: 0;
+    padding: 0;
+}
+
+.settings-description {
+    font-size: 0.875rem; /* text-sm */
+    color: #6b7280; /* text-gray-500 */
+    margin: 0;
+    line-height: 1.5;
+}
+
+/* Toggle switch - matching React: w-11 h-6 bg-gray-200 peer-checked:bg-blue-600 */
+.toggle-switch-wrapper {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+}
+
+.toggle-switch-input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-switch {
+    position: relative;
+    width: 2.75rem; /* w-11 */
+    height: 1.5rem; /* h-6 */
+    background-color: #e5e7eb; /* bg-gray-200 */
+    border-radius: 9999px; /* rounded-full */
+    transition: background-color 0.2s;
+}
+
+.toggle-switch:before {
+    position: absolute;
+    content: "";
+    height: 1.25rem; /* h-5 */
+    width: 1.25rem; /* w-5 */
+    left: 0.125rem; /* left-[2px] */
+    top: 0.125rem; /* top-[2px] */
+    background-color: white; /* after:bg-white */
+    border: 1px solid #d1d5db; /* after:border-gray-300 */
+    border-radius: 50%; /* after:rounded-full */
+    transition: transform 0.2s; /* after:transition-all */
+}
+
+.toggle-switch-input:checked + .toggle-switch {
+    background-color: #2563eb; /* peer-checked:bg-blue-600 */
+}
+
+.toggle-switch-input:checked + .toggle-switch:before {
+    transform: translateX(1.5rem); /* peer-checked:after:translate-x-full */
+}
+
+.toggle-switch-input:focus + .toggle-switch {
+    outline: none;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.3); /* peer-focus:ring-4 peer-focus:ring-blue-300 */
+}
+
+/* Settings select - matching React: w-full px-4 py-2 border border-gray-300 rounded-lg */
+.settings-select {
+    width: 100%; /* w-full */
+    padding: 0.5rem 1rem; /* px-4 py-2 */
+    border: 1px solid #d1d5db; /* border border-gray-300 */
+    border-radius: 0.5rem; /* rounded-lg */
+    font-size: 0.875rem;
+    background: white;
+    color: #111827;
+    cursor: pointer;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.settings-select:focus {
+    outline: none;
+    border-color: #2563eb; /* focus:ring-2 focus:ring-blue-500 */
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.5); /* focus:ring-2 */
+}
+
+/* Language wrapper - matching React: block mb-2 */
+.settings-language-wrapper {
+    display: block;
+}
+
+.settings-language-label {
+    display: block;
+    margin-bottom: 0.5rem; /* mb-2 */
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #111827;
+}
+
+/* Modal footer - matching React: flex items-center justify-end gap-3 p-6 border-t */
+#settingsModal .modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.75rem; /* gap-3 */
+    padding: 1.5rem; /* p-6 */
+    border-top: 1px solid #e5e7eb; /* border-t border-gray-200 */
+}
+
+#settingsModal .modal-btn {
+    padding: 0.5rem 1rem; /* px-4 py-2 */
+    border-radius: 0.5rem; /* rounded-lg */
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    border: none;
+}
+
+#settingsModal .modal-btn-secondary {
+    border: 1px solid #d1d5db; /* border border-gray-300 */
+    background: white;
+    color: #374151;
+}
+
+#settingsModal .modal-btn-secondary:hover {
+    background: #f9fafb; /* hover:bg-gray-50 */
+}
+
+#settingsModal .modal-btn-primary {
+    background: #2563eb; /* bg-blue-600 */
+    color: white;
+}
+
+#settingsModal .modal-btn-primary:hover {
+    background: #1d4ed8; /* hover:bg-blue-700 */
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    #settingsModal .modal-container.modal-medium {
+        max-width: 95vw;
+    }
+
+    .settings-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+    }
+
+    .settings-item-content {
+        margin-right: 0;
+        width: 100%;
+    }
+}

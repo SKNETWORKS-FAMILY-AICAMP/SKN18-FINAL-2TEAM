@@ -1,0 +1,325 @@
+/* Save to Note Modal Styles – aligned with React SaveToNoteModal */
+
+/* Container: max-w-2xl, rounded-xl, flex column */
+#saveToNoteModal .modal-container.modal-medium {
+    width: 100%;
+    max-width: 672px;
+    max-height: 90vh;
+    border-radius: 0.75rem;
+    background: var(--color-bg-white);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* Header - base styles in common.css, only overrides here */
+#saveToNoteModal .modal-header {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--color-border-light);
+}
+
+/* modal-title, modal-subtitle, modal-close-btn base styles in common.css */
+
+#saveToNoteModal .modal-close-btn i {
+    font-size: 1.2rem;
+}
+
+/* Body - base styles in common.css, scrollbar uses common styles */
+#saveToNoteModal .modal-body {
+    flex: 1;
+    padding: 1.5rem;
+    overflow-y: auto;
+    background: var(--color-bg-white);
+}
+
+/* ===== Shoelace Tab Styles ===== */
+#saveToNoteModal .save-note-tabs {
+    --indicator-color: transparent;
+    --track-color: transparent;
+    --track-width: 0;
+}
+
+#saveToNoteModal .save-note-tabs::part(base) {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+#saveToNoteModal .save-note-tabs::part(nav) {
+    display: flex;
+    gap: 0.5rem;
+    border-bottom: none;
+    padding: 0;
+}
+
+#saveToNoteModal .save-note-tabs::part(tabs) {
+    display: flex;
+    gap: 0.5rem;
+}
+
+#saveToNoteModal .save-note-tabs sl-tab {
+    flex: 1;
+}
+
+#saveToNoteModal .save-note-tabs sl-tab::part(base) {
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+    background: var(--color-bg-gray-100);
+    border: none;
+    transition: background-color 0.2s, color 0.2s;
+    justify-content: center;
+}
+
+#saveToNoteModal .save-note-tabs sl-tab::part(base):hover {
+    background: var(--color-bg-gray-200);
+}
+
+#saveToNoteModal .save-note-tabs sl-tab[active]::part(base) {
+    background: var(--color-primary);
+    color: #ffffff;
+}
+
+#saveToNoteModal .save-note-tabs sl-tab-panel {
+    padding: 0;
+}
+
+#saveToNoteModal .save-note-tabs sl-tab-panel::part(base) {
+    padding: 0;
+}
+
+.tab-panel-content {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+/* Search */
+.search-box .search-input-wrapper {
+    position: relative;
+}
+
+.search-box .search-icon {
+    position: absolute;
+    right: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1.1rem;
+    color: #9ca3af;
+    pointer-events: none;
+}
+
+#saveToNoteModal .search-input {
+    width: 100%;
+    padding: 0.75rem 2.5rem 0.75rem 1rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--color-border-gray);
+    font-size: 0.875rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+#saveToNoteModal .search-input:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+    outline: none;
+}
+
+/* Notes list */
+.notes-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.note-item {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    border: 2px solid var(--color-border-light);
+    background: var(--color-bg-white);
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 0.2s, background-color 0.2s;
+}
+
+.note-item:hover {
+    border-color: var(--color-border-gray);
+    background: var(--color-bg-gray-50);
+}
+
+.note-item.selected {
+    border-color: var(--color-primary);
+    background: #eff6ff; /* blue-50 - keep specific color for selected state */
+}
+
+.note-icon {
+    width: 1.25rem;
+    height: 1.25rem;
+    font-size: 1.25rem;
+    color: #2563eb;
+    flex-shrink: 0;
+}
+
+.note-item-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.note-item-title {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-text-primary);
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.note-item-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+    color: var(--color-text-tertiary);
+    margin-top: 0.25rem;
+}
+
+.note-date,
+.note-category,
+.note-meta-separator {
+    font-size: 0.75rem;
+}
+
+.note-meta-separator {
+    color: #9ca3af;
+}
+
+.note-checkmark {
+    width: 1.25rem;
+    height: 1.25rem;
+    color: var(--color-primary);
+    flex-shrink: 0;
+}
+
+/* Empty state */
+#saveToNoteModal .empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: #9ca3af;
+}
+
+#saveToNoteModal .empty-icon {
+    width: 3rem;
+    height: 3rem;
+    font-size: 3rem;
+    margin: 0 auto 0.75rem;
+    opacity: 0.3;
+}
+
+#saveToNoteModal .empty-text {
+    font-size: 0.875rem;
+    margin: 0;
+}
+
+#saveToNoteModal .empty-hint {
+    font-size: 0.75rem;
+    margin-top: 0.25rem;
+}
+
+/* Pagination */
+.pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 0.75rem;
+    border-top: 1px solid #e5e7eb;
+    margin-top: 0.5rem;
+}
+
+.pagination-info-left {
+    font-size: 0.875rem;
+    color: #6b7280;
+}
+
+.pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.pagination-btn {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.pagination-btn-nav {
+    padding: 0.5rem;
+    border-radius: 0.5rem;
+    color: #374151;
+}
+
+.pagination-btn-nav:disabled {
+    color: #d1d5db;
+    cursor: not-allowed;
+}
+
+.pagination-btn-nav:not(:disabled):hover {
+    background: #f3f4f6;
+}
+
+.pagination-btn-number {
+    padding: 0.25rem 0.75rem;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    color: #374151;
+}
+
+.pagination-btn-number.active {
+    background: #2563eb;
+    color: #ffffff;
+}
+
+.pagination-btn-number:not(.active):hover {
+    background: #f3f4f6;
+}
+
+.pagination-btn-nav i {
+    font-size: 0.875rem;
+}
+
+/* New note form */
+/* form-group, form-label, form-input are now in common.css */
+
+/* ===== Footer buttons - NOT stretch, normal size, right aligned ===== */
+/* modal-footer, modal-btn base styles in common.css */
+#saveToNoteModal .modal-footer {
+    padding: 1rem 1.5rem;
+}
+
+#saveToNoteModal .modal-btn {
+    padding: 0.5rem 1rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    #saveToNoteModal .modal-container.modal-medium {
+        max-width: 95vw;
+    }
+
+    .pagination {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+    }
+}

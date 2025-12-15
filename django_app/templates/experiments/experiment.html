@@ -1,0 +1,287 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}실험 - HelixOps{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/pages/experiment.css' %}">
+<link rel="stylesheet" href="{% static 'css/components/modals/protein_detail_modal.css' %}">
+<link rel="stylesheet" href="{% static 'css/components/modals/sequence_input_modal.css' %}">
+<link rel="stylesheet" href="{% static 'css/components/modals/tool_guide_modal.css' %}">
+<link rel="stylesheet" href="{% static 'css/components/modals/simulation_confirm_modal.css' %}">
+<link rel="stylesheet" href="{% static 'css/components/modals/tool_options_modal.css' %}">
+<link rel="stylesheet" href="{% static 'css/components/modals/save_to_note_modal.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="experiment-container">
+    <!-- Left Sidebar - Tool Guide -->
+    <aside class="tool-sidebar" id="toolSidebar">
+        <div class="sidebar-header">
+            <h2>도구 가이드</h2>
+            <p class="sidebar-subtitle">각 도구를 클릭하여 사용 가이드를 확인하세요</p>
+        </div>
+        
+        <div class="sidebar-search">
+            <div class="search-container">
+                <i class="fa-solid fa-search"></i>
+                <input 
+                    type="text" 
+                    id="toolSearchInput"
+                    placeholder="도구 검색..." 
+                    class="search-input" 
+                />
+            </div>
+        </div>
+
+        <div class="tool-list" id="toolList">
+            {% for tool in available_tools %}
+            <div class="tool-item" data-tool-id="{{ tool.id }}" data-tool-name="{{ tool.name }}">
+                <div class="tool-header">
+                    <p>{{ tool.name }}</p>
+                    <i class="fa-solid fa-book" data-tool-id="{{ tool.id }}"></i>
+                </div>
+                <p class="tool-description">{{ tool.description }}</p>
+                <span class="tool-category">{{ tool.category }}</span>
+            </div>
+            {% empty %}
+            <div class="empty-state">
+                <p>사용 가능한 도구가 없습니다.</p>
+            </div>
+            {% endfor %}
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="experiment-main">
+        <!-- Protein Sequence Search -->
+        <div class="search-section">
+            <div class="card">
+                {% include 'components/card_header.html' with title="단백질 서열 검색" %}
+                <div class="card-content">
+                    <p class="section-description">검색하려는 단백질 서열을 입력하세요</p>
+                    <div class="search-controls">
+                        <div class="search-input-wrapper">
+                            <i class="fa-solid fa-search"></i>
+                            <input
+                                type="text"
+                                id="proteinSequenceInput"
+                                placeholder="예: MKTAYIAKQRQISFVKSHFSRQLEERLGLIEVQAPILSRVGDGTQDNLSGAEKAVQVKVKALPDAQFEVVHSLAKWKRQTLGQHDFSAGEGLYTHMKALRPDEDRLSPLHSVYVDQWDWERVMGDGERQFSTLKSTVEAIWAGIKATEAAVSEEFGLAPFLPDQIHFVHSQELLSRYPDLDAKGRERAIAKDLGAVFLVGIGGKLSDGHRHDVRAPDYDDWSTPSELGHAGLNGDILVWNPVLEDAFELSSMGIRVDADTLKHQLALTGDEDRLELEWHQALLRGEMPQTIGGGIGQSRLTMLLLQLPHIGQVQAGVWPAAVRESVPSLL"
+                                class="search-input"
+                            />
+                        </div>
+                        <button class="btn-primary" id="searchBtn">검색</button>
+                        <button class="btn-secondary" id="clearBtn">초기화</button>
+                    </div>
+                    
+                    <!-- Search Results -->
+                    <div id="searchResultsContainer" style="display: none;">
+                        <h4 class="search-results-title">
+                            검색 결과 (<span id="searchResultsCount">0</span>건)
+                        </h4>
+                        <div class="search-results-list" id="searchResultsList">
+                            <!-- 검색 결과가 여기에 표시됩니다 -->
+                        </div>
+                        
+                        <!-- Pagination -->
+                        <div class="search-results-pagination" id="searchResultsPagination" style="display: none;">
+                            <div class="pagination-controls">
+                                <button class="pagination-btn" id="prevPageBtn" disabled>
+                                    <i class="fa-solid fa-chevron-left"></i>
+                                </button>
+                                <span class="pagination-info">
+                                    <span id="currentPage">1</span> / <span id="totalPages">1</span>
+                                </span>
+                                <button class="pagination-btn" id="nextPageBtn" disabled>
+                                    <i class="fa-solid fa-chevron-right"></i>
+                                </button>
+                            </div>
+                            <button class="btn-secondary btn-sm" id="closeResultsBtn">닫기</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Simulation Tools Section -->
+        <div class="tools-section">
+            <div class="card">
+                {% include 'components/card_header.html' with title="시뮬레이션" %}
+                <div class="card-content">
+                    <p class="section-description">도구를 선택해서 파이프라인을 구성하세요</p>
+                    
+                    <div class="tools-grid" id="toolsGrid">
+                        {% for tool in available_tools %}
+                        <div class="tool-card" data-tool-id="{{ tool.id }}">
+                            <div class="tool-icon">
+                                <i class="fa-solid fa-circle-check"></i>
+                            </div>
+                            <p class="tool-name">{{ tool.name }}</p>
+                            <p class="tool-desc">{{ tool.description }}</p>
+                            <div class="tool-status">대기</div>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="pipeline-actions" id="pipelineActions" style="display: none;">
+                        <button class="btn-primary" id="runSimulationBtn">시뮬레이션 실행</button>
+                        <button class="btn-secondary" id="clearPipelineBtn">파이프라인 초기화</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Experiment Status Section -->
+        <div class="status-section">
+            <div class="card">
+                {% include 'components/card_header.html' with title="실험 현황" %}
+                <div class="card-content">
+                    <table class="status-table">
+                        <thead>
+                            <tr>
+                                <th>파이프라인</th>
+                                <th>툴</th>
+                                <th>상태</th>
+                                <th>생성일</th>
+                            </tr>
+                        </thead>
+                        <tbody id="experimentTableBody">
+                            {% for experiment in experiments %}
+                            <tr data-experiment-id="{{ experiment.id }}">
+                                <td>{{ experiment.pipeline_name }}</td>
+                                <td>
+                                    <div class="tool-tags">
+                                        {% for tool in experiment.tools.all %}
+                                        <span class="tool-tag">{{ tool.name }}</span>
+                                        {% endfor %}
+                                    </div>
+                                </td>
+                                <td>
+                                    {% include 'components/status_badge.html' with status=experiment.status|lower status_display=experiment.get_status_display show_dot=True %}
+                                </td>
+                                <td>{{ experiment.created_at|timesince }} 전</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="empty-state">
+                                    <p class="empty-message">실험을 진행하시겠습니까?</p>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Fixed Pipeline Section at Bottom - Only shown when tools are selected -->
+    <div class="pipeline-section" id="pipelineSection" style="display: none;">
+        <div class="pipeline-header">
+            <div class="pipeline-header-info">
+                <h3 class="pipeline-title">실험 파이프라인</h3>
+                <p class="pipeline-subtitle">
+                    <span id="pipelineToolCount">0</span>개의 도구가 선택되었습니다
+                </p>
+            </div>
+            <div class="pipeline-header-actions">
+                <button class="btn-pipeline-clear" id="pipelineClearBtn">
+                    <i class="fa-solid fa-trash"></i>
+                    초기화
+                </button>
+                <button class="btn-pipeline-run" id="pipelineRunBtn">
+                    <i class="fa-solid fa-play"></i>
+                    시뮬레이션 실행
+                </button>
+            </div>
+        </div>
+
+        <!-- Pipeline Visualization -->
+        <div class="pipeline-items" id="pipelineItems">
+            <!-- Protein Selection Button -->
+            <div class="pipeline-item pipeline-item-protein" id="pipelineProteinItem">
+                <button class="pipeline-protein-btn pipeline-protein-btn-empty" id="pipelineProteinBtn">
+                    <i class="fa-solid fa-file-lines"></i>
+                    <span>단백질 서열 선택</span>
+                </button>
+            </div>
+            <!-- Tools will be rendered here -->
+        </div>
+
+        <!-- Tool Options Section -->
+        <div class="pipeline-options-section" id="pipelineOptionsSection" style="display: none;">
+            <div class="pipeline-options-grid" id="pipelineOptionsGrid">
+                <!-- Tool options will be rendered here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Experiment Result Sidebar - Right Sidebar -->
+    <aside class="experiment-result-sidebar" id="experimentResultSidebar" style="display: none;">
+        <div class="sidebar-header">
+            <div>
+                <h3 class="sidebar-title">실험 결과</h3>
+                <p class="sidebar-subtitle" id="experimentResultPipelineName"></p>
+            </div>
+            <button class="sidebar-close-btn" id="experimentResultCloseBtn" aria-label="닫기">
+                <i class="fa-solid fa-times"></i>
+            </button>
+        </div>
+
+        <div class="sidebar-content">
+            <div class="experiment-result-content">
+                <!-- Pipeline Info -->
+                <div class="result-info-box">
+                    <p class="result-info-label">도구</p>
+                    <div class="result-tools-list" id="experimentResultToolsList">
+                        <!-- Tools will be rendered here -->
+                    </div>
+                </div>
+
+                <!-- Status -->
+                <div class="result-info-box">
+                    <p class="result-info-label">상태</p>
+                    <p class="result-info-value" id="experimentResultStatus"></p>
+                </div>
+
+                <!-- Progress -->
+                <div class="result-info-box">
+                    <p class="result-info-label">진행률</p>
+                    <div class="result-progress-container">
+                        <div class="result-progress-bar">
+                            <div class="result-progress-fill" id="experimentResultProgressFill"></div>
+                        </div>
+                        <span class="result-progress-text" id="experimentResultProgressText">0%</span>
+                    </div>
+                </div>
+
+                <!-- Results List -->
+                <div class="result-files-section">
+                    <h4 class="result-files-title">결과 데이터</h4>
+                    <div class="result-files-list" id="experimentResultFilesList">
+                        <!-- Result files will be rendered here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </aside>
+</div>
+
+<!-- Experiment Modals -->
+{% include 'components/modals/protein_detail_modal.html' %}
+{% include 'components/modals/sequence_input_modal.html' %}
+{% include 'components/modals/tool_guide_modal.html' %}
+{% include 'components/modals/simulation_confirm_modal.html' %}
+{% include 'components/modals/tool_options_modal.html' %}
+{% include 'components/modals/save_to_note_modal.html' %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/pages/experiment.js' %}"></script>
+<script src="{% static 'js/components/modals/protein_detail_modal.js' %}"></script>
+<script src="{% static 'js/components/modals/sequence_input_modal.js' %}"></script>
+<script src="{% static 'js/components/modals/tool_guide_modal.js' %}"></script>
+<script src="{% static 'js/components/modals/simulation_confirm_modal.js' %}"></script>
+<script src="{% static 'js/components/modals/tool_options_modal.js' %}"></script>
+<script src="{% static 'js/components/modals/save_to_note_modal.js' %}"></script>
+{% endblock %}

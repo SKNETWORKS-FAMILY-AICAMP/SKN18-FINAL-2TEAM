@@ -235,12 +235,28 @@ SKN18-FINAL-2TEAM/
 
 ```
 
+## requirements
+
+| 파일                                | 용도                  | 로컬 설치 필요 |
+| --------------------------------- | ------------------- | -------- |
+| requirements.txt                  | 로컬 개발 환경            | 필요       |
+| requirements-lambda-nih.txt       | Lambda NIH 배포       | 불필요      |
+| requirements-lambda-protocols.txt | Lambda Protocols 배포 | 불필요      |
+
+requirements-lambda*.txt 이 파일들은 Lambda 배포 전용입니다.
+1. 사용 위치:
+   - CloudFormation BuildCommand에서만 사용
+   - sam build 또는 sam deploy 시 자동으로 사용됨
+   - 로컬 개발 환경에서는 사용되지 않음
+2. 로컬 개발 환경:
+   - requirements.txt만 사용
+   - Lambda 전용 파일은 설치 불필요
 
 ## ETL 분리
 
 ### 전략
 - **책임 분리 (가장 중요)**
-  - PDF 파싱 버그가 embedding에 영향 없이 수정 가능
+  - 클렌징 등의 버그가 embedding에 영향 없이 수정 가능
 - **재처리 비용 최소화**
   - chunk → embedding만 다시 할 수도 있음
 - **병렬 처리**

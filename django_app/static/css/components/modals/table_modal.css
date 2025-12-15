@@ -1,0 +1,94 @@
+/* Table Modal Styles */
+
+/* Modal container size */
+#tableModal .modal-container.modal-large {
+    width: 1000px;
+    max-width: 95vw;
+}
+
+.table-size-section {
+    margin-bottom: 2rem;
+}
+
+.section-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #111827;
+    margin-bottom: 1rem;
+}
+
+.table-size-inputs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.size-input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.size-label {
+    font-size: 0.875rem;
+    color: #374151;
+    font-weight: 500;
+}
+
+.size-input {
+    width: 100%;
+}
+
+.size-input::part(base) {
+    width: 100%;
+}
+
+.table-data-section {
+    margin-top: 2rem;
+}
+
+.table-wrapper {
+    overflow-x: auto;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.data-table tbody tr {
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.data-table tbody tr:last-child {
+    border-bottom: none;
+}
+
+.data-table td {
+    border-right: 1px solid #e5e7eb;
+    padding: 0;
+}
+
+.data-table td:last-child {
+    border-right: none;
+}
+
+.data-table input {
+    width: 100%;
+    padding: 0.75rem;
+    font-size: 0.875rem;
+    border: none;
+    outline: none;
+    background: transparent;
+    transition: background-color 0.2s;
+}
+
+.data-table input:focus {
+    background: #eff6ff;
+}
+
+.data-table input::placeholder {
+    color: #9ca3af;
+}

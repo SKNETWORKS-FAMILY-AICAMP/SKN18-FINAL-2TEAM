@@ -1,0 +1,138 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}노트 상세 - HelixOps{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/pages/note_detail.css' %}">
+<link rel="stylesheet" href="{% static 'css/components/modals/share_modal.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="note-detail-container">
+    <!-- 노트 상세 보기 화면 -->
+    <div id="noteDetailView" class="note-detail-view">
+        <div class="note-detail-wrapper">
+            <!-- Main Content Area -->
+            <div class="note-detail-main">
+                <!-- Fixed Header Area -->
+                <div class="note-detail-header">
+                    <!-- Back Button and Title Row -->
+                    <div class="note-detail-title-row">
+                        <button class="btn-back" id="btnBack">
+                            <i class="fa-solid fa-arrow-left"></i>
+                        </button>
+                        <h1 class="note-detail-title" id="noteDetailTitle"></h1>
+                    </div>
+                    
+                    <!-- Meta Info and Action Buttons Row -->
+                    <div class="note-detail-meta-row">
+                        <div class="note-detail-meta">
+                            <div class="meta-author">
+                                <img src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop" alt="Author" class="author-avatar" />
+                                <span id="noteDetailAuthor">Dr. Sarah Kim</span>
+                            </div>
+                            <span class="meta-separator">•</span>
+                            <span class="meta-date" id="noteDetailDate"></span>
+                            <span class="meta-separator">•</span>
+                            <div class="meta-tags" id="noteDetailTags">
+                                <!-- Tags will be rendered here -->
+                            </div>
+                        </div>
+                        
+                        <!-- Action Buttons -->
+                        <div class="note-detail-actions">
+                            <button class="btn-action btn-action-primary" id="btnShareDetail">
+                                <i class="fa-solid fa-share-alt"></i>
+                                <span>공유 <span id="shareCount">0</span></span>
+                            </button>
+                            <button class="btn-action btn-action-toggle" id="btnCommentToggle">
+                                <i class="fa-solid fa-comment-dots"></i>
+                                <span>댓글 <span id="commentCount">0</span></span>
+                            </button>
+                            <button class="btn-action" id="btnAttachmentsScroll">
+                                <i class="fa-solid fa-paperclip"></i>
+                                <span>첨부 <span id="attachmentCount">0</span></span>
+                            </button>
+                            <button class="btn-action" id="btnEditNote">
+                                <i class="fa-solid fa-edit"></i>
+                                <span>노트 수정</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Scrollable Content Area -->
+                <div class="note-detail-content">
+                    <div class="note-content-box" id="noteContentBox" data-content-ref>
+                        <p class="note-content-text" id="noteContentText"></p>
+                    </div>
+
+                    <!-- Attachments Section -->
+                    <div class="note-attachments-section" id="noteAttachmentsSection" data-attachments-ref>
+                        <h3 class="attachments-title">
+                            <i class="fa-solid fa-paperclip"></i>
+                            첨부 파일 (<span id="attachmentsCount">0</span>)
+                        </h3>
+                        <div class="attachments-list" id="attachmentsList">
+                            <!-- Attachments will be rendered here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Comment Sidebar -->
+            <div class="comment-sidebar" id="commentSidebar">
+                <div class="comment-sidebar-header">
+                    <h3>댓글</h3>
+                    <button class="btn-close-sidebar" id="btnCloseCommentSidebar">
+                        <i class="fa-solid fa-times"></i>
+                    </button>
+                </div>
+
+                <div class="comment-sidebar-content" id="commentSidebarContent">
+                    <!-- New Comment Input (shown when text is selected) -->
+                    <div class="new-comment-box" id="newCommentBox" style="display: none;">
+                        <div class="selected-text-preview" id="selectedTextPreview"></div>
+                        <textarea
+                            id="newCommentTextarea"
+                            placeholder="댓글 작성..."
+                            class="comment-textarea"
+                            rows="3"
+                        ></textarea>
+                        <div class="comment-actions">
+                            <button class="btn-comment-submit" id="btnCommentSubmit">
+                                <i class="fa-solid fa-paper-plane"></i>
+                                <span>댓글 달기</span>
+                            </button>
+                            <button class="btn-comment-cancel" id="btnCommentCancel">
+                                취소
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Existing Comments -->
+                    <div class="comments-list" id="commentsList">
+                        <!-- Comments will be rendered here -->
+                    </div>
+
+                    <!-- Empty State -->
+                    <div class="comments-empty" id="commentsEmpty">
+                        <i class="fa-solid fa-comment-dots"></i>
+                        <p>아직 댓글이 없습니다</p>
+                        <p class="empty-hint">텍스트를 선택하여 댓글을 추가하세요</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Share Modal -->
+{% include 'components/modals/share_modal.html' %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/pages/note_detail.js' %}"></script>
+<script src="{% static 'js/components/modals/share_modal.js' %}"></script>
+{% endblock %}

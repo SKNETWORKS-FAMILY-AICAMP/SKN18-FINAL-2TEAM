@@ -1,12 +1,36 @@
 ########################################
-# 버전 고정 - 필수
+# 로컬 개발 환경용 requirements.txt
+# Lambda 배포는 별도 requirements-lambda-*.txt 파일 사용
 ########################################
-numpy==1.26.4
-torch==2.2.2
 
-########################################
+# 기본 패키지
+numpy==1.26.4
+pandas
+scipy
+
+# OpenAI API (embedding용)
+openai
+
+# LangChain (필요시)
+langchain
+langchain-core
+langchain-community
+langchain-openai
+langchain_text_splitters
+tiktoken
+
+# LangGraph (워크플로우 오케스트레이션)
+langgraph
+
+# Database
+psycopg[binary, pool]
+pgvector
+
+# Neo4j (Knowledge Graph)
+neo4j
+py2neo
+
 # Django Web Framework
-########################################
 Django>=5.0,<6.0
 django-environ
 djangorestframework
@@ -14,69 +38,20 @@ gunicorn
 django-sass-processor
 libsass
 
-# 환경변수 관리
-python-dotenv
-
-########################################
-# Database (PostgreSQL + pgvector)
-########################################
-psycopg
-pgvector
-
-
-########################################
-# LangGraph + LLM orchestration
-########################################
-langchain
-langchain-core
-langchain-community
-langchain-openai
-tiktoken
-
-langgraph
-
-
-########################################
-# RAG / Embedding / NLP
-########################################
-sentence-transformers
-transformers
-accelerate
-scipy
-pandas
-
-
-########################################
-# ETL / Crawling / Parsing
-########################################
+# ETL / Parsing
 requests
 lxml
 markdownify
 python-dateutil
+beautifulsoup4
+nltk
 
+# 환경변수 관리
+python-dotenv
 
-########################################
-# Neo4j (Knowledge Graph)
-########################################
-neo4j
-py2neo
-
-
-########################################
-# Simulation tools (optional, utils)
-########################################
-biopython
+# 기타 유틸리티
 PyYAML
 
+# AWS SDK (Lambda에 기본 포함되지만 명시)
+boto3
 
-########################################
-# sLLM / Local inference (vLLM/Ollama)
-########################################
-openai
-
-########################################
-# Testing / Dev Tools
-########################################
-pytest
-black
-isort

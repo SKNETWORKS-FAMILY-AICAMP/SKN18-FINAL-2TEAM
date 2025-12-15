@@ -1,0 +1,104 @@
+{% load static %}
+<div class="modal-overlay" id="scheduleDetailModal" role="dialog" aria-labelledby="scheduleDetailModalTitle" aria-modal="true">
+    <div class="modal-container modal-large">
+        <div class="modal-header">
+            <h2 class="modal-title" id="scheduleDetailModalTitle">일정 상세</h2>
+            <button class="modal-close-btn" aria-label="닫기">
+                <i class="fa-solid fa-times"></i>
+            </button>
+        </div>
+        
+        <div class="modal-body schedule-detail-body">
+            <div class="schedule-detail-content">
+                <!-- Left Column - 일정 정보 -->
+                <div class="schedule-detail-left">
+                    <div class="schedule-detail-section">
+                        <!-- Title and Type -->
+                        <div class="schedule-title-section">
+                            <div class="schedule-title-header">
+                                <span class="schedule-type-badge" id="scheduleTypeBadge"></span>
+                                <h3 class="schedule-title" id="scheduleTitle"></h3>
+                            </div>
+                            <div class="schedule-title-actions">
+                                <select class="schedule-status-select" id="scheduleStatusSelect">
+                                    <option value="scheduled">예정</option>
+                                    <option value="in_progress">진행중</option>
+                                    <option value="completed">완료</option>
+                                </select>
+                                <button class="linked-note-btn" id="linkedNoteBtn" style="display: none;">
+                                    <i class="fa-solid fa-file-lines"></i>
+                                    <span>연결된 노트</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Divider -->
+                        <div class="schedule-divider"></div>
+
+                        <!-- Date and Time -->
+                        <div class="schedule-info-item">
+                            <h4 class="schedule-info-label">
+                                <i class="fa-solid fa-clock"></i>
+                                일시
+                            </h4>
+                            <p class="schedule-info-value" id="scheduleDateTime"></p>
+                        </div>
+
+                        <!-- Divider -->
+                        <div class="schedule-divider"></div>
+
+                        <!-- Location -->
+                        <div class="schedule-info-item">
+                            <h4 class="schedule-info-label">
+                                <i class="fa-solid fa-map-marker-alt"></i>
+                                장소
+                            </h4>
+                            <p class="schedule-info-value" id="scheduleLocation"></p>
+                        </div>
+
+                        <!-- Divider -->
+                        <div class="schedule-divider"></div>
+
+                        <!-- Description -->
+                        <div class="schedule-info-item">
+                            <h4 class="schedule-info-label">설명</h4>
+                            <p class="schedule-info-value" id="scheduleDescription"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column - 공유자 목록 -->
+                <div class="schedule-detail-right">
+                    <div class="schedule-shared-section">
+                        <div class="schedule-shared-header">
+                            <div class="schedule-shared-title">
+                                <i class="fa-solid fa-users"></i>
+                                <h4>일정 공유자 목록 (<span id="sharedCount">0</span>)</h4>
+                            </div>
+                            <button class="schedule-share-add-btn" id="scheduleShareAddBtn" title="공유하기">
+                                <i class="fa-solid fa-plus"></i>
+                            </button>
+                        </div>
+                        
+                        <div class="schedule-shared-list" id="scheduleSharedList">
+                            <!-- 공유자 목록이 여기에 표시됩니다 -->
+                        </div>
+                        
+                        <div class="schedule-shared-empty" id="scheduleSharedEmpty" style="display: none;">
+                            <i class="fa-solid fa-users"></i>
+                            <p>공유된 사용자가 없습니다</p>
+                            <button class="btn-primary" id="scheduleShareEmptyBtn">공유하기</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="modal-footer">
+            <button class="modal-btn modal-btn-secondary" data-action="close">닫기</button>
+            <button class="modal-btn modal-btn-primary" data-action="edit" id="scheduleEditBtn">
+                수정하기
+            </button>
+        </div>
+    </div>
+</div>

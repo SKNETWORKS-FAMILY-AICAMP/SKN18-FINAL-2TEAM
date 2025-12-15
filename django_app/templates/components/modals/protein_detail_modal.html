@@ -1,0 +1,143 @@
+{% load static %}
+<div class="modal-overlay" id="proteinDetailModal" role="dialog" aria-labelledby="proteinDetailModalTitle" aria-modal="true">
+    <div class="modal-container modal-large">
+        <div class="modal-header">
+            <div>
+                <h2 class="modal-title" id="proteinDetailModalTitle">단백질 상세 정보</h2>
+                <p class="modal-subtitle" id="proteinDetailModalSubtitle"></p>
+            </div>
+            <div class="modal-header-actions">
+                <a href="#" id="proteinUniProtLink" target="_blank" rel="noopener noreferrer" class="btn-uniprot" title="UniProt에서 보기">
+                    <i class="fa-solid fa-external-link-alt"></i>
+                    UniProt
+                </a>
+                <button class="modal-close-btn" aria-label="닫기">
+                    <i class="fa-solid fa-times"></i>
+                </button>
+            </div>
+        </div>
+        
+        <div class="modal-body protein-detail-body">
+            <div class="protein-detail-content">
+                <!-- Names & Taxonomy Section -->
+                <div class="protein-section">
+                    <h3 class="section-title">Names & Taxonomy</h3>
+                    
+                    <!-- Protein names and Gene names in 2 columns -->
+                    <div class="protein-info-grid">
+                        <!-- Protein names -->
+                        <div class="protein-info-column">
+                            <h4 class="info-column-title">Protein names</h4>
+                            <div class="info-item">
+                                <p class="info-label">Recommended name:</p>
+                                <p class="info-value" id="proteinRecommendedName"></p>
+                            </div>
+                            <div class="info-item" id="proteinCleavedChainsContainer" style="display: none;">
+                                <p class="info-label" id="proteinCleavedChainsLabel"></p>
+                                <div id="proteinCleavedChainsList"></div>
+                            </div>
+                        </div>
+
+                        <!-- Gene names -->
+                        <div class="protein-info-column">
+                            <h4 class="info-column-title">Gene names</h4>
+                            <div class="info-item">
+                                <p class="info-value" id="proteinGene"></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Organism names -->
+                    <div class="protein-info-section">
+                        <h4 class="info-column-title">Organism names</h4>
+                        <div class="info-item">
+                            <p class="info-label">Taxonomic identifier:</p>
+                            <p class="info-value" id="proteinTaxonomicId"></p>
+                        </div>
+                        <div class="info-item">
+                            <p class="info-label">Organism:</p>
+                            <p class="info-value" id="proteinOrganism"></p>
+                        </div>
+                        <div class="info-item">
+                            <p class="info-label">Taxonomic lineage:</p>
+                            <p class="info-value" id="proteinTaxonomicLineage"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Additional Information -->
+                <div class="protein-section protein-section-border">
+                    <h3 class="section-subtitle">추가 정보</h3>
+                    <div class="protein-info-grid">
+                        <div class="info-box">
+                            <p class="info-box-label">길이</p>
+                            <p class="info-box-value" id="proteinLength"></p>
+                        </div>
+                        <div class="info-box">
+                            <p class="info-box-label">Evidence Level</p>
+                            <p class="info-box-value" id="proteinEvidenceLevel"></p>
+                        </div>
+                        <div class="info-box">
+                            <p class="info-box-label">Annotation Score</p>
+                            <p class="info-box-value" id="proteinAnnotationScore"></p>
+                        </div>
+                        <div class="info-box">
+                            <p class="info-box-label">Description</p>
+                            <p class="info-box-value" id="proteinDescription"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tags -->
+                <div class="protein-section protein-section-border" id="proteinTagsContainer" style="display: none;">
+                    <h3 class="section-subtitle">태그</h3>
+                    <div class="protein-tags-list" id="proteinTagsList"></div>
+                </div>
+
+                <!-- Protein Sequence -->
+                <div class="protein-section protein-section-border">
+                    <h3 class="section-title">Sequence</h3>
+                    
+                    <!-- Sequence Information -->
+                    <div class="protein-info-grid">
+                        <div class="sequence-info-item">
+                            <span class="sequence-info-label">Length</span>
+                            <span class="sequence-info-value" id="sequenceLength"></span>
+                        </div>
+                        <div class="sequence-info-item">
+                            <span class="sequence-info-label">Last updated</span>
+                            <span class="sequence-info-value" id="sequenceLastUpdated"></span>
+                        </div>
+                        <div class="sequence-info-item">
+                            <span class="sequence-info-label">Mass (Da)</span>
+                            <span class="sequence-info-value" id="sequenceMass"></span>
+                        </div>
+                        <div class="sequence-info-item">
+                            <span class="sequence-info-label">MD5 Checksum</span>
+                            <span class="sequence-info-value sequence-checksum" id="sequenceMd5"></span>
+                        </div>
+                    </div>
+
+                    <!-- Formatted Sequence -->
+                    <div class="sequence-display" id="sequenceDisplay">
+                        <!-- Formatted sequence will be rendered here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="modal-footer">
+            <div class="modal-footer-left">
+                <button class="modal-btn modal-btn-secondary" id="proteinDownloadFastaBtn">
+                    <i class="fa-solid fa-download"></i>
+                    FASTA 다운로드
+                </button>
+                <button class="modal-btn modal-btn-primary" id="proteinCopySequenceBtn">
+                    <i class="fa-solid fa-copy"></i>
+                    서열 복사
+                </button>
+            </div>
+            <button class="modal-btn modal-btn-secondary" data-action="close">닫기</button>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,42 @@
+{
+  "name": "django_ui",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "vite",
+    "build": "vite build"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@shoelace-style/shoelace": "^2.20.1",
+    "@tailwindcss/postcss": "^4.1.18",
+    "autoprefixer": "^10.4.22",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.18",
+    "vite": "^7.2.7"
+  },
+  "dependencies": {
+    "@fortawesome/fontawesome-free": "^7.1.0",
+    "@tailwindcss/vite": "^4.1.18",
+    "@yaireo/tagify": "^4.35.6",
+    "air-datepicker": "^3.6.0",
+    "ckeditor5": "^47.3.0",
+    "clsx": "^2.1.1",
+    "fullcalendar": "^6.1.19",
+    "graphology": "^0.26.0",
+    "graphology-layout": "^0.6.1",
+    "highcharts": "^12.4.0",
+    "markdown-it": "^14.1.0",
+    "mermaid": "^11.12.2",
+    "micromodal": "^0.6.1",
+    "notyf": "^3.10.0",
+    "sigma": "^3.0.2",
+    "sweetalert2": "^11.26.10",
+    "tippy.js": "^6.3.7"
+  }
+}

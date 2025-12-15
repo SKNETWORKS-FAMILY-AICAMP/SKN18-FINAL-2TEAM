@@ -1,0 +1,50 @@
+{% load static %}
+<div class="modal-overlay" id="simulationConfirmModal" role="dialog" aria-labelledby="simulationConfirmModalTitle" aria-modal="true">
+    <div class="modal-container modal-medium">
+        <div class="modal-header">
+            <div>
+                <h2 class="modal-title" id="simulationConfirmModalTitle">시뮬레이션 확인</h2>
+                <p class="modal-subtitle">선택한 도구로 시뮬레이션을 실행할까요?</p>
+            </div>
+            <button class="modal-close-btn" aria-label="닫기">
+                <i class="fa-solid fa-times"></i>
+            </button>
+        </div>
+        
+        <div class="modal-body">
+            <div class="form-group">
+                <label for="simulationTitleInput">시뮬레이션 타이틀</label>
+                <input
+                    type="text"
+                    id="simulationTitleInput"
+                    placeholder="시뮬레이션 이름을 입력하세요"
+                    class="form-input"
+                />
+            </div>
+
+            <!-- Protein Sequence Display -->
+            <div class="form-group" id="simulationProteinSequenceContainer" style="display: none;">
+                <label>단백질 서열</label>
+                <div class="sequence-preview" id="simulationProteinSequence">
+                    <!-- Sequence will be displayed here -->
+                </div>
+            </div>
+
+            <!-- Selected Tools -->
+            <div class="form-group">
+                <h3 class="form-group-title">선택된 도구</h3>
+                <div class="selected-tools-list" id="simulationSelectedToolsList">
+                    <!-- Selected tools will be rendered here -->
+                </div>
+            </div>
+        </div>
+        
+        <div class="modal-footer">
+            <button class="modal-btn modal-btn-secondary" data-action="close">취소</button>
+            <button class="modal-btn modal-btn-primary" id="simulationConfirmRunBtn">
+                <i class="fa-solid fa-play"></i>
+                시뮬레이션 실행
+            </button>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,23 @@
+{% comment %}
+Card Header 컴포넌트
+
+사용법:
+<div class="card">
+    {% include 'components/card_header.html' with title="중요한 일정" link_url=schedule_url link_text="이동하기 →" %}
+    <div class="card-content">
+        <!-- 카드 내용 -->
+    </div>
+</div>
+
+파라미터:
+- title: 카드 제목 (필수)
+- link_url: 헤더에 표시할 링크 URL (선택사항)
+- link_text: 링크 텍스트 (선택사항, link_url이 있을 때만 표시)
+{% endcomment %}
+
+<div class="card-header">
+    <h2>{{ title }}</h2>
+    {% if link_url %}
+    <a href="{{ link_url }}" class="link-btn">{{ link_text|default:"이동하기 →" }}</a>
+    {% endif %}
+</div>

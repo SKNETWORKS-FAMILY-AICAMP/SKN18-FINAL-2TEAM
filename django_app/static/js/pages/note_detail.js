@@ -1,0 +1,398 @@
+// Note Detail Page JavaScript
+
+// State variables
+let selectedNoteId = null;
+let isCommentSidebarOpen = true;
+let selectedText = "";
+let commentPosition = null;
+let showCommentInput = false;
+let activeCommentId = null;
+
+// DOM Elements
+let noteDetailView, noteDetailWrapper;
+let btnBack, noteDetailTitle, noteDetailAuthor, noteDetailDate, noteDetailTags;
+let btnShareDetail, btnCommentToggle, btnAttachmentsScroll, btnEditNote;
+let noteContentBox, noteContentText, noteAttachmentsSection, attachmentsList;
+let commentSidebar, commentSidebarContent, btnCloseCommentSidebar;
+let newCommentBox, selectedTextPreview, newCommentTextarea;
+let btnCommentSubmit, btnCommentCancel, commentsList, commentsEmpty;
+
+// Mock comments data
+let comments = [
+    {
+        id: 1,
+        text: 'CRISPR',
+        highlightedText: 'CRISPR-Cas9',
+        comment: '이 부분에 대한 추가 실험이 필요할 것 같습니다.',
+        author: 'Dr. John Lee',
+        avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop',
+        time: '2시간 전',
+        position: 150
+    }
+];
+
+// Mock attachments for detail view
+const mockAttachments = [
+    { id: 1, name: 'experiment_protocol_v2.pdf', size: '2.4MB', type: 'PDF' },
+    { id: 2, name: 'data_analysis_results.xlsx', size: '1.8MB', type: 'Excel' },
+    { id: 3, name: 'sample_images.zip', size: '15.2MB', type: 'Archive' }
+];
+
+// Mock note data (실제로는 API에서 가져옴)
+const mockNoteData = {
+    id: 1,
+    title: 'CRISPR-Cas9 유전자 가위 기술을 활용한 유전자 편집 실험 결과 분석',
+    date: '2025-11-30',
+    author: 'Dr. Sarah Kim',
+    content: `Eukaryotic cell(진핵세포)는 분명한 막으로 둘러싸인 핵과 다양한 세포 소기관을 지니는 진핵생물을 구성하는 기본 단위입니다.
+
+**1. 진핵세포란 무엇인가?**
+
+핵심 정의:
+진핵세포는 유전물질(DNA)이 핵막으로 둘러싸인 '핵' 내에 저장되어 있는 세포입니다.
+
+**2. 주요 구조적 특징**
+
+핵(Nucleus):
+이중막(핵막)으로 둘러싸여 있으며, 유전정보(염색체)가 저장 및 관리됩니다.`,
+    shared: 3,
+    comments: 5,
+    tags: ['CRISPR', '유전자편집']
+};
+
+// Initialize
+function initNoteDetail() {
+    // Get DOM elements
+    noteDetailView = document.getElementById('noteDetailView');
+    btnBack = document.getElementById('btnBack');
+    noteDetailTitle = document.getElementById('noteDetailTitle');
+    noteDetailAuthor = document.getElementById('noteDetailAuthor');
+    noteDetailDate = document.getElementById('noteDetailDate');
+    noteDetailTags = document.getElementById('noteDetailTags');
+    btnShareDetail = document.getElementById('btnShareDetail');
+    btnCommentToggle = document.getElementById('btnCommentToggle');
+    btnAttachmentsScroll = document.getElementById('btnAttachmentsScroll');
+    btnEditNote = document.getElementById('btnEditNote');
+    noteContentBox = document.getElementById('noteContentBox');
+    noteContentText = document.getElementById('noteContentText');
+    noteAttachmentsSection = document.getElementById('noteAttachmentsSection');
+    attachmentsList = document.getElementById('attachmentsList');
+    commentSidebar = document.getElementById('commentSidebar');
+    commentSidebarContent = document.getElementById('commentSidebarContent');
+    btnCloseCommentSidebar = document.getElementById('btnCloseCommentSidebar');
+    newCommentBox = document.getElementById('newCommentBox');
+    selectedTextPreview = document.getElementById('selectedTextPreview');
+    newCommentTextarea = document.getElementById('newCommentTextarea');
+    btnCommentSubmit = document.getElementById('btnCommentSubmit');
+    btnCommentCancel = document.getElementById('btnCommentCancel');
+    commentsList = document.getElementById('commentsList');
+    commentsEmpty = document.getElementById('commentsEmpty');
+
+    // Attach event listeners
+    if (btnBack) btnBack.addEventListener('click', handleBackToList);
+    if (btnShareDetail) btnShareDetail.addEventListener('click', handleShareNote);
+    if (btnCommentToggle) btnCommentToggle.addEventListener('click', () => handleToggleCommentSidebar());
+    if (btnAttachmentsScroll) btnAttachmentsScroll.addEventListener('click', scrollToAttachments);
+    if (btnEditNote) btnEditNote.addEventListener('click', handleEditNote);
+    if (btnCloseCommentSidebar) btnCloseCommentSidebar.addEventListener('click', () => handleToggleCommentSidebar(false));
+    if (btnCommentSubmit) btnCommentSubmit.addEventListener('click', handleAddComment);
+    if (btnCommentCancel) btnCommentCancel.addEventListener('click', handleCancelComment);
+    if (noteContentBox) noteContentBox.addEventListener('mouseup', handleTextSelection);
+
+    // Get note ID from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    selectedNoteId = urlParams.get('id') || 1;
+
+    // Load note data
+    loadNoteDetail(selectedNoteId);
+}
+
+// Load note detail
+function loadNoteDetail(noteId) {
+    // TODO: API 호출로 노트 데이터 가져오기
+    // 현재는 mock 데이터 사용
+    const note = mockNoteData;
+    
+    renderNoteDetail(note);
+    renderAttachmentsDetail(mockAttachments);
+    renderComments();
+    
+    // Open comment sidebar by default
+    handleToggleCommentSidebar(true);
+}
+
+// Render note detail
+function renderNoteDetail(note) {
+    if (!note) return;
+    
+    if (noteDetailTitle) noteDetailTitle.textContent = note.title;
+    if (noteDetailDate) noteDetailDate.textContent = note.date;
+    if (noteDetailAuthor) noteDetailAuthor.textContent = note.author;
+    
+    if (noteContentText) {
+        noteContentText.textContent = note.content;
+    }
+    
+    // Render tags
+    if (noteDetailTags) {
+        noteDetailTags.innerHTML = note.tags.map(tag => 
+            `<span class="meta-tag">${escapeHtml(tag)}</span>`
+        ).join('');
+    }
+
+    // Update counts
+    const shareCountEl = document.getElementById('shareCount');
+    if (shareCountEl) shareCountEl.textContent = note.shared;
+    
+    const commentCountEl = document.getElementById('commentCount');
+    if (commentCountEl) commentCountEl.textContent = comments.length;
+    
+    const attachmentCountEl = document.getElementById('attachmentCount');
+    if (attachmentCountEl) attachmentCountEl.textContent = mockAttachments.length;
+}
+
+// Render attachments detail
+function renderAttachmentsDetail(attachments) {
+    if (!attachmentsList) return;
+
+    if (attachments.length === 0) {
+        attachmentsList.innerHTML = '';
+        if (document.getElementById('attachmentsCount')) {
+            document.getElementById('attachmentsCount').textContent = '0';
+        }
+        return;
+    }
+
+    attachmentsList.innerHTML = attachments.map(file => `
+        <div class="attachment-item">
+            <i class="fas fa-file-alt"></i>
+            <div class="attachment-info">
+                <span class="attachment-name">${escapeHtml(file.name)}</span>
+                <span class="attachment-meta">${file.size} • ${file.type}</span>
+            </div>
+            <button class="btn-attachment-download" onclick="window.NoteDetailPage.handleDownloadAttachment(${file.id})">
+                다운로드
+            </button>
+        </div>
+    `).join('');
+
+    if (document.getElementById('attachmentsCount')) {
+        document.getElementById('attachmentsCount').textContent = attachments.length;
+    }
+}
+
+// Handle back to list
+function handleBackToList() {
+    window.location.href = '/notes/';
+}
+
+// Handle share note
+function handleShareNote() {
+    if (window.ShareModal && typeof window.ShareModal.open === 'function') {
+        window.ShareModal.onShare = (selectedMembers) => {
+            if (window.notyf) {
+                window.notyf.success(`${selectedMembers.length}명과 공유되었습니다.`);
+            }
+        };
+        window.ShareModal.open(selectedNoteId);
+    } else {
+        if (window.notyf) {
+            window.notyf.info('공유 기능은 곧 제공될 예정입니다.');
+        }
+    }
+}
+
+// Handle toggle comment sidebar
+function handleToggleCommentSidebar(forceValue) {
+    if (forceValue !== undefined) {
+        isCommentSidebarOpen = forceValue;
+    } else {
+        isCommentSidebarOpen = !isCommentSidebarOpen;
+    }
+
+    if (commentSidebar) {
+        if (isCommentSidebarOpen) {
+            commentSidebar.classList.remove('hidden');
+        } else {
+            commentSidebar.classList.add('hidden');
+        }
+    }
+
+    if (btnCommentToggle) {
+        if (isCommentSidebarOpen) {
+            btnCommentToggle.classList.add('active');
+        } else {
+            btnCommentToggle.classList.remove('active');
+        }
+    }
+}
+
+// Scroll to attachments
+function scrollToAttachments() {
+    if (noteAttachmentsSection) {
+        noteAttachmentsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+}
+
+// Handle edit note
+function handleEditNote() {
+    window.location.href = `/notes/editor/?id=${selectedNoteId}`;
+}
+
+// Handle text selection
+function handleTextSelection(e) {
+    const selection = window.getSelection();
+    const text = selection ? selection.toString().trim() : '';
+    
+    if (text && text.length > 0) {
+        const range = selection ? selection.getRangeAt(0) : null;
+        const rect = range ? range.getBoundingClientRect() : null;
+        const containerRect = noteContentBox ? noteContentBox.getBoundingClientRect() : null;
+        
+        if (rect && containerRect) {
+            selectedText = text;
+            commentPosition = { top: rect.top - containerRect.top };
+            showCommentInput = true;
+
+            if (newCommentBox) {
+                newCommentBox.style.display = 'block';
+                const previewText = text.length > 50 ? text.substring(0, 50) + '...' : text;
+                if (selectedTextPreview) {
+                    selectedTextPreview.textContent = `"${previewText}"`;
+                }
+            }
+
+            handleToggleCommentSidebar(true);
+
+            if (newCommentTextarea) {
+                setTimeout(() => newCommentTextarea.focus(), 100);
+            }
+        }
+    }
+}
+
+// Handle add comment
+function handleAddComment() {
+    const commentText = newCommentTextarea ? newCommentTextarea.value.trim() : '';
+
+    if (!commentText || !selectedText || !commentPosition) {
+        if (window.notyf) {
+            window.notyf.error('댓글을 입력해주세요.');
+        }
+        return;
+    }
+
+    const newCommentObj = {
+        id: comments.length + 1,
+        text: selectedText.substring(0, 30),
+        highlightedText: selectedText,
+        comment: commentText,
+        author: 'Current User',
+        avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop',
+        time: '방금 전',
+        position: commentPosition.top
+    };
+    
+    comments.push(newCommentObj);
+    selectedText = '';
+    commentPosition = null;
+    showCommentInput = false;
+
+    if (newCommentTextarea) newCommentTextarea.value = '';
+    if (newCommentBox) newCommentBox.style.display = 'none';
+
+    renderComments();
+    if (document.getElementById('commentCount')) {
+        document.getElementById('commentCount').textContent = comments.length;
+    }
+
+    if (window.notyf) {
+        window.notyf.success('댓글이 추가되었습니다.');
+    }
+}
+
+// Handle cancel comment
+function handleCancelComment() {
+    selectedText = '';
+    commentPosition = null;
+    showCommentInput = false;
+
+    if (newCommentTextarea) newCommentTextarea.value = '';
+    if (newCommentBox) newCommentBox.style.display = 'none';
+}
+
+// Render comments
+function renderComments() {
+    if (!commentsList || !commentsEmpty) return;
+
+    if (newCommentBox) {
+        if (showCommentInput) {
+            newCommentBox.style.display = 'block';
+        } else {
+            newCommentBox.style.display = 'none';
+        }
+    }
+
+    if (comments.length === 0 && !showCommentInput) {
+        commentsList.innerHTML = '';
+        if (commentsEmpty) commentsEmpty.style.display = 'block';
+        return;
+    }
+
+    if (commentsEmpty) commentsEmpty.style.display = 'none';
+    commentsList.innerHTML = comments.map(comment => `
+        <div class="comment-item ${activeCommentId === comment.id ? 'active' : ''}" 
+             onclick="window.NoteDetailPage.setActiveComment(${comment.id})">
+            <div class="comment-highlighted-text">"${escapeHtml(comment.highlightedText)}"</div>
+            <div class="comment-header">
+                <img src="${escapeHtml(comment.avatar)}" alt="${escapeHtml(comment.author)}" class="comment-avatar" />
+                <div class="comment-author-info">
+                    <p class="comment-author-name">${escapeHtml(comment.author)}</p>
+                    <p class="comment-time">${escapeHtml(comment.time)}</p>
+                </div>
+            </div>
+            <p class="comment-content">${escapeHtml(comment.comment)}</p>
+            <div class="comment-actions-bar">
+                <button class="comment-action-link">답장</button>
+                <button class="comment-action-link">수정</button>
+                <button class="comment-action-link delete">삭제</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Set active comment
+function setActiveComment(commentId) {
+    activeCommentId = commentId;
+    renderComments();
+}
+
+// Handle download attachment
+function handleDownloadAttachment(fileId) {
+    const file = mockAttachments.find(f => f.id === fileId);
+    if (!file) return;
+
+    if (window.notyf) {
+        window.notyf.info(`파일 다운로드: ${file.name}`);
+    }
+}
+
+// Escape HTML
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Initialize on DOM ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initNoteDetail);
+} else {
+    initNoteDetail();
+}
+
+// Export to window
+window.NoteDetailPage = {
+    setActiveComment,
+    handleDownloadAttachment,
+};
