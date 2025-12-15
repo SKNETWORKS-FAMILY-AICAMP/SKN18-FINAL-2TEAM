@@ -1,7 +1,7 @@
-# run_system_b_patched_v3.py
-# System B: Postgres 벡터검색 + Neo4j Fulltext + Python RRF
-# - Fulltext index name auto-detected (or overridden via FULLTEXT_CHUNK_INDEX)
-# - If no suitable fulltext index exists, keyword retrieval becomes empty.
+# run_system_b_patched_v5_graph_rag.py
+# System B (Enhanced): Postgres 벡터검색 + Neo4j Graph RAG (Entity+Text) + Python RRF
+# - Logic: Keyword Node Hit -> Expand to Chunks (Graph Traversal)
+# - Logic: Chunk Node Hit -> Direct Use (Fulltext)
 
 import os
 import argparse
@@ -13,7 +13,7 @@ import psycopg2
 from neo4j import GraphDatabase
 from openai import OpenAI
 
-# Optional: load environment variables from a local .env file (if python-dotenv is installed)
+# Optional: load environment variables from a local .env file
 try:
     from dotenv import load_dotenv  # type: ignore
     load_dotenv()
@@ -100,8 +100,11 @@ def _list_fulltext_indexes(driver) -> List[Dict[str, Any]]:
 
 
 def pick_fulltext_chunk_index(driver) -> Tuple[Optional[str], Dict[str, Any]]:
+    # 1. 환경변수 우선
     override = os.getenv("FULLTEXT_CHUNK_INDEX")
-    preferred = "keyword_chunk_index"
+    
+    # 2. 우리가 합의한 통합 인덱스 이름 (Chunk + Keyword)
+    preferred = "integrated_search_index"
 
     idxs = _list_fulltext_indexes(driver)
     by_name = {i.get("name"): i for i in idxs if i.get("name")}
@@ -115,30 +118,30 @@ def pick_fulltext_chunk_index(driver) -> Tuple[Optional[str], Dict[str, Any]]:
     if _exists(preferred):
         return preferred, by_name[preferred]
 
+    # 3. 없으면 기존 로직대로 'Chunk'에 걸린 인덱스 중 아무거나 찾음
+    # (주의: 이 경우 Keyword 검색 로직은 작동 안 할 수 있음)
     chunk_candidates = []
     for i in idxs:
-        if i.get("entityType") != "NODE":
-            continue
         labels = i.get("labelsOrTypes") or []
         if isinstance(labels, str):
             labels = [labels]
-        if "Chunk" in labels:
+        # Chunk 혹은 Keyword가 포함된 인덱스를 찾음
+        if "Chunk" in labels or "Keyword" in labels:
             chunk_candidates.append(i)
 
     def _score(i: Dict[str, Any]) -> int:
         props = i.get("properties") or []
         if isinstance(props, str):
             props = [props]
-        return 2 if "text" in props else 1
+        # text와 name이 다 있으면 금상첨화
+        score = 0
+        if "text" in props: score += 2
+        if "name" in props: score += 1
+        return score
 
     if chunk_candidates:
         chunk_candidates.sort(key=_score, reverse=True)
         chosen = chunk_candidates[0]
-        return chosen.get("name"), chosen
-
-    node_candidates = [i for i in idxs if i.get("entityType") == "NODE"]
-    if node_candidates:
-        chosen = node_candidates[0]
         return chosen.get("name"), chosen
 
     return None, {}
@@ -154,10 +157,6 @@ def pg_vector_search_article(
     k_vec: int,
     ef_search: int = 100,
 ) -> List[Dict[str, Any]]:
-    # IMPORTANT: pgvector operators (e.g., <=>) expect both sides to be `vector`.
-    # If we pass a Python list directly, psycopg2 adapts it to `numeric[]`, causing:
-    #   operator does not exist: vector <=> numeric[]
-    # So we pass a pgvector literal and cast it to ::vector.
     vec_literal = "[" + ",".join(str(float(x)) for x in query_embedding) + "]"
 
     sql_set = "SET LOCAL hnsw.ef_search = %s;"
@@ -171,7 +170,6 @@ def pg_vector_search_article(
 
     with conn.cursor() as cur:
         cur.execute("BEGIN;")
-        # Some environments may not have HNSW / the GUC enabled; don't hard-fail.
         try:
             cur.execute(sql_set, (ef_search,))
         except Exception:
@@ -187,7 +185,7 @@ def pg_vector_search_article(
 
 
 # ─────────────────────────────────────
-# 2) Neo4j keyword search (Fulltext)
+# 2) Neo4j keyword search (Fulltext + Graph Traversal)
 # ─────────────────────────────────────
 
 def neo4j_keyword_search_chunks(
@@ -196,16 +194,38 @@ def neo4j_keyword_search_chunks(
     k_kw: int,
     fulltext_index: Optional[str],
 ) -> List[Dict[str, Any]]:
+    """
+    [Logic 1 + Logic 2 구현]
+    - 인덱스에서 노드를 찾음 (Keyword 또는 Chunk)
+    - Keyword라면 -> 관계(HAS_KEYWORD)를 타고 Chunk를 찾음 (Graph RAG)
+    - Chunk라면 -> 바로 사용
+    """
     if not fulltext_index or k_kw <= 0:
         return []
 
     cypher = f"""
+    // 1. 통합 인덱스 검색 (Keyword 노드일 수도, Chunk 노드일 수도 있음)
     CALL db.index.fulltext.queryNodes('{fulltext_index}', $text, {{limit: $k_kw}})
     YIELD node, score
-    WHERE node:Chunk
-    RETURN node.chunk_id AS chunk_id, score AS kscore
+
+    // 2. [Logic 1] 만약 검색된 게 Keyword라면 -> 연결된 Chunk들을 펼친다(Expand)
+    // (관계명이 HAS_KEYWORD가 아니라면 실제 스키마에 맞게 수정 필요)
+    OPTIONAL MATCH (node)<-[:HAS_KEYWORD]-(linked_chunk:Chunk)
+
+    // 3. [Logic 1 & 2 병합]
+    // - linked_chunk가 있다? => Logic 1 (키워드 타고 옴)
+    // - 없다? => node가 직접 Chunk인지 확인 => Logic 2 (본문 검색됨)
+    WITH coalesce(linked_chunk, CASE WHEN node:Chunk THEN node END) AS final_chunk, score
+    
+    // 4. 유효한 Chunk만 남김
+    WHERE final_chunk IS NOT NULL
+
+    // 5. 결과 집계 (하나의 Chunk가 여러 경로로 검색될 수 있으므로 점수는 가장 높은 것으로)
+    RETURN final_chunk.chunk_id AS chunk_id, max(score) AS kscore
     ORDER BY kscore DESC
+    LIMIT $k_kw
     """
+    
     with driver.session() as session:
         rs = session.run(cypher, text=query_text, k_kw=k_kw)
         return [r.data() for r in rs]
@@ -300,12 +320,13 @@ def run_system_b_with_metrics(
         conn.close()
     pg_ms = (time.perf_counter() - t0) * 1000.0
 
-    # Keyword search (Neo4j)
+    # Keyword search (Neo4j Graph RAG)
     t1 = time.perf_counter()
     driver = get_neo4j_driver()
     try:
         ft_index, ft_meta = pick_fulltext_chunk_index(driver)
         kw_results = neo4j_keyword_search_chunks(driver, query_text, k_kw=k_kw, fulltext_index=ft_index)
+        
         # Fuse
         fused = rrf_fusion(vec_results, kw_results, k_final=k_final, rrf_k=rrf_k)
         fused_ids = [cid for cid, _, _ in fused]
@@ -318,7 +339,7 @@ def run_system_b_with_metrics(
             score, sources = fuse_map.get(cid, (None, []))
             r["similarity"] = score
             r["sources"] = sources
-            r["system"] = "SystemB_PGVector_Neo4jFT_RRF"
+            r["system"] = "SystemB_PGVector_Neo4jGraphRRF"
 
     finally:
         driver.close()
@@ -327,7 +348,7 @@ def run_system_b_with_metrics(
     total_ms = (time.perf_counter() - t_total0) * 1000.0
 
     metrics = {
-        "system": "B",
+        "system": "B (Graph RAG)",
         "embedding_ms": emb_ms,
         "pg_ms": pg_ms,
         "neo4j_ms": neo_ms,
@@ -365,19 +386,82 @@ def run_system_b(
         embedding_model=embedding_model,
     )["results"]
 
+def generate_answer(query_text: str, retrieved_chunks: List[Dict[str, Any]]) -> str:
+    """
+    RAG 성능 평가를 위한 Baseline 답변 생성
+    - 복잡한 페르소나나 구조 강요를 제거하여, 검색된 데이터(Context)의 품질을 날것 그대로 평가함.
+    """
+    
+    # 1. Context 구성
+    context_text = ""
+    for i, chunk in enumerate(retrieved_chunks):
+        context_text += f"\n[Document {i+1}]\n"
+        # 메타데이터가 있다면 활용, 없으면 본문만
+        source_info = f"{chunk.get('title', '')} > {chunk.get('section', '')}"
+        context_text += f"Source: {source_info}\n"
+        context_text += f"Content: {chunk.get('text', '')}\n"
+
+    # 2. 평가용(Baseline) 시스템 프롬프트
+    # 기교를 부리지 말고, 주어진 정보만으로 건조하게 답변하도록 지시
+    system_prompt = """
+    You are a research assistant utilizing a Retrieval-Augmented Generation (RAG) system.
+    
+    Your task is to answer the user's question based **ONLY** on the provided [Context] documents.
+    
+    **Guidelines:**
+    1. **Strict Grounding:** Do not use outside knowledge. If the answer is not in the [Context], state "The provided documents do not contain this information."
+    2. **Citations:** You must cite the source for every key statement using the format `[Document N]`.
+    3. **Tone:** Maintain a neutral, objective, and scientific tone.
+    4. **No Fluff:** Do not make up protocols or assumptions that are not explicitly written in the text.
+    """
+
+    user_prompt = f"""
+    [Context]
+    {context_text}
+
+    [Question]
+    {query_text}
+    """
+
+    # 3. LLM 호출
+    client, _ = _embedding_client()
+    chat_model = "gpt-4o"  # 평가에는 똑똑한 모델을 써야 '모델 멍청함'과 '데이터 부족'을 구분 가능
+
+    try:
+        response = client.chat.completions.create(
+            model=chat_model,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            temperature=0.0, # 창의성 0% -> 검색된 데이터에만 의존하게 만듦
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        return f"Error generating answer: {e}"
+
+
+# ─────────────────────────────────────
+# Main Execution
+# ─────────────────────────────────────
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--query", "-q", required=True)
-    parser.add_argument("--k", type=int, default=5)
-    parser.add_argument("--k-vec", type=int, default=50)
-    parser.add_argument("--k-kw", type=int, default=50)
-    parser.add_argument("--rrf-k", type=int, default=60)
-    parser.add_argument("--ef-search", type=int, default=100)
+    parser.add_argument("--query", "-q", required=True, help="질문 내용")
+    parser.add_argument("--k", type=int, default=5, help="최종 반환할 Chunk 개수")
+    parser.add_argument("--k-vec", type=int, default=50, help="Vector 검색 후보 개수")
+    parser.add_argument("--k-kw", type=int, default=50, help="Keyword 검색 후보 개수")
+    parser.add_argument("--rrf-k", type=int, default=60, help="RRF 상수")
+    parser.add_argument("--ef-search", type=int, default=100, help="HNSW ef_search 파라미터")
     parser.add_argument("--embedding-model", default=None)
-    parser.add_argument("--with-metrics", action="store_true")
+    parser.add_argument("--with-metrics", action="store_true", help="메트릭 포함 JSON 출력")
+    
+    # [추가됨] 답변 생성 여부를 결정하는 플래그
+    parser.add_argument("--generate", "-g", action="store_true", help="LLM을 사용하여 답변 생성")
+    
     args = parser.parse_args()
 
+    # 1. 검색 수행
     if args.with_metrics:
         out = run_system_b_with_metrics(
             query_text=args.query,
@@ -388,7 +472,15 @@ if __name__ == "__main__":
             ef_search=args.ef_search,
             embedding_model=args.embedding_model,
         )
-        print(json.dumps(out, ensure_ascii=False, indent=2))
+        results = out["results"] # 답변 생성용 결과 추출
+        
+        # JSON은 로그용으로 출력 (답변 생성 모드가 아닐 때만, 혹은 항상 출력)
+        if not args.generate:
+            print(json.dumps(out, ensure_ascii=False, indent=2))
+        else:
+            # 답변 생성 모드일 때는 메트릭만 간략히 보여주거나 생략 가능 (여기선 생략)
+            pass
+
     else:
         results = run_system_b(
             query_text=args.query,
@@ -399,4 +491,24 @@ if __name__ == "__main__":
             ef_search=args.ef_search,
             embedding_model=args.embedding_model,
         )
-        print(json.dumps(results, ensure_ascii=False, indent=2))
+        if not args.generate:
+            print(json.dumps(results, ensure_ascii=False, indent=2))
+
+    # 2. 답변 생성 (플래그가 있을 때만)
+    if args.generate:
+        print(f"\n🚀 검색된 청크 개수: {len(results)}개")
+        print("-" * 50)
+        
+        # 실제 답변 생성 호출
+        final_answer = generate_answer(args.query, results)
+        
+        print(f"📄 질문: {args.query}")
+        print("=" * 50)
+        print(f"🤖 AI 답변 (Evaluation Mode):\n")
+        print(final_answer)
+        print("=" * 50)
+        
+        # 디버깅용: 어떤 문서가 쓰였는지 간략 출력
+        print("\n[참고 문헌 목록]")
+        for i, r in enumerate(results):
+            print(f"[{i+1}] {r.get('title', 'No Title')} (Sim: {r.get('similarity', 0.0):.4f})")
