@@ -1414,8 +1414,29 @@ function toggleReferenceBookmark(referenceId, btn) {
 // Handle save references
 function handleSaveReferences() {
     showReferenceSelectionModal = true;
-    if (window.Modal && window.Modal.open) {
+    
+    // Get current chat ID
+    const chatId = activeChatId;
+    
+    console.log('[Chat] handleSaveReferences - activeChatId:', chatId);
+    
+    if (!chatId) {
+        console.warn('[Chat] No chat ID available to load references');
+        if (window.notyf) {
+            window.notyf.error('채팅을 먼저 선택해주세요.');
+        }
+        return;
+    }
+    
+    // Open reference selection modal with chat ID
+    if (window.ReferenceSelectionModal && window.ReferenceSelectionModal.open) {
+        console.log('[Chat] Opening ReferenceSelectionModal with chatId:', chatId);
+        window.ReferenceSelectionModal.open(chatId);
+    } else if (window.Modal && window.Modal.open) {
+        console.log('[Chat] Fallback to window.Modal.open');
         window.Modal.open('referenceSelectionModal');
+    } else {
+        console.error('[Chat] Reference selection modal not available');
     }
 }
 
