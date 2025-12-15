@@ -198,9 +198,9 @@
                     </a>
                 </td>
                 <td>{{ note.created_at|date:"Y-m-d" }}</td>
-                <td>#{{ note.tag }}</td>
+                <td>#{{ note.tags.first.tag|default:"태그 없음" }}</td>
                 <td><i class="fa-solid fa-share-nodes"></i> 0</td>
-                <td><i class="fa-solid fa-comment-dots"></i> 0</td>
+                <td><i class="fa-solid fa-comment-dots"></i> {{ note.comments.count }}</td>
             </tr>
         {% endfor %}
         </tbody>
@@ -215,7 +215,7 @@
 
                     <div class="note-content">{{ note.content|safe }}</div>
 
-                    <div class="note-tag">#{{ note.tag }}</div>
+                    <div class="note-tag">#{{ note.tags.first.tag|default:"태그 없음" }}</div>
 
                     <div class="note-footer">
                         <span>{{ note.created_at|date:"Y-m-d" }}</span>
@@ -223,7 +223,7 @@
                         <span>
                             <i class="fa-solid fa-share-nodes"></i> 0
                             &nbsp;&nbsp;
-                            <i class="fa-solid fa-comment-dots"></i> 0
+                            <i class="fa-solid fa-comment-dots"></i> {{ note.comments.count }}
                         </span>
                     </div>
                 </div>

@@ -4,13 +4,33 @@ from django.contrib.auth.decorators import login_required
 from notes.models import t_note
 from .forms import NoteForm
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from django.db.models import Count
 
-# 연구 노트 목록 - 로그인 사용자 기반
 @login_required
 def research_note_list(request):
-    view_mode = request.GET.get("view", "card")  # view_mode 받아오기
-    notes = t_note.objects.filter(owner=request.user, deleted_at__isnull=True).order_by('-created_at')
-    return render(request, "note_list.html", {"notes": notes, "view_mode": view_mode})
+    view_mode = request.GET.get("view", "card")
+    per_page = request.GET.get("per_page", 9)
+    
+    # 댓글 수와 공유 수를 계산하여 annotate (기본 related_name 사용)
+    notes = t_note.objects.filter(deleted_at__isnull=True).prefetch_related('tags', 'comments').order_by('-created_at')
+    
+    # 페이지네이션 적용
+    paginator = Paginator(notes, per_page)
+    page = request.GET.get('page')
+    try:
+        notes = paginator.page(page)
+    except PageNotAnInteger:
+        notes = paginator.page(1)
+    except EmptyPage:
+        notes = paginator.num_pages
+    
+    per_page_options = [9, 18, 27]
+    return render(request, "note_list.html", {
+        "notes": notes,
+        "view_mode": view_mode,
+        "per_page": int(per_page),
+        "per_page_options": per_page_options
+    })
 
 # 연구 노트 생성
 @login_required
