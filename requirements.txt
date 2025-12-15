@@ -5,9 +5,7 @@
 
 # 기본 패키지
 numpy==1.26.4
-<<<<<<< HEAD
 torch==2.2.2
-=======
 pandas
 scipy
 
@@ -35,7 +33,6 @@ sqlalchemy
 neo4j
 neo4j-graphrag  # Neo4j TextRetriever
 py2neo
->>>>>>> 384d038cf34c8aa64d919c35a5883f9232789e95
 
 ########################################
 # Django Web Framework
