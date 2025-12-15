@@ -3,6 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.core.paginator import Paginator
 from django.views.decorators.csrf import csrf_exempt
+from django.db.models import Count
 from .models import Note, NoteComment
 import json
 
@@ -20,8 +21,12 @@ def api_notes_list(request):
     date_from = request.GET.get('date_from')
     date_to = request.GET.get('date_to')
     
-    # 해당 계정의 노트만 조회 (labnote_project 참고)
-    notes = Note.objects.filter(owner=request.user, status='E')
+    # 해당 계정의 노트만 조회 + 댓글 수 집계
+    notes = (
+        Note.objects
+        .filter(owner=request.user, status='E')
+        .annotate(comment_count=Count('comments'))
+    )
     
     # 검색 필터
     if search:
@@ -41,11 +46,11 @@ def api_notes_list(request):
         'notes': [{
             'id': note.note_sid,
             'title': note.title,
-            'content': note.content[:100] + '...' if note.content else '',
+            'content': (note.content[:100] + '...') if note.content else '',
             'date': note.created_at.strftime('%Y-%m-%d'),
             'shared': 0,  # 공유 로직 추가 시 구현
-            'comments': 0,  # 댓글 기능 추가 시 구현
-            'tags': [tag.name for tag in note.tags.all()],
+            'comments': note.comment_count,
+            'tags': [tag.tag_name for tag in note.tags.all()],
         } for note in page_obj],
         'total_pages': paginator.num_pages,
         'current_page': page,
@@ -99,8 +104,8 @@ def api_note_detail(request):
             'date': note.created_at.strftime('%Y-%m-%d'),
             'author': note.owner.get_full_name() or note.owner.email,
             'shared': 0,  # 공유 로직 추가 시 구현
-            'comments': 0,  # 댓글 기능 추가 시 구현
-            'tags': [tag.name for tag in note.tags.all()],
+            'comments': note.comments.count(),
+            'tags': [tag.tag_name for tag in note.tags.all()],
         }
         return JsonResponse(data)
     except Note.DoesNotExist:
@@ -201,7 +206,7 @@ def api_note_comments(request):
             'comment_text': comment.comment_text,
             'position_top': comment.position_top,
             'created_at': comment.created_at.strftime('%Y-%m-%d %H:%M:%S'),
-            'author': request.user.get_full_name() or request.user.email,  # 실제 사용자 이름으로 변경
+            'author': request.user.get_full_name() or request.user.email,
         } for comment in comments]
         
         return JsonResponse({'comments': data})

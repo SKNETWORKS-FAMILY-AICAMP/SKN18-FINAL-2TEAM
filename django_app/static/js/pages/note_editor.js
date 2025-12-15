@@ -91,7 +91,7 @@ function initNoteEditor() {
 
     // Check if editing existing note (before editor init)
     const urlParams = new URLSearchParams(window.location.search);
-    editingNoteId = urlParams.get('id');
+    editingNoteId = urlParams.get('id') || window.noteId;
     if (editingNoteId) {
         isEditMode = true;
         if (editorTitle) editorTitle.textContent = '노트 수정';
@@ -115,7 +115,6 @@ function initTagify() {
         return;
     }
 
-    // Destroy existing instance to prevent duplicates
     if (tagifyInstance) {
         tagifyInstance.destroy();
         tagifyInstance = null;
@@ -235,7 +234,6 @@ function initCKEditor() {
             editorInstance = editor;
             console.log('[NoteEditor] CKEditor5 initialized successfully');
 
-            // Load data in edit mode
             if (editingNoteId) {
                 loadNoteForEdit(editingNoteId);
             }
@@ -255,10 +253,8 @@ async function loadNoteForEdit(noteId) {
         if (!resp.ok) throw new Error(`Failed to load note: ${resp.status}`);
         const note = await resp.json();
 
-        // title
         if (noteTitleInput) noteTitleInput.value = note.title || '';
 
-        // tags
         const tagList = Array.isArray(note.tags) ? note.tags : [];
         if (tagifyInstance) {
             tagifyInstance.removeAllTags();
@@ -267,7 +263,6 @@ async function loadNoteForEdit(noteId) {
             noteTagsInput.value = tagList.join(', ');
         }
 
-        // content
         if (editorInstance) {
             editorInstance.setData(note.content || '');
         }
@@ -323,7 +318,6 @@ async function handleSaveNote() {
     const title = noteTitleInput?.value.trim() || '';
     const content = editorInstance ? editorInstance.getData().trim() : '';
 
-    // tags
     let tags = [];
     if (tagifyInstance) {
         tags = tagifyInstance.value.map(tag => tag.value);
