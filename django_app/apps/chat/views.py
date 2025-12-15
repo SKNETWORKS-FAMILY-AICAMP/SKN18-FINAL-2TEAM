@@ -4,7 +4,7 @@ from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
 import json
-from .models import RecommendedQuestion, Chat, ChatMessage, ChatReference
+from .models import RecommendedQuestion, Chat, ChatMessage, ChatReference, ChatMessageFeedback
 from .models.papers_models import PaperGraph, PaperNode, PaperEdge, ChatMessagePaperGraph
 from .services import generate_concept_graph
 
@@ -17,9 +17,11 @@ def index(request):
 
 def recommended_questions(request):
     """추천 질문 API 엔드포인트"""
+    # 사용자가 선택한 질문 카테고리(코드, 예: 'bio_q', 'protocal' 등)를 쿼리 파라미터에서 읽어옴
     category = request.GET.get('category', None)
     
     # 기본적으로 활성화된 질문만 조회
+    # sql : SELECT * FROM recommended_question WHERE status = 'E'
     queryset = RecommendedQuestion.objects.filter(status='E')
     
     # 카테고리 필터링
@@ -27,9 +29,10 @@ def recommended_questions(request):
         queryset = queryset.filter(question_category=category)
     
     # 정렬: sort_order, question_sid 순
+    # .values(): 딕셔너리 형태로 데이터 가져오기
     questions = queryset.values('question_sid', 'question_text', 'question_category', 'sort_order')
     
-    # 카테고리별로 그룹화
+    # 카테고리별로 그룹화 - 디비에서 뽑아온 추천질문목록을 같은 카테고리끼리 묶기
     questions_by_category = {}
     for q in questions:
         cat = q['question_category']
@@ -335,8 +338,8 @@ def chat_detail(request, chat_id):
     })
 
 
-@csrf_exempt
-@require_http_methods(["POST"])
+@csrf_exempt  # CSRF 검증을 사용하지 않음 (API 호출 가능)
+@require_http_methods(["POST"])  # POST 요청만 허용
 def graph_summary(request):
     """
     채팅 메시지 내용을 기반으로 Mermaid 그래프 코드를 생성하는 API 엔드포인트
@@ -440,75 +443,156 @@ def graph_summary(request):
         }, status=500)
 
 
-@require_http_methods(["POST"])
+# 주석처리: message_concept_graph 함수는 graph_summary와 동일한 기능을 수행하며,
+# 현재 프론트엔드 및 백엔드 어디에서도 사용되지 않아 주석처리함.
+# 필요시 graph_summary API를 사용하면 됨.
+# @require_http_methods(["POST"])
+# @csrf_exempt
+# def message_concept_graph(request, message_id):
+#     """
+#     특정 메시지의 concept_graph를 생성하거나 조회하는 API 엔드포인트
+#     
+#     - 메시지에 concept_graph가 없으면 생성
+#     - message.concept_graph = graph_code로 할당
+#     - message.save(update_fields=["concept_graph"])로 DB에 저장
+#     - 생성된 그래프 코드를 JSON으로 반환
+#     """
+#     print(f"[DEBUG] message_concept_graph() 호출됨 - message_id: {message_id}")
+#     
+#     try:
+#         # 메시지 조회 (assistant 역할만)
+#         message = get_object_or_404(
+#             ChatMessage,
+#             message_sid=message_id,
+#             role='A'  # Assistant만
+#         )
+#         
+#         print(f"[DEBUG] 메시지 조회 성공 - message_sid: {message.message_sid}, role: {message.role}")
+#         print(f"[DEBUG] 현재 concept_graph 존재 여부: {bool(message.concept_graph)}")
+#         
+#         # concept_graph가 없으면 생성
+#         if not message.concept_graph:
+#             print(f"[DEBUG] concept_graph가 없음, 생성 시작...")
+#             try:
+#                 graph_code = generate_concept_graph(message)
+#                 print(f"[DEBUG] concept_graph 생성 완료, 길이: {len(graph_code) if graph_code else 0}")
+#                 
+#                 # Mermaid 코드에서 ```mermaid 또는 ``` 제거
+#                 graph_code = graph_code.strip()
+#                 if graph_code.startswith('```'):
+#                     print(f"[DEBUG] 코드 블록 마커 제거 중...")
+#                     lines = graph_code.split('\n')
+#                     if lines[0].startswith('```'):
+#                         lines = lines[1:]
+#                     if lines and lines[-1].strip() == '```':
+#                         lines = lines[:-1]
+#                     graph_code = '\n'.join(lines).strip()
+#                     print(f"[DEBUG] 코드 블록 마커 제거 완료, 최종 길이: {len(graph_code)}")
+#                 
+#                 # DB에 저장
+#                 message.concept_graph = graph_code
+#                 message.save(update_fields=["concept_graph"])
+#                 print(f"[DEBUG] concept_graph DB 저장 완료")
+#             except Exception as exc:
+#                 print(f"[ERROR] concept_graph 생성 중 오류: {exc}")
+#                 import traceback
+#                 traceback.print_exc()
+#                 return JsonResponse({
+#                     'error': f'Failed to generate concept graph: {str(exc)}'
+#                 }, status=500)
+#         else:
+#             print(f"[DEBUG] 기존 concept_graph 사용, 길이: {len(message.concept_graph)}")
+#         
+#         return JsonResponse({
+#             'graph': message.concept_graph,
+#             'message_id': message_id
+#         })
+#         
+#     except ChatMessage.DoesNotExist:
+#         print(f"[ERROR] 메시지를 찾을 수 없음 - message_id: {message_id}")
+#         return JsonResponse({
+#             'error': 'Message not found'
+#         }, status=404)
+#     except Exception as e:
+#         print(f"[ERROR] message_concept_graph() 오류: {e}")
+#         traceback.print_exc()
+#         return JsonResponse({
+#             'error': f'Internal server error: {str(e)}'
+#         }, status=500)
+
+
 @csrf_exempt
-def message_concept_graph(request, message_id):
+@require_http_methods(["POST"])
+def message_feedback(request, message_id):
     """
-    특정 메시지의 concept_graph를 생성하거나 조회하는 API 엔드포인트
-    
-    - 메시지에 concept_graph가 없으면 생성
-    - message.concept_graph = graph_code로 할당
-    - message.save(update_fields=["concept_graph"])로 DB에 저장
-    - 생성된 그래프 코드를 JSON으로 반환
+    메시지에 대한 피드백(좋아요/싫어요)을 저장하는 API 엔드포인트
     """
-    print(f"[DEBUG] message_concept_graph() 호출됨 - message_id: {message_id}")
-    
     try:
-        # 메시지 조회 (assistant 역할만)
-        message = get_object_or_404(
-            ChatMessage,
-            message_sid=message_id,
-            role='A'  # Assistant만
-        )
+        data = json.loads(request.body)
+        feedback_type = data.get('feedback_type')  # 'L' for like, 'D' for dislike
         
-        print(f"[DEBUG] 메시지 조회 성공 - message_sid: {message.message_sid}, role: {message.role}")
-        print(f"[DEBUG] 현재 concept_graph 존재 여부: {bool(message.concept_graph)}")
+        if feedback_type not in ['L', 'D']:
+            return JsonResponse({
+                'error': 'Invalid feedback_type. Must be "L" or "D".'
+            }, status=400)
         
-        # concept_graph가 없으면 생성
-        if not message.concept_graph:
-            print(f"[DEBUG] concept_graph가 없음, 생성 시작...")
-            try:
-                graph_code = generate_concept_graph(message)
-                print(f"[DEBUG] concept_graph 생성 완료, 길이: {len(graph_code) if graph_code else 0}")
-                
-                # Mermaid 코드에서 ```mermaid 또는 ``` 제거
-                graph_code = graph_code.strip()
-                if graph_code.startswith('```'):
-                    print(f"[DEBUG] 코드 블록 마커 제거 중...")
-                    lines = graph_code.split('\n')
-                    if lines[0].startswith('```'):
-                        lines = lines[1:]
-                    if lines and lines[-1].strip() == '```':
-                        lines = lines[:-1]
-                    graph_code = '\n'.join(lines).strip()
-                    print(f"[DEBUG] 코드 블록 마커 제거 완료, 최종 길이: {len(graph_code)}")
-                
-                # DB에 저장
-                message.concept_graph = graph_code
-                message.save(update_fields=["concept_graph"])
-                print(f"[DEBUG] concept_graph DB 저장 완료")
-            except Exception as exc:
-                print(f"[ERROR] concept_graph 생성 중 오류: {exc}")
-                import traceback
-                traceback.print_exc()
+        # 메시지 조회
+        message = get_object_or_404(ChatMessage, message_sid=message_id)
+        
+        # 기존 피드백이 있는지 확인 (같은 사용자의 같은 메시지에 대한 피드백)
+        # user_id는 CustomUser의 primary key
+        user_id = str(request.user.user_id) if request.user.is_authenticated else 'anonymous'
+        
+        # 기존 피드백 조회 - 같은 사용자가 이미 이 메시지에 피드백을 남겼는지 확인
+        existing_feedback = ChatMessageFeedback.objects.filter(
+            message=message,
+            created_id=user_id
+        ).first()
+        
+        if existing_feedback:
+            # 같은 타입의 피드백이면 취소 (삭제)
+            if existing_feedback.feedback_type == feedback_type:
+                existing_feedback.delete()
                 return JsonResponse({
-                    'error': f'Failed to generate concept graph: {str(exc)}'
-                }, status=500)
+                    'success': True,
+                    'action': 'removed',
+                    'message': '피드백이 취소되었습니다.'
+                })
+            else:
+                # 다른 타입의 피드백이면 업데이트
+                existing_feedback.feedback_type = feedback_type
+                existing_feedback.updated_id = user_id
+                existing_feedback.save()
+                return JsonResponse({
+                    'success': True,
+                    'action': 'updated',
+                    'message': '피드백이 업데이트되었습니다.',
+                    'feedback_type': feedback_type
+                })
         else:
-            print(f"[DEBUG] 기존 concept_graph 사용, 길이: {len(message.concept_graph)}")
-        
+            # 새로운 피드백 생성
+            feedback = ChatMessageFeedback.objects.create(
+                message=message,
+                feedback_type=feedback_type,
+                created_id=user_id,
+                updated_id=user_id
+            )
+            
+            return JsonResponse({
+                'success': True,
+                'action': 'created',
+                'message': '피드백이 저장되었습니다.',
+                'feedback_id': feedback.feedback_sid,
+                'feedback_type': feedback_type
+            })
+            
+    except json.JSONDecodeError:
         return JsonResponse({
-            'graph': message.concept_graph,
-            'message_id': message_id
-        })
-        
-    except ChatMessage.DoesNotExist:
-        print(f"[ERROR] 메시지를 찾을 수 없음 - message_id: {message_id}")
-        return JsonResponse({
-            'error': 'Message not found'
-        }, status=404)
+            'error': 'Invalid JSON in request body'
+        }, status=400)
     except Exception as e:
-        print(f"[ERROR] message_concept_graph() 오류: {e}")
+        print(f"[ERROR] Error in message_feedback: {e}")
+        import traceback
         traceback.print_exc()
         return JsonResponse({
             'error': f'Internal server error: {str(e)}'
