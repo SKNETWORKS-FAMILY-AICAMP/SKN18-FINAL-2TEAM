@@ -22,7 +22,9 @@
                         <button class="btn-back" id="btnBack">
                             <i class="fa-solid fa-arrow-left"></i>
                         </button>
-                        <h1 class="note-detail-title" id="noteDetailTitle"></h1>
+                        <h1 class="note-detail-title" id="noteDetailTitle">
+                            {% if note %}{{ note.title }}{% endif %}
+                        </h1>
                     </div>
                     
                     <!-- Meta Info and Action Buttons Row -->
@@ -30,10 +32,14 @@
                         <div class="note-detail-meta">
                             <div class="meta-author">
                                 <img src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop" alt="Author" class="author-avatar" />
-                                <span id="noteDetailAuthor">Dr. Sarah Kim</span>
+                                <span id="noteDetailAuthor">
+                                    {% if note %}{{ note.owner.get_full_name|default:note.owner.email }}{% endif %}
+                                </span>
                             </div>
                             <span class="meta-separator">•</span>
-                            <span class="meta-date" id="noteDetailDate"></span>
+                            <span class="meta-date" id="noteDetailDate">
+                                {% if note %}{{ note.created_at|date:"Y-m-d" }}{% endif %}
+                            </span>
                             <span class="meta-separator">•</span>
                             <div class="meta-tags" id="noteDetailTags">
                                 <!-- Tags will be rendered here -->
@@ -65,7 +71,13 @@
                 <!-- Scrollable Content Area -->
                 <div class="note-detail-content">
                     <div class="note-content-box" id="noteContentBox" data-content-ref>
-                        <p class="note-content-text" id="noteContentText"></p>
+                        <div class="note-content-text" id="noteContentText">
+                            {% if note %}
+                                {{ note.content|safe }}
+                            {% else %}
+                                <!-- Content will be loaded by JavaScript -->
+                            {% endif %}
+                        </div>
                     </div>
 
                     <!-- Attachments Section -->

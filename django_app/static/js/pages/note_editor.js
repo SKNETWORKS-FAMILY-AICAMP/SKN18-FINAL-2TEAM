@@ -376,7 +376,7 @@ function handleCancelNote() {
 }
 
 // Handle save note
-function handleSaveNote() {
+async function handleSaveNote() {
     const title = noteTitleInput?.value.trim() || "";
     const content = editorInstance ? editorInstance.getData().trim() : "";
     
@@ -399,25 +399,47 @@ function handleSaveNote() {
         return;
     }
 
-    // TODO: API 호출로 저장
+    // API 호출로 저장
     const noteData = {
-        id: editingNoteId || null,
         title: title,
         content: content,
         tags: tags,
         attachedFiles: attachedFiles
     };
     
-    console.log('Saving note:', noteData);
-
-    if (window.notyf) {
-        window.notyf.success(isEditMode ? '노트가 수정되었습니다.' : '노트가 저장되었습니다.');
+    try {
+        const response = await fetch('/notes/api/create/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
+            },
+            body: JSON.stringify(noteData)
+        });
+        
+        if (response.ok) {
+            const result = await response.json();
+            console.log('Note saved:', result);
+            
+            if (window.notyf) {
+                window.notyf.success(isEditMode ? '노트가 수정되었습니다.' : '노트가 저장되었습니다.');
+            }
+            
+            // Redirect to notes list
+            setTimeout(() => {
+                window.location.href = '/notes/?refresh=true';
+            }, 1000);
+        } else {
+            throw new Error('Failed to save note');
+        }
+    } catch (error) {
+        console.error('Error saving note:', error);
+        if (window.notyf) {
+            window.notyf.error('노트 저장에 실패했습니다.');
+        } else {
+            alert('노트 저장에 실패했습니다.');
+        }
     }
-
-    // Redirect to notes list
-    setTimeout(() => {
-        window.location.href = '/notes/';
-    }, 1000);
 }
 
 // Handle share note

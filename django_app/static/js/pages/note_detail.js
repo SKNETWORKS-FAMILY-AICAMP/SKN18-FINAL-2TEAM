@@ -108,29 +108,52 @@ function initNoteDetail() {
 }
 
 // Load note detail
-function loadNoteDetail(noteId) {
-    // TODO: API 호출로 노트 데이터 가져오기
-    // 현재는 mock 데이터 사용
-    const note = mockNoteData;
-    
-    renderNoteDetail(note);
-    renderAttachmentsDetail(mockAttachments);
-    renderComments();
-    
-    // Open comment sidebar by default
-    handleToggleCommentSidebar(true);
+async function loadNoteDetail(noteId) {
+    console.log('Loading note detail for ID:', noteId);
+    try {
+        const response = await fetch(`/notes/api/detail/?id=${noteId}`);
+        console.log('API response status:', response.status);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const note = await response.json();
+        console.log('Loaded note data:', note);
+        
+        renderNoteDetail(note);
+        renderAttachmentsDetail(mockAttachments);  // TODO: 실제 첨부파일 API 추가
+        renderComments();
+        
+        // Open comment sidebar by default
+        handleToggleCommentSidebar(true);
+    } catch (error) {
+        console.error('Failed to load note:', error);
+        // 에러 시 빈 상태 표시 또는 에러 메시지
+        if (window.notyf) {
+            window.notyf.error('노트를 불러오는데 실패했습니다.');
+        }
+        // 에러 메시지를 페이지에 표시
+        const noteContentText = document.getElementById('noteContentText');
+        if (noteContentText) {
+            noteContentText.textContent = '노트를 불러오는데 실패했습니다. 다시 시도해주세요.';
+        }
+    }
 }
 
 // Render note detail
 function renderNoteDetail(note) {
     if (!note) return;
     
+    console.log('Rendering note:', note);
+    console.log('Note content:', note.content);
+    
     if (noteDetailTitle) noteDetailTitle.textContent = note.title;
     if (noteDetailDate) noteDetailDate.textContent = note.date;
     if (noteDetailAuthor) noteDetailAuthor.textContent = note.author;
     
     if (noteContentText) {
-        noteContentText.textContent = note.content;
+        console.log('Setting innerHTML:', note.content);
+        noteContentText.innerHTML = note.content || '';
+        console.log('innerHTML set to:', noteContentText.innerHTML);
     }
     
     // Render tags
