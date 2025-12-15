@@ -95,7 +95,7 @@ INSERT INTO t_chat (title, preview, status, pinned, archived, filter_type, auto_
 
 INSERT INTO t_chat_message (chat_sid, role, content, sort_order, created_id, created_at) VALUES
 (6, 'U', 'Eukaryotic cell이 뭐야?', 1, 'user001', CURRENT_TIMESTAMP),
-(6, 'A', 'Eukaryotic cell(진핵세포)는 분명한 막으로 둘러싸인 핵과 다양한 세포 소기관을 지니는 진핵생물을 구성하는 기본 단위입니다. 진핵세포는 박테리아 및 고세균과 같은 원핵세포(prokaryote)와 구별되며, 동물, 식물, 곰팡이, 그리고 많은 단세포 생물이 이에 해당합니다.
+(6, 'A', $$'Eukaryotic cell(진핵세포)는 분명한 막으로 둘러싸인 핵과 다양한 세포 소기관을 지니는 진핵생물을 구성하는 기본 단위입니다. 진핵세포는 박테리아 및 고세균과 같은 원핵세포(prokaryote)와 구별되며, 동물, 식물, 곰팡이, 그리고 많은 단세포 생물이 이에 해당합니다.
 
 **1. 진핵세포란 무엇인가?**
 
@@ -159,7 +159,7 @@ INSERT INTO t_chat_message (chat_sid, role, content, sort_order, created_id, cre
 
 **6. 최근 과학적 연구 동향**
 
-진핵세포 기원의 분자생물학적, 구조생물학적 증거(예: 고세균에서 진핵세포형 세포골격 확인 등)가 꾸준히 축적되고 있습니다. 고해상도 이미징(크라이오전자현미경 등)을 통한 세포 구조 연구가 활성화되어 세포의 미세환경 이해가 증진되고 있습니다.', 2, 'system', CURRENT_TIMESTAMP);
+진핵세포 기원의 분자생물학적, 구조생물학적 증거(예: 고세균에서 진핵세포형 세포골격 확인 등)가 꾸준히 축적되고 있습니다. 고해상도 이미징(크라이오전자현미경 등)을 통한 세포 구조 연구가 활성화되어 세포의 미세환경 이해가 증진되고 있습니다.'$$, 2, 'system', CURRENT_TIMESTAMP);
 
 -- t_chat_reference 테이블 더미 데이터 삽입
 -- source: P(PubMed), W(Web), N(NIH), T(PROTOCOL)
@@ -179,8 +179,8 @@ INSERT INTO t_chat_reference (chat_sid, message_sid, source, badge, title, descr
 (6, 2, 'P', 'L', 'Evolution and diversity of eukaryotic cells', 'Exploring the evolutionary history and remarkable diversity of eukaryotic cell types across different kingdoms of life.', 'J', 'PubMed : 29876543', '29876543', '2023-05-10'::timestamp, 'Anderson R et al.', 9, CURRENT_TIMESTAMP);
 
 -- t_paper_graph 테이블 더미 데이터 삽입
-INSERT INTO t_paper_graph (graph_title, graph_description, status, created_id, updated_id, created_at, updated_at) VALUES
-('관련 논문 네트워크', '논문 간 인용 관계를 시각화한 그래프', 'E', 'system', 'system', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+INSERT INTO t_paper_graph (graph_title, graph_description, status, created_id, updated_id, created_at) VALUES
+('관련 논문 네트워크', '논문 간 인용 관계를 시각화한 그래프', 'E', 'system', 'system', CURRENT_TIMESTAMP);
 
 -- t_paper_node 테이블 더미 데이터 삽입 (graph_sid=1)
 INSERT INTO t_paper_node (graph_sid, paper_id, paper_label, node_size, node_color, x_position, y_position, created_id, created_at) VALUES
