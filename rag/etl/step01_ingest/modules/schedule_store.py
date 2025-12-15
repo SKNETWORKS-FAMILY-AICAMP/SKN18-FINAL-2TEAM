@@ -218,3 +218,25 @@ def get_and_reserve_next_page(keyword: str, pages_to_reserve: int = 10) -> Optio
             except Exception as e:
                 conn.rollback()
                 raise
+
+
+def update_ingestion_completed(keyword: str) -> None:
+    """
+    순수 ingest (API 호출) 완료 시점을 기록한다.
+    clean, chunking 등 후속 단계는 포함하지 않는다.
+    
+    Args:
+        keyword: 키워드
+    """
+    query = f"""
+        UPDATE {TABLE_NAME}
+        SET updated_at = NOW()
+        WHERE keyword = %s;
+    """
+    with _get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(query, (keyword,))
+            print(
+                f"[SCHEDULE][{keyword}] API 호출 완료 시점 기록 완료",
+                flush=True,
+            )
