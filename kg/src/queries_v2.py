@@ -339,18 +339,20 @@ class PaperRAGQueries:
     LINK_CHUNKS_NEXT = """
     CALL apoc.periodic.iterate(
     "
-    MATCH (s:Section)
-    RETURN s
+    MATCH (s:Section)-[:HAS_CHUNK]->(c:Chunk)
+    WITH s, c
+    ORDER BY s.section_id, c.seq
+    WITH s, collect(c) AS chunks
+    RETURN chunks
     ",
     "
-    MATCH (s)-[:HAS_CHUNK]->(c:Chunk)
-    WITH s, c ORDER BY c.seq
-    WITH s, collect(c) AS chunks
-    FOREACH (i IN range(0, size(chunks)-2) |
-        MERGE (chunks[i])-[:NEXT]->(chunks[i+1])
+    CALL apoc.nodes.link(chunks, 'NEXT') YIELD input, output
+    RETURN 0
+    ",
+    {batchSize: 1000, parallel: false, iterateList: true}
     )
-    ",{batchSize: 200, parallel: false})
     """
+
 
     LOAD_REFERENCES = """
         CALL apoc.periodic.iterate(
@@ -419,7 +421,7 @@ class PaperRAGQueries:
     # =========================================================================
     LOAD_ENTITIES = """
     CALL apoc.periodic.iterate(
-    "LOAD CSV WITH HEADERS FROM 'file://global_entity_master.csv' AS row RETURN row",
+    "LOAD CSV WITH HEADERS FROM 'file:///global_entity_master.csv' AS row RETURN row",
     "
       // 1) PK는 entity_id
     MERGE (e:Entity {entity_id: row.entity_id})
@@ -448,7 +450,7 @@ class PaperRAGQueries:
     # (2) Article–Entity만 생성/집계 (Mention 노드 생성 안 함)
     LOAD_ARTICLE_ENTITY_FROM_MENTIONS = """
     CALL apoc.periodic.iterate(
-    "LOAD CSV WITH HEADERS FROM 'file://global_mention_master.csv' AS row RETURN row",
+    "LOAD CSV WITH HEADERS FROM 'file:///global_mention_master.csv' AS row RETURN row",
     "
     MATCH (a:Article {pmid: toInteger(row.doc_id)})
     MATCH (e:Entity {entity_id: row.entity_id})

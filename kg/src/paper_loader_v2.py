@@ -2,13 +2,14 @@ import sys
 import os
 from tqdm import tqdm
 
+ 
 # src 폴더 경로 설정 (paper_loader.py가 프로젝트 루트에 있다고 가정)
 SRC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "src")
 if SRC_DIR not in sys.path:
     sys.path.append(SRC_DIR)
 
 from db_connector import Neo4jConnector
-from queries import PaperRAGQueries, ProtocolQueries, ClinicalTrialQueries
+from queries_v2 import PaperRAGQueries, ProtocolQueries, ClinicalTrialQueries
 
 
 class PaperLoader:
@@ -22,9 +23,9 @@ class PaperLoader:
         self.connector = Neo4jConnector(uri, user, password)
 
     def _run(self, query: str, desc: str = ""):
-        if not query or not isinstance(query, str):
-            return
-        self.connector.execute_query(query, description=desc)
+        if desc:
+            print(f"[NEO4J][RUN] {desc}")
+        self.connector.execute_query(query)
 
     def clear_graph(self):
         """PrimeKG(BaseNode) 제외하고 RAG/ETL에서 생성한 노드들을 정리"""
