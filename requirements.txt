@@ -21,13 +21,16 @@ tiktoken
 
 # LangGraph (워크플로우 오케스트레이션)
 langgraph
+dateparser # 날짜 파싱 - 리라이트쿼리 tool
 
 # Database
 psycopg[binary, pool]
 pgvector
+sqlalchemy
 
 # Neo4j (Knowledge Graph)
 neo4j
+neo4j-graphrag  # Neo4j TextRetriever
 py2neo
 
 # Django Web Framework
@@ -46,12 +49,23 @@ python-dateutil
 beautifulsoup4
 nltk
 
+sentence-transformers
+transformers
+accelerate
+
+# Simulation tools (optional, utils)
+biopython
+
 # 환경변수 관리
 python-dotenv
 
 # 기타 유틸리티
 PyYAML
 
+# Jupyter Notebook Support
+jupyter
+ipywidgets  # tqdm 진행률 표시용
+notebook
+
 # AWS SDK (Lambda에 기본 포함되지만 명시)
 boto3
-
