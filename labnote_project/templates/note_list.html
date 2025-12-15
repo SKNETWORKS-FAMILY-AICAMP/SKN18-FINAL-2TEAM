@@ -145,7 +145,12 @@
 <!-- 검색/필터 영역 -->
 <div class="search-bar">
     <div class="search-left">
-        <input type="text" placeholder="노트 검색...">
+        <form method="get" style="display:inline;">
+            <input type="text" name="q" placeholder="노트 검색..." value="{{ request.GET.q }}">
+            <input type="hidden" name="view" value="{{ view_mode }}">
+            <input type="hidden" name="per_page" value="{{ per_page }}">
+            <button type="submit" class="btn">검색</button>
+        </form>
 
         <a href="#" class="btn">
             <i class="fa-solid fa-calendar"></i> 날짜 검색
@@ -165,12 +170,13 @@
                 {% endfor %}
             </select>
             <input type="hidden" name="view" value="{{ view_mode }}">
+            <input type="hidden" name="q" value="{{ request.GET.q }}">
         </form>
 
-        <a href="?view=card" class="btn">
+        <a href="?view=card&per_page={{ per_page }}&q={{ request.GET.q|urlencode }}" class="btn">
             <i class="fa-solid fa-table-cells"></i> 카드 보기
         </a>
-        <a href="?view=table" class="btn">
+        <a href="?view=table&per_page={{ per_page }}&q={{ request.GET.q|urlencode }}" class="btn">
             <i class="fa-solid fa-table-list"></i> 테이블 보기
         </a>
     </div>
@@ -235,7 +241,7 @@
 <!-- 페이지네이션 -->
 <div class="pagination">
     {% if notes.has_previous %}
-        <a href="?page={{ notes.previous_page_number }}&per_page={{ per_page }}&view={{ view_mode }}" class="btn">이전</a>
+        <a href="?page={{ notes.previous_page_number }}&per_page={{ per_page }}&view={{ view_mode }}&q={{ request.GET.q|urlencode }}" class="btn">이전</a>
     {% else %}
         <span class="btn" style="opacity:0.5;pointer-events:none;">이전</span>
     {% endif %}
@@ -243,7 +249,7 @@
     <span>페이지 {{ notes.number }} / {{ notes.paginator.num_pages }}</span>
 
     {% if notes.has_next %}
-        <a href="?page={{ notes.next_page_number }}&per_page={{ per_page }}&view={{ view_mode }}" class="btn">다음</a>
+        <a href="?page={{ notes.next_page_number }}&per_page={{ per_page }}&view={{ view_mode }}&q={{ request.GET.q|urlencode }}" class="btn">다음</a>
     {% else %}
         <span class="btn" style="opacity:0.5;pointer-events:none;">다음</span>
     {% endif %}
