@@ -1,0 +1,4 @@
+.venv
+.history
+db_data
+initdb

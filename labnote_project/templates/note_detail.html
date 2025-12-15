@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+
+<link rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+<style>
+    .back-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        text-decoration: none;
+        font-size: 16px;
+        color: #333;
+        margin-bottom: 20px;
+        padding: 6px 10px;
+        border-radius: 6px;
+        background-color: #f1f1f1;
+        border: 1px solid #ccc;
+    }
+
+    .btn-group a {
+        margin-left: 10px;
+        padding: 6px 10px;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        background-color: #fafafa;
+        text-decoration: none;
+        font-size: 14px;
+        color: #333;
+    }
+
+    .note-content {
+        margin-top: 16px;
+        white-space: pre-line;
+        font-size: 16px;
+        line-height: 1.6;
+        padding: 12px;
+        background: #f8f8f8;
+        border-radius: 8px;
+    }
+
+    /* 댓글 스타일 */
+    .comment-section {
+        margin-top: 30px;
+    }
+
+    .comment-box {
+        padding: 12px;
+        margin-bottom: 12px;
+        background: #fafafa;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+    }
+
+    .comment-meta {
+        font-size: 13px;
+        color: #666;
+        margin-bottom: 5px;
+    }
+
+    .reply-box {
+        margin-left: 30px;
+        margin-top: 10px;
+        padding-left: 15px;
+        border-left: 2px solid #ddd;
+    }
+
+    #comment-panel {
+        display: none;
+        margin-top: 20px;
+        padding: 12px;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        background-color: #fafafa;
+    }
+</style>
+
+<!-- 뒤로가기 버튼 -->
+<a href="{% url 'labnote:note_list' %}" class="back-btn">
+    <i class="fa-solid fa-arrow-left"></i> 뒤로가기
+</a>
+
+<!-- 제목 -->
+<h2>{{ note.title }}</h2>
+
+<!-- 작성 정보 + 버튼 -->
+<div style="display:flex; justify-content:space-between; margin-bottom:20px;">
+    <div>
+        <i class="fa-solid fa-user"></i> {{ note.owner.username }} &bull;
+        {{ note.created_at|date:"Y-m-d" }}
+    </div>
+
+    <div class="btn-group">
+        <a href="#"><i class="fa-solid fa-share-nodes"></i> 공유</a>
+
+        <!-- 댓글 토글 버튼 -->
+        <a href="#" id="comment-toggle-btn"><i class="fa-solid fa-comment-dots"></i> 댓글</a>
+
+        <a href="#"><i class="fa-solid fa-paperclip"></i> 첨부</a>
+        <a href="{% url 'labnote:note_update' note.note_sid %}">
+            <i class="fa-solid fa-pen-to-square"></i> 수정
+        </a>
+    </div>
+</div>
+
+<!-- 노트 내용 -->
+<div class="note-content">
+    {{ note.content|safe }}
+</div>
+
+<!-- 댓글 작성 UI -->
+<div id="comment-panel">
+    <h4>댓글 작성</h4>
+    <textarea id="comment-input" rows="4" style="width:100%;" placeholder="댓글을 입력하세요"></textarea>
+    <button id="submit-comment" style="margin-top:10px;">등록</button>
+</div>
+
+<!-- 댓글 목록 -->
+<div class="comment-section">
+    <h3>댓글 목록</h3>
+
+    {% for comment in note.comments.all %}
+        {% if not comment.parent_comment %}
+            <div class="comment-box">
+                <div class="comment-meta">
+                    <i class="fa-solid fa-user"></i> {{ comment.creator.username }}
+                    • {{ comment.created_at|date:"Y-m-d H:i" }}
+                </div>
+
+                <div>{{ comment.content }}</div>
+
+                <!-- 대댓글 목록 -->
+                {% for reply in comment.replies.all %}
+                    <div class="comment-box reply-box">
+                        <div class="comment-meta">
+                            <i class="fa-solid fa-user"></i> {{ reply.creator.username }}
+                            • {{ reply.created_at|date:"Y-m-d H:i" }}
+                        </div>
+                        <div>{{ reply.content }}</div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% empty %}
+        <p>댓글이 없습니다.</p>
+    {% endfor %}
+</div>
+
+<script>
+/* 댓글창 토글 */
+document.getElementById("comment-toggle-btn")
+    .addEventListener("click", function(e) {
+        e.preventDefault();
+        const box = document.getElementById("comment-panel");
+        box.style.display = (box.style.display === "block") ? "none" : "block";
+    });
+
+/* 댓글 등록 */
+document.getElementById("submit-comment")
+    .addEventListener("click", function() {
+        const text = document.getElementById("comment-input").value.trim();
+        if (!text) {
+            alert("댓글을 입력하세요.");
+            return;
+        }
+
+        fetch("{% url 'add_comment' note.pk %}", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": "{{ csrf_token }}"
+            },
+            body: JSON.stringify({
+                content: text,
+                parent_id: null
+            })
+        })
+        .then(res => location.reload());
+    });
+</script>
+
+{% endblock %}

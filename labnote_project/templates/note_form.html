@@ -1,0 +1,9 @@
+<h2>연구 노트 작성/수정</h2>
+
+{{ form.media }}
+
+<form method="POST">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">저장</button>
+</form>

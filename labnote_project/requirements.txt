@@ -1,0 +1,29 @@
+# python 3.12 기준
+Django==6.0
+djangorestframework==3.16.1
+django-cors-headers==4.9.0
+
+Pillow==12.0.0
+python-magic==0.4.27
+
+psycopg2-binary==2.9.11    # PostgreSQL 사용 시
+
+# 파일 업로드 및 저장 관련
+django-cleanup==9.0.0    # 삭제 시 파일 자동 정리
+django-storages==1.14.6  # S3 등 외부 스토리지 연동 시
+
+# pyPRISM 그래프 및 과학 연산
+numpy==2.3.5
+matplotlib==3.10.7
+
+# 환경 변수 관리
+python-dotenv==1.2.1
+
+# 유저 인증 커스터마이징 시
+django-allauth==65.13.1
+
+# 기타 유틸리티
+requests==2.32.5
+
+# CKEditor
+django-ckeditor==6.7.3
