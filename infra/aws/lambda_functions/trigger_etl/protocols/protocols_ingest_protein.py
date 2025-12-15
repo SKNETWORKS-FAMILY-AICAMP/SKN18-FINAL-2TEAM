@@ -3,6 +3,7 @@ Protocols.io Ingest Lambda Handler - Protein keyword
 """
 import sys
 import os
+import importlib
 from pathlib import Path
 from datetime import datetime
 
@@ -15,7 +16,11 @@ sys.path.insert(0, str(project_root))
 common_path = Path(__file__).parent.parent / "common"
 sys.path.insert(0, str(common_path))
 
-from rag.etl.step01_ingest.03_ingest_protocols import run, KEYWORDS
+# 숫자로 시작하는 모듈은 importlib로 동적 import
+ingest_module = importlib.import_module("rag.etl.step01_ingest.03_ingest_protocols")
+run = ingest_module.run
+KEYWORDS = getattr(ingest_module, "KEYWORDS", None)
+
 from s3_utils import (
     is_lambda_environment,
     ensure_local_path,
@@ -61,8 +66,11 @@ def lambda_handler(event, context):
             print(f"[Lambda][Protocols][{keyword}] 처리된 데이터를 S3에 업로드 중...", flush=True)
             today = datetime.now().strftime("%Y%m%d")
             upload_prefix = f"{s3_prefix}/{today}"
-            uploaded_count = upload_directory_to_s3(local_raw_dir, upload_prefix)
-            print(f"[Lambda][Protocols][{keyword}] {uploaded_count}개 파일 업로드 완료", flush=True)
+            upload_source = Path(local_raw_dir) / "protocols" / today
+            if upload_source.exists():
+                upload_directory_to_s3(str(upload_source), upload_prefix)
+            else:
+                print(f"[Lambda][Protocols][{keyword}] 업로드할 파일이 없습니다: {upload_source}", flush=True)
         
         return {
             "statusCode": 200,

@@ -3,6 +3,7 @@ Protocols.io Ingest Lambda Handler - mouse keyword
 """
 import sys
 import os
+import importlib
 from pathlib import Path
 from datetime import datetime
 
@@ -12,7 +13,10 @@ sys.path.insert(0, str(project_root))
 common_path = Path(__file__).parent.parent / "common"
 sys.path.insert(0, str(common_path))
 
-from rag.etl.step01_ingest.03_ingest_protocols import run
+# 숫자로 시작하는 모듈은 importlib로 동적 import
+ingest_module = importlib.import_module("rag.etl.step01_ingest.03_ingest_protocols")
+run = ingest_module.run
+
 from s3_utils import (
     is_lambda_environment,
     ensure_local_path,
@@ -41,7 +45,11 @@ def lambda_handler(event, context):
         if is_lambda_environment():
             today = datetime.now().strftime("%Y%m%d")
             upload_prefix = f"{s3_prefix}/{today}"
-            upload_directory_to_s3(local_raw_dir, upload_prefix)
+            upload_source = Path(local_raw_dir) / "protocols" / today
+            if upload_source.exists():
+                upload_directory_to_s3(str(upload_source), upload_prefix)
+            else:
+                print(f"[Lambda][Protocols][{keyword}] 업로드할 파일이 없습니다: {upload_source}", flush=True)
         
         return {
             "statusCode": 200,
