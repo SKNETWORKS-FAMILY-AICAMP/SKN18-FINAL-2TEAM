@@ -20,6 +20,43 @@ docker-compoe up -d
 docker compoe up -d
 ```
 
+.env.example 파일명을 .env 로 변경
+
+- **터미널 1: npm 라이브러리 빌드**
+```bash
+# 터미널 1: npm 라이브러리 빌드
+cd django_ui
+
+# 노트 버전 확인 (node 22+)
+node --version
+
+# 설치 한번
+npm install
+npm run build
+```
+
+- **터미널 2: Django 서버 실행**
+```bash
+# 루트 폴더에서 실행
+python django_app/manage.py makemigrations
+python django_app/manage.py migrate
+
+# 관리자 계정 생성 (로그인할 계정 생성)
+python django_app/manage.py createsuperuser
+
+# 실행
+python django_app/manage.py runserver
+```
+
+- **접속**
+```url
+http://127.0.0.1:8000/
+```
+
+- **더미 데이터**
+  - **dummy_data.sql** 파일 참고
+  - 데이터 미리 insert 후 테스트
+
 - **README_meta.md를 읽어주세요**
 
 
