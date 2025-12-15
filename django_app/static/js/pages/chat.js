@@ -1239,25 +1239,33 @@ function fallbackCopyTextToClipboard(text) {
 // Like message
 async function likeMessage(messageId) {
     try {
-        // TODO: API call to like message
-        // const response = await fetch(`/api/chat/message/${messageId}/like/`, {
-        //     method: 'POST',
-        //     headers: {
-        //         'X-CSRFToken': getCsrfToken(),
-        //         'Content-Type': 'application/json',
-        //     },
-        // });
-        // 
-        // if (response.ok) {
-        //     const data = await response.json();
-        //     // Handle success
-        // }
+        const response = await fetch(`/chat/api/messages/${messageId}/feedback/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCsrfToken(),
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                feedback_type: 'L'
+            }),
+        });
         
-        // Show success notification
-        if (window.notyf) {
-            window.notyf.success('좋아요를 눌렀습니다.');
+        if (response.ok) {
+            const data = await response.json();
+            // Handle success
+            if (window.notyf) {
+                if (data.action === 'removed') {
+                    window.notyf.success('좋아요가 취소되었습니다.');
+                } else {
+                    window.notyf.success('좋아요를 눌렀습니다.');
+                }
+            }
         } else {
-            console.log('Like message:', messageId);
+            const errorData = await response.json();
+            console.error('Error liking message:', errorData);
+            if (window.notyf) {
+                window.notyf.error(errorData.error || '좋아요 처리 중 오류가 발생했습니다.');
+            }
         }
     } catch (error) {
         console.error('Error liking message:', error);
@@ -1270,25 +1278,33 @@ async function likeMessage(messageId) {
 // Dislike message
 async function dislikeMessage(messageId) {
     try {
-        // TODO: API call to dislike message
-        // const response = await fetch(`/api/chat/message/${messageId}/dislike/`, {
-        //     method: 'POST',
-        //     headers: {
-        //         'X-CSRFToken': getCsrfToken(),
-        //         'Content-Type': 'application/json',
-        //     },
-        // });
-        // 
-        // if (response.ok) {
-        //     const data = await response.json();
-        //     // Handle success
-        // }
+        const response = await fetch(`/chat/api/messages/${messageId}/feedback/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCsrfToken(),
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                feedback_type: 'D'
+            }),
+        });
         
-        // Show success notification
-        if (window.notyf) {
-            window.notyf.success('싫어요를 눌렀습니다.');
+        if (response.ok) {
+            const data = await response.json();
+            // Handle success
+            if (window.notyf) {
+                if (data.action === 'removed') {
+                    window.notyf.success('싫어요가 취소되었습니다.');
+                } else {
+                    window.notyf.success('싫어요를 눌렀습니다.');
+                }
+            }
         } else {
-            console.log('Dislike message:', messageId);
+            const errorData = await response.json();
+            console.error('Error disliking message:', errorData);
+            if (window.notyf) {
+                window.notyf.error(errorData.error || '싫어요 처리 중 오류가 발생했습니다.');
+            }
         }
     } catch (error) {
         console.error('Error disliking message:', error);
