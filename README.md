@@ -15,9 +15,9 @@ uv pip install -r requirements.txt
 - Docker
 ```bash
 # Window
-docker-compoe up -d
+docker-compose up -d
 # Mac
-docker compoe up -d
+docker compose up -d
 ```
 
 .env.example 파일명을 .env 로 변경
