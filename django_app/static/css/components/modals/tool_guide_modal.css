@@ -1,0 +1,97 @@
+/* Tool Guide Modal Styles */
+
+.tool-guide-body {
+    padding: 1.5rem;
+    overflow-y: auto;
+    max-height: calc(90vh - 140px);
+}
+
+.tool-guide-content {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.guide-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.guide-section-title {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #6b7280;
+    margin: 0;
+}
+
+.guide-section-text {
+    font-size: 0.875rem;
+    color: #111827;
+    line-height: 1.6;
+    margin: 0;
+}
+
+.guide-steps-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.guide-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    background: #f9fafb;
+    border-radius: 0.5rem;
+}
+
+.guide-step-number {
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 9999px;
+    background: #2563eb;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.guide-step-text {
+    font-size: 0.875rem;
+    color: #111827;
+    margin: 0;
+    padding-top: 0.125rem;
+}
+
+.guide-tips {
+    padding: 1rem;
+    background: #fef3c7;
+    border: 1px solid #fcd34d;
+    border-radius: 0.5rem;
+}
+
+.guide-tips-title {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #92400e;
+    margin: 0 0 0.5rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.guide-tips-title i {
+    font-size: 1rem;
+}
+
+.guide-tips-text {
+    font-size: 0.875rem;
+    color: #78350f;
+    line-height: 1.6;
+    margin: 0;
+}

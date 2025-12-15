@@ -1,0 +1,23 @@
+########################################
+# Lambda NIH ETL 전용 의존성
+# boto3, botocore, s3transfer는 Lambda 기본 제공이므로 제외
+########################################
+
+# HTTP 요청 (NIH API 호출)
+requests>=2.31.0
+# certifi, idna, urllib3는 requests 의존성으로 자동 설치됨 (필요)
+
+# 토크나이저 (청킹에 사용)
+tiktoken>=0.5.0
+
+# 자연어 처리 (문장 분리)
+nltk>=3.8.0
+
+# 환경변수 관리
+python-dotenv>=1.0.0
+
+# 날짜 처리
+python-dateutil>=2.8.0
+
+# boto3, botocore, s3transfer는 Lambda 기본 제공 (제외)
+

@@ -1,12 +1,14 @@
 ########################################
-# 버전 고정 - 필수
+# 로컬 개발 환경용 requirements.txt
+# Lambda 배포는 별도 requirements-lambda-*.txt 파일 사용
 ########################################
+
+# 기본 패키지
 numpy==1.26.4
 torch==2.2.2
-tqdm
+
 ########################################
 # Django Web Framework
-########################################
 Django>=5.0,<6.0
 django-environ
 djangorestframework
@@ -22,7 +24,7 @@ python-dotenv
 ########################################
 psycopg
 pgvector
-psycopg2
+
 
 ########################################
 # LangGraph + LLM orchestration
@@ -53,30 +55,15 @@ requests
 lxml
 markdownify
 python-dateutil
+beautifulsoup4
+nltk
 
+# 환경변수 관리
+python-dotenv
 
-########################################
-# Neo4j (Knowledge Graph)
-########################################
-neo4j
-py2neo
-
-
-########################################
-# Simulation tools (optional, utils)
-########################################
-biopython
+# 기타 유틸리티
 PyYAML
 
+# AWS SDK (Lambda에 기본 포함되지만 명시)
+boto3
 
-########################################
-# sLLM / Local inference (vLLM/Ollama)
-########################################
-openai
-
-########################################
-# Testing / Dev Tools
-########################################
-pytest
-black
-isort

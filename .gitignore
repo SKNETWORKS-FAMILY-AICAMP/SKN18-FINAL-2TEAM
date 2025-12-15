@@ -338,13 +338,76 @@ $RECYCLE.BIN/
 #scss
 staticfiles/
 
+### Node.js / npm ###
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# Build outputs
+django_ui/dist/
+django_ui/build/
+
+# Vite
+.vite/
+django_ui/.vite/
+
+# npm cache
+.npm
+.eslintcache
+
+# Optional npm cache directory
+.npm
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+
+
+# data
+data/**
+rag/data/**
+
 # ETC
 .history
-rag/data/**
 django_app/uploads/**
+infra/aws/lambda_build/*.zip
+
+assets/helixops_react/node_modules/
+
+# NLTK 데이터 (로컬 개발 환경에서 생성될 수 있음)
+nltk_data/
+
+# AWS SAM 빌드 아티팩트, config
+.aws-sam/
+samconfig.toml
+
+# Lambda invoke 출력 파일
+output.json
 
 # Cursor/Claude AI local settings
 .claude/
 *.local.json
+
+# Lambda 빌드 디렉토리 (자동 생성)
+infra/aws/lambda_build/protocols/
+infra/aws/lambda_build/nih/
+infra/aws/lambda_build/pubmed/
+
+# Vite 빌드 결과물 (django_app/static에 생성되는 파일들)
+django_app/static/js-lib/**
+django_app/static/assets/**
 
 # End of https://www.toptal.com/developers/gitignore/api/python,django,windows,macos,jupyternotebooks

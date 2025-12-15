@@ -1,0 +1,296 @@
+{% load static %}
+<div class="modal-overlay" id="scheduleAddModal" role="dialog" aria-labelledby="scheduleAddModalTitle" aria-modal="true">
+    <div class="modal-container modal-medium" id="scheduleAddModalContainer">
+        <div class="modal-header">
+            <h2 class="modal-title" id="scheduleAddModalTitle">일정 추가</h2>
+            <button class="modal-close-btn" aria-label="닫기">
+                <i class="fa-solid fa-times"></i>
+            </button>
+        </div>
+        
+        <div class="modal-body schedule-add-body">
+            <form id="scheduleAddForm" class="schedule-add-form">
+                <div class="schedule-add-grid grid-cols-2" id="scheduleAddGrid">
+                    <!-- Left Column -->
+                    <div class="schedule-add-left">
+                        <div class="form-group">
+                            <label for="scheduleTitleInput">제목</label>
+                            <input 
+                                type="text" 
+                                id="scheduleTitleInput"
+                                name="title"
+                                placeholder="일정 제목을 입력하세요" 
+                                class="form-input"
+                                required
+                            />
+                        </div>
+                        
+                        <div class="form-group form-group-flex">
+                            <label for="scheduleDescriptionInput">설명</label>
+                            <textarea
+                                id="scheduleDescriptionInput"
+                                name="description"
+                                placeholder="일정 설명을 입력하세요" 
+                                class="form-textarea"
+                                rows="6"
+                            ></textarea>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="scheduleLocationInput">장소</label>
+                            <input
+                                type="text"
+                                id="scheduleLocationInput"
+                                name="location"
+                                placeholder="장소를 입력하세요"
+                                class="form-input"
+                            />
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="scheduleNoteSearchInput">노트 연결</label>
+                            <div class="note-search-wrapper">
+                                <div class="input-wrapper">
+                                    <i class="fa-solid fa-search"></i>
+                                    <input 
+                                        type="text" 
+                                        id="scheduleNoteSearchInput"
+                                        placeholder="노트 검색..." 
+                                        class="form-input"
+                                    />
+                                </div>
+                                <div class="note-search-dropdown" id="scheduleNoteDropdown" style="display: none;">
+                                    <!-- 노트 검색 결과가 여기에 표시됩니다 -->
+                                </div>
+                            </div>
+                            <input type="hidden" id="scheduleLinkedNoteId" name="linked_note_id" />
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>일정 공유하기</label>
+                            <button type="button" class="btn-share" id="scheduleAddShareBtn">
+                                <i class="fa-solid fa-share-alt"></i>
+                                <span>사용자와 공유</span>
+                            </button>
+                            <div class="shared-emails-display" id="sharedEmailsDisplay" style="display: none;">
+                                <p class="shared-count-text"><span id="sharedEmailsCount">0</span>명 선택됨</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column -->
+                    <div class="schedule-add-right">
+                        <div class="form-group">
+                            <div class="form-group-header">
+                                <label for="scheduleStartDate">날짜 및 시간</label>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="scheduleIsAllDay" name="is_all_day" />
+                                    <span>하루 종일</span>
+                                </label>
+                            </div>
+                            <div class="date-time-grid">
+                                <input
+                                    type="date"
+                                    id="scheduleStartDate"
+                                    name="start_date"
+                                    class="form-input"
+                                    required
+                                />
+                                <input
+                                    type="time"
+                                    id="scheduleStartTime"
+                                    name="start_time"
+                                    class="form-input"
+                                />
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="scheduleEndDate">종료</label>
+                            <div class="date-time-grid">
+                                <input
+                                    type="date"
+                                    id="scheduleEndDate"
+                                    name="end_date"
+                                    class="form-input"
+                                    required
+                                />
+                                <input
+                                    type="time"
+                                    id="scheduleEndTime"
+                                    name="end_time"
+                                    class="form-input"
+                                />
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="scheduleRepeatSelect">반복 설정</label>
+                            <select id="scheduleRepeatSelect" name="repeat" class="form-select">
+                                <option value="none">반복 안 함</option>
+                                <option value="daily">매일</option>
+                                <option value="weekly">매주</option>
+                                <option value="monthly">매월</option>
+                                <option value="yearly">매년</option>
+                                <option value="custom">커스텀</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="scheduleNotificationSelect">알림</label>
+                            <select id="scheduleNotificationSelect" name="notification" class="form-select">
+                                <option value="none">알림 없음</option>
+                                <option value="on_time">정시</option>
+                                <option value="5min">5분 전</option>
+                                <option value="10min">10분 전</option>
+                                <option value="15min">15분 전</option>
+                                <option value="30min">30분 전</option>
+                                <option value="1hour">1시간 전</option>
+                                <option value="2hours">2시간 전</option>
+                                <option value="1day">1일 전</option>
+                                <option value="2days">2일 전</option>
+                                <option value="1week">1주일 전</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="scheduleTypeSelect">타입</label>
+                            <select id="scheduleTypeSelect" name="type" class="form-select" required>
+                                <option value="experiment">실험</option>
+                                <option value="meeting">미팅</option>
+                                <option value="analysis">분석</option>
+                                <option value="seminar">세미나</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="scheduleStatusSelectAdd">상태</label>
+                            <select id="scheduleStatusSelectAdd" name="status" class="form-select" required>
+                                <option value="scheduled">예정</option>
+                                <option value="in_progress">진행중</option>
+                                <option value="completed">완료</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- Third Column - Custom Repeat Settings -->
+                    <div class="schedule-add-custom-repeat" id="scheduleCustomRepeatPanel" style="display: none;">
+                        <div class="custom-repeat-panel">
+                            <h4 class="custom-repeat-title">커스텀 반복 설정</h4>
+                            
+                            <div class="custom-repeat-content">
+                                <!-- Repeat Interval -->
+                                <div class="form-group">
+                                    <label for="customRepeatInterval">반복 간격</label>
+                                    <input
+                                        type="number"
+                                        id="customRepeatInterval"
+                                        name="custom_repeat_interval"
+                                        min="1"
+                                        max="999"
+                                        value="1"
+                                        class="form-input"
+                                    />
+                                </div>
+                                
+                                <!-- Unit -->
+                                <div class="form-group">
+                                    <label for="customRepeatUnit">단위</label>
+                                    <select id="customRepeatUnit" name="custom_repeat_unit" class="form-select">
+                                        <option value="day">일</option>
+                                        <option value="week" selected>주</option>
+                                        <option value="month">월</option>
+                                        <option value="year">년</option>
+                                    </select>
+                                </div>
+                                
+                                <!-- Week Days Selection (only show for weekly) -->
+                                <div class="form-group" id="weekDaysSelection" style="display: none;">
+                                    <label>요일 선택</label>
+                                    <div class="week-days-grid">
+                                        <button type="button" class="week-day-btn" data-day="0">일</button>
+                                        <button type="button" class="week-day-btn" data-day="1">월</button>
+                                        <button type="button" class="week-day-btn" data-day="2">화</button>
+                                        <button type="button" class="week-day-btn" data-day="3">수</button>
+                                        <button type="button" class="week-day-btn" data-day="4">목</button>
+                                        <button type="button" class="week-day-btn" data-day="5">금</button>
+                                        <button type="button" class="week-day-btn" data-day="6">토</button>
+                                    </div>
+                                </div>
+                                
+                                <!-- Repeat End Settings -->
+                                <div class="form-group">
+                                    <label>반복 종료</label>
+                                    <div class="repeat-end-options">
+                                        <label class="radio-label">
+                                            <input
+                                                type="radio"
+                                                name="repeatEnd"
+                                                value="never"
+                                                checked
+                                            />
+                                            <span>무제한</span>
+                                        </label>
+                                        
+                                        <div class="radio-option-group">
+                                            <label class="radio-label">
+                                                <input
+                                                    type="radio"
+                                                    name="repeatEnd"
+                                                    value="date"
+                                                />
+                                                <span>날짜 지정</span>
+                                            </label>
+                                            <input
+                                                type="date"
+                                                id="repeatEndDate"
+                                                name="repeat_end_date"
+                                                class="form-input repeat-end-input"
+                                                style="display: none;"
+                                            />
+                                        </div>
+                                        
+                                        <div class="radio-option-group">
+                                            <label class="radio-label">
+                                                <input
+                                                    type="radio"
+                                                    name="repeatEnd"
+                                                    value="count"
+                                                />
+                                                <span>횟수 지정</span>
+                                            </label>
+                                            <div class="repeat-count-input" style="display: none;">
+                                                <input
+                                                    type="number"
+                                                    id="repeatEndCount"
+                                                    name="repeat_end_count"
+                                                    min="1"
+                                                    max="999"
+                                                    value="10"
+                                                    class="form-input"
+                                                />
+                                                <span class="repeat-count-unit">회</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Summary -->
+                                <div class="custom-repeat-summary">
+                                    <p class="summary-text" id="customRepeatSummary">매주 (요일 미선택) 반복</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+        
+        <div class="modal-footer">
+            <button class="modal-btn modal-btn-secondary" data-action="close">취소</button>
+            <button class="modal-btn modal-btn-primary" data-action="save" id="scheduleAddSaveBtn">
+                등록하기
+            </button>
+        </div>
+    </div>
+</div>

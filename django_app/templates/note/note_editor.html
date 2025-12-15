@@ -1,0 +1,120 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}노트 작성 - HelixOps{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/pages/note_editor.css' %}">
+<link rel="stylesheet" href="{% static 'css/components/modals/share_modal.css' %}">
+<link rel="stylesheet" href="{% static 'css/components/modals/graph_create_modal.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="note-editor-container">
+    <!-- 노트 생성/편집 화면 -->
+    <div id="noteEditorView" class="note-editor-view">
+        <div class="note-editor-wrapper">
+            <!-- Editor Header -->
+            <div class="editor-header">
+                <div class="editor-header-left">
+                    <h2 id="editorTitle">새 연구 노트 작성</h2>
+                    <button class="btn-cancel" id="btnCancelNote">
+                        <i class="fa-solid fa-times"></i>
+                        <span>취소</span>
+                    </button>
+                    <button class="btn-save" id="btnSaveNote">
+                        <i class="fa-solid fa-save"></i>
+                        <span>저장</span>
+                    </button>
+                </div>
+                <div class="editor-header-right">
+                    <button class="btn-share" id="btnShareNote">
+                        <i class="fa-solid fa-share-alt"></i>
+                        <span>공유</span>
+                    </button>
+                    <button class="btn-bookmark-toggle" id="btnBookmarkToggle">
+                        <i class="fa-solid fa-bookmark"></i>
+                        <span>북마크</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Editor Content Area -->
+            <div class="editor-content-wrapper">
+                <div class="editor-content">
+                    <div class="editor-inner">
+                        <!-- Title Input -->
+                        <input
+                            type="text"
+                            id="noteTitleInput"
+                            placeholder="노트 제목을 입력하세요..."
+                            class="note-title-input"
+                        />
+
+                        <!-- Tags Input -->
+                        <div class="tags-input-section">
+                            <input
+                                type="text"
+                                id="noteTagsInput"
+                                placeholder="태그 추가 (쉼표로 구분) - 최대 5개 등록 가능"
+                                class="tags-input"
+                            />
+                        </div>
+
+                        <!-- Editor Attachment Toolbar (위에 버튼 영역) -->
+                        <div class="editor-attachment-toolbar">
+                            <div class="attachment-toolbar-left">
+                                <button class="attachment-btn" id="btnFileAttach">
+                                    <i class="fa-solid fa-paperclip"></i>
+                                    <span>파일 첨부</span>
+                                </button>
+                                <button class="attachment-btn" id="btnGraphAttach">
+                                    <i class="fa-solid fa-chart-bar"></i>
+                                    <span>그래프 첨부</span>
+                                </button>
+                            </div>
+                            <div class="attachment-toolbar-right">
+                                <span class="attached-count" id="attachedCount"></span>
+                            </div>
+                        </div>
+
+                        <!-- CKEditor5 Container -->
+                        <div class="ckeditor-wrapper">
+                            <div id="noteContentEditor"></div>
+                        </div>
+
+                        <!-- Attached Files List (에디터 아래) -->
+                        <div class="attached-files-section" id="attachedFilesSection">
+                            <div class="attached-files-list" id="attachedFilesList">
+                                <!-- Attached files will be rendered here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bookmark Sidebar -->
+                <div class="bookmark-sidebar hidden" id="bookmarkSidebar">
+                    <div class="bookmark-header">
+                        <h3>북마크</h3>
+                    </div>
+                    <div class="bookmark-content" id="bookmarkContent">
+                        <!-- Bookmarks will be rendered here by JavaScript -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Share Modal -->
+{% include 'components/modals/share_modal.html' %}
+
+<!-- Graph Create Modal -->
+{% include 'components/modals/graph_create_modal.html' %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/pages/note_editor.js' %}"></script>
+<script src="{% static 'js/components/modals/share_modal.js' %}"></script>
+<script src="{% static 'js/components/modals/graph_create_modal.js' %}"></script>
+{% endblock %}

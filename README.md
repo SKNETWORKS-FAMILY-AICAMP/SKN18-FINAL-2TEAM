@@ -118,10 +118,10 @@ SKN18-FINAL-2TEAM/
 │  │  │  ├─ 02_ingest_nih.py               # NIH API 호출
 │  │  │  └─ 03_ingest_protocols_io.py      # Protocols.io API 호출
 │  │  │
-│  │  ├─ 02_normalize/                     # 2단계: 소스별 raw → 공통 포맷
-│  │  │  ├─ 01_normalize_pubmed.py         # PubMed raw → internal_doc_format
-│  │  │  ├─ 02_normalize_nih.py            # NIH raw → internal_doc_format
-│  │  │  └─ 03_normalize_protocols_io.py   # Protocols raw → internal_doc_format
+│  │  ├─ 02_normalize/                     # 2단계: 소스별 raw → 공통 포맷 및 데이터 클렌징
+│  │  │  ├─ 01_normalize_pubmed.py         # PubMed raw → internal_doc_format (+ 클렌징)
+│  │  │  ├─ 02_normalize_nih.py            # NIH raw → internal_doc_format (+ 클렌징)
+│  │  │  └─ 03_normalize_protocols_io.py   # Protocols raw → internal_doc_format (+ 클렌징, 예: 중복/노이즈/빈값 정리)
 │  │  │
 │  │  ├─ 03_extract/                       # 3단계: 엔터티/관계 추출 (KG용, 선택이지만 중요)
 │  │  │  ├─ 01_entity_extraction.py        # 텍스트 → Protein / Disease / Drug / Trial 등

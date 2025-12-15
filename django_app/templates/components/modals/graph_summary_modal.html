@@ -1,0 +1,28 @@
+{% load static %}
+<div class="modal-overlay" id="graphSummaryModal" role="dialog" aria-labelledby="graphSummaryModalTitle" aria-modal="true">
+    <div class="modal-container modal-large">
+        <div class="modal-header">
+            <div>
+                <h2 class="modal-title" id="graphSummaryModalTitle">그래프 요약</h2>
+                <p class="modal-description">AI 답변을 시각적으로 요약합니다</p>
+            </div>
+            <button class="modal-close-btn" aria-label="닫기">
+                <i class="fa-solid fa-times"></i>
+            </button>
+        </div>
+        
+        <div class="modal-body">
+            <div class="graph-summary-container" id="graphSummaryContainer">
+                <div class="graph-summary-content">
+                    <pre class="graph-summary-code" id="graphSummaryCode">
+                        <!-- Graph code will be loaded dynamically -->
+                    </pre>
+                </div>
+            </div>
+        </div>
+        
+        <div class="modal-footer">
+            <button class="modal-btn modal-btn-secondary" data-action="close">닫기</button>
+        </div>
+    </div>
+</div>

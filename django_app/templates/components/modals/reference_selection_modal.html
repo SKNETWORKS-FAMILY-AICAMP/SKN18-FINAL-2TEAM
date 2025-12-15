@@ -1,0 +1,54 @@
+{% load static %}
+<div class="modal-overlay" id="referenceSelectionModal" role="dialog" aria-labelledby="referenceSelectionModalTitle" aria-modal="true">
+    <div class="modal-container modal-large">
+        <div class="modal-header">
+            <div>
+                <h2 class="modal-title" id="referenceSelectionModalTitle">참고 문헌 선택</h2>
+                <p class="modal-subtitle">저장할 참고 문헌을 선택하세요</p>
+            </div>
+            <button class="modal-close-btn" aria-label="닫기" data-action="close">
+                <i class="fa-solid fa-times"></i>
+            </button>
+        </div>
+        
+        <!-- Search Bar -->
+        <div class="ref-modal-search">
+            <div class="ref-search-wrapper">
+                <i class="fa-solid fa-search ref-search-icon"></i>
+                <input 
+                    type="text" 
+                    id="referenceSearchInput"
+                    placeholder="참고 문헌 검색..." 
+                    class="ref-search-input" 
+                />
+            </div>
+        </div>
+        
+        <!-- Select All Checkbox -->
+        <div class="ref-modal-select-all">
+            <label class="ref-select-all-label">
+                <input type="checkbox" id="selectAllReferences" class="ref-select-all-checkbox">
+                <span>전체 선택</span>
+            </label>
+        </div>
+        
+        <div class="modal-body">
+            <div class="ref-selection-list" id="referenceSelectionList">
+                <!-- References will be loaded dynamically -->
+            </div>
+        </div>
+        
+        <!-- Pagination -->
+        <div class="ref-modal-pagination" id="referencePagination">
+            <!-- Pagination will be loaded dynamically -->
+        </div>
+        
+        <div class="modal-footer">
+            <span class="ref-selected-count">선택된 항목: <span id="selectedCount">0</span>개</span>
+            <div class="ref-footer-actions">
+                <button class="modal-btn modal-btn-secondary" data-action="close">취소</button>
+                <button class="modal-btn modal-btn-primary" id="saveSelectedReferencesBtn">북마크에 저장</button>
+            </div>
+        </div>
+    </div>
+</div>

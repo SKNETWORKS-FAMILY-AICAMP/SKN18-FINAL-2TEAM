@@ -1,0 +1,259 @@
+/* Profile Page Styles - matching React: flex-1 overflow-auto bg-gray-50 p-8 */
+
+.profile-page {
+    flex: 1; /* flex-1 */
+    overflow: auto; /* overflow-auto */
+    background: var(--color-bg-gray-50); /* bg-gray-50 */
+    padding: 2rem; /* p-8 */
+}
+
+.profile-container {
+    max-width: 56rem; /* max-w-4xl */
+    margin: 0 auto; /* mx-auto */
+}
+
+/* Profile Section - matching React: bg-white rounded-xl shadow-sm border border-gray-200 p-8 mb-6 */
+.profile-section {
+    background: var(--color-bg-white); /* bg-white */
+    border-radius: 0.75rem; /* rounded-xl */
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); /* shadow-sm */
+    border: 1px solid var(--color-border-light); /* border border-gray-200 */
+    padding: 2rem; /* p-8 */
+    margin-bottom: 1.5rem; /* mb-6 */
+}
+
+.profile-section:last-child {
+    margin-bottom: 0;
+}
+
+/* Section Header - matching React */
+.section-header {
+    margin-bottom: 1.5rem; /* mb-6 */
+}
+
+.section-header h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--color-text-primary); /* text-gray-900 */
+    margin: 0 0 0.25rem 0; /* mb-1 */
+}
+
+.section-header p {
+    font-size: 0.875rem; /* text-sm */
+    color: var(--color-text-tertiary); /* text-gray-500 */
+    margin: 0;
+}
+
+/* Avatar Section - matching React */
+.avatar-section {
+    margin-bottom: 2rem; /* mb-8 */
+}
+
+.avatar-label {
+    display: block; /* block */
+    font-size: 0.875rem; /* text-sm */
+    color: var(--color-text-secondary); /* text-gray-700 */
+    margin-bottom: 0.75rem; /* mb-3 */
+}
+
+.avatar-wrapper {
+    position: relative;
+    display: inline-block;
+}
+
+.avatar-frame {
+    width: 5rem; /* w-20 h-20 */
+    height: 5rem;
+    border-radius: 0.75rem; /* rounded-xl */
+    border: 4px solid var(--color-primary); /* border-4 border-blue-600 */
+    overflow: hidden;
+}
+
+.avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* object-cover */
+}
+
+/* Avatar Edit Button - matching React: absolute -bottom-1 -right-1 w-7 h-7 bg-white rounded-full border-2 border-gray-200 */
+.avatar-edit-btn {
+    position: absolute;
+    bottom: -0.25rem; /* -bottom-1 */
+    right: -0.25rem; /* -right-1 */
+    width: 1.75rem; /* w-7 h-7 */
+    height: 1.75rem;
+    background: var(--color-bg-white); /* bg-white */
+    border-radius: 9999px; /* rounded-full */
+    border: 2px solid var(--color-border-light); /* border-2 border-gray-200 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); /* shadow-sm */
+}
+
+.avatar-edit-btn:hover {
+    background: var(--color-bg-gray-50); /* hover:bg-gray-50 */
+}
+
+.avatar-edit-btn i {
+    font-size: 0.875rem; /* w-3.5 h-3.5 */
+    color: #4b5563; /* text-gray-600 */
+}
+
+/* Form Row - matching React: grid grid-cols-2 gap-6 mb-6 */
+.form-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr)); /* grid-cols-2 */
+    gap: 1.5rem; /* gap-6 */
+    margin-bottom: 1.5rem; /* mb-6 */
+}
+
+.form-row:last-child {
+    margin-bottom: 0;
+}
+
+/* Form Group */
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Form Label - matching React: block text-sm text-gray-700 mb-2 */
+.form-label {
+    display: block; /* block */
+    font-size: 0.875rem; /* text-sm */
+    color: #374151; /* text-gray-700 */
+    margin-bottom: 0.5rem; /* mb-2 */
+    font-weight: 500;
+}
+
+/* Input Wrapper */
+.input-wrapper {
+    position: relative;
+}
+
+/* Input Icon - matching React: absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 */
+.input-icon {
+    position: absolute;
+    left: 0.75rem; /* left-3 */
+    top: 50%;
+    transform: translateY(-50%); /* -translate-y-1/2 */
+    width: 1rem; /* w-4 h-4 */
+    height: 1rem;
+    font-size: 1rem; /* w-4 h-4 */
+    color: #9ca3af; /* text-gray-400 */
+    pointer-events: none;
+    z-index: 1;
+}
+
+/* Form Input - matching React: w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 */
+.form-input {
+    width: 100%; /* w-full */
+    padding-left: 2.5rem; /* pl-10 */
+    padding-right: 1rem; /* pr-4 */
+    padding-top: 0.625rem; /* py-2.5 */
+    padding-bottom: 0.625rem;
+    border: 1px solid #d1d5db; /* border border-gray-300 */
+    border-radius: 0.5rem; /* rounded-lg */
+    font-size: 0.875rem;
+    color: #111827;
+    background: white;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-input::placeholder {
+    color: #9ca3af;
+}
+
+.form-input:focus {
+    outline: none; /* focus:outline-none */
+    border-color: #2563eb; /* focus:ring-blue-600 */
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); /* focus:ring-2 focus:ring-blue-600 */
+}
+
+/* Readonly Input - matching React: bg-gray-50 text-gray-600 cursor-not-allowed */
+.form-input-readonly {
+    background: #f9fafb; /* bg-gray-50 */
+    color: #4b5563; /* text-gray-600 */
+    cursor: not-allowed; /* cursor-not-allowed */
+}
+
+/* Linked Accounts Section */
+.linked-account-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 0; /* py-4 */
+}
+
+/* Linked Account Info - matching React: flex items-center gap-3 */
+.linked-account-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem; /* gap-3 */
+}
+
+/* Linked Account Icon - matching React: w-10 h-10 rounded-full bg-white shadow-sm border border-gray-200 */
+.linked-account-icon {
+    width: 2.5rem; /* w-10 h-10 */
+    height: 2.5rem;
+    border-radius: 9999px; /* rounded-full */
+    background: white; /* bg-white */
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); /* shadow-sm */
+    border: 1px solid #e5e7eb; /* border border-gray-200 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.google-icon {
+    width: 1.5rem; /* w-6 h-6 */
+    height: 1.5rem;
+}
+
+.linked-account-name {
+    font-size: 1rem;
+    color: #111827; /* text-gray-900 */
+    font-weight: 500;
+}
+
+/* Linked Account Button - matching React: px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-700 */
+.linked-account-btn {
+    padding: 0.5rem 1rem; /* px-4 py-2 */
+    font-size: 0.875rem; /* text-sm */
+    border: 1px solid #d1d5db; /* border border-gray-300 */
+    border-radius: 0.5rem; /* rounded-lg */
+    background: white;
+    color: #374151; /* text-gray-700 */
+    cursor: pointer;
+    transition: background-color 0.2s;
+    font-weight: 500;
+}
+
+.linked-account-btn:hover {
+    background: #f9fafb; /* hover:bg-gray-50 */
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .profile-page {
+        padding: 1rem;
+    }
+
+    .profile-section {
+        padding: 1.5rem;
+    }
+
+    .form-row {
+        grid-template-columns: 1fr; /* Single column on mobile */
+        gap: 1rem;
+    }
+
+    .avatar-frame {
+        width: 4rem;
+        height: 4rem;
+    }
+}

@@ -1,0 +1,227 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}대시보드 - HelixOps{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/pages/dashboard.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <!-- Welcome Section -->
+    <div class="welcome-section">
+        <h1 class="welcome-title">
+            Welcome to <span class="helixops-gradient">HelixOps</span>
+        </h1>
+        <p class="welcome-description">
+            임상 질문에서 근거 검토, 실험·임상 설계까지 하나의 흐름으로 이어주는 의료·바이오 연구 플랫폼입니다.
+        </p>
+        <p class="welcome-description mb-6">
+            오늘은 어떤 임상 질문이나 연구 고민을 도와드릴까요?
+        </p>
+
+        <!-- Chat Question Bar -->
+        <div class="chat-question-container" id="chatQuestionContainer">
+            <div class="chat-input-group">
+                <input
+                    type="text"
+                    id="chatQuestionInput"
+                    placeholder="AI에게 연구 질문을 입력하세요..."
+                    class="chat-input"
+                />
+                <button class="chat-submit-btn" id="chatSubmitBtn">
+                    <i class="fa-solid fa-paper-plane"></i>
+                    <span>질문하기</span>
+                </button>
+            </div>
+
+            <!-- Recommended Questions Dropdown -->
+            <div class="recommendations-dropdown" id="recommendationsDropdown" style="display: none;">
+                <div class="recommendations-header">
+                    <span>추천 질문</span>
+                    <button class="close-btn" id="closeRecommendationsBtn">
+                        <i class="fa-solid fa-times"></i>
+                    </button>
+                </div>
+                <div class="recommendations-list" id="recommendationsList">
+                    <!-- 추천 질문 목록이 JavaScript로 동적 로드됩니다 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Experiment Status & Important Schedule -->
+    <section class="main-section">
+        <div class="grid-section">
+            <!-- Important Schedule (Left - 30%) -->
+            <div class="schedule-column">
+                <div class="card">
+                    {% url 'schedule:schedule' as schedule_url %}
+                    {% include 'components/card_header.html' with title="중요한 일정" link_url=schedule_url link_text="이동하기 →" %}
+                    <div class="card-content">
+                        <div id="scheduleList">
+                            {% for schedule in important_schedules|slice:":5" %}
+                            <div class="schedule-item" data-schedule-id="{{ schedule.id }}">
+                                <div class="schedule-item-header">
+                                    <i class="fa fa-calendar"></i>
+                                    <div class="schedule-item-title">
+                                        <p>{{ schedule.title }}</p>
+                                    </div>
+                                    {% if schedule.linked_note %}
+                                    <i class="fa fa-file-lines"></i>
+                                    {% endif %}
+                                </div>
+                                <div class="schedule-item-footer">
+                                    {% include 'components/status_badge.html' with status=schedule.status status_display=schedule.get_status_display show_dot=False %}
+                                    <span class="schedule-date">
+                                        {{ schedule.start_date|date:"Y/m/d" }} ~ {{ schedule.end_date|date:"Y/m/d" }}
+                                    </span>
+                                </div>
+                            </div>
+                            {% empty %}
+                            <div class="empty-state">
+                                <p>일정을 등록해 주세요</p>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Experiment Status (Right - 70%) -->
+            <div class="experiment-column">
+                <div class="card">
+                    {% url 'experiments:experiments' as experiments_url %}
+                    {% include 'components/card_header.html' with title="실험 현황" link_url=experiments_url link_text="이동하기 →" %}
+                    <div class="card-content">
+                        <table class="experiment-table">
+                            <thead>
+                                <tr>
+                                    <th>파이프라인</th>
+                                    <th>툴</th>
+                                    <th>상태</th>
+                                    <th>생성일</th>
+                                </tr>
+                            </thead>
+                            <tbody id="experimentTableBody">
+                                {% for experiment in recent_experiments %}
+                                <tr data-experiment-id="{{ experiment.id }}">
+                                    <td>{{ experiment.pipeline_name }}</td>
+                                    <td>
+                                        <div class="tool-tags">
+                                            {% for tool in experiment.tools.all %}
+                                            <span class="tool-tag">{{ tool.name }}</span>
+                                            {% endfor %}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        {% with status_lower=experiment.status|lower %}
+                                        {% if experiment.status == 'in_progress' or experiment.status == '진행중' %}
+                                            {% include 'components/status_badge.html' with status=status_lower status_display=experiment.get_status_display show_dot=True progress_class=status_lower %}
+                                        {% else %}
+                                            {% include 'components/status_badge.html' with status=status_lower status_display=experiment.get_status_display show_dot=True %}
+                                        {% endif %}
+                                        {% endwith %}
+                                    </td>
+                                    <td>{{ experiment.created_at|timesince }} 전</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="4" class="empty-state">
+                                        <p>실험을 진행하시겠습니까?</p>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <div class="bottom-grid">
+        <!-- Recent Notes -->
+        <section class="notes-section">
+            <div class="card">
+                {% url 'notes:notes' as notes_url %}
+                {% include 'components/card_header.html' with title="최근 연구 노트" link_url=notes_url link_text="이동하기 →" %}
+                <div class="card-content">
+                    <div id="notesList">
+                        {% for note in recent_notes %}
+                        <div class="note-item" data-note-id="{{ note.id }}">
+                            <div class="note-content">
+                                <div class="note-header">
+                                    <i class="far fa-file-lines"></i>
+                                    <div class="note-title-section">
+                                        <p class="note-title">{{ note.title }}</p>
+                                        <div class="note-tags">
+                                            {% for tag in note.tags.all|slice:":5" %}
+                                            <span class="note-tag">#{{ tag.name }}</span>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="note-meta">
+                                    <span class="note-date">{{ note.created_at|date:"Y-m-d" }}</span>
+                                    <div class="note-stats">
+                                        <span class="note-stat">
+                                            <i class="fa fa-share-nodes"></i>
+                                            {{ note.share_count|default:0 }}
+                                        </span>
+                                        <span class="note-stat">
+                                            <i class="far fa-comment-dots"></i>
+                                            {{ note.comment_count|default:0 }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="empty-state">
+                            <p>연구 노트를 등록해주세요</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Recent AI Chats -->
+        <section class="chats-section">
+            <div class="card">
+                {% url 'chat:chat' as chat_url %}
+                {% include 'components/card_header.html' with title="최근 AI 채팅" link_url=chat_url link_text="이동하기 →" %}
+                <div class="card-content">
+                    <div id="chatsList">
+                        {% for chat in recent_chats %}
+                        <div class="chat-item" data-chat-id="{{ chat.id }}">
+                            <div class="chat-content">
+                                <div class="chat-header">
+                                    <i class="far fa-comment-dots"></i>
+                                    <div class="chat-title-section">
+                                        <p class="chat-question">{{ chat.question }}</p>
+                                    </div>
+                                </div>
+                                <div class="chat-meta">
+                                    <span class="chat-time">{{ chat.created_at|timesince }} 전</span>
+                                </div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="empty-state">
+                            <p>AI와 검색/연구를 진행 하시겠습니까?</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/pages/dashboard.js' %}"></script>
+{% endblock %}
