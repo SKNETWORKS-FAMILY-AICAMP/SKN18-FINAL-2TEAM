@@ -7,6 +7,10 @@
 python -m rag.etl.pipeline_runner --source nih
 python -m rag.etl.pipeline_runner --source nih --skip-ingest --skip-normalize
 ```
+- Protocols 한 번에 실행
+```bash
+python -m rag.etl.pipeline_runner --source protocols
+```
 
 ## AWS Lambda 유의사항
 
@@ -56,7 +60,7 @@ sam deploy
 # 빌드 파일 모으기
 ./prepare_build.sh
 
-# aws 서버 설정에 맞춰서 pip install
+# aws 서버 설정에 맞춰서 pip install
 docker run -it --rm \
 	-v "$PWD":/var/task \
 	-w /var/task \
@@ -85,16 +89,15 @@ aws lambda invoke \
 aws logs tail /aws/lambda/skn18-nih-etl --follow
 
 
-# NIH clean/chunk - 배포
+# NIH clean/chunk - 배포
 aws lambda update-function-code --function-name skn18-nih-cleanse-chunk --zip-file fileb:///Users/hjhwang/Documents/ai-camp/SKN18-FINAL-2TEAM/infra/aws/lambda_build/lambda_nih.zip
-# NIH inges - 강제실행
+# NIH clean/chunk - 강제실행
 aws lambda invoke \
 	--function-name skn18-nih-cleanse-chunk \
 	--payload '{}' \
 	output.json
 # 로그
 aws logs tail /aws/lambda/skn18-nih-cleanse-chunk --follow
-
 ```
 
 - ec2 접속
