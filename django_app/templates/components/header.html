@@ -1,0 +1,68 @@
+{% load static %}
+<header class="header">
+    <!-- Left side - Logo and Platform Name -->
+    <div class="header-left">
+        <div class="logo-container">
+            <a href="{% url 'dashboard:dashboard' %}">
+                <img 
+                    src="{% static 'img/logo_01.png' %}" 
+                    alt="HelixOps Logo" 
+                    class="logo-image"
+                />
+            </a>
+        </div>
+        <div>
+            <h1><a href="{% url 'dashboard:dashboard' %}" style="text-decoration: none; color: inherit;">HelixOps</a></h1>
+            <p>Bio/Med R&D Agentic Platform</p>
+        </div>
+    </div>
+
+    <!-- Right side - Notifications and Profile -->
+    <div class="header-right">
+        <!-- Notification Icon -->
+        <div class="notification-wrapper">
+            <button class="notification-btn" id="notificationBtn" data-notification-dropdown>
+                <i class="far fa-bell"></i>
+                {% if unread_notifications_count > 0 %}
+                <span class="notification-dot"></span>
+                {% endif %}
+            </button>
+
+            <!-- Notification Dropdown -->
+            <div class="notification-dropdown" id="notificationDropdown" data-notification-dropdown>
+                <div class="dropdown-header">
+                    <h3>알림</h3>
+                    <p>새로운 알림 <span id="unreadCount">{{ unread_notifications_count|default:0 }}</span>개</p>
+                </div>
+                <div class="dropdown-content" id="notificationContent">
+                    {% if notifications %}
+                        {% for notification in notifications %}
+                        <div class="notification-item {% if notification.unread %}unread{% endif %}" data-notification-id="{{ notification.id }}">
+                            {% if notification.unread %}
+                            <span class="unread-dot"></span>
+                            {% endif %}
+                            <div class="notification-content">
+                                <p class="notification-title">{{ notification.title }}</p>
+                                <p class="notification-message">{{ notification.message }}</p>
+                                <p class="notification-time">{{ notification.time }}</p>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="notification-item">
+                            <div class="notification-content">
+                                <p class="notification-message">알림이 없습니다.</p>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="dropdown-footer">
+                    <a href="{% url 'dashboard:dashboard' %}#notifications" class="view-all-btn">모든 알림 보기</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Profile Section -->
+        {% include 'components/profile_dropdown.html' with user_data=header_user|default:user button_id='profileBtn' dropdown_id='profileDropdown' overlay_id='profileDropdownOverlay' wrapper_class='profile-wrapper' button_class='profile-btn' show_name_email=True position_type='header' %}
+    </div>
+</header>

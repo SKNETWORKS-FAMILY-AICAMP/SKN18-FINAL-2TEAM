@@ -1,0 +1,42 @@
+{% load static %}
+<div class="modal-overlay" id="bookmarkModal" role="dialog" aria-labelledby="bookmarkModalTitle" aria-modal="true">
+    <div class="modal-container modal-medium">
+        <div class="modal-header">
+            <div>
+                <h2 class="modal-title" id="bookmarkModalTitle">
+                    북마크에 저장 <span id="bookmarkCount" style="font-weight: normal; color: #6b7280;"></span>
+                </h2>
+                <p class="modal-description">저장할 폴더를 선택하세요</p>
+            </div>
+            <button class="modal-close-btn" aria-label="닫기">
+                <i class="fa-solid fa-times"></i>
+            </button>
+        </div>
+        
+        <div class="modal-body">
+            <div class="bookmark-categories" id="bookmarkCategories">
+                <!-- Categories will be loaded dynamically -->
+            </div>
+            
+            <!-- New Category Input -->
+            <div class="new-category-section" id="newCategorySection">
+                <button class="new-category-btn" id="newCategoryBtn">
+                    <i class="fa-solid fa-plus"></i>
+                    새 폴더 만들기
+                </button>
+                <div class="new-category-input" id="newCategoryInput" style="display: none;">
+                    <input type="text" id="newCategoryName" placeholder="새 폴더 이름" class="category-input">
+                    <div class="new-category-actions">
+                        <button class="category-btn category-btn-primary" id="createCategoryBtn">생성</button>
+                        <button class="category-btn category-btn-secondary" id="cancelCategoryBtn">취소</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="modal-footer">
+            <button class="modal-btn modal-btn-secondary" data-action="close">취소</button>
+            <button class="modal-btn modal-btn-primary" id="saveBookmarkBtn" disabled>저장</button>
+        </div>
+    </div>
+</div>

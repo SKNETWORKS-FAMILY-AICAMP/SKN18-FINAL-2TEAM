@@ -1,0 +1,40 @@
+{% load static %}
+<div class="modal-overlay" id="experimentResultModal" role="dialog" aria-labelledby="experimentResultModalTitle" aria-modal="true">
+    <div class="modal-container modal-large">
+        <div class="modal-header">
+            <div>
+                <h2 class="modal-title" id="experimentResultModalTitle">내 실험 결과</h2>
+                <p class="modal-subtitle">첨부할 실험 결과를 선택하세요</p>
+            </div>
+            <button class="modal-close-btn" aria-label="닫기" data-action="close">
+                <i class="fa-solid fa-times"></i>
+            </button>
+        </div>
+        
+        <div class="modal-body">
+            <!-- Experiment List View -->
+            <div id="experimentListView">
+                <div class="experiments-list" id="experimentsList">
+                    <!-- Experiments will be loaded here -->
+                </div>
+            </div>
+            
+            <!-- Experiment Results View -->
+            <div id="experimentResultsView" style="display: none;">
+                <button class="back-button" id="backToExperimentsBtn">
+                    <i class="fa-solid fa-arrow-left"></i>
+                    실험 목록으로 돌아가기
+                </button>
+                
+                <div class="experiment-info" id="selectedExperimentInfo">
+                    <!-- Selected experiment info will be displayed here -->
+                </div>
+                
+                <h4 class="results-title">결과 데이터</h4>
+                <div class="results-grid" id="resultsGrid">
+                    <!-- Results will be displayed here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

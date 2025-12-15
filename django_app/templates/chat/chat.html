@@ -1,0 +1,265 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Research AI - HelixOps{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/components/subsidebar.css' %}">
+<link rel="stylesheet" href="{% static 'css/pages/chat.css' %}">
+<link rel="stylesheet" href="{% static 'css/components/modals/bookmark_modal.css' %}">
+<link rel="stylesheet" href="{% static 'css/components/modals/reference_selection_modal.css' %}">
+<link rel="stylesheet" href="{% static 'css/components/modals/graph_summary_modal.css' %}">
+<link rel="stylesheet" href="{% static 'css/components/modals/save_to_note_modal.css' %}">
+<link rel="stylesheet" href="{% static 'css/components/modals/paper_graph_modal.css' %}">
+<link rel="stylesheet" href="{% static 'css/components/modals/table_modal.css' %}">
+<link rel="stylesheet" href="{% static 'css/components/modals/experiment_result_modal.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="chat-container">
+    <!-- Chat Sidebar -->
+    {% include 'components/subsidebar.html' with subsidebar_title="채팅" subsidebar_search_placeholder="Search chats..." subsidebar_list_title="내 채팅" %}
+
+    <!-- Main Chat Area -->
+    <div class="main-chat-area">
+        <!-- Chat Messages -->
+        <div class="chat-messages" id="chatMessages">
+            <!-- Empty State -->
+            <div class="empty-state" id="emptyState">
+                <div class="empty-state-content">
+                    <h1 class="empty-state-title">
+                        <span class="helixops-gradient">HelixOps AI</span>
+                    </h1>
+                    <p class="empty-state-description">
+                        논문, 임상시험, 프로토콜, 실험 결과까지 신뢰도 높은 근거를 바탕으로 답변합니다.<br />
+                        연구 아이디어부터 실험 초안 작성과 결과 해석까지 함께 도와드립니다.
+                    </p>
+                </div>
+
+                <!-- Input with Generate Button -->
+                <div class="input-container">
+                    <div class="input-wrapper">
+                        <div class="input-toolbar">
+                            <div class="relative">
+                                <button class="toolbar-btn" id="attachBtn" title="파일 첨부">
+                                    <i class="fa-solid fa-plus"></i>
+                                </button>
+                                
+                                <!-- Plus Button Dropdown -->
+                                <div class="plus-dropdown" id="plusDropdown" style="display: none;">
+                                    <button class="plus-dropdown-item" data-action="add-image">
+                                        <i class="fa-solid fa-image"></i>
+                                        <span>이미지 추가</span>
+                                    </button>
+                                    <button class="plus-dropdown-item" data-action="add-table">
+                                        <i class="fa-solid fa-table"></i>
+                                        <span>표 추가</span>
+                                    </button>
+                                    <button class="plus-dropdown-item" data-action="add-experiment">
+                                        <i class="fa-solid fa-flask"></i>
+                                        <span>내 실험 결과</span>
+                                    </button>
+                                </div>
+                                
+                                <!-- Hidden file input -->
+                                <input
+                                    type="file"
+                                    id="fileInput"
+                                    accept="image/*"
+                                    multiple
+                                    style="display: none;"
+                                />
+                            </div>
+                            <input
+                                type="text"
+                                id="chatInputField"
+                                placeholder="무엇이든 물어보세요"
+                                class="chat-input-field"
+                            />
+                            <button class="send-btn" id="sendBtn">
+                                <i class="fa-solid fa-paper-plane"></i>
+                            </button>
+                        </div>
+                        <div class="input-footer">
+                            <sl-tooltip content="채팅 종류를 선택하면 더 빨리 검색할 수 있습니다" placement="top">
+                                <div class="filter-controls" id="filterControls">
+                                    <div class="auto-mode">
+                                        <span>자동</span>
+                                        <sl-switch id="autoModeToggle" checked></sl-switch>
+                                    </div>
+                                    <button class="filter-btn" data-filter="paper">논문</button>
+                                    <button class="filter-btn" data-filter="clinical">임상</button>
+                                    <button class="filter-btn" data-filter="protocol">프로토콜</button>
+                                    <button class="filter-btn" data-filter="simulation">시뮬레이션</button>
+                                    <button class="filter-btn" data-filter="interpretation">결과 해석</button>
+                                </div>
+                            </sl-tooltip>
+                        </div>
+                    </div>
+
+                    <!-- Recommended Questions Dropdown -->
+                    <div class="recommendations-dropdown" id="recommendationsDropdown" style="display: none;">
+                        <div class="recommendations-header">
+                            <span>추천 질문</span>
+                            <button class="close-btn" id="closeRecommendationsBtn">
+                                <i class="fa-solid fa-times"></i>
+                            </button>
+                        </div>
+                        <sl-tab-group id="recommendationsTabGroup" class="recommendations-tab-group">
+                            <sl-tab slot="nav" panel="paper" data-category="P">논문</sl-tab>
+                            <sl-tab slot="nav" panel="clinical" data-category="C">임상</sl-tab>
+                            <sl-tab slot="nav" panel="protocol" data-category="T">프로토콜</sl-tab>
+                            <sl-tab slot="nav" panel="simulation" data-category="S">시뮬레이션</sl-tab>
+                            <sl-tab slot="nav" panel="interpretation" data-category="R">결과 해석</sl-tab>
+                            
+                            <sl-tab-panel name="paper" class="recommendations-tab-panel">
+                                <div class="recommendations-list" data-category="P" id="recommendationsListP">
+                                    <!-- 추천 질문 목록이 JavaScript로 동적 로드됩니다 -->
+                                </div>
+                            </sl-tab-panel>
+                            <sl-tab-panel name="clinical" class="recommendations-tab-panel">
+                                <div class="recommendations-list" data-category="C" id="recommendationsListC">
+                                    <!-- 추천 질문 목록이 JavaScript로 동적 로드됩니다 -->
+                                </div>
+                            </sl-tab-panel>
+                            <sl-tab-panel name="protocol" class="recommendations-tab-panel">
+                                <div class="recommendations-list" data-category="T" id="recommendationsListT">
+                                    <!-- 추천 질문 목록이 JavaScript로 동적 로드됩니다 -->
+                                </div>
+                            </sl-tab-panel>
+                            <sl-tab-panel name="simulation" class="recommendations-tab-panel">
+                                <div class="recommendations-list" data-category="S" id="recommendationsListS">
+                                    <!-- 추천 질문 목록이 JavaScript로 동적 로드됩니다 -->
+                                </div>
+                            </sl-tab-panel>
+                            <sl-tab-panel name="interpretation" class="recommendations-tab-panel">
+                                <div class="recommendations-list" data-category="R" id="recommendationsListR">
+                                    <!-- 추천 질문 목록이 JavaScript로 동적 로드됩니다 -->
+                                </div>
+                            </sl-tab-panel>
+                        </sl-tab-group>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chat Messages View -->
+            <div class="messages-view" id="messagesView" style="display: none;">
+                <!-- 메시지가 JavaScript로 동적 로드됩니다 -->
+            </div>
+        </div>
+
+        <!-- Input Area -->
+        <div class="input-area" id="inputArea" style="display: none;">
+            <div class="input-wrapper">
+                <div class="input-toolbar">
+                    <div class="relative">
+                        <button class="toolbar-btn" id="attachBtnBottom" title="파일 첨부">
+                            <i class="fa-solid fa-plus"></i>
+                        </button>
+                        
+                        <!-- Plus Button Dropdown -->
+                        <div class="plus-dropdown" id="plusDropdownBottom" style="display: none;">
+                            <button class="plus-dropdown-item" data-action="add-image">
+                                <i class="fa-solid fa-image"></i>
+                                <span>이미지 추가</span>
+                            </button>
+                            <button class="plus-dropdown-item" data-action="add-table">
+                                <i class="fa-solid fa-table"></i>
+                                <span>표 추가</span>
+                            </button>
+                            <button class="plus-dropdown-item" data-action="add-experiment">
+                                <i class="fa-solid fa-flask"></i>
+                                <span>내 실험 결과</span>
+                            </button>
+                        </div>
+                        
+                        <!-- Hidden file input -->
+                        <input
+                            type="file"
+                            id="fileInputBottom"
+                            accept="image/*"
+                            multiple
+                            style="display: none;"
+                        />
+                    </div>
+                    <input
+                        type="text"
+                        id="chatInputFieldBottom"
+                        placeholder="무엇이든 물어보세요"
+                        class="chat-input-field"
+                    />
+                    <button class="send-btn" id="sendBtnBottom">
+                        <i class="fa-solid fa-paper-plane"></i>
+                    </button>
+                </div>
+                <div class="input-footer">
+                    <sl-tooltip content="채팅 종류를 선택하면 더 빨리 검색할 수 있습니다" placement="top">
+                        <div class="filter-controls" id="filterControlsBottom">
+                            <div class="auto-mode">
+                                <span>자동</span>
+                                <sl-switch id="autoModeToggleBottom" checked></sl-switch>
+                            </div>
+                            <button class="filter-btn" data-filter="paper">논문</button>
+                            <button class="filter-btn" data-filter="clinical">임상</button>
+                            <button class="filter-btn" data-filter="protocol">프로토콜</button>
+                            <button class="filter-btn" data-filter="simulation">시뮬레이션</button>
+                            <button class="filter-btn" data-filter="interpretation">결과 해석</button>
+                        </div>
+                    </sl-tooltip>
+                </div>
+            </div>
+            <p class="privacy-notice">
+                사용자의 질의와 업로드된 파일은 AI 모델 학습에 활용되지 않으며, 관련 정보가 다른 사용자에게 공개되지 않습니다.
+            </p>
+        </div>
+    </div>
+
+    <!-- Right Sidebar - References -->
+    <aside class="references-sidebar" id="referencesSidebar" style="display: none;">
+        <div class="references-header">
+            <h2>참고 문헌 (<span id="referencesCount">0</span>)</h2>
+            <button class="save-references-btn" id="saveReferencesBtn">
+                <i class="fa-solid fa-bookmark"></i>
+                선택 문헌 저장
+            </button>
+        </div>
+
+        <div class="references-list" id="referencesList">
+            <!-- 참고 문헌이 JavaScript로 동적 로드됩니다 -->
+        </div>
+    </aside>
+</div>
+
+<!-- 북마크 모달 -->
+{% include 'components/modals/bookmark_modal.html' %}
+
+<!-- 참고 문헌 선택 모달 -->
+{% include 'components/modals/reference_selection_modal.html' %}
+
+<!-- 그래프 요약 모달 -->
+{% include 'components/modals/graph_summary_modal.html' %}
+
+<!-- Paper Graph 모달 -->
+{% include 'components/modals/paper_graph_modal.html' %}
+<!-- 노트에 저장 모달 -->
+{% include 'components/modals/save_to_note_modal.html' %}
+
+<!-- 표 추가 모달 -->
+{% include 'components/modals/table_modal.html' %}
+
+<!-- 실험 결과 선택 모달 -->
+{% include 'components/modals/experiment_result_modal.html' %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/components/subsidebar.js' %}"></script>
+<script src="{% static 'js/pages/chat.js' %}"></script>
+<script src="{% static 'js/components/modals/bookmark_modal.js' %}"></script>
+<script src="{% static 'js/components/modals/reference_selection_modal.js' %}"></script>
+<script src="{% static 'js/components/modals/graph_summary_modal.js' %}"></script>
+<script src="{% static 'js/components/modals/save_to_note_modal.js' %}"></script>
+<script src="{% static 'js/components/modals/paper_graph_modal.js' %}"></script>
+<script src="{% static 'js/components/modals/table_modal.js' %}"></script>
+<script src="{% static 'js/components/modals/experiment_result_modal.js' %}"></script>
+{% endblock %}

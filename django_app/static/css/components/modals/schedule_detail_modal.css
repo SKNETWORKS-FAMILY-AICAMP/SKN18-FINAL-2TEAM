@@ -1,0 +1,316 @@
+/* Schedule Detail Modal Styles */
+
+.modal-large {
+    max-width: 56rem; /* 896px */
+    width: 100%;
+}
+
+.schedule-detail-body {
+    padding: 0;
+    overflow: hidden;
+}
+
+.schedule-detail-content {
+    display: flex;
+    height: 100%;
+    min-height: 400px;
+    max-height: calc(90vh - 120px);
+}
+
+.schedule-detail-left {
+    flex: 1;
+    padding: 1.5rem;
+    border-right: 1px solid #e5e7eb;
+    overflow-y: auto;
+}
+
+.schedule-detail-section {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.schedule-title-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.schedule-title-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.schedule-type-badge {
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.75rem;
+    padding: 0.25rem 0.625rem;
+    border-radius: 0.25rem;
+    font-weight: 500;
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.schedule-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #111827;
+    margin: 0;
+}
+
+.schedule-title-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.schedule-status-select {
+    font-size: 0.875rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.375rem;
+    border: 1px solid;
+    cursor: pointer;
+    font-weight: 500;
+    transition: border-color 0.2s;
+}
+
+.schedule-status-select:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.schedule-status-select.status-scheduled {
+    background: #dbeafe;
+    color: #1e40af;
+    border-color: #93c5fd;
+}
+
+.schedule-status-select.status-in_progress {
+    background: #fef3c7;
+    color: #92400e;
+    border-color: #fcd34d;
+}
+
+.schedule-status-select.status-completed {
+    background: #d1fae5;
+    color: #065f46;
+    border-color: #6ee7b7;
+}
+
+.linked-note-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background: #dbeafe;
+    color: #2563eb;
+    border: 1px solid #93c5fd;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: background-color 0.2s, border-color 0.2s;
+    border: none;
+}
+
+.linked-note-btn:hover {
+    background: #bfdbfe;
+    border-color: #60a5fa;
+}
+
+.linked-note-btn i {
+    font-size: 0.875rem;
+}
+
+.schedule-divider {
+    height: 1px;
+    background: #e5e7eb;
+}
+
+.schedule-info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.schedule-info-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #6b7280;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.schedule-info-label i {
+    font-size: 1.25rem;
+    color: #9ca3af;
+}
+
+.schedule-info-value {
+    font-size: 0.875rem;
+    color: #111827;
+    margin: 0;
+    line-height: 1.5;
+}
+
+/* Right Column - Shared Users */
+.schedule-detail-right {
+    width: 20rem; /* 320px - React uses w-80 which is 20rem */
+    background: #f9fafb;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    flex-shrink: 0;
+}
+
+.schedule-shared-section {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.schedule-shared-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+}
+
+.schedule-shared-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.schedule-shared-title h4 {
+    font-size: 1rem;
+    font-weight: 500;
+    color: #111827;
+    margin: 0;
+}
+
+.schedule-shared-title i {
+    font-size: 1.25rem;
+    color: #4b5563;
+}
+
+.schedule-share-add-btn {
+    padding: 0.375rem;
+    color: #2563eb;
+    background: transparent;
+    border: none;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    transition: background-color 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.schedule-share-add-btn:hover {
+    background: #dbeafe;
+}
+
+.schedule-share-add-btn i {
+    font-size: 1rem;
+}
+
+.schedule-shared-list {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.schedule-shared-item {
+    padding: 0.75rem;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+}
+
+.schedule-shared-name {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #111827;
+    margin: 0 0 0.25rem 0;
+}
+
+.schedule-shared-email {
+    font-size: 0.75rem;
+    color: #6b7280;
+    margin: 0;
+    word-break: break-all;
+}
+
+.schedule-shared-empty {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+.schedule-shared-empty i {
+    font-size: 3rem;
+    color: #d1d5db;
+    margin-bottom: 0.5rem;
+}
+
+.schedule-shared-empty p {
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin: 0 0 0.75rem 0;
+}
+
+.schedule-shared-empty .btn-primary {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    background: #2563eb;
+    color: white;
+    border-radius: 0.5rem;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.15s;
+}
+
+.schedule-shared-empty .btn-primary:hover {
+    background: #1d4ed8;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .schedule-detail-content {
+        flex-direction: column;
+        min-height: auto;
+    }
+    
+    .schedule-detail-left {
+        border-right: none;
+        border-bottom: 1px solid #e5e7eb;
+        padding: 1rem;
+    }
+    
+    .schedule-detail-right {
+        width: 100%;
+        border-right: none;
+        border-top: 1px solid #e5e7eb;
+        padding: 1rem;
+        max-height: 300px;
+    }
+    
+    .schedule-shared-section {
+        min-height: auto;
+    }
+    
+    .modal-large {
+        max-width: 100%;
+        margin: 0.5rem;
+    }
+}

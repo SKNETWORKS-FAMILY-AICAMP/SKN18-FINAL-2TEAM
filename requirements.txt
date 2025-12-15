@@ -1,12 +1,39 @@
 ########################################
-# 버전 고정 - 필수
+# 로컬 개발 환경용 requirements.txt
+# Lambda 배포는 별도 requirements-lambda-*.txt 파일 사용
 ########################################
-numpy==1.26.4
-torch==2.2.2
 
-########################################
+# 기본 패키지
+numpy==1.26.4
+pandas
+scipy
+
+# OpenAI API (embedding용)
+openai
+
+# LangChain (필요시)
+langchain
+langchain-core
+langchain-community
+langchain-openai
+langchain_text_splitters
+tiktoken
+
+# LangGraph (워크플로우 오케스트레이션)
+langgraph
+dateparser # 날짜 파싱 - 리라이트쿼리 tool
+
+# Database
+psycopg[binary, pool]
+pgvector
+sqlalchemy
+
+# Neo4j (Knowledge Graph)
+neo4j
+neo4j-graphrag  # Neo4j TextRetriever
+py2neo
+
 # Django Web Framework
-########################################
 Django>=5.0,<6.0
 django-environ
 djangorestframework
@@ -14,79 +41,31 @@ gunicorn
 django-sass-processor
 libsass
 
-# 환경변수 관리
-python-dotenv
-
-########################################
-# Database (PostgreSQL + pgvector)
-########################################
-sqlalchemy       # 메모리 디비 ORM
-psycopg2-binary  # 메모리 디비 연결
-pgvector
-
-
-########################################
-# LangGraph + LLM orchestration
-########################################
-langchain
-langchain-core
-langchain-community
-langchain-openai
-tiktoken
-
-langgraph
-dateparser # 날짜 파싱 - 리라이트쿼리 tool
-
-
-########################################
-# RAG / Embedding / NLP
-########################################
-sentence-transformers
-transformers
-accelerate
-scipy
-pandas
-
-
-########################################
-# ETL / Crawling / Parsing
-########################################
+# ETL / Parsing
 requests
 lxml
 markdownify
 python-dateutil
+beautifulsoup4
+nltk
 
+sentence-transformers
+transformers
+accelerate
 
-########################################
-# Neo4j (Knowledge Graph)
-########################################
-neo4j
-neo4j-graphrag  # Neo4j TextRetriever
-py2neo
-
-
-########################################
 # Simulation tools (optional, utils)
-########################################
 biopython
+
+# 환경변수 관리
+python-dotenv
+
+# 기타 유틸리티
 PyYAML
 
-
-########################################
-# sLLM / Local inference (vLLM/Ollama)
-########################################
-openai
-
-########################################
 # Jupyter Notebook Support
-########################################
 jupyter
 ipywidgets  # tqdm 진행률 표시용
 notebook
 
-########################################
-# Testing / Dev Tools
-########################################
-pytest
-black
-isort
+# AWS SDK (Lambda에 기본 포함되지만 명시)
+boto3

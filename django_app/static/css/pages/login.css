@@ -1,0 +1,497 @@
+/* Login Page Styles */
+
+.login-container {
+    min-height: 100vh;
+    display: flex;
+    background: var(--color-bg-gray-50);
+}
+
+/* Left Side - Branding - matching React: hidden lg:flex lg:w-1/2 */
+.login-left {
+    display: none; /* hidden */
+    width: 50%; /* lg:w-1/2 */
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(to bottom right, #2563eb, #9333ea, #1e40af); /* from-blue-600 via-purple-600 to-blue-700 */
+}
+
+@media (min-width: 1024px) {
+    .login-left {
+        display: flex; /* lg:flex */
+    }
+}
+
+/* YouTube Video Background - matching React */
+.login-video-bg {
+    position: absolute;
+    pointer-events: none;
+    width: 110%;
+    height: 168%;
+    /* left: 50%; */
+    top: -50px;
+    /* transform: translateX(-50%); */
+    min-width: 100%;
+    min-height: 100%;
+    border: none;
+}
+
+/* Dark Overlay - matching React: bg-gradient-to-br from-blue-500/80 to-purple-950/80 backdrop-blur-[1px] */
+.overlay {
+    position: absolute;
+    inset: 0;
+    /* from-blue-500/80 to-purple-950/80 */
+    /* background: linear-gradient(to bottom right, rgba(37, 99, 235, 0.8), rgba(147, 51, 234, 0.95));  */
+    background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(1px); /* backdrop-blur-[1px] */
+    z-index: 1;
+}
+
+.login-left-content {
+    position: relative;
+    z-index: 10;
+    padding: 3rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    text-align: left;
+    width: 100%;
+    color: white;
+}
+
+.logo-section {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.logo-frame {
+    width: 5.0rem; 
+    height: 5.0rem;
+    /* width: 4rem; 
+    height: 4rem; */
+    background: rgba(255, 255, 255, 0.1); /* bg-white/10 */
+    border-radius: 0.75rem; /* rounded-xl */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px); /* backdrop-blur-sm */
+    flex-shrink: 0;
+}
+
+.logo-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    padding: 0.5rem;
+}
+
+.logo-placeholder {
+    padding: 5px;
+    font-size: 0.875rem;
+    color: white;
+}
+
+.logo-section h1 {
+    /* text-3xl */
+    /* font-size: 1.875rem;  */
+    font-size: 2.4rem; 
+    font-weight: 700;
+    /* margin: 0 0 0.25rem 0; */
+    color: white;
+    margin-top: -10px;
+}
+
+.logo-section p {
+    font-size: 1rem; /* text-base */
+    color: #bfdbfe; /* text-blue-100 */
+    margin: 0;
+}
+
+.features-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem; /* space-y-6 */
+    margin-top: 4rem; /* mt-16 */
+}
+
+.feature-item {
+    display: flex;
+    align-items: flex-start; /* items-start */
+    gap: 1rem; /* gap-4 */
+}
+
+.feature-icon {
+    width: 2.5rem; /* w-10 h-10 */
+    height: 2.5rem;
+    background: rgba(255, 255, 255, 0.1); /* bg-white/10 */
+    border-radius: 0.5rem; /* rounded-lg */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    backdrop-filter: blur(4px); /* backdrop-blur-sm */
+}
+
+.feature-icon i {
+    font-size: 1.25rem;
+    color: white;
+}
+
+/* SVG Icon - matching React */
+.feature-icon-svg {
+    width: 1.25rem; /* w-5 h-5 */
+    height: 1.25rem;
+    color: white;
+}
+
+.feature-item h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0 0 0.25rem 0; /* mb-1 */
+    color: white;
+}
+
+.feature-item p {
+    font-size: 0.875rem; /* text-sm */
+    color: #bfdbfe; /* text-blue-100 */
+    margin: 0;
+    line-height: 1.5;
+}
+
+.copyright {
+    font-size: 0.875rem;
+    color: #bfdbfe;
+    margin-top: 2rem;
+}
+
+/* Right Side - Login Form - matching React: flex-1 flex items-center justify-center p-8 bg-gray-50 */
+.login-right {
+    flex: 1; /* flex-1 */
+    display: flex;
+    align-items: center; /* items-center */
+    justify-content: center; /* justify-center */
+    padding: 2rem; /* p-8 */
+    background: var(--color-bg-gray-50); /* bg-gray-50 */
+    min-height: 100vh;
+}
+
+.login-form-wrapper {
+    width: 100%;
+    max-width: 28rem;
+}
+
+.mobile-logo {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    justify-content: center;
+}
+
+@media (min-width: 1024px) {
+    .mobile-logo {
+        display: none;
+    }
+}
+
+.mobile-logo-frame {
+    width: 3.5rem;
+    height: 3.5rem;
+    background: linear-gradient(to bottom right, #2563eb, #9333ea);
+    border-radius: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.mobile-logo h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--color-text-primary);
+    margin: 0 0 0.25rem 0;
+}
+
+.mobile-logo p {
+    font-size: 0.875rem;
+    color: var(--color-text-tertiary);
+    margin: 0;
+}
+
+.login-form-card {
+    background: var(--color-bg-white); /* bg-white */
+    border-radius: 1rem; /* rounded-2xl */
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); /* shadow-sm */
+    border: 1px solid var(--color-border-light); /* border border-gray-200 */
+    padding: 2rem; /* p-8 */
+}
+
+.form-header {
+    margin-bottom: 2rem;
+}
+
+.form-header h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--color-text-primary);
+    margin: 0 0 0.5rem 0;
+}
+
+.form-header p {
+    font-size: 0.875rem;
+    color: var(--color-text-tertiary);
+    margin: 0;
+}
+
+.login-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem; /* space-y-5 */
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem; /* space-y-2 */
+}
+
+/* form-group, form-label base styles in common.css */
+.form-group label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+}
+
+.input-wrapper {
+    position: relative;
+}
+
+.input-icon {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--color-text-muted);
+    font-size: 1rem;
+    pointer-events: none;
+    z-index: 1;
+}
+
+/* form-input base styles in common.css, login-specific overrides */
+.form-input {
+    width: 100%; /* w-full */
+    padding-left: 2.5rem; /* pl-10 */
+    padding-right: 2.5rem; /* pr-10 (for password toggle) */
+    padding-top: 0.625rem; /* py-2.5 */
+    padding-bottom: 0.625rem;
+    border: 1px solid var(--color-border-gray); /* border border-gray-300 */
+    border-radius: 0.5rem; /* rounded-lg */
+    font-size: 0.875rem;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    background: var(--color-bg-white);
+    color: var(--color-text-primary);
+}
+
+.form-input:focus {
+    border-color: var(--color-primary); /* focus:ring-blue-500 */
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); /* focus:ring-2 */
+    outline: none; /* focus:outline-none */
+}
+
+.form-input.error-input {
+    border-color: #d4183d;
+}
+
+.form-input.error-input:focus {
+    box-shadow: 0 0 0 3px rgba(212, 24, 61, 0.1);
+}
+
+.password-toggle {
+    position: absolute;
+    right: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--color-text-muted);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s;
+    z-index: 1;
+}
+
+.password-toggle:hover {
+    color: var(--color-text-tertiary);
+}
+
+.password-toggle i {
+    font-size: 1rem;
+}
+
+.form-options {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.875rem;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    user-select: none;
+}
+
+.checkbox {
+    width: 1rem;
+    height: 1rem;
+    border-radius: 0.25rem;
+    border: 1px solid var(--color-border-gray);
+    cursor: pointer;
+    accent-color: var(--color-primary);
+}
+
+.checkbox-label span {
+    color: var(--color-text-tertiary);
+}
+
+.forgot-link {
+    color: var(--color-primary);
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.2s;
+}
+
+.forgot-link:hover {
+    color: var(--color-primary-hover);
+    text-decoration: underline;
+}
+
+/* btn-submit uses btn-primary from common.css */
+.btn-submit {
+    width: 100%; /* w-full */
+    padding: 0.625rem; /* px-4 py-2 */
+    background: var(--color-primary); /* bg-blue-600 */
+    color: white; /* text-white */
+    border-radius: 0.5rem; /* rounded-lg */
+    border: none;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.btn-submit:hover {
+    background: var(--color-primary-hover);
+}
+
+.btn-submit:active {
+    background: var(--color-primary-dark);
+}
+
+.btn-submit:disabled {
+    background: var(--color-text-muted);
+    cursor: not-allowed;
+}
+
+.form-footer {
+    margin-top: 1.5rem;
+    text-align: center;
+}
+
+.form-footer p {
+    font-size: 0.875rem;
+    color: #4b5563;
+    margin: 0;
+}
+
+.form-footer a {
+    color: #2563eb;
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.2s;
+}
+
+.form-footer a:hover {
+    color: #1d4ed8;
+    text-decoration: underline;
+}
+
+/* Error and Alert Messages */
+.error-message {
+    padding: 0.75rem;
+    background: #fee2e2;
+    border: 1px solid #fecaca;
+    border-radius: 0.5rem;
+    color: #991b1b;
+    font-size: 0.875rem;
+    margin-bottom: 1rem;
+}
+
+.alert {
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    margin-bottom: 1rem;
+}
+
+.alert-success {
+    background: #d1fae5;
+    border: 1px solid #a7f3d0;
+    color: #065f46;
+}
+
+.alert-error {
+    background: #fee2e2;
+    border: 1px solid #fecaca;
+    color: #991b1b;
+}
+
+.alert-info {
+    background: #dbeafe;
+    border: 1px solid #bfdbfe;
+    color: #1e40af;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .login-right {
+        padding: 1rem;
+    }
+
+    .login-form-card {
+        padding: 1.5rem;
+    }
+
+    .form-header h2 {
+        font-size: 1.25rem;
+    }
+
+    .features-list {
+        margin-top: 2rem;
+        gap: 1rem;
+    }
+
+    .feature-item {
+        gap: 0.75rem;
+    }
+
+    .feature-icon {
+        width: 2rem;
+        height: 2rem;
+    }
+
+    .feature-icon i {
+        font-size: 1rem;
+    }
+}
