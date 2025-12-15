@@ -3,7 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.core.paginator import Paginator
 from django.views.decorators.csrf import csrf_exempt
-from .models import Note
+from .models import Note, NoteComment
 import json
 
 @login_required
@@ -118,8 +118,10 @@ def note_detail(request):
     try:
         note_id_int = int(note_id)
         note = Note.objects.get(note_sid=note_id_int, owner=request.user, status='E')
+        comments = NoteComment.objects.filter(note=note).order_by('created_at')
         context = {
             'note': note,
+            'comments': comments,
         }
         return render(request, 'note/note_detail.html', context)
     except ValueError:
@@ -136,3 +138,76 @@ def note_editor(request):
         'is_edit_mode': note_id is not None,
     }
     return render(request, 'note/note_editor.html', context)
+
+@login_required
+@csrf_exempt
+def api_note_add_comment(request):
+    """API: 노트에 댓글 추가"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        note_id = data.get('note_id')
+        highlighted_text = data.get('highlighted_text', '')
+        comment_text = data.get('comment_text', '').strip()
+        position_top = data.get('position_top', 0)
+        
+        if not note_id or not comment_text:
+            return JsonResponse({'error': 'Note ID and comment text are required'}, status=400)
+        
+        note = Note.objects.get(note_sid=note_id, owner=request.user, status='E')
+        
+        comment = NoteComment.objects.create(
+            note=note,
+            highlighted_text=highlighted_text,
+            comment_text=comment_text,
+            position_top=position_top,
+            created_id=request.user.user_id,
+            updated_id=request.user.user_id
+        )
+        
+        return JsonResponse({
+            'id': comment.comment_sid,
+            'comment_text': comment.comment_text,
+            'highlighted_text': comment.highlighted_text,
+            'position_top': comment.position_top,
+            'created_at': comment.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+            'author': request.user.get_full_name() or request.user.email,
+            'status': 'created'
+        })
+    except Note.DoesNotExist:
+        return JsonResponse({'error': 'Note not found'}, status=404)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@login_required
+def api_note_comments(request):
+    """API: 노트 댓글 목록 조회"""
+    note_id_str = request.GET.get('note_id')
+    if not note_id_str:
+        return JsonResponse({'error': 'Note ID is required'}, status=400)
+    
+    try:
+        note_id = int(note_id_str)
+        note = Note.objects.get(note_sid=note_id, owner=request.user, status='E')
+        comments = NoteComment.objects.filter(note=note).order_by('created_at')
+        
+        data = [{
+            'id': comment.comment_sid,
+            'highlighted_text': comment.highlighted_text,
+            'comment_text': comment.comment_text,
+            'position_top': comment.position_top,
+            'created_at': comment.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+            'author': request.user.get_full_name() or request.user.email,  # 실제 사용자 이름으로 변경
+        } for comment in comments]
+        
+        return JsonResponse({'comments': data})
+    except Note.DoesNotExist:
+        return JsonResponse({'error': 'Note not found'}, status=404)
+    except ValueError:
+        return JsonResponse({'error': 'Invalid note ID'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)

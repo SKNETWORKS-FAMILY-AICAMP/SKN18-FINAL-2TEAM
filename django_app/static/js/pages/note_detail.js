@@ -8,6 +8,8 @@ let commentPosition = null;
 let showCommentInput = false;
 let activeCommentId = null;
 
+let btnAddComment;
+
 // DOM Elements
 let noteDetailView, noteDetailWrapper;
 let btnBack, noteDetailTitle, noteDetailAuthor, noteDetailDate, noteDetailTags;
@@ -18,18 +20,7 @@ let newCommentBox, selectedTextPreview, newCommentTextarea;
 let btnCommentSubmit, btnCommentCancel, commentsList, commentsEmpty;
 
 // Mock comments data
-let comments = [
-    {
-        id: 1,
-        text: 'CRISPR',
-        highlightedText: 'CRISPR-Cas9',
-        comment: '이 부분에 대한 추가 실험이 필요할 것 같습니다.',
-        author: 'Dr. John Lee',
-        avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop',
-        time: '2시간 전',
-        position: 150
-    }
-];
+let comments = [];
 
 // Mock attachments for detail view
 const mockAttachments = [
@@ -80,6 +71,7 @@ function initNoteDetail() {
     commentSidebar = document.getElementById('commentSidebar');
     commentSidebarContent = document.getElementById('commentSidebarContent');
     btnCloseCommentSidebar = document.getElementById('btnCloseCommentSidebar');
+    btnAddComment = document.getElementById('btnAddComment');
     newCommentBox = document.getElementById('newCommentBox');
     selectedTextPreview = document.getElementById('selectedTextPreview');
     newCommentTextarea = document.getElementById('newCommentTextarea');
@@ -95,13 +87,16 @@ function initNoteDetail() {
     if (btnAttachmentsScroll) btnAttachmentsScroll.addEventListener('click', scrollToAttachments);
     if (btnEditNote) btnEditNote.addEventListener('click', handleEditNote);
     if (btnCloseCommentSidebar) btnCloseCommentSidebar.addEventListener('click', () => handleToggleCommentSidebar(false));
+    if (btnAddComment) btnAddComment.addEventListener('click', handleAddCommentClick);
     if (btnCommentSubmit) btnCommentSubmit.addEventListener('click', handleAddComment);
     if (btnCommentCancel) btnCommentCancel.addEventListener('click', handleCancelComment);
     if (noteContentBox) noteContentBox.addEventListener('mouseup', handleTextSelection);
 
-    // Get note ID from URL
+    // Get note ID from URL or window variable
     const urlParams = new URLSearchParams(window.location.search);
-    selectedNoteId = urlParams.get('id') || 1;
+    selectedNoteId = parseInt(urlParams.get('id')) || window.noteId || 1;
+
+    console.log('Selected note ID:', selectedNoteId);
 
     // Load note data
     loadNoteDetail(selectedNoteId);
@@ -121,7 +116,7 @@ async function loadNoteDetail(noteId) {
         
         renderNoteDetail(note);
         renderAttachmentsDetail(mockAttachments);  // TODO: 실제 첨부파일 API 추가
-        renderComments();
+        await loadComments(noteId);
         
         // Open comment sidebar by default
         handleToggleCommentSidebar(true);
@@ -137,6 +132,50 @@ async function loadNoteDetail(noteId) {
             noteContentText.textContent = '노트를 불러오는데 실패했습니다. 다시 시도해주세요.';
         }
     }
+}
+
+// Load comments for the note
+async function loadComments(noteId) {
+    console.log('Loading comments for note ID:', noteId);
+    try {
+        const response = await fetch(`/notes/api/comments/?note_id=${noteId}`);
+        console.log('Comments API response status:', response.status);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        console.log('Loaded comments data:', data);
+        comments = (data.comments || []).map(comment => ({
+            id: comment.id,
+            highlightedText: comment.highlighted_text,
+            comment: comment.comment_text,
+            author: comment.author,
+            avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop', // 기본 아바타
+            time: comment.created_at,
+            position: comment.position_top
+        }));
+        console.log('Processed comments:', comments);
+        renderComments();
+        updateCommentCount();
+    } catch (error) {
+        console.error('Failed to load comments:', error);
+        comments = [];
+        renderComments();
+    }
+}
+
+// Update comment count in UI
+function updateCommentCount() {
+    const commentCountEl = document.getElementById('commentCount');
+    if (commentCountEl) {
+        commentCountEl.textContent = comments.length;
+    }
+}
+
+// Get CSRF token
+function getCSRFToken() {
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+    return csrfToken ? csrfToken.value : '';
 }
 
 // Render note detail
@@ -262,6 +301,27 @@ function handleEditNote() {
     window.location.href = `/notes/editor/?id=${selectedNoteId}`;
 }
 
+// Handle add comment button click
+function handleAddCommentClick() {
+    console.log('Add comment button clicked');
+    selectedText = '';
+    commentPosition = null;
+    showCommentInput = true;
+
+    if (newCommentBox) {
+        newCommentBox.style.display = 'block';
+        if (selectedTextPreview) {
+            selectedTextPreview.textContent = '';
+        }
+        if (newCommentTextarea) {
+            newCommentTextarea.placeholder = '댓글 작성...';
+            setTimeout(() => newCommentTextarea.focus(), 100);
+        }
+    }
+
+    handleToggleCommentSidebar(true);
+}
+
 // Handle text selection
 function handleTextSelection(e) {
     const selection = window.getSelection();
@@ -283,12 +343,11 @@ function handleTextSelection(e) {
                 if (selectedTextPreview) {
                     selectedTextPreview.textContent = `"${previewText}"`;
                 }
+                if (newCommentTextarea) {
+                    newCommentTextarea.placeholder = '선택한 텍스트에 대한 댓글 작성...';
+                    setTimeout(() => newCommentTextarea.focus(), 100);
+                }
             }
-
-            handleToggleCommentSidebar(true);
-
-            if (newCommentTextarea) {
-                setTimeout(() => newCommentTextarea.focus(), 100);
             }
         }
     }
@@ -298,40 +357,76 @@ function handleTextSelection(e) {
 function handleAddComment() {
     const commentText = newCommentTextarea ? newCommentTextarea.value.trim() : '';
 
-    if (!commentText || !selectedText || !commentPosition) {
+    if (!commentText) {
         if (window.notyf) {
             window.notyf.error('댓글을 입력해주세요.');
         }
         return;
     }
 
-    const newCommentObj = {
-        id: comments.length + 1,
-        text: selectedText.substring(0, 30),
-        highlightedText: selectedText,
-        comment: commentText,
-        author: 'Current User',
-        avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop',
-        time: '방금 전',
-        position: commentPosition.top
+    console.log('Adding comment for note ID:', selectedNoteId);
+
+    // Prepare data
+    const commentData = {
+        note_id: selectedNoteId,
+        highlighted_text: selectedText || '',
+        comment_text: commentText,
+        position_top: commentPosition ? commentPosition.top : 0
     };
-    
-    comments.push(newCommentObj);
-    selectedText = '';
-    commentPosition = null;
-    showCommentInput = false;
 
-    if (newCommentTextarea) newCommentTextarea.value = '';
-    if (newCommentBox) newCommentBox.style.display = 'none';
+    console.log('Comment data:', commentData);
 
-    renderComments();
-    if (document.getElementById('commentCount')) {
-        document.getElementById('commentCount').textContent = comments.length;
-    }
-
-    if (window.notyf) {
-        window.notyf.success('댓글이 추가되었습니다.');
-    }
+    // Send to API
+    fetch('/notes/api/add_comment/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCSRFToken()
+        },
+        body: JSON.stringify(commentData)
+    })
+    .then(response => {
+        console.log('API response status:', response.status);
+        return response.json();
+    })
+    .then(data => {
+        console.log('API response data:', data);
+        if (data.error) {
+            throw new Error(data.error);
+        }
+        
+        // Add to local comments array
+        const newComment = {
+            id: data.id,
+            highlightedText: data.highlighted_text,
+            comment: data.comment_text,
+            author: data.author,
+            time: '방금 전',
+            position: data.position_top
+        };
+        comments.push(newComment);
+        
+        // Reset form
+        selectedText = '';
+        commentPosition = null;
+        showCommentInput = false;
+        if (newCommentTextarea) newCommentTextarea.value = '';
+        if (newCommentBox) newCommentBox.style.display = 'none';
+        
+        // Update UI
+        renderComments();
+        updateCommentCount();
+        
+        if (window.notyf) {
+            window.notyf.success('댓글이 추가되었습니다.');
+        }
+    })
+    .catch(error => {
+        console.error('Failed to add comment:', error);
+        if (window.notyf) {
+            window.notyf.error('댓글 추가에 실패했습니다.');
+        }
+    });
 }
 
 // Handle cancel comment
@@ -346,6 +441,7 @@ function handleCancelComment() {
 
 // Render comments
 function renderComments() {
+    console.log('Rendering comments:', comments);
     if (!commentsList || !commentsEmpty) return;
 
     if (newCommentBox) {
@@ -366,7 +462,7 @@ function renderComments() {
     commentsList.innerHTML = comments.map(comment => `
         <div class="comment-item ${activeCommentId === comment.id ? 'active' : ''}" 
              onclick="window.NoteDetailPage.setActiveComment(${comment.id})">
-            <div class="comment-highlighted-text">"${escapeHtml(comment.highlightedText)}"</div>
+            ${comment.highlightedText ? `<div class="comment-highlighted-text">"${escapeHtml(comment.highlightedText)}"</div>` : ''}
             <div class="comment-header">
                 <img src="${escapeHtml(comment.avatar)}" alt="${escapeHtml(comment.author)}" class="comment-avatar" />
                 <div class="comment-author-info">

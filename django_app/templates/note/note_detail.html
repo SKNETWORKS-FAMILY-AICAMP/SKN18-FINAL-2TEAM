@@ -97,9 +97,15 @@
             <div class="comment-sidebar" id="commentSidebar">
                 <div class="comment-sidebar-header">
                     <h3>댓글</h3>
-                    <button class="btn-close-sidebar" id="btnCloseCommentSidebar">
-                        <i class="fa-solid fa-times"></i>
-                    </button>
+                    <div class="comment-header-actions">
+                        <button class="btn-add-comment" id="btnAddComment">
+                            <i class="fa-solid fa-plus"></i>
+                            <span>댓글 달기</span>
+                        </button>
+                        <button class="btn-close-sidebar" id="btnCloseCommentSidebar">
+                            <i class="fa-solid fa-times"></i>
+                        </button>
+                    </div>
                 </div>
 
                 <div class="comment-sidebar-content" id="commentSidebarContent">
@@ -142,6 +148,13 @@
 
 <!-- Share Modal -->
 {% include 'components/modals/share_modal.html' %}
+{% endblock %}
+
+{% block extra_data %}
+{% csrf_token %}
+<script>
+    window.noteId = {{ note.note_sid|default:0 }};
+</script>
 {% endblock %}
 
 {% block extra_js %}
