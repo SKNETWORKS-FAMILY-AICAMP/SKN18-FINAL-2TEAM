@@ -129,18 +129,50 @@ def create_chunks_with_overlap(text, chunk_size_min=None, chunk_size_max=None,
         sentence_tokens = count_tokens(sentence)
         
         # 문장이 너무 길어서 최대 크기를 초과하는 경우
-        # 이 문장은 다음 청크의 시작으로 처리 (현재 청크에 포함하지 않음)
-        if sentence_tokens > chunk_size_max:###############################################
+        # 이 문장을 강제로 나누어서 여러 청크로 분할
+        if sentence_tokens > chunk_size_max:
             # 현재 청크가 있으면 먼저 저장
             if current_chunk:
                 chunk_text = ' '.join(current_chunk).strip()
                 if chunk_text:
                     chunks.append(chunk_text)
             
-            # 긴 문장을 다음 청크의 시작으로 설정
-            # 오버랩 없이 이 문장만으로 새 청크 시작
-            current_chunk = [sentence]
-            current_token_count = sentence_tokens
+            # 긴 문장을 강제로 나누기 (단어 단위로 나누되, 최대 크기를 초과하지 않도록)
+            words = sentence.split()
+            current_long_chunk = []
+            current_long_token_count = 0
+            
+            for word in words:
+                word_tokens = count_tokens(word)
+                
+                # 단어를 추가하면 최대 크기를 초과하는 경우
+                if current_long_token_count + word_tokens > chunk_size_max and current_long_chunk:
+                    # 현재 청크 저장
+                    long_chunk_text = ' '.join(current_long_chunk).strip()
+                    if long_chunk_text:
+                        chunks.append(long_chunk_text)
+                    
+                    # 새 청크 시작 (오버랩 없이)
+                    current_long_chunk = [word]
+                    current_long_token_count = word_tokens
+                else:
+                    # 현재 청크에 단어 추가
+                    current_long_chunk.append(word)
+                    current_long_token_count += word_tokens
+            
+            # 마지막 긴 청크 처리
+            if current_long_chunk:
+                long_chunk_text = ' '.join(current_long_chunk).strip()
+                if long_chunk_text:
+                    # 최소 크기 이상이거나, 이전 청크가 없으면 추가
+                    if current_long_token_count >= chunk_size_min or not chunks:
+                        chunks.append(long_chunk_text)
+                    elif chunks:  # 최소 크기 미만이지만 이전 청크가 있으면 마지막에 병합
+                        chunks[-1] = chunks[-1] + ' ' + long_chunk_text
+            
+            # 긴 문장 처리 완료 후 다음 문장으로
+            current_chunk = []
+            current_token_count = 0
             continue
         
         # 조건: 최소 크기 이상이고, 이 문장을 추가하면 최대 크기를 초과하는 경우
