@@ -143,7 +143,7 @@ class ChatMessage(models.Model):
     sort_order = models.IntegerField(db_column='sort_order')
     created_at = models.DateTimeField(auto_now_add=True, db_column='created_at')
     created_id = models.CharField(max_length=60, db_column='created_id')
-    concept_graph = models.TextField(blank=True, db_column='concept_graph')
+    concept_graph = models.TextField(blank=True, null=True, db_column='concept_graph')  # 머메이드
     
     class Meta:
         db_table = 't_chat_message'

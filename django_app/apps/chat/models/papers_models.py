@@ -26,7 +26,6 @@ class PaperGraph(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True, db_column='created_at')
     created_id = models.CharField(max_length=60, db_column='created_id')
-    updated_id = models.CharField(max_length=60, null=True, blank=True, db_column='updated_id')
     
     class Meta:
         db_table = 't_paper_graph'
