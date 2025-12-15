@@ -31,8 +31,9 @@ if not all([POSTGRES_HOST, POSTGRES_PORT, POSTGRES_DB, POSTGRES_USER, POSTGRES_P
 # -----------------------------
 # 2) SQLAlchemy 엔진 생성
 # -----------------------------
+# psycopg (psycopg3) 사용을 위해 postgresql+psycopg:// 사용
 DATABASE_URL = (
-    f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}"
+    f"postgresql+psycopg://{POSTGRES_USER}:{POSTGRES_PASSWORD}"
     f"@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
 )
 
