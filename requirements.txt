@@ -5,7 +5,37 @@
 
 # 기본 패키지
 numpy==1.26.4
+<<<<<<< HEAD
 torch==2.2.2
+=======
+pandas
+scipy
+
+# OpenAI API (embedding용)
+openai
+
+# LangChain (필요시)
+langchain
+langchain-core
+langchain-community
+langchain-openai
+langchain_text_splitters
+tiktoken
+
+# LangGraph (워크플로우 오케스트레이션)
+langgraph
+dateparser # 날짜 파싱 - 리라이트쿼리 tool
+
+# Database
+psycopg[binary, pool]
+pgvector
+sqlalchemy
+
+# Neo4j (Knowledge Graph)
+neo4j
+neo4j-graphrag  # Neo4j TextRetriever
+py2neo
+>>>>>>> 384d038cf34c8aa64d919c35a5883f9232789e95
 
 ########################################
 # Django Web Framework
@@ -58,12 +88,23 @@ python-dateutil
 beautifulsoup4
 nltk
 
+sentence-transformers
+transformers
+accelerate
+
+# Simulation tools (optional, utils)
+biopython
+
 # 환경변수 관리
 python-dotenv
 
 # 기타 유틸리티
 PyYAML
 
+# Jupyter Notebook Support
+jupyter
+ipywidgets  # tqdm 진행률 표시용
+notebook
+
 # AWS SDK (Lambda에 기본 포함되지만 명시)
 boto3
-

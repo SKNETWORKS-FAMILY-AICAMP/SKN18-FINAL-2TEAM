@@ -5,7 +5,7 @@
 
 import os
 import argparse
-import json
+import csv
 import time
 from typing import List, Dict, Tuple, Any, Optional
 
@@ -440,48 +440,84 @@ def generate_answer(query_text: str, retrieved_chunks: List[Dict[str, Any]]) -> 
     except Exception as e:
         return f"Error generating answer: {e}"
 
+# ─────────────────────────────────────
+# 6) Utility: Save to CSV
+# ─────────────────────────────────────
+def save_to_csv(results: List[Dict[str, Any]], filename: str):
+    """
+    검색 결과를 CSV 파일로 저장 (Excel 호환 utf-8-sig 인코딩 사용)
+    """
+    if not results:
+        print("⚠️ 저장할 결과가 없습니다.")
+        return
+
+    # CSV 컬럼 순서 지정 (보기 좋게 정렬)
+    fieldnames = ["similarity", "id", "title", "section", "sources", "text", "system"]
+    
+    # 결과에 있는 키가 fieldnames에 없으면 뒤에 추가
+    existing_keys = results[0].keys()
+    for k in existing_keys:
+        if k not in fieldnames:
+            fieldnames.append(k)
+
+    try:
+        # utf-8-sig: 엑셀에서 한글 안 깨지게 함
+        with open(filename, "w", newline="", encoding="utf-8-sig") as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            for row in results:
+                # sources 같은 리스트 타입은 문자열로 변환하여 저장
+                row_copy = row.copy()
+                if "sources" in row_copy and isinstance(row_copy["sources"], list):
+                    row_copy["sources"] = ", ".join(row_copy["sources"])
+                writer.writerow(row_copy)
+        print(f"✅ 결과가 CSV 파일로 저장되었습니다: {filename}")
+    except Exception as e:
+        print(f"❌ CSV 저장 중 오류 발생: {e}")
+
 
 # ─────────────────────────────────────
-# Main Execution
+# Main Execution (System B 전용으로 수정됨)
 # ─────────────────────────────────────
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--query", "-q", required=True, help="질문 내용")
-    parser.add_argument("--k", type=int, default=5, help="최종 반환할 Chunk 개수")
-    parser.add_argument("--k-vec", type=int, default=50, help="Vector 검색 후보 개수")
-    parser.add_argument("--k-kw", type=int, default=50, help="Keyword 검색 후보 개수")
-    parser.add_argument("--rrf-k", type=int, default=60, help="RRF 상수")
-    parser.add_argument("--ef-search", type=int, default=100, help="HNSW ef_search 파라미터")
+    parser.add_argument("--k", type=int, default=5, help="최종 반환 개수")
+    parser.add_argument("--k-vec", type=int, default=50)
+    parser.add_argument("--k-kw", type=int, default=50)
+    parser.add_argument("--rrf-k", type=int, default=60)
+    parser.add_argument("--ef-search", type=int, default=100, help="Postgres HNSW 검색 파라미터")
     parser.add_argument("--embedding-model", default=None)
-    parser.add_argument("--with-metrics", action="store_true", help="메트릭 포함 JSON 출력")
+    parser.add_argument("--with-metrics", action="store_true")
     
-    # [추가됨] 답변 생성 여부를 결정하는 플래그
-    parser.add_argument("--generate", "-g", action="store_true", help="LLM을 사용하여 답변 생성")
+    # [옵션] CSV 저장 파일명
+    parser.add_argument("--output", "-o", default=None, help="결과를 저장할 CSV 파일 경로 (예: result.csv)")
+    # [옵션] 답변 생성 여부
+    parser.add_argument("--generate", "-g", action="store_true", help="LLM 답변 생성")
     
     args = parser.parse_args()
 
-    # 1. 검색 수행
+    # 1. 검색 수행 (System B 함수 호출로 수정)
     if args.with_metrics:
+        # [수정됨] run_system_a -> run_system_b
+        # [수정됨] ef_search 인자 추가
         out = run_system_b_with_metrics(
             query_text=args.query,
             k_final=args.k,
             k_vec=args.k_vec,
             k_kw=args.k_kw,
             rrf_k=args.rrf_k,
-            ef_search=args.ef_search,
+            ef_search=args.ef_search, 
             embedding_model=args.embedding_model,
         )
-        results = out["results"] # 답변 생성용 결과 추출
-        
-        # JSON은 로그용으로 출력 (답변 생성 모드가 아닐 때만, 혹은 항상 출력)
-        if not args.generate:
+        results = out["results"]
+        # CSV 저장이 아닐 때만 콘솔에 JSON 출력
+        if not args.output and not args.generate:
             print(json.dumps(out, ensure_ascii=False, indent=2))
-        else:
-            # 답변 생성 모드일 때는 메트릭만 간략히 보여주거나 생략 가능 (여기선 생략)
-            pass
-
     else:
+        # [수정됨] run_system_a -> run_system_b
+        # [수정됨] ef_search 인자 추가
         results = run_system_b(
             query_text=args.query,
             k_final=args.k,
@@ -491,24 +527,23 @@ if __name__ == "__main__":
             ef_search=args.ef_search,
             embedding_model=args.embedding_model,
         )
-        if not args.generate:
+        if not args.output and not args.generate:
             print(json.dumps(results, ensure_ascii=False, indent=2))
 
-    # 2. 답변 생성 (플래그가 있을 때만)
+    # 2. CSV 저장 (옵션이 있을 경우)
+    if args.output:
+        save_to_csv(results, args.output)
+
+    # 3. 답변 생성 (옵션이 있을 경우)
     if args.generate:
         print(f"\n🚀 검색된 청크 개수: {len(results)}개")
         print("-" * 50)
-        
-        # 실제 답변 생성 호출
         final_answer = generate_answer(args.query, results)
-        
         print(f"📄 질문: {args.query}")
         print("=" * 50)
-        print(f"🤖 AI 답변 (Evaluation Mode):\n")
-        print(final_answer)
+        print(f"🤖 AI 답변:\n{final_answer}")
         print("=" * 50)
         
-        # 디버깅용: 어떤 문서가 쓰였는지 간략 출력
-        print("\n[참고 문헌 목록]")
-        for i, r in enumerate(results):
-            print(f"[{i+1}] {r.get('title', 'No Title')} (Sim: {r.get('similarity', 0.0):.4f})")
+        # 답변 파일 저장 필요시 주석 해제
+        # with open(f"answer_{args.output or 'output.txt'}.txt", "w", encoding="utf-8") as f:
+        #     f.write(final_answer)
