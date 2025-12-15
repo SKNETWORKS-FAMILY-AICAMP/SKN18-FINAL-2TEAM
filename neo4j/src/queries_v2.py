@@ -275,7 +275,7 @@ class PaperRAGQueries:
     # Neo4j에는 Article 단위로 ID 목록만 가볍게 저장합니다.
     LOAD_FIGURES = """
     CALL apoc.periodic.iterate(
-    "LOAD CSV WITH HEADERS FROM 'file:///figures.csv' AS row RETURN row",
+    "LOAD CSV WITH HEADERS FROM 'file:///t_figures_filtered.csv' AS row RETURN row",
     "
         MATCH (a:Article {pmid: toInteger(row.pmid)})
         SET a.figure_ids = apoc.coll.toSet(coalesce(a.figure_ids, []) + row.fig_id)
@@ -285,7 +285,7 @@ class PaperRAGQueries:
 
     LOAD_TABLES = """
     CALL apoc.periodic.iterate(
-    "LOAD CSV WITH HEADERS FROM 'file:///tables.csv' AS row RETURN row",
+    "LOAD CSV WITH HEADERS FROM 'file:///t_tables_filtered.csv' AS row RETURN row",
     "
         MATCH (a:Article {pmid: toInteger(row.pmid)})
         SET a.table_ids = apoc.coll.toSet(coalesce(a.table_ids, []) + row.table_id)
@@ -295,7 +295,7 @@ class PaperRAGQueries:
 
     LOAD_EQUATIONS = """
     CALL apoc.periodic.iterate(
-    "LOAD CSV WITH HEADERS FROM 'file:///equations.csv' AS row RETURN row",
+    "LOAD CSV WITH HEADERS FROM 'file:///t_equations_filtered.csv' AS row RETURN row",
     "
         MATCH (a:Article {pmid: toInteger(row.pmid)})
         SET a.equation_ids = apoc.coll.toSet(coalesce(a.equation_ids, []) + row.equation_id)
@@ -306,7 +306,7 @@ class PaperRAGQueries:
     # 컬럼: section_id, pmid, topic_category, path, section_category, article_category, fig_ids, table_ids, section_title
     LOAD_SECTIONS = """
     CALL apoc.periodic.iterate(
-    "LOAD CSV WITH HEADERS FROM 'file:///section_meta.csv' AS row RETURN row",
+    "LOAD CSV WITH HEADERS FROM 'file:///ts_section_meta_new.csv' AS row RETURN row",
     "
         MATCH (a:Article {pmid: toInteger(row.pmid)})
         MERGE (s:Section {section_id: row.section_id})
@@ -321,7 +321,7 @@ class PaperRAGQueries:
 
     LOAD_CHUNKS = """
     CALL apoc.periodic.iterate(
-    "LOAD CSV WITH HEADERS FROM 'file:///embedding_new_v2.csv' AS row RETURN row",
+    "LOAD CSV WITH HEADERS FROM 'file:///ts_embedding_v2.csv' AS row RETURN row",
     "
         MATCH (s:Section {section_id: row.section_id})
         MERGE (c:Chunk {chunk_id: row.chunk_id})
@@ -351,10 +351,10 @@ class PaperRAGQueries:
     )
     ",{batchSize: 200, parallel: false})
     """
-    
+
     LOAD_REFERENCES = """
         CALL apoc.periodic.iterate(
-        "LOAD CSV WITH HEADERS FROM 'file:///references.csv' AS row RETURN row",
+        "LOAD CSV WITH HEADERS FROM 'file:///t_references_filtered.csv' AS row RETURN row",
         "
             MATCH (source:Article {pmid: toInteger(row.pmid)})
             
@@ -419,7 +419,7 @@ class PaperRAGQueries:
     # =========================================================================
     LOAD_ENTITIES = """
     CALL apoc.periodic.iterate(
-    "LOAD CSV WITH HEADERS FROM 'file:///entity_dedup.csv' AS row RETURN row",
+    "LOAD CSV WITH HEADERS FROM 'file://global_entity_master.csv' AS row RETURN row",
     "
       // 1) PK는 entity_id
     MERGE (e:Entity {entity_id: row.entity_id})
@@ -448,7 +448,7 @@ class PaperRAGQueries:
     # (2) Article–Entity만 생성/집계 (Mention 노드 생성 안 함)
     LOAD_ARTICLE_ENTITY_FROM_MENTIONS = """
     CALL apoc.periodic.iterate(
-    "LOAD CSV WITH HEADERS FROM 'file:///mentions.csv' AS row RETURN row",
+    "LOAD CSV WITH HEADERS FROM 'file://global_mention_master.csv' AS row RETURN row",
     "
     MATCH (a:Article {pmid: toInteger(row.doc_id)})
     MATCH (e:Entity {entity_id: row.entity_id})
@@ -464,7 +464,7 @@ class PaperRAGQueries:
     # (3) Mention 노드도 함께 유지 (근거/위치/표면형이 필요할 때)
     LOAD_MENTIONS_WITH_NODES = """
     CALL apoc.periodic.iterate(
-    "LOAD CSV WITH HEADERS FROM 'file:///mentions.csv' AS row RETURN row",
+    "LOAD CSV WITH HEADERS FROM 'file:///global_mention_master.csv' AS row RETURN row",
     "
     MATCH (a:Article {pmid: toInteger(row.doc_id)})
     MATCH (s:Section {section_id: row.location_id})
@@ -613,7 +613,7 @@ class ProtocolQueries:
 
     LOAD_PROTOCOL_METADATA = """
     CALL apoc.periodic.iterate(
-    "LOAD CSV WITH HEADERS FROM 'file:///t_protocol_metadata_Cell_labeled.csv' AS row RETURN row",
+    "LOAD CSV WITH HEADERS FROM 'file:///ts_protocol_metadata_Cell_labeled.csv' AS row RETURN row",
     "MERGE (p:Protocol {protocol_sid: row.protocol_sid})
     SET p.title = row.title, p.url = row.url, p.type = 'Protocol'
     MERGE (cp:CategoryParent {name: trim(row.category_parent)})
@@ -635,16 +635,16 @@ class ProtocolQueries:
     # )
     # """
 
-    LOAD_PROTOCOL_REFERENCES = """
-    CALL apoc.periodic.iterate(
-    "LOAD CSV WITH HEADERS FROM 'file:///t_protocol_references_Cell.csv' AS row RETURN row",
-    "MATCH (p:Protocol {protocol_sid: row.protocol_sid})
-    MERGE (pr:ProtocolReference {reference_sid: row.reference_sid})
-    SET pr.title = row.reference
-    MERGE (p)-[:HAS_REFERENCE]->(pr)",
-    {batchSize: 2000, parallel: false}
-    )
-    """
+    # LOAD_PROTOCOL_REFERENCES = """
+    # CALL apoc.periodic.iterate(
+    # "LOAD CSV WITH HEADERS FROM 'file:///t_protocol_references_Cell.csv' AS row RETURN row",
+    # "MATCH (p:Protocol {protocol_sid: row.protocol_sid})
+    # MERGE (pr:ProtocolReference {reference_sid: row.reference_sid})
+    # SET pr.title = row.reference
+    # MERGE (p)-[:HAS_REFERENCE]->(pr)",
+    # {batchSize: 2000, parallel: false}
+    # )
+    # """
 
     LOAD_PROTOCOL_CHUNKS = """
     CALL apoc.periodic.iterate(

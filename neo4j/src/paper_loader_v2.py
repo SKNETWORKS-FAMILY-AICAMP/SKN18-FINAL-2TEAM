@@ -129,7 +129,7 @@ class PaperLoader:
             # ---------------------------
             ("12. [Protocol] 제약조건/인덱스", protocol_indices),
             ("13. [Protocol] 메타데이터 로딩", ProtocolQueries.LOAD_PROTOCOL_METADATA),
-            ("14. [Protocol] 레퍼런스 로딩", ProtocolQueries.LOAD_PROTOCOL_REFERENCES),
+            # ("14. [Protocol] 레퍼런스 로딩", ProtocolQueries.LOAD_PROTOCOL_REFERENCES),
             ("15. [Protocol] Chunk/임베딩 로딩", ProtocolQueries.LOAD_PROTOCOL_CHUNKS),
 
             # ---------------------------
