@@ -1,0 +1,124 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}연구 노트 - HelixOps{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/pages/notes.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="notes-container">
+    <!-- 노트 목록 화면 -->
+    <div id="notesListView" class="notes-list-view">
+        <!-- Header with Search and Filter -->
+        <div class="notes-header">
+            <div class="header-top">
+                <h1>연구 노트</h1>
+                <button class="btn-create" id="btnCreateNote">
+                    <i class="fa-solid fa-plus"></i>
+                    <span>노트 생성</span>
+                </button>
+            </div>
+            <div class="header-controls">
+                <!-- Date Filter -->
+                <div class="date-filter-wrapper">
+                    <button class="btn-date-filter" id="btnDateFilter">
+                        <i class="fa-solid fa-calendar"></i>
+                        <span id="dateFilterText">날짜 검색</span>
+                    </button>
+                    <div class="date-filter-popover" id="dateFilterPopover" style="display: none;">
+                        <div class="date-filter-calendar" id="dateFilterCalendar"></div>
+                        <div class="date-filter-actions" id="dateFilterActions" style="display: none;">
+                            <button class="btn-date-reset" id="btnDateReset">
+                                날짜 초기화
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <!-- Search Input -->
+                <div class="search-wrapper">
+                    <i class="fa-solid fa-search"></i>
+                    <input type="text" placeholder="노트 검색..." class="search-input" id="searchInput" />
+                </div>
+                <!-- Reset Button -->
+                <button class="btn-reset" id="btnResetSearch">
+                    <i class="fa-solid fa-rotate-left"></i>
+                    <span>초기화</span>
+                </button>
+                <!-- Search Button -->
+                <button class="btn-search" id="btnSearch">
+                    <i class="fa-solid fa-search"></i>
+                    <span>검색</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- View Controls -->
+        <div class="view-controls">
+            <div class="view-control-left">
+                <span>표시 개수:</span>
+                <select class="select-control" id="notesPerPageSelect">
+                    <option value="10">10개</option>
+                    <option value="20">20개</option>
+                    <option value="50">50개</option>
+                    <option value="100">100개</option>
+                </select>
+            </div>
+            <div class="view-control-right">
+                <button class="view-btn active" data-view="card" id="btnCardView">
+                    <i class="fa-solid fa-th-large"></i>
+                </button>
+                <button class="view-btn" data-view="table" id="btnTableView">
+                    <i class="fa-solid fa-list"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Notes Content Area -->
+        <div class="notes-content">
+            <!-- Card View -->
+            <div class="notes-grid" id="notesGrid">
+                <!-- Notes will be rendered here by JavaScript -->
+            </div>
+            
+            <!-- Table View -->
+            <div class="notes-table-container" id="notesTableContainer" style="display: none;">
+                <div class="notes-table-wrapper">
+                    <table class="notes-table">
+                        <thead class="notes-table-header">
+                            <tr>
+                                <th class="table-col-no">No.</th>
+                                <th class="table-col-title">제목</th>
+                                <th class="table-col-date">날짜</th>
+                                <th class="table-col-tags">태그</th>
+                                <th class="table-col-shared">공유</th>
+                                <th class="table-col-comments">댓글</th>
+                            </tr>
+                        </thead>
+                        <tbody class="notes-table-body" id="notesTableBody">
+                            <!-- Table rows will be rendered here by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Pagination -->
+        <div class="pagination">
+            <button class="btn-create" id="btnCreateNoteBottom">
+                <i class="fa-solid fa-plus"></i>
+                <span>노트 생성</span>
+            </button>
+            <div class="pagination-controls" id="paginationControls">
+                <!-- Pagination will be rendered here by JavaScript -->
+            </div>
+            <div class="spacer"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/pages/notes.js' %}"></script>
+{% endblock %}

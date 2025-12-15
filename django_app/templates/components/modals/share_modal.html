@@ -1,0 +1,98 @@
+{% load static %}
+<div class="modal-overlay" id="shareModal" role="dialog" aria-labelledby="shareModalTitle" aria-modal="true">
+    <div class="modal-container modal-large">
+        <!-- Modal Header -->
+        <div class="modal-header">
+            <h3 class="modal-title" id="shareModalTitle">일정 공유</h3>
+            <button class="modal-close-btn" aria-label="닫기" id="shareModalCloseBtn">
+                <i class="fa-solid fa-times"></i>
+            </button>
+        </div>
+        
+        <!-- Tab Navigation -->
+        <div class="share-modal-tabs">
+            <div class="share-tabs-wrapper">
+                <button class="share-tab-btn active" data-tab="find" id="shareTabFind">
+                    사용자 찾기
+                </button>
+                <button class="share-tab-btn" data-tab="shared" id="shareTabShared">
+                    이미 공유된 사람 목록
+                </button>
+            </div>
+        </div>
+
+        <!-- Search Section (separate from tab content for proper layout) -->
+        <div class="share-modal-search-section" id="shareSearchSection">
+            <div class="search-input-wrapper">
+                <i class="fa-solid fa-search search-icon"></i>
+                <input
+                    type="text"
+                    id="shareSearchInput"
+                    placeholder="이름 또는 이메일로 검색..."
+                    class="share-search-input"
+                />
+            </div>
+
+            <!-- Organization Tabs -->
+            <div class="share-org-tabs" id="shareOrgTabs">
+                <button class="org-tab-btn active" data-org="all">
+                    전체
+                </button>
+                <!-- Organization buttons will be rendered here by JavaScript -->
+            </div>
+        </div>
+
+        <!-- Tab Content: Find Users -->
+        <div class="share-modal-tab-content" id="shareTabContentFind">
+            <!-- Selected Members Preview -->
+            <div class="share-selected-preview" id="shareSelectedPreview" style="display: none;">
+                <div class="selected-preview-header">
+                    <span class="selected-count" id="shareSelectedCount">0명 선택됨</span>
+                    <button class="btn-clear-all" id="shareClearAllBtn">
+                        전체 해제
+                    </button>
+                </div>
+                <div class="selected-members-list" id="shareSelectedMembersList">
+                    <!-- Selected members will be rendered here -->
+                </div>
+            </div>
+
+            <!-- Members List -->
+            <div class="share-members-list" id="shareMembersList">
+                <!-- Members will be rendered here by JavaScript -->
+            </div>
+
+            <!-- External Email Invite -->
+            <div class="share-external-invite" id="shareExternalInvite" style="display: none;">
+                <p class="external-invite-text">
+                    <span class="external-email" id="shareExternalEmail"></span>를 초대하시겠습니까?
+                </p>
+                <button class="btn-invite-external" id="shareInviteExternalBtn">
+                    이메일로 초대하기
+                </button>
+            </div>
+        </div>
+
+        <!-- Tab Content: Shared Users -->
+        <div class="share-modal-tab-content" id="shareTabContentShared" style="display: none;">
+            <div class="share-shared-list" id="shareSharedList">
+                <!-- Already shared users will be rendered here by JavaScript -->
+            </div>
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="modal-footer share-modal-footer" id="shareModalFooter">
+            <div class="share-footer-info" id="shareFooterInfo">
+                <!-- Selected count will be shown here -->
+            </div>
+            <div class="share-footer-actions">
+                <button class="modal-btn modal-btn-secondary" data-action="close" id="shareModalCancelBtn">
+                    취소
+                </button>
+                <button class="modal-btn modal-btn-primary" data-action="share" id="shareModalShareBtn" disabled>
+                    공유하기
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

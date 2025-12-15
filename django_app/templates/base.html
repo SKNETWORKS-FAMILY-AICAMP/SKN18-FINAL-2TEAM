@@ -1,0 +1,77 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <title>{% block title %}HelixOps{% endblock %}</title>
+    
+    <!-- External CSS Libraries -->
+    <link rel="stylesheet" href="{% static 'assets/main.css' %}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.20.1/cdn/themes/light.css" />
+    <script type="module" src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.20.1/cdn/shoelace-autoloader.js"></script>
+    
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <!-- Global Styles -->
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <link rel="stylesheet" href="{% static 'css/common.css' %}">
+
+    <!-- 공통 컴포넌트 CSS -->
+    {% comment %} {% if user.is_authenticated %} {% endcomment %}
+    <link rel="stylesheet" href="{% static 'css/components/header.css' %}">
+    <link rel="stylesheet" href="{% static 'css/components/sidebar.css' %}">
+    <link rel="stylesheet" href="{% static 'css/components/profile_dropdown.css' %}">
+    {% comment %} {% endif %} {% endcomment %}
+
+    <!-- 공통 모달 CSS -->
+    <link rel="stylesheet" href="{% static 'css/components/modals/modal.css' %}">
+    {% block modal_css %}{% endblock %}
+
+    {% block extra_css %}{% endblock %}
+  </head>
+  <body>
+    {% comment %} {% if user.is_authenticated %} {% endcomment %}
+      {% include 'components/header.html' %}
+      
+      <div class="main-layout">
+        {% include 'components/sidebar.html' %}
+        
+        <main class="main-content">
+          {% block content %}{% endblock %}
+        </main>
+      </div>
+    {% comment %} {% else %}
+    {% block content %}{% endblock %}
+    {% endif %} {% endcomment %}
+    
+    {% block extra_data %}{% endblock %}
+    
+    <!-- 개발 모드: Vite 개발 서버에서 로드 -->
+    {% if debug %}
+      <script type="module" src="http://localhost:5173/src/index.js"></script>
+    <!-- 프로덕션 모드: npm 라이브러리 빌드 결과물 로드 -->
+    {% else %}
+      <script type="module" src="{% static 'js-lib/main.js' %}"></script>
+    {% endif %}
+    
+    <!-- 공통 컴포넌트 JavaScript (템플릿용) -->
+    {% comment %} {% if user.is_authenticated %} {% endcomment %}
+    <script src="{% static 'js/components/profile_dropdown.js' %}"></script>
+    <script src="{% static 'js/components/header.js' %}"></script>
+    <script src="{% static 'js/components/sidebar.js' %}"></script>
+    {% comment %} {% endif %} {% endcomment %}
+    
+    <!-- 공통 모달 JavaScript -->
+    <script src="{% static 'js/components/modals/modal.js' %}"></script>
+    {% block modal_js %}{% endblock %}
+    
+    <!-- 공통 유틸리티 JavaScript -->
+    <script src="{% static 'js/utils/markdown.js' %}"></script>
+    <script src="{% static 'js/utils/mermaid.js' %}"></script>
+    
+    {% block extra_js %}{% endblock %}
+  </body>
+</html>

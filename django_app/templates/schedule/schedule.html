@@ -1,0 +1,181 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}일정 - HelixOps{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/components/subsidebar.css' %}">
+<link rel="stylesheet" href="{% static 'css/pages/schedule.css' %}">
+<link rel="stylesheet" href="{% static 'css/components/modals/schedule_detail_modal.css' %}">
+<link rel="stylesheet" href="{% static 'css/components/modals/schedule_add_modal.css' %}">
+<link rel="stylesheet" href="{% static 'css/components/modals/google_calendar_modal.css' %}">
+<link rel="stylesheet" href="{% static 'css/components/modals/share_modal.css' %}">
+<link rel="stylesheet" href="{% static 'css/components/modals/calendar_add_modal.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="schedule-container">
+    <!-- Left Sidebar - Schedule List -->
+    <aside class="subsidebar" id="scheduleSidebar">
+        <div class="subsidebar-header">
+            <div class="header-content">
+                <div class="header-title-wrapper">
+                    <h2>일정 목록</h2>
+                </div>
+                <div class="header-action">
+                    <button class="new-chat-btn" id="addScheduleBtn">
+                        <i class="fa-solid fa-plus"></i>
+                        추가
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="subsidebar-content">
+            <div class="schedule-sidebar-content">
+                <!-- Google Calendar Connect Button -->
+                <div class="google-calendar-section">
+                    <button
+                        id="googleCalendarBtn"
+                        class="google-calendar-btn"
+                    >
+                        <i class="fa-solid fa-gear"></i>
+                        {% if is_google_connected %}
+                        Google Calendar 관리
+                        {% else %}
+                        Google Calendar 연동
+                        {% endif %}
+                    </button>
+                </div>
+
+                <!-- My Calendars List -->
+                <div class="my-calendars-section">
+                    <div class="my-calendars-header">
+                        <h3>내 캘린더</h3>
+                        {% if not user_calendars %}
+                        <button class="add-calendar-btn" id="addCalendarBtn" title="캘린더 추가">
+                            <i class="fa-solid fa-plus"></i>
+                        </button>
+                        {% endif %}
+                    </div>
+                    <div class="calendar-list" id="calendarList">
+                        {% for calendar in user_calendars %}
+                        <label class="calendar-item" data-calendar-id="{{ calendar.id }}">
+                            <input
+                                type="checkbox"
+                                {% if calendar.visible %}checked{% endif %}
+                                data-calendar-id="{{ calendar.id }}"
+                            />
+                            <div class="calendar-color" style="background-color: {{ calendar.color }};"></div>
+                            <span>{{ calendar.name }}</span>
+                        </label>
+                        {% empty %}
+                        <div class="empty-state">
+                            <p>캘린더가 없습니다.</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Schedule List -->
+                <div class="schedule-list-section" id="scheduleList">
+                    {% for schedule in schedules %}
+                    <div 
+                        class="schedule-list-item" 
+                        data-schedule-id="{{ schedule.id }}"
+                    >
+                        <div class="schedule-list-header">
+                            <div class="schedule-list-title" data-schedule-id="{{ schedule.id }}">
+                                <p>{{ schedule.title }}</p>
+                                <div class="schedule-list-meta">
+                                    <i class="fa-solid fa-clock"></i>
+                                    <span>{{ schedule.start_datetime|date:"Y-m-d H:i" }}</span>
+                                </div>
+                            </div>
+                            {% if schedule.linked_note %}
+                            <i class="fa-solid fa-file-lines" data-note-id="{{ schedule.linked_note.id }}"></i>
+                            {% endif %}
+                        </div>
+                        <div class="schedule-list-footer">
+                            <span class="schedule-type">{{ schedule.get_type_display }}</span>
+                            <select
+                                class="status-select status-{{ schedule.status|lower }}"
+                                data-schedule-id="{{ schedule.id }}"
+                            >
+                                <option value="scheduled" {% if schedule.status == 'scheduled' %}selected{% endif %}>예정</option>
+                                <option value="in_progress" {% if schedule.status == 'in_progress' %}selected{% endif %}>진행중</option>
+                                <option value="completed" {% if schedule.status == 'completed' %}selected{% endif %}>완료</option>
+                            </select>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="empty-state">
+                        <p>일정이 없습니다.</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Search Bar -->
+        <div class="subsidebar-search">
+            <div class="search-container">
+                <i class="fa-solid fa-search"></i>
+                <input
+                    type="text"
+                    id="scheduleSearchInput"
+                    placeholder="일정 검색..."
+                    class="search-input"
+                />
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Calendar Area -->
+    <div class="main-calendar-area">
+        <!-- Calendar Header -->
+        <div class="calendar-header">
+            <div class="calendar-header-left">
+                <h1 id="calendarTitle">{{ current_date|date:"Y년 m월" }}</h1>
+                <div class="calendar-nav">
+                    <button class="nav-btn" id="todayBtn">오늘</button>
+                    <button class="nav-btn-icon" id="prevBtn">
+                        <i class="fa-solid fa-chevron-left"></i>
+                    </button>
+                    <button class="nav-btn-icon" id="nextBtn">
+                        <i class="fa-solid fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- View Mode Segmented Control -->
+            <div class="view-mode-control">
+                <button class="view-mode-btn" data-view="day">일</button>
+                <button class="view-mode-btn" data-view="week">주</button>
+                <button class="view-mode-btn active" data-view="month">월</button>
+            </div>
+        </div>
+
+        <!-- Calendar Content - FullCalendar -->
+        <div class="calendar-content" id="calendarContent">
+            <div id="fullcalendar" class="fullcalendar-container"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Schedule Modals -->
+{% include 'components/modals/schedule_detail_modal.html' %}
+{% include 'components/modals/schedule_add_modal.html' %}
+{% include 'components/modals/google_calendar_modal.html' %}
+{% include 'components/modals/share_modal.html' %}
+{% include 'components/modals/calendar_add_modal.html' %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/pages/schedule.js' %}"></script>
+<script src="{% static 'js/components/modals/schedule_detail_modal.js' %}"></script>
+<script src="{% static 'js/components/modals/schedule_add_modal.js' %}"></script>
+<script src="{% static 'js/components/modals/google_calendar_modal.js' %}"></script>
+<script src="{% static 'js/components/modals/share_modal.js' %}"></script>
+<script src="{% static 'js/components/modals/calendar_add_modal.js' %}"></script>
+{% endblock %}

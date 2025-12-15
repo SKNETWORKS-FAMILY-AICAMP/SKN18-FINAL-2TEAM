@@ -1,0 +1,66 @@
+{% load static %}
+<aside class="subsidebar" id="subsidebar">
+    <!-- Header - matching React: h-20 p-4 border-b border-gray-200 flex flex-col justify-center -->
+    <div class="subsidebar-header">
+        <div class="header-content">
+            <div class="header-title-wrapper">
+                <h2>{% block subsidebar_title %}채팅{% endblock %}</h2>
+                {% block subsidebar_subtitle %}
+                {% endblock %}
+            </div>
+            {% block subsidebar_header_action %}
+            <div class="header-action">
+                <button class="new-chat-btn" id="newChatBtn">
+                    <i class="fa-solid fa-plus"></i>
+                    새 채팅
+                </button>
+            </div>
+            {% endblock %}
+        </div>
+    </div>
+    
+    <!-- Children Content - matching React: flex-1 overflow-y-auto min-h-0 -->
+    <div class="subsidebar-content">
+        {% block subsidebar_sections %}
+        <div class="section-header">
+            <button class="section-item" data-section="favorites">
+                <i class="fa-solid fa-star"></i>
+                <span>Favorites</span>
+                <span class="section-count">0</span>
+            </button>
+            <button class="section-item" data-section="archived">
+                <i class="fa-solid fa-archive"></i>
+                <span>Archived</span>
+                <span class="section-count">0</span>
+            </button>
+        </div>
+
+        <div class="section-title">
+            <span>{% block subsidebar_list_title %}내 채팅{% endblock %}</span>
+        </div>
+        <nav class="chat-list" id="chatList">
+            {% block chat_list %}
+            <!-- 채팅 목록이 여기에 동적으로 로드됩니다 -->
+            <div class="empty-state">
+                <p>채팅이 없습니다.</p>
+            </div>
+            {% endblock %}
+        </nav>
+        {% endblock %}
+    </div>
+
+    <!-- Search Bar - matching React: flex-shrink-0 border-t border-gray-200 bg-white (하단) -->
+    {% block subsidebar_search %}
+    <div class="subsidebar-search">
+        <div class="search-container">
+            <i class="fa-solid fa-search"></i>
+            <input 
+                type="text" 
+                id="subsidebarSearchInput"
+                placeholder="{% block subsidebar_search_placeholder %}Search chats...{% endblock %}" 
+                class="search-input" 
+            />
+        </div>
+    </div>
+    {% endblock %}
+</aside>

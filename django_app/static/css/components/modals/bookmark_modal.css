@@ -1,0 +1,150 @@
+/* Bookmark Modal Styles */
+
+.modal-medium {
+    max-width: 24rem;
+    width: 100%;
+}
+
+/* modal-description is now in common.css */
+
+.bookmark-categories {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.bookmark-category-item {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    border: 2px solid var(--color-border-light);
+    background: var(--color-bg-white);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.bookmark-category-item:hover {
+    border-color: var(--color-border-gray);
+    background: var(--color-bg-gray-50);
+}
+
+.bookmark-category-item.selected {
+    border-color: var(--color-primary);
+    background: #dbeafe; /* blue-100 - keep specific color for selected state */
+}
+
+.bookmark-category-item i {
+    font-size: 1.25rem;
+    color: #f59e0b;
+}
+
+.bookmark-category-item span {
+    flex: 1;
+    text-align: left;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+}
+
+.bookmark-category-item.selected span {
+    color: #1e40af; /* blue-800 - keep specific color for selected state */
+}
+
+.bookmark-category-item .check-icon {
+    font-size: 1.25rem;
+    color: var(--color-primary);
+}
+
+.new-category-section {
+    margin-top: 1rem;
+}
+
+.new-category-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    border: 2px dashed var(--color-border-gray);
+    border-radius: 0.5rem;
+    background: var(--color-bg-white);
+    color: var(--color-text-tertiary);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.new-category-btn:hover {
+    border-color: var(--color-text-muted);
+    background: var(--color-bg-gray-50);
+}
+
+.new-category-btn i {
+    font-size: 1rem;
+}
+
+.new-category-input {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.category-input {
+    width: 100%;
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--color-border-gray);
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.category-input:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.new-category-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.category-btn {
+    flex: 1;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.15s;
+}
+
+.category-btn-primary {
+    background: var(--color-primary);
+    color: white;
+}
+
+.category-btn-primary:hover {
+    background: var(--color-primary-hover);
+}
+
+.category-btn-secondary {
+    background: var(--color-bg-gray-200);
+    color: var(--color-text-secondary);
+}
+
+.category-btn-secondary:hover {
+    background: var(--color-border-gray);
+}
+
+.modal-footer-actions {
+    display: flex;
+    gap: 0.75rem;
+}

@@ -11,10 +11,12 @@ services:
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
-      - pgvector-data:/var/lib/postgresql/data
+      # PostgreSQL 18+ 호환: /var/lib/postgresql에 마운트하면
+      # 자동으로 버전별 디렉토리(예: /var/lib/postgresql/18)를 생성합니다
+      - pgvector-data:/var/lib/postgresql
       - ./infra/db/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -d ${POSTGRES_DB:-sknproject5th} -U ${POSTGRES_USER:-root}"]
+      test: ["CMD-SHELL", "pg_isready -d ${POSTGRES_DB:-sknfinaldb} -U ${POSTGRES_USER:-root}"]
       interval: 10s
       timeout: 5s
       retries: 5

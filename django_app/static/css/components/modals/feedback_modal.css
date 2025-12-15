@@ -1,0 +1,182 @@
+/* Feedback Modal Styles */
+
+/* Modal overlay - matching React: backgroundColor: 'rgba(0, 0, 0, 0.7)' */
+#feedbackModal.modal-overlay {
+    background: rgba(0, 0, 0, 0.7) !important; /* backgroundColor: 'rgba(0, 0, 0, 0.7)' */
+    z-index: 50; /* z-50 */
+}
+
+/* Modal size - matching React: max-w-2xl (672px) */
+#feedbackModal .modal-container.modal-medium {
+    max-width: 672px; /* max-w-2xl */
+    width: 100%;
+    margin: 0 1rem; /* mx-4 */
+    border-radius: 0.5rem; /* rounded-lg */
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); /* shadow-xl */
+    background: white; /* bg-white */
+}
+
+/* Modal header - matching React: flex items-center justify-between p-6 border-b border-gray-200 */
+#feedbackModal .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.5rem; /* p-6 */
+    border-bottom: 1px solid #e5e7eb; /* border-b border-gray-200 */
+}
+
+#feedbackModal .modal-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #111827;
+    margin: 0;
+}
+
+#feedbackModal .modal-close-btn {
+    padding: 0.25rem; /* p-1 */
+    border: none;
+    background: transparent;
+    color: #374151;
+    cursor: pointer;
+    border-radius: 0.25rem; /* rounded */
+    transition: background-color 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#feedbackModal .modal-close-btn:hover {
+    background: #f3f4f6; /* hover:bg-gray-100 */
+}
+
+#feedbackModal .modal-close-btn i {
+    width: 1.5rem; /* w-6 h-6 */
+    height: 1.5rem;
+    font-size: 1.5rem;
+}
+
+/* Modal body - matching React: p-6 space-y-4 */
+#feedbackModal .modal-body {
+    padding: 1.5rem; /* p-6 */
+    display: flex;
+    flex-direction: column;
+    gap: 1rem; /* space-y-4 */
+}
+
+/* Form group - matching React structure */
+#feedbackModal .feedback-form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Label - matching React: block text-sm mb-2 */
+#feedbackModal .feedback-label {
+    display: block; /* block */
+    font-size: 0.875rem; /* text-sm */
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 0.5rem; /* mb-2 */
+}
+
+/* Select - matching React: w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 */
+#feedbackModal .feedback-select {
+    width: 100%; /* w-full */
+    padding: 0.5rem 1rem; /* px-4 py-2 */
+    border: 1px solid #d1d5db; /* border border-gray-300 */
+    border-radius: 0.5rem; /* rounded-lg */
+    font-size: 0.875rem;
+    color: #111827;
+    background: white;
+    cursor: pointer;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+#feedbackModal .feedback-select:focus {
+    outline: none; /* focus:outline-none */
+    border-color: #2563eb; /* focus:ring-blue-500 */
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); /* focus:ring-2 focus:ring-blue-500 */
+}
+
+#feedbackModal .feedback-select:hover {
+    border-color: #9ca3af;
+}
+
+/* Textarea - matching React: w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none */
+#feedbackModal .feedback-textarea {
+    width: 100%; /* w-full */
+    padding: 0.5rem 1rem; /* px-4 py-2 */
+    border: 1px solid #d1d5db; /* border border-gray-300 */
+    border-radius: 0.5rem; /* rounded-lg */
+    font-size: 0.875rem;
+    color: #111827;
+    background: white;
+    font-family: inherit;
+    line-height: 1.5;
+    resize: none; /* resize-none */
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+#feedbackModal .feedback-textarea::placeholder {
+    color: #9ca3af;
+}
+
+#feedbackModal .feedback-textarea:focus {
+    outline: none; /* focus:outline-none */
+    border-color: #2563eb; /* focus:ring-blue-500 */
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); /* focus:ring-2 focus:ring-blue-500 */
+}
+
+#feedbackModal .feedback-textarea:hover {
+    border-color: #9ca3af;
+}
+
+/* Modal footer - matching React: flex items-center justify-end gap-3 p-6 border-t border-gray-200 */
+#feedbackModal .modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end; /* justify-end */
+    gap: 0.75rem; /* gap-3 */
+    padding: 1.5rem; /* p-6 */
+    border-top: 1px solid #e5e7eb; /* border-t border-gray-200 */
+}
+
+/* Buttons - matching React */
+#feedbackModal .modal-btn {
+    padding: 0.5rem 1rem; /* px-4 py-2 */
+    font-size: 0.875rem;
+    font-weight: 500;
+    border-radius: 0.5rem; /* rounded-lg */
+    cursor: pointer;
+    transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+    border: none;
+}
+
+/* Secondary button - matching React: px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 */
+#feedbackModal .modal-btn-secondary {
+    background: white;
+    color: #374151;
+    border: 1px solid #d1d5db; /* border border-gray-300 */
+}
+
+#feedbackModal .modal-btn-secondary:hover {
+    background: #f9fafb; /* hover:bg-gray-50 */
+}
+
+/* Primary button - matching React: px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 */
+#feedbackModal .modal-btn-primary {
+    background: #2563eb; /* bg-blue-600 */
+    color: white; /* text-white */
+}
+
+#feedbackModal .modal-btn-primary:hover {
+    background: #1d4ed8; /* hover:bg-blue-700 */
+}
+
+#feedbackModal .modal-btn-primary:active {
+    background: #1e40af;
+}
+
+#feedbackModal .modal-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}

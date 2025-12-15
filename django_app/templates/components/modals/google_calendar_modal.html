@@ -1,0 +1,60 @@
+{% load static %}
+<div class="modal-overlay" id="googleCalendarModal" role="dialog" aria-labelledby="googleCalendarModalTitle" aria-modal="true">
+    <div class="modal-container modal-medium">
+        <div class="modal-header">
+            <h2 class="modal-title" id="googleCalendarModalTitle">Google Calendar 연결</h2>
+            <button class="modal-close-btn" aria-label="닫기">
+                <i class="fa-solid fa-times"></i>
+            </button>
+        </div>
+        
+        <div class="modal-body google-calendar-modal-body">
+            <div class="google-calendar-content">
+                <div class="google-calendar-header-section">
+                    <div class="google-calendar-header-icon">
+                        <i class="fa-solid fa-cog"></i>
+                    </div>
+                    <h3>Google Calendar 연결 설정</h3>
+                </div>
+                
+                <p class="google-calendar-description">
+                    Google Calendar와 연결하여 일정을 동기화할 수 있습니다.
+                </p>
+                
+                <!-- Connection Status -->
+                <div class="google-calendar-connection-section">
+                    <div class="google-calendar-connection-status" id="googleCalendarConnectionStatus">
+                        <div class="connection-status-indicator" id="connectionStatusIndicator"></div>
+                        <p id="connectionStatusText">Google Calendar 연결 안 됨</p>
+                    </div>
+                    <button class="btn-primary" id="googleCalendarConnectBtn" style="display: none;">
+                        Google Calendar 연결하기
+                    </button>
+                </div>
+                
+                <!-- Connected Calendars -->
+                <div class="google-calendar-section">
+                    <h4 class="section-subtitle">연결된 캘린더 선택</h4>
+                    <div class="google-calendar-list" id="googleCalendarList">
+                        <!-- Google Calendar 목록이 여기에 표시됩니다 -->
+                    </div>
+                </div>
+                
+                <!-- My Calendars -->
+                <div class="google-calendar-section">
+                    <h4 class="section-subtitle">내 캘린더 관리</h4>
+                    <div class="my-calendar-list" id="myCalendarList">
+                        <!-- 내 캘린더 목록이 여기에 표시됩니다 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="modal-footer">
+            <button class="modal-btn modal-btn-secondary" data-action="close">닫기</button>
+            <button class="modal-btn modal-btn-primary" data-action="save" id="googleCalendarSaveBtn">
+                저장하기
+            </button>
+        </div>
+    </div>
+</div>

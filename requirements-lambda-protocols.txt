@@ -1,0 +1,20 @@
+########################################
+# Lambda Protocols Ingestion 전용 의존성
+# 최소 패키지만 포함하여 배포 크기 최소화
+########################################
+
+# HTTP 요청
+requests>=2.31.0
+
+# HTML 파싱
+beautifulsoup4>=4.12.0
+lxml>=5.0.0
+
+# PostgreSQL 연결
+psycopg2-binary>=2.9.9
+
+# 환경변수 관리
+python-dotenv>=1.0.0
+
+# 날짜 처리
+python-dateutil>=2.8.0

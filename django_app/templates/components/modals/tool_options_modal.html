@@ -1,0 +1,27 @@
+{% load static %}
+<div class="modal-overlay" id="toolOptionsModal" role="dialog" aria-labelledby="toolOptionsModalTitle" aria-modal="true">
+    <div class="modal-container modal-medium">
+        <div class="modal-header">
+            <div>
+                <h2 class="modal-title" id="toolOptionsModalTitle">도구 옵션 설정</h2>
+                <p class="modal-subtitle">실험 도구의 파라미터를 설정하세요</p>
+            </div>
+            <button class="modal-close-btn" aria-label="닫기">
+                <i class="fa-solid fa-times"></i>
+            </button>
+        </div>
+        
+        <div class="modal-body tool-options-body">
+            <div class="tool-options-content" id="toolOptionsContent">
+                <!-- Tool options will be rendered here -->
+            </div>
+        </div>
+        
+        <div class="modal-footer">
+            <button class="modal-btn modal-btn-secondary" data-action="close">취소</button>
+            <button class="modal-btn modal-btn-primary" id="toolOptionsSaveBtn">
+                저장
+            </button>
+        </div>
+    </div>
+</div>
