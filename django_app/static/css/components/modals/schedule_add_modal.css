@@ -1,0 +1,398 @@
+/* Schedule Add Modal Styles */
+
+/* Modal size overrides for schedule add modal */
+#scheduleAddModal .modal-container.modal-medium {
+    max-width: 48rem; /* 768px */
+    width: 100%;
+}
+
+#scheduleAddModal .modal-container.modal-large {
+    max-width: 80rem; /* 1280px */
+    width: 100%;
+    transition: max-width 0.3s ease;
+}
+
+.schedule-add-body {
+    padding: 1.5rem;
+    overflow-y: auto;
+    max-height: calc(90vh - 140px);
+}
+
+.schedule-add-form {
+    width: 100%;
+}
+
+.schedule-add-grid {
+    display: grid;
+    gap: 1.5rem;
+    transition: grid-template-columns 0.3s ease;
+}
+
+.schedule-add-grid.grid-cols-2 {
+    grid-template-columns: 1fr 1fr;
+}
+
+.schedule-add-grid.grid-cols-3 {
+    grid-template-columns: 1fr 1fr 1fr;
+}
+
+.schedule-add-left,
+.schedule-add-right {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.form-group-flex {
+    flex: 1;
+}
+
+.form-group label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #374151;
+}
+
+.form-group-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    color: #6b7280;
+    cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"] {
+    width: 1rem;
+    height: 1rem;
+    cursor: pointer;
+}
+
+.form-input,
+.form-textarea,
+.form-select {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    color: #111827;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-input:focus,
+.form-textarea:focus,
+.form-select:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.form-textarea {
+    resize: vertical;
+    /* min-height: 120px; */
+    height: 120px;
+}
+
+.date-time-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+}
+
+/* Hide time inputs when all day is checked */
+#scheduleIsAllDay:checked ~ .date-time-grid #scheduleStartTime,
+#scheduleIsAllDay:checked ~ .date-time-grid #scheduleEndTime {
+    display: none;
+}
+
+/* Alternative: Use JavaScript to toggle, but add CSS for initial state */
+.date-time-grid input[type="time"].hidden-time {
+    display: none;
+}
+
+/* Note Search */
+.note-search-wrapper {
+    position: relative;
+}
+
+.note-search-wrapper .input-wrapper {
+    position: relative;
+}
+
+.note-search-wrapper .input-wrapper i {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #9ca3af;
+    font-size: 0.875rem;
+    pointer-events: none;
+}
+
+.note-search-wrapper .input-wrapper .form-input {
+    padding-left: 2.25rem;
+}
+
+.note-search-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    margin-top: 0.25rem;
+    background: white;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    max-height: 15rem;
+    overflow-y: auto;
+    z-index: 1000;
+}
+
+.note-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.note-dropdown-item:hover {
+    background: #f9fafb;
+}
+
+.note-dropdown-item i {
+    font-size: 1rem;
+    color: #9ca3af;
+    flex-shrink: 0;
+}
+
+.note-dropdown-title {
+    font-size: 0.875rem;
+    color: #111827;
+    margin: 0;
+}
+
+.note-dropdown-date {
+    font-size: 0.75rem;
+    color: #6b7280;
+    margin: 0.125rem 0 0 0;
+}
+
+.note-dropdown-empty {
+    padding: 0.75rem;
+    text-align: center;
+    font-size: 0.875rem;
+    color: #6b7280;
+}
+
+/* Share Button */
+.btn-share {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    background: white;
+    color: #374151;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.btn-share:hover {
+    background: #f9fafb;
+    border-color: #9ca3af;
+}
+
+.shared-emails-display {
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+    background: #dbeafe;
+    border: 1px solid #93c5fd;
+    border-radius: 0.375rem;
+}
+
+.shared-count-text {
+    font-size: 0.75rem;
+    color: #1e40af;
+    margin: 0;
+}
+
+/* Custom Repeat Panel */
+.schedule-add-custom-repeat {
+    display: flex;
+    flex-direction: column;
+}
+
+.custom-repeat-panel {
+    padding: 1rem;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.custom-repeat-title {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #111827;
+    margin: 0 0 1rem 0;
+}
+
+.custom-repeat-content {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    flex: 1;
+}
+
+/* Week Days Selection */
+.week-days-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 0.25rem;
+}
+
+.week-day-btn {
+    padding: 0.5rem 0.25rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    background: white;
+    color: #374151;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+}
+
+.week-day-btn:hover {
+    background: #f3f4f6;
+    border-color: #9ca3af;
+}
+
+.week-day-btn.active {
+    background: #2563eb;
+    color: white;
+    border-color: #2563eb;
+}
+
+/* Repeat End Options */
+.repeat-end-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.radio-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    color: #374151;
+    cursor: pointer;
+}
+
+.radio-label input[type="radio"] {
+    width: 1rem;
+    height: 1rem;
+    cursor: pointer;
+}
+
+.radio-option-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.repeat-end-input {
+    margin-left: 1.5rem;
+    margin-top: 0.25rem;
+}
+
+.repeat-count-input {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-left: 1.5rem;
+    margin-top: 0.25rem;
+}
+
+.repeat-count-input .form-input {
+    flex: 1;
+}
+
+.repeat-count-unit {
+    font-size: 0.875rem;
+    color: #374151;
+}
+
+/* Custom Repeat Summary */
+.custom-repeat-summary {
+    padding-top: 0.75rem;
+    border-top: 1px solid #e5e7eb;
+    margin-top: auto;
+}
+
+.summary-text {
+    font-size: 0.75rem;
+    color: #6b7280;
+    line-height: 1.5;
+    margin: 0;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .schedule-add-grid {
+        grid-template-columns: 1fr !important;
+        gap: 1rem;
+    }
+    
+    .schedule-add-left,
+    .schedule-add-right,
+    .schedule-add-custom-repeat {
+        gap: 0.75rem;
+    }
+    
+    .date-time-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .modal-medium,
+    .modal-large {
+        max-width: 100%;
+        margin: 0.5rem;
+    }
+    
+    .schedule-add-body {
+        padding: 1rem;
+    }
+    
+    .custom-repeat-panel {
+        padding: 0.75rem;
+    }
+    
+    .week-days-grid {
+        grid-template-columns: repeat(7, 1fr);
+        gap: 0.25rem;
+    }
+}

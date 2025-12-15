@@ -1,0 +1,39 @@
+{% load static %}
+<div class="modal-overlay" id="calendarAddModal" role="dialog" aria-labelledby="calendarAddModalTitle" aria-modal="true">
+    <div class="modal-container modal-medium">
+        <div class="modal-header">
+            <h2 class="modal-title" id="calendarAddModalTitle">캘린더 추가</h2>
+            <button class="modal-close-btn" aria-label="닫기">
+                <i class="fa-solid fa-times"></i>
+            </button>
+        </div>
+        
+        <div class="modal-body calendar-add-modal-body">
+            <div class="calendar-add-options">
+                <button class="calendar-add-option-btn" id="createCalendarBtn">
+                    <div class="calendar-add-option-icon blue">
+                        <i class="fa-solid fa-plus"></i>
+                    </div>
+                    <div class="calendar-add-option-content">
+                        <h3>내 캘린더 생성</h3>
+                        <p>새로운 개인 캘린더를 만듭니다</p>
+                    </div>
+                </button>
+
+                <button class="calendar-add-option-btn" id="connectGoogleCalendarBtn">
+                    <div class="calendar-add-option-icon green">
+                        <i class="fa-solid fa-gear"></i>
+                    </div>
+                    <div class="calendar-add-option-content">
+                        <h3>구글 캘린더 연동</h3>
+                        <p>Google Calendar와 동기화합니다</p>
+                    </div>
+                </button>
+            </div>
+        </div>
+        
+        <div class="modal-footer">
+            <button class="modal-btn modal-btn-secondary" data-action="close">닫기</button>
+        </div>
+    </div>
+</div>

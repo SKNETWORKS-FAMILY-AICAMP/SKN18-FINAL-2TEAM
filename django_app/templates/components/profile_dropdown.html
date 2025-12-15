@@ -1,0 +1,52 @@
+{% load static %}
+<!-- Profile Dropdown Component -->
+<!-- Parameters:
+     - user_data: User data object (header_user or user)
+     - button_id: Unique ID for the button
+     - dropdown_id: Unique ID for the dropdown
+     - overlay_id: Unique ID for the overlay (optional, for header)
+     - wrapper_class: CSS class for wrapper (profile-wrapper or profile-section)
+     - button_class: CSS class for button (profile-btn or sidebar-item)
+     - show_name_email: Boolean to show name/email in button (true for header, false for sidebar)
+     - position_type: 'header' or 'sidebar'
+-->
+
+<div class="{{ wrapper_class }}">
+    <button class="{{ button_class }}" id="{{ button_id }}" data-profile-dropdown>
+        {% if user_data.avatar or user_data.profile.avatar %}
+        <img src="{% if user_data.avatar %}{{ user_data.avatar }}{% else %}{{ user_data.profile.avatar.url }}{% endif %}" 
+             alt="Profile" 
+             class="{% if position_type == 'header' %}profile-avatar{% else %}profile-image{% endif %}" />
+        {% else %}
+        <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop" 
+             alt="Profile" 
+             class="{% if position_type == 'header' %}profile-avatar{% else %}profile-image{% endif %}" />
+        {% endif %}
+        
+        {% if show_name_email %}
+        <div class="profile-info">
+            <p class="profile-name">{% if user_data.name %}{{ user_data.name }}{% elif user_data.get_full_name %}{{ user_data.get_full_name }}{% elif user.get_full_name %}{{ user.get_full_name }}{% elif user.email %}{{ user.email }}{% else %}사용자{% endif %}</p>
+            <p class="profile-email">{% if user_data.email %}{{ user_data.email }}{% elif user.email %}{{ user.email }}{% else %}이메일{% endif %}</p>
+        </div>
+        <i class="fa-solid fa-chevron-down"></i>
+        {% endif %}
+    </button>
+
+    {% if overlay_id %}
+    <div class="profile-dropdown-overlay" id="{{ overlay_id }}"></div>
+    {% endif %}
+
+    <!-- Profile Dropdown -->
+    <div class="profile-dropdown" id="{{ dropdown_id }}" data-profile-dropdown>
+        <div class="dropdown-header">
+            <p class="profile-name">{% if user_data.name %}{{ user_data.name }}{% elif user_data.get_full_name %}{{ user_data.get_full_name }}{% elif user.get_full_name %}{{ user.get_full_name }}{% elif user.email %}{{ user.email }}{% else %}사용자{% endif %}</p>
+            <p class="profile-email">{% if user_data.email %}{{ user_data.email }}{% elif user.email %}{{ user.email }}{% else %}이메일{% endif %}</p>
+            {% if user_data.organization or user_data.profile.organization or user.profile.organization %}
+            <p class="profile-org">{% if user_data.organization %}{{ user_data.organization }}{% elif user_data.profile.organization %}{{ user_data.profile.organization }}{% elif user.profile.organization %}{{ user.profile.organization }}{% endif %}</p>
+            {% endif %}
+        </div>
+        <a href="{% url 'dashboard:dashboard' %}#profile" class="dropdown-item">프로필 보기</a>
+        <a href="{% url 'dashboard:dashboard' %}#organization" class="dropdown-item">{% if position_type == 'header' %}내 조직 관리{% else %}내 조직{% endif %}</a>
+        <a href="{% url 'accounts:logout' %}" class="dropdown-item logout">로그아웃</a>
+    </div>
+</div>

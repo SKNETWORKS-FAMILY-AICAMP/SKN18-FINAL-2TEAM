@@ -1,0 +1,215 @@
+/* Paper Graph Modal Styles */
+
+/* Modal overlay - matching React: fixed inset-0 flex items-center justify-center z-50, backgroundColor: 'rgba(0, 0, 0, 0.7)' */
+#paperGraphModal.modal-overlay {
+    background: rgba(0, 0, 0, 0.7) !important; /* backgroundColor: 'rgba(0, 0, 0, 0.7)' */
+    z-index: 50; /* z-50 */
+}
+
+/* Modal size - matching React: maxWidth: '1200px', height: '800px' */
+#paperGraphModal .modal-container.modal-large {
+    max-width: 1200px; /* maxWidth: '1200px' */
+    width: 100%;
+    height: 800px; /* height: '800px' */
+    max-height: 90vh; /* max-h-[90vh] */
+    margin: 0 1rem; /* mx-4 */
+    border-radius: 0.75rem; /* rounded-xl */
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); /* shadow-xl */
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: white; /* bg-white */
+}
+
+/* Modal header - matching React */
+#paperGraphModal .modal-header {
+    padding: 1rem 1.5rem; /* px-6 py-4 */
+    border-bottom: 1px solid #e5e7eb; /* border-b border-gray-200 */
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+}
+
+#paperGraphModal .modal-title {
+    font-size: 1.25rem; /* text-xl */
+    font-weight: 600;
+    color: #111827;
+    margin: 0;
+}
+
+.modal-subtitle {
+    font-size: 0.875rem; /* text-sm */
+    color: #6b7280; /* text-gray-500 */
+    margin: 0.25rem 0 0 0; /* mt-1 */
+}
+
+#paperGraphModal .modal-close-btn {
+    padding: 0.5rem; /* p-2 */
+    border: none;
+    background: transparent;
+    color: #374151;
+    cursor: pointer;
+    border-radius: 0.5rem; /* rounded-lg */
+    transition: background-color 0.2s;
+}
+
+#paperGraphModal .modal-close-btn:hover {
+    background: #f3f4f6; /* hover:bg-gray-100 */
+}
+
+#paperGraphModal .modal-close-btn i {
+    width: 1.25rem; /* w-5 h-5 */
+    height: 1.25rem;
+    font-size: 1.25rem;
+}
+
+/* Modal body - matching React */
+#paperGraphModal .modal-body {
+    flex: 1;
+    padding: 1.5rem; /* p-6 */
+    overflow: hidden;
+}
+
+.graph-container {
+    width: 100%;
+    height: 100%;
+    background: #f9fafb; /* bg-gray-50 */
+    border-radius: 0.5rem; /* rounded-lg */
+    border: 1px solid #e5e7eb; /* border border-gray-200 */
+    position: relative;
+    overflow: hidden;
+}
+
+.graph-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #6b7280;
+    gap: 1rem;
+}
+
+.graph-loading i {
+    font-size: 2rem;
+    color: #2563eb;
+}
+
+.graph-loading p {
+    font-size: 0.875rem;
+    margin: 0;
+}
+
+/* Sigma.js graph container */
+.graph-container canvas {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* Graph controls */
+.graph-controls {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    z-index: 10;
+}
+
+.graph-control-btn {
+    padding: 0.5rem;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+}
+
+.graph-control-btn:hover {
+    background: #f3f4f6;
+}
+
+.graph-control-btn i {
+    font-size: 1rem;
+    color: #374151;
+}
+
+/* Modal footer - matching React */
+#paperGraphModal .modal-footer {
+    padding: 1rem 1.5rem; /* px-6 py-4 */
+    border-top: 1px solid #e5e7eb; /* border-t border-gray-200 */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+/* Paper graph legend - matching React */
+.paper-graph-legend {
+    display: flex;
+    align-items: center;
+    gap: 1rem; /* gap-4 */
+    font-size: 0.875rem; /* text-sm */
+    color: #4b5563; /* text-gray-600 */
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem; /* gap-2 */
+}
+
+.legend-dot {
+    width: 0.75rem; /* w-3 */
+    height: 0.75rem; /* h-3 */
+    border-radius: 9999px; /* rounded-full */
+    flex-shrink: 0;
+}
+
+.legend-dot-center {
+    background: #9E7B9E; /* bg-[#9E7B9E] */
+}
+
+.legend-dot-related {
+    background: #7B9E9E; /* bg-[#7B9E9E] */
+}
+
+.legend-dot-derived {
+    background: #5B8E7E; /* bg-[#5B8E7E] */
+}
+
+#paperGraphModal .modal-btn-primary {
+    padding: 0.5rem 1rem; /* px-4 py-2 */
+    font-size: 0.875rem; /* text-sm */
+    background: #2563eb; /* bg-blue-600 */
+    color: white;
+    border: none;
+    border-radius: 0.5rem; /* rounded-lg */
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+#paperGraphModal .modal-btn-primary:hover {
+    background: #1d4ed8; /* hover:bg-blue-700 */
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    #paperGraphModal .modal-container.modal-large {
+        max-width: 95vw;
+        height: auto;
+        max-height: 90vh;
+    }
+
+    .graph-container {
+        height: 400px;
+    }
+}

@@ -1,0 +1,49 @@
+{% load static %}
+<div class="modal-overlay" id="toolGuideModal" role="dialog" aria-labelledby="toolGuideModalTitle" aria-modal="true">
+    <div class="modal-container modal-medium">
+        <div class="modal-header">
+            <div>
+                <h2 class="modal-title" id="toolGuideModalTitle">도구 사용 가이드</h2>
+                <p class="modal-subtitle" id="toolGuideModalSubtitle"></p>
+            </div>
+            <button class="modal-close-btn" aria-label="닫기">
+                <i class="fa-solid fa-times"></i>
+            </button>
+        </div>
+        
+        <div class="modal-body tool-guide-body">
+            <div class="tool-guide-content">
+                <!-- Overview -->
+                <div class="guide-section">
+                    <h3 class="guide-section-title">개요</h3>
+                    <p class="guide-section-text" id="toolGuideOverview"></p>
+                </div>
+
+                <!-- Usage Steps -->
+                <div class="guide-section">
+                    <h3 class="guide-section-title">사용 방법</h3>
+                    <div class="guide-steps-list" id="toolGuideUsageList">
+                        <!-- Steps will be rendered here -->
+                    </div>
+                </div>
+
+                <!-- Tips -->
+                <div class="guide-tips">
+                    <h3 class="guide-tips-title">
+                        <i class="fa-solid fa-info-circle"></i>
+                        팁
+                    </h3>
+                    <p class="guide-tips-text" id="toolGuideTips"></p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="modal-footer">
+            <button class="modal-btn modal-btn-secondary" data-action="close">닫기</button>
+            <button class="modal-btn modal-btn-primary" id="toolGuideAddToPipelineBtn">
+                <i class="fa-solid fa-plus"></i>
+                파이프라인에 추가
+            </button>
+        </div>
+    </div>
+</div>

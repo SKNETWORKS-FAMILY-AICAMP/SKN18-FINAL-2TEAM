@@ -1,0 +1,188 @@
+.header {
+    height: 4rem;
+    background: var(--color-bg-white);
+    border-bottom: 1px solid var(--color-border-light);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 1.5rem;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.logo-container {
+    width: 2.5rem; /* w-10 h-10 */
+    height: 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.logo-container a {
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+}
+
+.logo-image {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.header-left h1 {
+    color: var(--color-primary);
+    font-size: 1.5rem;
+    margin: 0;
+    font-weight: 600;
+}
+
+.header-left h1 a {
+    text-decoration: none;
+    color: inherit;
+}
+
+.header-left p {
+    /* font-size: 0.75rem; */
+    font-size: 9px;
+    color: var(--color-text-tertiary);
+    margin: 0;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.notification-wrapper {
+    position: relative;
+}
+
+.notification-btn {
+    position: relative;
+    padding: 0.5rem;
+    background: none;
+    border: none;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.notification-btn:hover {
+    background: var(--color-bg-gray-100);
+}
+
+.notification-btn i {
+    width: 1.25rem;
+    height: 1.25rem;
+    color: var(--color-text-tertiary);
+    font-size: 22px;
+}
+
+.notification-dot {
+    position: absolute;
+    top: 0.25rem;
+    right: 0.25rem;
+    width: 0.5rem;
+    height: 0.5rem;
+    background: #ef4444;
+    border-radius: 9999px;
+    display: block;
+}
+
+.notification-dropdown {
+    position: absolute;
+    right: 0;
+    margin-top: 0.5rem;
+    width: 24rem;
+    background: var(--color-bg-white);
+    border-radius: 0.5rem;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--color-border-light);
+    z-index: 20;
+    display: none;
+}
+
+.notification-dropdown.show {
+    display: block;
+}
+
+/* dropdown-header, dropdown-content, dropdown-footer, dropdown-item are now in common.css */
+
+.notification-item {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    text-align: left;
+    background: var(--color-bg-white);
+    border-bottom: 1px solid var(--color-bg-gray-100);
+    cursor: pointer;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    transition: background-color 0.2s;
+}
+
+.notification-item:hover {
+    background: var(--color-bg-gray-50);
+}
+
+.notification-item.unread {
+    background: #eff6ff; /* blue-50 - keep specific color for unread */
+}
+
+.unread-dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    background: var(--color-primary);
+    border-radius: 9999px;
+    margin-top: 0.5rem;
+    flex-shrink: 0;
+}
+
+.notification-content {
+    flex: 1;
+}
+
+.notification-title {
+    color: var(--color-text-primary);
+    margin: 0;
+    font-weight: 500;
+    font-size: 0.875rem;
+}
+
+.notification-message {
+    font-size: 0.875rem;
+    color: var(--color-text-tertiary);
+    margin: 0.25rem 0 0 0;
+}
+
+.notification-time {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    margin: 0.25rem 0 0 0;
+}
+
+.view-all-btn {
+    font-size: 0.875rem;
+    color: var(--color-primary);
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.view-all-btn:hover {
+    color: var(--color-primary-hover);
+}

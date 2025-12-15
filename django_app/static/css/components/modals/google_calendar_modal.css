@@ -1,0 +1,166 @@
+/* Google Calendar Modal Styles */
+
+.modal-medium {
+    max-width: 48rem; /* 768px */
+    width: 100%;
+}
+
+.google-calendar-modal-body {
+    padding: 1.5rem;
+    overflow-y: auto;
+    max-height: calc(90vh - 140px);
+}
+
+.google-calendar-content {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.google-calendar-header-section {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.google-calendar-header-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+}
+
+.google-calendar-header-icon i {
+    font-size: 1.25rem;
+    color: #9ca3af;
+}
+
+.google-calendar-header-section h3 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #111827;
+    margin: 0;
+}
+
+.google-calendar-description {
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin: 0;
+}
+
+.google-calendar-connection-section {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.google-calendar-connection-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 1;
+}
+
+.connection-status-indicator {
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 9999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.connection-status-indicator.connected {
+    background: #10b981;
+}
+
+.connection-status-indicator.disconnected {
+    background: #e5e7eb;
+}
+
+.connection-status-indicator i {
+    font-size: 0.75rem;
+    color: white;
+}
+
+#connectionStatusText {
+    font-size: 0.875rem;
+    color: #111827;
+    margin: 0;
+}
+
+.google-calendar-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.section-subtitle {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #6b7280;
+    margin: 0;
+}
+
+.google-calendar-list,
+.my-calendar-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.google-calendar-item,
+.my-calendar-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    background: white;
+    transition: border-color 0.2s;
+}
+
+.google-calendar-item:hover,
+.my-calendar-item:hover {
+    border-color: #d1d5db;
+}
+
+.calendar-color-indicator {
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 9999px;
+    flex-shrink: 0;
+}
+
+.calendar-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.calendar-name {
+    font-size: 0.875rem;
+    color: #111827;
+    margin: 0 0 0.125rem 0;
+}
+
+.calendar-email {
+    font-size: 0.75rem;
+    color: #6b7280;
+    margin: 0;
+}
+
+.calendar-checkbox {
+    width: 1rem;
+    height: 1rem;
+    cursor: pointer;
+}
+
+.empty-text {
+    font-size: 0.875rem;
+    color: #9ca3af;
+    text-align: center;
+    padding: 1rem;
+    margin: 0;
+}

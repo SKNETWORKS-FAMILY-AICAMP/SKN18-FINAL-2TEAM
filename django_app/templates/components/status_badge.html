@@ -1,0 +1,20 @@
+{% comment %}
+Status Badge 컴포넌트
+
+사용법:
+{% include 'components/status_badge.html' with status=schedule.status status_display=schedule.get_status_display show_dot=False %}
+{% include 'components/status_badge.html' with status=experiment.status|lower status_display=experiment.get_status_display show_dot=True progress_class=experiment.status|lower %}
+
+파라미터:
+- status: 상태 값 (예: 'scheduled', 'in_progress', 'completed' 등)
+- status_display: 표시할 텍스트 (예: '예정', '진행중', '완료' 등)
+- show_dot: dot 표시 여부 (기본값: False)
+- progress_class: 진행중 상태일 때 추가할 클래스 (선택사항)
+{% endcomment %}
+
+<span class="status-badge status-{{ status }}">
+    {% if show_dot %}
+    <span class="status-dot status-dot-{{ status }}{% if progress_class %} status-dot-progress{% endif %}"></span>
+    {% endif %}
+    {{ status_display }}
+</span>

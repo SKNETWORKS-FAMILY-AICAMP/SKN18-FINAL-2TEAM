@@ -1,0 +1,42 @@
+{% load static %}
+<div class="modal-overlay" id="paperGraphModal" role="dialog" aria-labelledby="paperGraphModalTitle" aria-modal="true">
+    <div class="modal-container modal-large">
+        <div class="modal-header">
+            <div>
+                <h2 class="modal-title" id="paperGraphModalTitle">관련 논문 네트워크</h2>
+                <p class="modal-subtitle">논문 간 인용 관계를 시각화한 그래프</p>
+            </div>
+            <button class="modal-close-btn" aria-label="닫기">
+                <i class="fa-solid fa-times"></i>
+            </button>
+        </div>
+        
+        <div class="modal-body">
+            <div class="graph-container" id="paperGraphContainer">
+                <!-- Graph will be rendered here by JavaScript -->
+                <div class="graph-loading">
+                    <i class="fa-solid fa-spinner fa-spin"></i>
+                    <p>그래프를 로딩 중입니다...</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="modal-footer">
+            <div class="paper-graph-legend">
+                <div class="legend-item">
+                    <div class="legend-dot legend-dot-center"></div>
+                    <span>중심 논문</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot legend-dot-related"></div>
+                    <span>관련 논문</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot legend-dot-derived"></div>
+                    <span>파생 논문</span>
+                </div>
+            </div>
+            <button class="modal-btn modal-btn-primary" data-action="close">닫기</button>
+        </div>
+    </div>
+</div>
