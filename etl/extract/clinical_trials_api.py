@@ -235,7 +235,7 @@ if __name__ == "__main__":
         "--condition", "-c",  # --condition 또는 -c로 사용 가능
         type=str,              # 문자열 타입
         required=False,        # 필수 입력 아님 (기본값 사용 가능)
-        default="neoplasms",   #######여기를 바꿔야 해####### 질병명 변경: "Neoplasms", "Cardiovascular Diseases", "Autoimmune Diseases", "Diabetes" 등
+        default="Autoimmune Diseases",   #######여기를 바꿔야 해####### 질병명 변경: "Neoplasms", "Cardiovascular Diseases", "Autoimmune Diseases", "Diabetes" 등
         help="질병/조건명 (예: 'Neoplasms', 'Cardiovascular Diseases', 'Autoimmune Diseases', 'Diabetes' 등)"
     )
     
@@ -244,7 +244,7 @@ if __name__ == "__main__":
         "--country", "-l",     # --country 또는 -l로 사용 가능
         type=str,
         required=False,
-        default="united states",     #######여기를 바꿔야 해####### 국가명 변경: "United States", "South Korea", "Japan", "China", "Mexico" 등
+        default="Japan",     #######여기를 바꿔야 해####### 국가명 변경: "United States", "South Korea", "Japan", "China", "Mexico" 등
         help="국가명 (예: 'United States', 'South Korea', 'Japan', 'China' 등)"
     )
     
@@ -260,7 +260,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--date_from", "-f",
         type=str,
-        default="2020-01-01",  #######여기를 바꿔야 해####### 시작 날짜 변경: "2020-01-01", "2023-01-01" 등 (형식: "YYYY-MM-DD")
+        default="2023-01-01",  #######여기를 바꿔야 해####### 시작 날짜 변경: "2020-01-01", "2023-01-01" 등 (형식: "YYYY-MM-DD")
         help="시작 날짜 (형식: 'YYYY-MM-DD', 기본값: '2023-01-01')"
     )
     
@@ -268,7 +268,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--date_to", "-t",
         type=str,
-        default="2025-01-01",  #######여기를 바꿔야 해####### 종료 날짜 변경: "2025-12-31", "2024-12-31" 등 (형식: "YYYY-MM-DD")
+        default="",  #######여기를 바꿔야 해####### 종료 날짜 변경: "2025-12-31", "2024-12-31" 등 (형식: "YYYY-MM-DD")
         help="종료 날짜 (형식: 'YYYY-MM-DD', 지정하지 않으면 최신까지)"
     )
     
