@@ -23,7 +23,7 @@ tiktoken
 langgraph
 
 # Database
-psycopg
+psycopg[binary, pool]
 pgvector
 
 # Neo4j (Knowledge Graph)
