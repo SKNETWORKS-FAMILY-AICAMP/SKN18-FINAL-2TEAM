@@ -136,7 +136,7 @@ prepare_protocols() {
     cp "$PROJECT_ROOT/rag/etl/step01_ingest/modules/protocol.py" "$PROTOCOLS_DIR/rag/etl/step01_ingest/modules/"
     cp "$PROJECT_ROOT/rag/etl/step01_ingest/modules/schedule_store.py" "$PROTOCOLS_DIR/rag/etl/step01_ingest/modules/"
     
-    # step02_normalize: Protocols 관련 파일만 복사 (Cleanse+Chunk+Embed Lambda용)
+    # step02_normalize: Protocols 관련 파일만 복사 (Cleanse+Chunk Lambda용)
     echo "  Copying step02_normalize (Protocols files only)..."
     mkdir -p "$PROTOCOLS_DIR/rag/etl/step02_normalize"
     # __init__.py 파일 복사 또는 생성
@@ -148,7 +148,7 @@ prepare_protocols() {
     fi
     cp "$PROJECT_ROOT/rag/etl/step02_normalize/03_normalize_protocols.py" "$PROTOCOLS_DIR/rag/etl/step02_normalize/"
     
-    # step04_chunk: Protocols 관련 파일만 복사 (Cleanse+Chunk+Embed Lambda용)
+    # step04_chunk: Protocols 관련 파일만 복사 (Cleanse+Chunk Lambda용)
     echo "  Copying step04_chunk (Protocols files only)..."
     mkdir -p "$PROTOCOLS_DIR/rag/etl/step04_chunk"
     # __init__.py 파일 복사 또는 생성
@@ -159,7 +159,7 @@ prepare_protocols() {
         echo "  Created missing __init__.py for step04_chunk"
     fi
     cp "$PROJECT_ROOT/rag/etl/step04_chunk/03_chunker_protocols.py" "$PROTOCOLS_DIR/rag/etl/step04_chunk/"
-    # protocols_cleanse_chunk_embed.py에서 chunker_protocols로 import하므로 별칭 파일 생성
+    # protocols_cleanse_chunk.py에서 chunker_protocols로 import하므로 별칭 파일 생성
     cp "$PROJECT_ROOT/rag/etl/step04_chunk/03_chunker_protocols.py" "$PROTOCOLS_DIR/rag/etl/step04_chunk/chunker_protocols.py"
     echo "  Created chunker_protocols.py alias for import compatibility"
     
@@ -181,7 +181,7 @@ prepare_protocols() {
     # .gitkeep 파일 제거
     find "$PROTOCOLS_DIR/rag/etl/common" -name ".gitkeep" -type f -delete 2>/dev/null || true
     
-    # infra/aws/lambda_functions/trigger_etl: Ingest Lambda 5개와 Cleanse+Chunk+Embed Lambda용
+    # infra/aws/lambda_functions/trigger_etl: Ingest Lambda 6개와 Cleanse+Chunk Lambda용
     echo "  Copying infra/aws/lambda_functions/trigger_etl..."
     mkdir -p "$PROTOCOLS_DIR/infra/aws/lambda_functions"
     cp -r "$PROJECT_ROOT/infra/aws/lambda_functions/trigger_etl" "$PROTOCOLS_DIR/infra/aws/lambda_functions/"
@@ -193,6 +193,8 @@ prepare_protocols() {
     # trigger_etl에서 nih, pubmed 제거
     rm -rf "$PROTOCOLS_DIR/infra/aws/lambda_functions/trigger_etl/nih" || true
     rm -rf "$PROTOCOLS_DIR/infra/aws/lambda_functions/trigger_etl/pubmed" || true
+    # protocols_cleanse_chunk_embed.py 제거 (protocols_cleanse_chunk.py만 사용)
+    rm -f "$PROTOCOLS_DIR/infra/aws/lambda_functions/trigger_etl/protocols/protocols_cleanse_chunk_embed.py" || true
     # trigger_etl/requirements.txt 제거 (requirements-lambda-protocols.txt만 사용)
     rm -f "$PROTOCOLS_DIR/infra/aws/lambda_functions/trigger_etl/requirements.txt" || true
     
