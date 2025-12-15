@@ -2,7 +2,7 @@ name: SKN18-final
 
 services:
   db:
-    image: pgvector/pgvector:pg16
+    image: pgvector/pgvector:pg18
     container_name: pg-db-final
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-sknfinaldb}
