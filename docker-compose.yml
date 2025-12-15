@@ -23,6 +23,19 @@ services:
       start_period: 10s
     restart: unless-stopped
 
+  # worker:  # ETL / 배치 / RAG 인덱싱
+  #   build:
+  #     context: .
+  #     dockerfile: ./infra/docker/Dockerfile.worker
+  #   container_name: etl-worker
+  #   env_file:
+  #     - .env
+  #   depends_on:
+  #     - db
+  #   restart: unless-stopped
+  #   command: ["python", "-m", "jobs.manage_etl"]
+    # 필요 시 다른 커맨드로 교체 (Celery, cron용 스크립트 등)
+
   neo4j:
     image: neo4j:5.15.0
     container_name: neo4j-final
