@@ -24,7 +24,7 @@ class ConversationMemory(Base):
     case_type으로 데이터 타입 구분, full_response와 summarize_response에 답변 저장.
     """
 
-    __tablename__ = "conversation_memory"
+    __tablename__ = "t_conversation_memory"
 
     # ---------------------------
     # 기본 정보
