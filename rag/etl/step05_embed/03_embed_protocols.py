@@ -42,6 +42,9 @@ EMBEDDING_MODEL = "text-embedding-3-small"
 EMBEDDING_DIM = 1536
 TABLE_NAME = "ts_protocol_embedding"
 
+# 단순 모드 설정 (환경 변수로 제어 가능)
+USE_SIMPLE_MODE = os.getenv("PROTOCOL_EMBED_SIMPLE_MODE", "false").lower() == "true"
+
 
 def ensure_table() -> None:
     """pgvector 확장 및 테이블 생성"""
@@ -128,8 +131,48 @@ def insert_row(chunking_id: str, url: str, title: str, text: str, embedding: lis
         conn.commit()
 
 
+def process_csv_simple(csv_path: Path, keyword: str) -> None:
+    """
+    단순 모드: 텍스트 전체를 그대로 임베딩 (소스 파일 방식)
+    섹션 분리 없이 각 행의 전체 텍스트를 직접 임베딩한다.
+    """
+    print(f"[EMBED][Protocol.io][{keyword}] >>> CSV 불러오는 중: {csv_path}")
+    df = pd.read_csv(csv_path)
+
+    # text 컬럼 검증 (소스 파일 방식)
+    if "text" not in df.columns:
+        raise ValueError("❌ CSV 파일에 'text' 컬럼이 없습니다.")
+
+    print(f"[EMBED][Protocol.io][{keyword}] 🔍 총 {len(df)}개의 행 처리 시작")
+
+    for idx, row in df.iterrows():
+        text = str(row["text"]).strip()
+        
+        # chunking_id, url, title은 선택적 (없으면 빈 문자열)
+        chunking_id = str(row.get("chunking_id", ""))
+        url = str(row.get("url", ""))
+        title = str(row.get("title", ""))
+
+        if not text:
+            continue
+
+        # 텍스트 전체를 그대로 embedding
+        embedding = embed_text(text)
+
+        # 한 줄로 DB에 저장
+        insert_row(chunking_id, url, title, text, embedding)
+
+        print(f"[EMBED][Protocol.io][{keyword}] ✓ {idx + 1}/{len(df)} embedding 완료")
+
+    print(f"[EMBED][Protocol.io][{keyword}] 🎉 모든 CSV 데이터 임베딩 및 삽입 완료!")
+
+
 def process_csv(csv_path: Path, keyword: str) -> None:
     """CSV 파일을 읽어서 임베딩 생성 및 DB 저장"""
+    # 단순 모드 사용 여부 확인
+    if USE_SIMPLE_MODE:
+        return process_csv_simple(csv_path, keyword)
+    
     print(f"[EMBED][Protocol.io][{keyword}] >>> CSV 불러오는 중: {csv_path}")
     df = pd.read_csv(csv_path)
 
@@ -204,18 +247,26 @@ def process_file(csv_path: Path) -> None:
 
 
 def main() -> None:
-    """메인 함수: 모든 chunked CSV 파일 처리"""
+    """메인 함수: 오늘 날짜의 chunked CSV 파일만 처리"""
     start_time = datetime.now()
     print(f"[EMBED][Protocol.io] TIMESTAMP_START={start_time.isoformat()}", flush=True)
     
+    # 처리 모드 출력
+    mode = "단순 모드" if USE_SIMPLE_MODE else "섹션 분리 모드"
+    print(f"[EMBED][Protocol.io] 처리 모드: {mode}")
+    
     ensure_table()
     
-    input_files = sorted(INPUT_ROOT.glob("**/stage=chunked/protocol_chunked_*.csv"))
+    # 오늘 날짜의 청크 파일만 필터링
+    today = datetime.now()
+    date_pattern = f"year={today.year:04d}/month={today.month:02d}/day={today.day:02d}/stage=chunked"
+    input_files = sorted(INPUT_ROOT.glob(f"**/{date_pattern}/protocol_chunked_*.csv"))
+    
     if not input_files:
-        print("[EMBED][Protocol.io] 처리할 입력 파일이 없습니다.")
+        print(f"[EMBED][Protocol.io] 오늘 날짜({today.strftime('%Y-%m-%d')})의 처리할 입력 파일이 없습니다.")
         return
 
-    print(f"[EMBED][Protocol.io] 발견된 파일 수: {len(input_files)}")
+    print(f"[EMBED][Protocol.io] 오늘 날짜({today.strftime('%Y-%m-%d')})의 발견된 파일 수: {len(input_files)}")
     
     for csv_path in input_files:
         print(f"[EMBED][Protocol.io] processing {csv_path}")

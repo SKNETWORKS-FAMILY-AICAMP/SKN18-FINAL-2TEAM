@@ -78,7 +78,46 @@ KEYWORDS = ["Protein", "Cell", "DNA", "RNA", "vivo", "mouse"]
 RAW_DIR = Path("data/raw/protocols")
 MAX_PARALLEL_WORKERS = 1  # 동시에 돌릴 최대 키워드 수
 REQUEST_INTERVAL_SECONDS = 0.5
+# 운영
+PAGE_SIZE = 30  # 한 페이지당 가져올 프로토콜 수
 MAX_PAGES_PER_RUN = 5  # 한 번의 실행에서 처리할 최대 페이지 수 (람다 15분 제한)
+# 테스트
+# PAGE_SIZE = 5
+# MAX_PAGES_PER_RUN = 1
+
+
+def load_existing_urls(csv_path: Path) -> set[str]:
+    """
+    기존 CSV 파일에서 URL 목록을 읽어서 Set으로 반환한다.
+    
+    Args:
+        csv_path: CSV 파일 경로
+    
+    Returns:
+        기존 URL들의 Set (파일이 없거나 비어있으면 빈 Set)
+    """
+    if not csv_path.exists():
+        return set()
+    
+    existing_urls = set()
+    try:
+        with csv_path.open("r", newline="", encoding="utf-8") as fp:
+            reader = csv.DictReader(fp)
+            for row in reader:
+                url = row.get("url", "").strip()
+                if url:
+                    existing_urls.add(url)
+        print(
+            f"[INGEST][Protocol.io] 기존 파일에서 {len(existing_urls)}개의 URL 로드 완료",
+            flush=True,
+        )
+    except Exception as e:
+        print(
+            f"[INGEST][Protocol.io] 기존 파일 읽기 실패: {e}. 빈 Set으로 시작합니다.",
+            flush=True,
+        )
+    
+    return existing_urls
 
 
 def ensure_csv(path: Path) -> None:
@@ -92,8 +131,20 @@ def ensure_csv(path: Path) -> None:
         print(f"[INGEST][Protocol.io] appending to existing file {path}", flush=True)
 
 
-def ingest_keyword(search_keyword: str) -> None:
+def ingest_keyword(search_keyword: str, raw_dir: Path | None = None) -> None:
+    """
+    단일 키워드에 대한 ingestion 실행.
+    
+    Args:
+        search_keyword: 처리할 키워드
+        raw_dir: raw 데이터 저장 디렉토리 (None이면 전역 RAW_DIR 사용)
+    """
     schedule_store.ensure_table()
+    
+    # raw_dir이 제공되면 전역 변수 업데이트
+    if raw_dir is not None:
+        global RAW_DIR
+        RAW_DIR = Path(raw_dir) / "protocols" if isinstance(raw_dir, str) else Path(raw_dir) / "protocols"
     
     # 페이지를 미리 예약 (원자적 연산으로 race condition 방지)
     start_page = schedule_store.get_and_reserve_next_page(
@@ -115,8 +166,13 @@ def ingest_keyword(search_keyword: str) -> None:
     output_dir = RAW_DIR / today
     output_path = output_dir / f"api_data_{search_keyword}.csv"
     ensure_csv(output_path)
-
+    
+    # 기존 파일에서 URL 목록 로드 (중복 체크용)
+    existing_urls = load_existing_urls(output_path)
+    
     pages_processed = 0  # 처리한 페이지 수 카운터
+    new_rows_count = 0  # 새로 추가된 행 수
+    skipped_rows_count = 0  # 중복으로 건너뛴 행 수
 
     print(
         f"[INGEST][Protocol.io][{search_keyword}] 예약된 시작 페이지: {start_page}, "
@@ -134,7 +190,7 @@ def ingest_keyword(search_keyword: str) -> None:
             flush=True,
         )
         public_list = get_public_protocols(
-            page_size=30, page_id=page_id, search_key=search_keyword
+            page_size=PAGE_SIZE, page_id=page_id, search_key=search_keyword
         )
         time.sleep(REQUEST_INTERVAL_SECONDS)
         protocols = public_list.get("items", [])
@@ -156,6 +212,7 @@ def ingest_keyword(search_keyword: str) -> None:
             break
 
         page_rows: list[dict[str, str]] = []
+        new_page_rows: list[dict[str, str]] = []  # 중복이 아닌 행만 저장
 
         for i, proto_item in enumerate(protocols):
             print("=" * 50)
@@ -168,6 +225,15 @@ def ingest_keyword(search_keyword: str) -> None:
             protocol_id = proto_item["id"]
             protocol_url = proto_item["url"]
             print(f"url: {protocol_url}")
+
+            # 중복 체크
+            if protocol_url in existing_urls:
+                print(
+                    f"[INGEST][Protocol.io][{search_keyword}] 중복 URL 감지, 건너뜀: {protocol_url}",
+                    flush=True,
+                )
+                skipped_rows_count += 1
+                continue
 
             print(
                 f"[INGEST][Protocol.io][{search_keyword}] fetching detail id={protocol_id}",
@@ -219,26 +285,34 @@ def ingest_keyword(search_keyword: str) -> None:
                 materials_str = "<no data>"
             print(f"materials: {materials_str}")
 
-            page_rows.append(
-                {
-                    "keyword": search_keyword,
-                    "url": protocol_url,
-                    "title": title_text,
-                    "abstract": abstract_str,
-                    "step_content": step_str,
-                    "reference": reference_str,
-                    "guidelines": guidelines_str,
-                    "materials": materials_str,
-                }
-            )
+            row_data = {
+                "keyword": search_keyword,
+                "url": protocol_url,
+                "title": title_text,
+                "abstract": abstract_str,
+                "step_content": step_str,
+                "reference": reference_str,
+                "guidelines": guidelines_str,
+                "materials": materials_str,
+            }
+            
+            page_rows.append(row_data)
+            new_page_rows.append(row_data)
+            existing_urls.add(protocol_url)  # Set에 추가하여 다음 중복 체크에 사용
 
-        if page_rows:
+        if new_page_rows:
             with output_path.open("a", newline="", encoding="utf-8") as fp:
                 writer = csv.DictWriter(fp, fieldnames=FIELDNAMES)
-                writer.writerows(page_rows)
+                writer.writerows(new_page_rows)
+            new_rows_count += len(new_page_rows)
             print(
                 f"[INGEST][Protocol.io][{search_keyword}] appended "
-                f"{len(page_rows)} rows to {output_path}",
+                f"{len(new_page_rows)} rows (중복 제외) to {output_path}",
+                flush=True,
+            )
+        elif page_rows:
+            print(
+                f"[INGEST][Protocol.io][{search_keyword}] 모든 행이 중복이므로 추가하지 않음",
                 flush=True,
             )
 
@@ -248,117 +322,52 @@ def ingest_keyword(search_keyword: str) -> None:
 
     print(
         f"[INGEST][Protocol.io][{search_keyword}] ingestion complete. "
-        f"처리한 페이지 수: {pages_processed}/{MAX_PAGES_PER_RUN}",
+        f"처리한 페이지 수: {pages_processed}/{MAX_PAGES_PER_RUN}, "
+        f"새로 추가된 행: {new_rows_count}, 중복 건너뛴 행: {skipped_rows_count}",
         flush=True,
     )
+    
+    # 순수 ingest (API 호출) 완료 시점 기록
+    schedule_store.update_ingestion_completed(search_keyword)
+
+
+def run(raw_dir: str, keyword: str) -> None:
+    """
+    Lambda에서 호출되는 함수.
+    
+    Args:
+        raw_dir: raw 데이터 디렉토리 경로
+        keyword: 처리할 키워드
+    """
+    global RAW_DIR
+    RAW_DIR = Path(raw_dir) / "protocols" if isinstance(raw_dir, str) else Path(raw_dir) / "protocols"
+    ingest_keyword(keyword)
 
 
 def run_parallel(keywords: Iterable[str]) -> None:
     start_time = datetime.now()
     print(f"[INGEST][Protocol.io] TIMESTAMP_START={start_time.isoformat()}", flush=True)
     
-    RAW_DIR.mkdir(parents=True, exist_ok=True)
-    keyword_list = list(keywords)
-    if not keyword_list:
-        print("[INGEST][Protocol.io] No keywords provided.", flush=True)
-        return
-
-    max_workers = min(len(keyword_list), MAX_PARALLEL_WORKERS)
-    with ThreadPoolExecutor(max_workers=max_workers or 1) as executor:
-        future_map = {executor.submit(ingest_keyword, kw): kw for kw in keyword_list}
-        for future in as_completed(future_map):
-            keyword = future_map[future]
+    with ThreadPoolExecutor(max_workers=MAX_PARALLEL_WORKERS) as executor:
+        futures = {executor.submit(ingest_keyword, kw): kw for kw in keywords}
+        
+        for future in as_completed(futures):
+            keyword = futures[future]
             try:
                 future.result()
-                print(
-                    f"[INGEST][Protocol.io][{keyword}] finished without error.",
-                    flush=True,
-                )
             except Exception as exc:
                 print(
-                    f"[INGEST][Protocol.io][{keyword}] failed: {exc}",
+                    f"[INGEST][Protocol.io][{keyword}] 예외 발생: {exc}",
                     flush=True,
                 )
     
     end_time = datetime.now()
     duration = (end_time - start_time).total_seconds()
     print(f"[INGEST][Protocol.io] TIMESTAMP_END={end_time.isoformat()} | DURATION={duration:.2f}초", flush=True)
-
-
-def run(raw_dir: str, keyword: str | None = None, limit: int | None = None) -> None:
-    """
-    Pipeline runner에서 호출되는 함수.
-    Lambda 핸들러에서도 호출 가능하도록 keyword 파라미터 추가.
-    
-    Args:
-        raw_dir: raw 데이터 저장 디렉토리 (예: "data/raw")
-        keyword: 처리할 키워드 (None이면 모든 키워드 처리, Lambda에서는 특정 키워드 전달)
-        limit: 최대 처리할 문서 수 (현재는 사용하지 않음)
-    """
-    start_time = datetime.now()
-    print(f"[INGEST][Protocol.io] TIMESTAMP_START={start_time.isoformat()}", flush=True)
-    
-    global RAW_DIR
-    # raw_dir에 protocols 서브디렉토리 추가
-    RAW_DIR = Path(raw_dir) / "protocols"
-    RAW_DIR.mkdir(parents=True, exist_ok=True)
-    
-    # 키워드가 지정된 경우 해당 키워드만 처리
-    if keyword:
-        print(f"[INGEST][Protocol.io] Processing single keyword: {keyword}", flush=True)
-        ingest_keyword(keyword)
-    else:
-        # 키워드가 없으면 모든 키워드 처리 (로컬 개발용)
-        print(f"[INGEST][Protocol.io] Processing all keywords: {KEYWORDS}", flush=True)
-        main()
-    
-    end_time = datetime.now()
-    duration = (end_time - start_time).total_seconds()
-    print(f"[INGEST][Protocol.io] TIMESTAMP_END={end_time.isoformat()} | DURATION={duration:.2f}초", flush=True)
-
-
-def lambda_handler(event, context):
-    """
-    AWS Lambda 핸들러 함수.
-    
-    이벤트 형식:
-    {
-        "keyword": "Protein",  # 필수: 처리할 키워드
-        "raw_dir": "data/raw"  # 선택: 기본값 "data/raw"
-    }
-    """
-    keyword = event.get("keyword")
-    raw_dir = event.get("raw_dir", "data/raw")
-    
-    if not keyword:
-        raise ValueError("'keyword' is required in event")
-    
-    if keyword not in KEYWORDS:
-        raise ValueError(f"Invalid keyword: {keyword}. Must be one of {KEYWORDS}")
-    
-    print(f"[INGEST][Protocol.io][Lambda] Processing keyword: {keyword}", flush=True)
-    
-    try:
-        run(raw_dir=raw_dir, keyword=keyword)
-        return {
-            "statusCode": 200,
-            "body": {
-                "message": f"Successfully processed keyword: {keyword}",
-                "keyword": keyword
-            }
-        }
-    except Exception as e:
-        print(f"[INGEST][Protocol.io][Lambda] Error processing {keyword}: {e}", flush=True)
-        return {
-            "statusCode": 500,
-            "body": {
-                "error": str(e),
-                "keyword": keyword
-            }
-        }
 
 
 def main() -> None:
+    """메인 함수: 모든 키워드에 대해 ingestion 실행"""
     run_parallel(KEYWORDS)
 
 

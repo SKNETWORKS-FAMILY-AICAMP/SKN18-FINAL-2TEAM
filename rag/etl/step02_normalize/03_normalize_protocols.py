@@ -35,7 +35,8 @@ def normalize_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     df = df.replace("<no data>", "")
     # 따옴표만 있거나 공백만 있는 경우 빈 문자열로 변환
     df = df.replace(r"\\u[0-9a-fA-F]{4}", "", regex=True)
-    df = df.replace(r'^\s*["“”\'’]*\s*$', "", regex=True)
+    # 작은따옴표 문자열 내에서 작은따옴표를 올바르게 이스케이프
+    df = df.replace(r'^\s*[""\'\u201C\u201D\u2018\u2019]*\s*$', "", regex=True)
     # NaN을 빈 문자열로 변경
     df = df.replace("NA", "")
     df = df.fillna("")
@@ -60,27 +61,133 @@ def build_output_path(keyword: str, status: str) -> Path:
     return path
 
 
-def process_file(csv_path: Path) -> None:
-    # 파일명에서 키워드 추출: api_data_{keyword}.csv
-    # 경로에서 날짜 디렉토리명도 제거해야 함
-    keyword = csv_path.stem.replace("api_data_", "")
-    status = "success"
+def load_existing_urls(csv_path: Path) -> set[str]:
+    """
+    기존 cleaned 파일에서 URL만 읽어서 Set으로 반환 (메모리 효율적).
+    
+    주의사항: 대용량 파일을 위해 chunksize로 청크 단위로 읽어서 메모리 사용량 제한.
+    
+    Args:
+        csv_path: 기존 cleaned CSV 파일 경로
+    
+    Returns:
+        기존 URL들의 Set (파일이 없거나 비어있으면 빈 Set)
+    """
+    if not csv_path.exists():
+        return set()
+    
+    existing_urls = set()
     try:
-        df = pd.read_csv(csv_path)
-        df = normalize_dataframe(df)
-    except Exception as exc:
-        status = "fail"
-        df = pd.DataFrame([{"error": str(exc)}])
-        print(f"[NORMALIZE][Protocol.io][{keyword}] 실패: {exc}")
-    else:
+        # chunksize로 청크 단위로 읽어서 메모리 사용량 제한
+        # usecols로 URL 컬럼만 읽어서 메모리 절약
+        for chunk in pd.read_csv(csv_path, chunksize=1000, usecols=["url"]):
+            # URL 컬럼이 있는 경우만 처리
+            if "url" in chunk.columns:
+                existing_urls.update(
+                    chunk["url"].dropna().astype(str).str.strip()
+                )
         print(
-            f"[NORMALIZE][Protocol.io][{keyword}] cleaned rows={len(df)}",
+            f"[NORMALIZE] 기존 파일에서 {len(existing_urls)}개 URL 로드 완료",
             flush=True,
         )
+    except Exception as e:
+        print(
+            f"[NORMALIZE] 기존 파일 URL 로드 실패: {e}. 빈 Set으로 시작합니다.",
+            flush=True,
+        )
+    
+    return existing_urls
 
-    out_path = build_output_path(keyword, status)
-    df.to_csv(out_path, index=False)
-    print(f"[NORMALIZE][Protocol.io][{keyword}] 저장 완료: {out_path}")
+
+def process_file(csv_path: Path) -> None:
+    """
+    Incremental 처리 방식으로 raw CSV 파일을 cleaned CSV로 변환.
+    
+    주의사항:
+    1. 기존 파일이 있으면 URL Set만 로드하여 메모리 효율성 확보
+    2. 새 데이터만 필터링하여 처리 시간 단축
+    3. 병합 후 중복 제거로 안전장치 제공
+    """
+    # 파일명에서 키워드 추출: api_data_{keyword}.csv
+    keyword = csv_path.stem.replace("api_data_", "")
+    status = "success"
+    
+    try:
+        out_path = build_output_path(keyword, status)
+        
+        # 1. 기존 cleaned 파일에서 URL Set만 로드 (메모리 효율적)
+        existing_urls = load_existing_urls(out_path)
+        
+        # 2. 새 raw 데이터 읽기
+        new_df = pd.read_csv(csv_path)
+        total_rows = len(new_df)
+        
+        # 3. 중복 제거: 기존에 없는 URL만 필터링
+        new_df_filtered = new_df[
+            ~new_df["url"].astype(str).str.strip().isin(existing_urls)
+        ]
+        
+        if len(new_df_filtered) == 0:
+            print(
+                f"[NORMALIZE][Protocol.io][{keyword}] 새 데이터 없음 "
+                f"(전체 {total_rows}개 모두 중복)",
+                flush=True,
+            )
+            return
+        
+        duplicate_count = total_rows - len(new_df_filtered)
+        print(
+            f"[NORMALIZE][Protocol.io][{keyword}] 새 데이터 {len(new_df_filtered)}개 "
+            f"(전체 {total_rows}개, 중복 {duplicate_count}개)",
+            flush=True,
+        )
+        
+        # 4. 새 데이터 정규화
+        normalized_new = normalize_dataframe(new_df_filtered)
+        
+        # 5. 기존 데이터와 병합 (메모리 효율적으로 처리)
+        if out_path.exists() and len(existing_urls) > 0:
+            # 기존 파일이 있으면 읽어서 병합
+            try:
+                existing_df = pd.read_csv(out_path)
+                # 병합
+                combined_df = pd.concat([existing_df, normalized_new], ignore_index=True)
+                # 안전장치: URL 기반 중복 제거 (병합 과정에서 중복 발생 가능)
+                before_dedup = len(combined_df)
+                combined_df = combined_df.drop_duplicates(subset="url", keep="first")
+                after_dedup = len(combined_df)
+                
+                if before_dedup != after_dedup:
+                    print(
+                        f"[NORMALIZE][Protocol.io][{keyword}] 병합 후 중복 제거: "
+                        f"{before_dedup}개 → {after_dedup}개",
+                        flush=True,
+                    )
+            except Exception as e:
+                print(
+                    f"[NORMALIZE][Protocol.io][{keyword}] 기존 파일 읽기 실패: {e}. "
+                    f"새 데이터만 저장합니다.",
+                    flush=True,
+                )
+                combined_df = normalized_new
+        else:
+            # 기존 파일이 없으면 새 데이터만 저장
+            combined_df = normalized_new
+        
+        # 6. 저장
+        combined_df.to_csv(out_path, index=False)
+        print(
+            f"[NORMALIZE][Protocol.io][{keyword}] 저장 완료: 총 {len(combined_df)}개 "
+            f"(기존 {len(existing_urls)}개 + 새 {len(normalized_new)}개)",
+            flush=True,
+        )
+        
+    except Exception as exc:
+        status = "fail"
+        out_path = build_output_path(keyword, status)
+        df = pd.DataFrame([{"error": str(exc)}])
+        df.to_csv(out_path, index=False)
+        print(f"[NORMALIZE][Protocol.io][{keyword}] 실패: {exc}", flush=True)
 
 
 def run(raw_dir: str, processed_dir: str) -> None:
@@ -92,8 +199,8 @@ def run(raw_dir: str, processed_dir: str) -> None:
         processed_dir: processed 데이터 저장 디렉토리
     """
     global RAW_DIR, OUTPUT_ROOT
-    RAW_DIR = Path(raw_dir)
-    OUTPUT_ROOT = Path(processed_dir)
+    RAW_DIR = Path(raw_dir) / "protocols"  # protocols 서브디렉토리 추가
+    OUTPUT_ROOT = Path(processed_dir) / "protocols"  # protocols 서브디렉토리 추가
     main()
 
 
