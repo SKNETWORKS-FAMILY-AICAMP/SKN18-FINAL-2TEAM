@@ -8,7 +8,7 @@ if SRC_DIR not in sys.path:
     sys.path.append(SRC_DIR)
 
 from db_connector import Neo4jConnector
-from queries import PaperRAGQueries, ProtocolQueries, ClinicalTrialQueries
+from queries_v2 import PaperRAGQueries, ProtocolQueries, ClinicalTrialQueries
 
 
 class PaperLoader:
@@ -22,9 +22,14 @@ class PaperLoader:
         self.connector = Neo4jConnector(uri, user, password)
 
     def _run(self, query: str, desc: str = ""):
-        if not query or not isinstance(query, str):
-            return
-        self.connector.execute_query(query, description=desc)
+        if desc:
+            # 쿼리가 리스트인 경우(여러 쿼리 묶음) 처리하지 않고, 단일 문자열일 때만 실행한다고 가정
+            # (아래 load 함수에서 리스트를 풀어서 호출하므로 여기서는 단순 실행)
+            pass 
+        
+        # tqdm progress bar와 겹치지 않게 로그 출력 (선택 사항)
+        # print(f"[NEO4J][RUN] {desc}") 
+        self.connector.execute_query(query)
 
     def clear_graph(self):
         """PrimeKG(BaseNode) 제외하고 RAG/ETL에서 생성한 노드들을 정리"""
@@ -47,7 +52,8 @@ class PaperLoader:
             "ClinicalTrial",
         ]
 
-        for label in labels_to_clear:
+        print("[CLEAR] Start clearing graph (excluding BaseNode)...")
+        for label in tqdm(labels_to_clear, desc="Clearing Labels"):
             q = f"""
             CALL apoc.periodic.iterate(
               "MATCH (n:{label}) RETURN n",
@@ -88,26 +94,37 @@ class PaperLoader:
             self.clear_graph()
 
         # ---------------------------
-        # 0) 인덱스/제약조건
+        # 0) 인덱스/제약조건 준비 (쿼리 리스트 취합)
         # ---------------------------
+        
+        # [PaperRAG]
         paper_indices = []
+        # 1. 제약조건 (Unique Constraints)
         paper_indices.extend(getattr(PaperRAGQueries, "CREATE_CONSTRAINTS", []))
+        # 2. [NEW] 일반 인덱스 (검색/연결 속도 향상용) - queries_v2.py에 추가된 내용 반영
+        paper_indices.extend(getattr(PaperRAGQueries, "CREATE_INDEXES", []))
+        # 3. 벡터 인덱스
         paper_indices.extend(getattr(PaperRAGQueries, "CREATE_VECTOR_INDEX", []))
 
+        # [Protocol]
         protocol_indices = []
         protocol_indices.extend(getattr(ProtocolQueries, "CREATE_CONSTRAINTS", []))
+        protocol_indices.extend(getattr(ProtocolQueries, "CREATE_INDEXES", [])) # 혹시 추가될 경우 대비
         protocol_indices.extend(getattr(ProtocolQueries, "CREATE_VECTOR_INDEX", []))
 
+        # [ClinicalTrial]
         clinical_indices = []
         clinical_indices.extend(getattr(ClinicalTrialQueries, "CREATE_CONSTRAINTS", []))
+        # [NEW] 일반 인덱스 (NCT ID 검색용)
+        clinical_indices.extend(getattr(ClinicalTrialQueries, "CREATE_INDEXES", []))
 
         tasks = [
             # ---------------------------
             # [Part 1] Paper
             # ---------------------------
-            ("1. [Paper] 제약조건/인덱스", paper_indices),
+            ("1. [Paper] 제약조건/인덱스 생성", paper_indices),
             ("2. [Paper] Article 로딩", PaperRAGQueries.LOAD_ARTICLES),
-            ("3. [Paper] Figure/Table/Equation (Article property)", [
+            ("3. [Paper] Figure/Table/Equation 메타 로딩", [
                 PaperRAGQueries.LOAD_FIGURES,
                 PaperRAGQueries.LOAD_TABLES,
                 PaperRAGQueries.LOAD_EQUATIONS,
@@ -120,34 +137,42 @@ class PaperLoader:
             ("6. [Paper] References 로딩", PaperRAGQueries.LOAD_REFERENCES),
             ("7. [Paper] Experiments(+ExpMaterial/ExpEquipment) 로딩", PaperRAGQueries.LOAD_EXPERIMENTS),
             ("8. [Paper] Entities 로딩(entity_id 기반)", PaperRAGQueries.LOAD_ENTITIES),
-            ("9. [Paper] Mentions 노드 유지 + (Article/Section/Entity 연결)", PaperRAGQueries.LOAD_MENTIONS_WITH_NODES),
+            
+            # Mentions 로딩 (최적화된 버전 사용)
+            ("9-1. [Paper] Mentions 노드 생성 (집계 제외)", PaperRAGQueries.LOAD_MENTIONS_FAST),
+            ("9-2. [Paper] Mentions-Section 연결", PaperRAGQueries.LINK_MENTIONS_TO_SECTIONS),
+            ("9-3. [Paper] Article-Entity 집계 계산", PaperRAGQueries.CALC_ARTICLE_ENTITY_AGGREGATION),
+            
+            # PrimeKG 연결 (인덱스 덕분에 빨라짐)
             ("10. [Paper] PrimeKG 1차(name) 연결", PaperRAGQueries.CONNECT_TO_PRIMEKG),
             ("11. [Paper] PrimeKG 2차(primekg_label) 연결", PaperRAGQueries.CONNECT_TO_PRIMEKG_SECONDARY),
 
             # ---------------------------
             # [Part 2] Protocol
             # ---------------------------
-            ("12. [Protocol] 제약조건/인덱스", protocol_indices),
+            ("12. [Protocol] 제약조건/인덱스 생성", protocol_indices),
             ("13. [Protocol] 메타데이터 로딩", ProtocolQueries.LOAD_PROTOCOL_METADATA),
-            # ("14. [Protocol] 레퍼런스 로딩", ProtocolQueries.LOAD_PROTOCOL_REFERENCES),
+            # ("14. [Protocol] 레퍼런스 로딩", ProtocolQueries.LOAD_PROTOCOL_REFERENCES), # 필요시 주석 해제
             ("15. [Protocol] Chunk/임베딩 로딩", ProtocolQueries.LOAD_PROTOCOL_CHUNKS),
 
             # ---------------------------
             # [Part 3] ClinicalTrials
             # ---------------------------
-            ("16. [ClinicalTrial] 제약조건", clinical_indices),
+            ("16. [ClinicalTrial] 제약조건/인덱스 생성", clinical_indices),
             ("17. [ClinicalTrial] 메타데이터 로딩", ClinicalTrialQueries.LOAD_METADATA),
-            # 아래 2개는 '기존 Mention 노드가 이미 있고, 거기에 nct_id가 들어있다'는 전제의 연결만 수행
+            # 연결 단계 (인덱스 덕분에 빨라짐)
             ("18. [ClinicalTrial] Trial -> Mention 연결", ClinicalTrialQueries.LINK_TRIAL_MENTIONS),
             ("19. [ClinicalTrial] (mention 기반) Trial -> Entity 연결/집계", ClinicalTrialQueries.LINK_TRIAL_ENTITIES_FROM_MENTIONS),
         ]
 
-        # 실행
-        for desc, q in tqdm(tasks, desc="Neo4j Loading"):
+        # 순차 실행
+        for desc, q in tqdm(tasks, desc="Neo4j Loading Pipeline"):
             if isinstance(q, list):
+                # 리스트인 경우 (인덱스 목록 또는 쿼리 묶음)
                 for sub_q in q:
                     self._run(sub_q, desc=desc)
             else:
+                # 단일 쿼리인 경우
                 self._run(q, desc=desc)
 
 
@@ -159,4 +184,5 @@ if __name__ == "__main__":
     loader = PaperLoader(URI, USER, PASSWORD)
 
     if loader.connector.test_connection():
+        # 기존 데이터를 지우고 다시 적재하려면 clear=True
         loader.load(clear=True)
