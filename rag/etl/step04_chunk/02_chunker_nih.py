@@ -8,6 +8,7 @@ import os
 import sys
 import json
 import csv
+import re
 from datetime import datetime
 
 # ============================================
@@ -17,7 +18,13 @@ CLEANED_DATA_PATH = None  # 클렌징된 데이터 파일 경로 (None이면 기
 OUTPUT_FORMAT_OVERRIDE = None  # 출력 포맷 ('json' 또는 'csv', None이면 config의 OUTPUT_FORMAT 사용)
 OUTPUT_CHUNK_FILE = None  # 청크 출력 파일명 (None이면 config.CHUNK_OUTPUT_FILE 사용)
 OUTPUT_METADATA_FILE = None  # 메타데이터 출력 파일명 (None이면 config.METADATA_OUTPUT_FILE 사용)
-BATCH_SIZE = 30  # 일정 단위로 파일에 쓰는 청크 개수 - 100에서 30으로 감소
+
+IS_LAMBDA = False
+
+# 환경에 따른 배치 크기 설정 (Lambda는 메모리 제한 때문에 작게)
+BATCH_SIZE = 70 if IS_LAMBDA else 200  # Lambda: 50, 로컬: 200
+GC_BATCH_INTERVAL = 2 if IS_LAMBDA else 5  # Lambda: 2배치마다, 로컬: 5배치마다
+GC_STUDY_INTERVAL = 50 if IS_LAMBDA else 500  # Lambda: 50개마다, 로컬: 500개마다
 # ============================================
 
 # 프로젝트 루트 경로를 시스템 경로에 추가
@@ -49,6 +56,24 @@ from rag.etl.step04_chunk.modules.nih import (
 
 # file_handler의 헬퍼 함수들 import
 from rag.etl.step04_chunk.modules.nih.file_handler import parse_chunk_text_to_sentences, get_value_or_no_data
+
+# 문장 분리를 위한 split_sentences import
+import sys
+from pathlib import Path
+common_dir = Path(__file__).resolve().parent.parent.parent.parent / "common"
+if str(common_dir) not in sys.path:
+    sys.path.insert(0, str(common_dir))
+try:
+    from nltk_setup import split_sentences
+except ImportError:
+    # nltk_setup이 없으면 기본 구현 사용
+    def split_sentences(text):
+        """문장 분리 (간단한 구현)"""
+        if not text:
+            return []
+        import re
+        sentences = re.split(r'[.!?]+', text)
+        return [s.strip() for s in sentences if s.strip()]
 
 
 def get_project_root():
@@ -162,14 +187,21 @@ def write_chunk_batch(chunk_writer, chunk_batch):
     for chunk_data in chunk_batch:
         nct_id = chunk_data.get('nctId', '').strip()
         chunk_text = chunk_data.get('chunk_text', '').strip()
-        
-        # 청크 텍스트를 문장 단위 JSON 배열로 변환
-        chunk_json = parse_chunk_text_to_sentences(chunk_text)
+
+        # 1) core_fields 기반 JSON 객체가 우선: main.py + assets/nih_emb/file_handler.py 포맷과 동일
+        core_fields = chunk_data.get('core_fields')
+        if core_fields:
+            # 필드명 포함 JSON 객체로 직렬화
+            chunk_obj = {k: v for k, v in core_fields.items() if v}
+            chunk_json = json.dumps(chunk_obj, ensure_ascii=False)
+        else:
+            # 2) 호환성: core_fields가 없으면 기존처럼 문장 배열(JSON 리스트)로 저장
+            chunk_json = parse_chunk_text_to_sentences(chunk_text)
         
         row = {
             'nctid': get_value_or_no_data(nct_id),
             'chunk_id': get_value_or_no_data(chunk_data.get('chunk_id', '')),
-            'chunk': chunk_json
+            'chunk': chunk_json,
         }
         chunk_writer.writerow(row)
 
@@ -225,6 +257,13 @@ def run_chunking_only(cleaned_data_file, chunk_writer, metadata_writer, success=
     print(f"\n{'=' * 60}")
     print(f"🚀 Chunking 시작 시간: {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"💾 배치 크기: {BATCH_SIZE}개 청크마다 파일에 저장")
+    if IS_LAMBDA:
+        print(f"⚙️  실행 환경: AWS Lambda (메모리 최적화 모드)")
+        print(f"   - GC 빈도: {GC_BATCH_INTERVAL}배치마다, {GC_STUDY_INTERVAL}개 study마다")
+    else:
+        print(f"⚙️  실행 환경: 로컬 (성능 최적화 모드)")
+        print(f"   - GC 빈도: {GC_BATCH_INTERVAL}배치마다, {GC_STUDY_INTERVAL}개 study마다")
+    print(f"💡 환경 변수 USE_LAMBDA_MODE로 모드 설정 가능 (true/false 또는 1/0)")
     print("=" * 60)
     
     # 클렌징된 데이터 읽기
@@ -268,66 +307,352 @@ def run_chunking_only(cleaned_data_file, chunk_writer, metadata_writer, success=
     for study_idx, study in enumerate(cleaned_studies, 1):
         study_start_time = datetime.now()
 
-        if study_idx % 10 == 0 or study_idx == len(cleaned_studies):
+        # 진행률 출력 빈도 줄이기 (성능 최적화: 10개마다 → 50개마다)
+        if study_idx % 50 == 0 or study_idx == len(cleaned_studies):
             progress_pct = (study_idx * 100) // len(cleaned_studies) if len(cleaned_studies) > 0 else 0
             print(f"  진행 중: {study_idx}/{len(cleaned_studies)} ({progress_pct}%)", end='\r')
 
         try:
             cleaned_text = study.get("cleaned_text", "")
+            combined_text = study.get("combined_text", "")
+            core_fields = study.get("core_fields", {})
             metadata = study.get("metadata", {})
-
-            if not cleaned_text or not cleaned_text.strip():
-                continue
-
-            # 텍스트를 청크로 분할
-            text_chunks = create_chunks_with_overlap(
-                cleaned_text,
-                chunk_size_min=CHUNK_SIZE_MIN,
-                chunk_size_max=CHUNK_SIZE_MAX,
-                overlap_min=OVERLAP_MIN,
-                overlap_max=OVERLAP_MAX
-            )
-
-            # 각 청크에 대해 데이터 생성
-            study_chunks = []
-            for chunk_text in text_chunks:
-                if not chunk_text or not chunk_text.strip():
+    
+            # 필드별 개별 청킹 방식으로 변경
+            # 각 필드(value)를 개별적으로 청크로 나누고, 각 청크에 해당 필드명(key)만 포함
+            if not core_fields:
+                # core_fields가 없으면 기존 방식(combined_text 또는 cleaned_text 전체 청킹)
+                text_for_chunking = combined_text if combined_text else cleaned_text
+                if not text_for_chunking or not text_for_chunking.strip():
                     continue
-
-                # 청크 ID 생성
-                global_chunk_counter += 1
-                chunk_id = f"chi_{global_chunk_counter}"
-
-                # 청크 데이터 구성
-                chunk_data = {
-                    "chunk_id": chunk_id,
-                    "nctId": metadata.get('nctId', ''),
-                    "chunk_text": chunk_text.strip(),
-                    "metadata": metadata
-                }
-
-                study_chunks.append(chunk_data)
-                chunk_batch.append(chunk_data)
-                total_chunks += 1
-
-                # 배치 크기에 도달하면 파일에 쓰기
-                if len(chunk_batch) >= BATCH_SIZE:
-                    write_chunk_batch(chunk_writer, chunk_batch)
-                    # 메타데이터도 함께 처리
-                    new_studies = {metadata.get('nctId', ''): metadata}
-                    write_metadata_batch(metadata_writer, seen_studies, new_studies)
-                    chunk_batch = []
-                    # 메모리 정리 추가
-                    import gc
-                    gc.collect()
-                    print(f"\n      💾 {total_chunks}개 청크 저장 완료 (배치 저장)")
+                
+                text_chunks = create_chunks_with_overlap(
+                    text_for_chunking,
+                    chunk_size_min=CHUNK_SIZE_MIN,
+                    chunk_size_max=CHUNK_SIZE_MAX,
+                    overlap_min=OVERLAP_MIN,
+                    overlap_max=OVERLAP_MAX
+                )
+                
+                for chunk_text in text_chunks:
+                    if not chunk_text or not chunk_text.strip():
+                        continue
+                    
+                    global_chunk_counter += 1
+                    chunk_id = f"chi_{global_chunk_counter}"
+                    
+                    chunk_data = {
+                        "chunk_id": chunk_id,
+                        "nctId": metadata.get('nctId', ''),
+                        "chunk_text": chunk_text.strip(),
+                        "metadata": metadata
+                    }
+                    
+                    chunk_batch.append(chunk_data)
+                    total_chunks += 1
+                    
+                    if len(chunk_batch) >= BATCH_SIZE:
+                        write_chunk_batch(chunk_writer, chunk_batch)
+                        new_studies = {metadata.get('nctId', ''): metadata}
+                        write_metadata_batch(metadata_writer, seen_studies, new_studies)
+                        chunk_batch = []
+                        import gc
+                        gc.collect()
+                        print(f"\n      💾 {total_chunks}개 청크 저장 완료 (배치 저장)")
+            else:
+                # 필드별 개별 청킹: 각 필드(value)를 청크로 나누고, 각 청크에 해당 필드명(key)만 포함
+                field_order = [
+                    'detailedDescription',
+                    'armGroups',
+                    'primaryOutcomes',
+                    'secondaryOutcomes',
+                    'eligibilityCriteria'
+                ]
+                
+                for field_name in field_order:
+                    field_text = core_fields.get(field_name, '')
+                    if not field_text or not field_text.strip():
+                        continue
+                    
+                    # 필드별 특수 처리: 구분자로 먼저 나눈 후 각각 청킹
+                    # 필드별 오버랩 설정: 독립적인 항목은 오버랩 미적용
+                    USE_OVERLAP_FOR_FIELD = {
+                        'detailedDescription': True,      # 오버랩 적용 (문맥 중요)
+                        'armGroups': True,                # 오버랩 적용 (문맥 중요)
+                        'primaryOutcomes': True,          # 오버랩 적용 (문맥 중요)
+                        'secondaryOutcomes': False,        # 오버랩 미적용 (독립적인 항목)
+                        'eligibilityCriteria': False,     # 오버랩 미적용 (구조화된 조건)
+                    }
+                    use_overlap = USE_OVERLAP_FOR_FIELD.get(field_name, True)  # 기본값: 오버랩 적용
+                    
+                    if field_name == 'secondaryOutcomes':
+                        # secondaryOutcomes는 " ||| " 구분자로 먼저 나누기
+                        parts = [p.strip() for p in field_text.split(' ||| ') if p.strip()]
+                        
+                        # 중복 제거: 동일한 part가 여러 번 나타나면 한 번만 청킹
+                        seen_parts = set()
+                        unique_parts = []
+                        for part in parts:
+                            if part and part not in seen_parts:
+                                seen_parts.add(part)
+                                unique_parts.append(part)
+                        
+                        field_chunks = []
+                        for part in unique_parts:
+                            # 오버랩 없이 청킹 (독립적인 항목이므로)
+                            part_chunks = create_chunks_with_overlap(
+                                part,
+                                chunk_size_min=CHUNK_SIZE_MIN,
+                                chunk_size_max=CHUNK_SIZE_MAX,
+                                overlap_min=0,  # 오버랩 미적용
+                                overlap_max=0   # 오버랩 미적용
+                            )
+                            field_chunks.extend(part_chunks)
+                    elif field_name == 'eligibilityCriteria':
+                        # eligibilityCriteria는 섹션 구분자로 먼저 나누기
+                        # "Key Inclusion Criteria:", "Key Exclusion Criteria:", "Inclusion Criteria:", "Exclusion Criteria:" 모두 인식
+                        # 성능 최적화: 정규식 컴파일을 한 번만 수행
+                        # "Key "는 선택적으로 포함될 수 있음
+                        section_pattern = re.compile(r'(?i)(Key\s+)?(Inclusion|Exclusion)\s+Criteria:', re.IGNORECASE)
+                        
+                        # finditer로 모든 구분자 위치 찾기
+                        parts = []
+                        last_end = 0
+                        matches = list(section_pattern.finditer(field_text))
+                        
+                        if not matches:
+                            # 구분자가 없으면 전체를 하나의 부분으로
+                            parts.append(field_text)
+                        else:
+                            for match in matches:
+                                # 구분자 앞의 텍스트
+                                prefix = field_text[last_end:match.start()].strip()
+                                
+                                # 구분자 전체 (Key + Inclusion/Exclusion + Criteria:)
+                                section_header = match.group(0)
+                                
+                                # 다음 구분자까지의 내용 (또는 끝까지)
+                                next_match_start = matches[matches.index(match) + 1].start() if matches.index(match) + 1 < len(matches) else len(field_text)
+                                content = field_text[match.end():next_match_start].strip()
+                                
+                                # 의미 없는 내용 필터링: "-", "None", "N/A", 빈 문자열, 매우 짧은 문자열(10자 미만) 등
+                                # 단, 구분자만 있어도 의미가 있을 수 있으므로 최소 길이 체크
+                                MIN_CONTENT_LENGTH = 10  # 구분자 제외 실제 내용 최소 길이
+                                meaningless_patterns = ['-', 'none', 'n/a', 'na', 'null', 'nil', 'tbd', 'tba']
+                                
+                                # content가 의미 있는지 체크
+                                content_is_meaningful = (
+                                    len(content) >= MIN_CONTENT_LENGTH and
+                                    content.lower() not in meaningless_patterns and
+                                    not content.replace('-', '').replace(' ', '').replace('\n', '').replace('\t', '').strip() == ''
+                                )
+                                
+                                # 구분자 앞의 짧은 텍스트(예: "Key")는 섹션 시작에 포함
+                                if prefix and len(prefix) <= 20:
+                                    # 짧은 prefix는 무시하거나 섹션 시작에 포함
+                                    if content_is_meaningful:
+                                        parts.append(section_header + ' ' + content)
+                                elif prefix:
+                                    # 긴 prefix는 별도 섹션으로 처리
+                                    parts.append(prefix)
+                                    if content_is_meaningful:
+                                        parts.append(section_header + ' ' + content)
+                                else:
+                                    # prefix가 없으면 섹션만
+                                    if content_is_meaningful:
+                                        parts.append(section_header + ' ' + content)
+                                    # content가 의미 없으면 이 섹션은 건너뜀 (구분자만 있고 내용이 없음)
+                                
+                                last_end = next_match_start
+                            
+                            # 마지막 구분자 이후의 텍스트가 있으면 추가
+                            if last_end < len(field_text):
+                                remaining = field_text[last_end:].strip()
+                                if remaining and len(remaining) >= MIN_CONTENT_LENGTH:
+                                    parts.append(remaining)
+                        
+                        # 각 부분을 청킹 (최적화: extend 대신 리스트 컴프리헨션)
+                        field_chunks = []
+                        MIN_PART_LENGTH = 20  # part 최소 길이 (구분자 포함)
+                        for part in parts:
+                            if part and len(part.strip()) >= MIN_PART_LENGTH:
+                                # 오버랩 없이 청킹 (구조화된 조건이므로)
+                                part_chunks = create_chunks_with_overlap(
+                                    part,
+                                    chunk_size_min=CHUNK_SIZE_MIN,
+                                    chunk_size_max=CHUNK_SIZE_MAX,
+                                    overlap_min=0,  # 오버랩 미적용
+                                    overlap_max=0   # 오버랩 미적용
+                                )
+                                field_chunks.extend(part_chunks)
+                    else:
+                        # 다른 필드는 오버랩 설정에 따라 청킹
+                        overlap_min_val = OVERLAP_MIN if use_overlap else 0
+                        overlap_max_val = OVERLAP_MAX if use_overlap else 0
+                        field_chunks = create_chunks_with_overlap(
+                            field_text,
+                            chunk_size_min=CHUNK_SIZE_MIN,
+                            chunk_size_max=CHUNK_SIZE_MAX,
+                            overlap_min=overlap_min_val,
+                            overlap_max=overlap_max_val
+                        )
+                    
+                    # 각 필드 청크에 대해 chunk_data 생성
+                    for field_chunk_text in field_chunks:
+                        # strip() 한 번만 호출 (성능 최적화)
+                        field_chunk_text = field_chunk_text.strip()
+                        if not field_chunk_text:
+                            continue
+                        
+                        # JSON 직렬화 후 길이 체크 (MAX_CHUNK_CHARS 제한)
+                        # 성능 최적화: JSON 직렬화 대신 텍스트 길이 + 여유분으로 근사치 계산
+                        # JSON 구조: {"field_name": "text"} 형태이므로 필드명 길이 + 따옴표 등 고려
+                        # 대략: 텍스트 길이 + 필드명 길이 + 20자 여유분
+                        MAX_CHUNK_CHARS = 1000
+                        estimated_json_len = len(field_chunk_text) + len(field_name) + 20
+                        
+                        # 정확한 길이 확인 (필요시에만 JSON 직렬화)
+                        if estimated_json_len > MAX_CHUNK_CHARS:
+                            chunk_fields_temp = {field_name: field_chunk_text}
+                            chunk_json_temp = json.dumps(chunk_fields_temp, ensure_ascii=False)
+                            
+                            if len(chunk_json_temp) > MAX_CHUNK_CHARS:
+                                # 문장 단위로 나누면서 JSON 길이 체크 및 오버랩 적용
+                                sentences = split_sentences(field_chunk_text)
+                                sub_chunks = []  # 서브 청크 리스트
+                                current_sub_chunk_sentences = []  # 현재 서브 청크의 문장들
+                                
+                                def _normalize_sentence_for_join(s: str) -> str:
+                                    """문장을 join하기 위해 정규화: 끝의 마침표 제거"""
+                                    s = s.strip()
+                                    # 문장 끝의 마침표, 느낌표, 물음표 제거 (join 시 다시 추가됨)
+                                    s = s.rstrip('.!? ')
+                                    return s
+                                
+                                def _join_sentences(sent_list: list[str]) -> str:
+                                    """문장들을 자연스럽게 join (중복 마침표 방지)"""
+                                    if not sent_list:
+                                        return ""
+                                    # 각 문장의 끝 마침표 제거 후 join
+                                    normalized = [_normalize_sentence_for_join(s) for s in sent_list if s.strip()]
+                                    if not normalized:
+                                        return ""
+                                    # '. '로 join하고 마지막에 마침표 추가
+                                    result = '. '.join(normalized)
+                                    # 마지막 문장이 이미 마침표로 끝나지 않으면 추가
+                                    if result and not result.rstrip().endswith(('.', '!', '?')):
+                                        result += '.'
+                                    return result
+                                
+                                for sentence in sentences:
+                                    sentence = sentence.strip()
+                                    if not sentence:
+                                        continue
+                                    
+                                    # 문장을 추가했을 때의 JSON 길이 확인
+                                    test_sentences = current_sub_chunk_sentences + [sentence]
+                                    test_chunk_text = _join_sentences(test_sentences)
+                                    test_fields = {field_name: test_chunk_text}
+                                    test_json = json.dumps(test_fields, ensure_ascii=False)
+                                    
+                                    # MAX_CHUNK_CHARS 초과 시 현재까지의 서브 청크 저장
+                                    if len(test_json) > MAX_CHUNK_CHARS and current_sub_chunk_sentences:
+                                        # 현재 서브 청크 저장
+                                        sub_chunk_text = _join_sentences(current_sub_chunk_sentences)
+                                        sub_chunks.append(sub_chunk_text)
+                                        
+                                        # 오버랩 적용: 마지막 몇 문장을 다음 청크에 포함
+                                        # 오버랩 크기: 최소 1문장, 최대 3문장 (또는 100자 이하)
+                                        overlap_sentences = []
+                                        overlap_chars = 0
+                                        for s in reversed(current_sub_chunk_sentences):
+                                            if overlap_chars + len(s) < 100 and len(overlap_sentences) < 3:
+                                                overlap_sentences.insert(0, s)
+                                                overlap_chars += len(s)
+                                            else:
+                                                break
+                                        
+                                        # 새 서브 청크 시작 (오버랩 문장 + 현재 문장)
+                                        current_sub_chunk_sentences = overlap_sentences + [sentence]
+                                    else:
+                                        # 현재 서브 청크에 문장 추가
+                                        current_sub_chunk_sentences.append(sentence)
+                                
+                                # 마지막 서브 청크 저장
+                                if current_sub_chunk_sentences:
+                                    sub_chunk_text = _join_sentences(current_sub_chunk_sentences)
+                                    sub_chunks.append(sub_chunk_text)
+                                
+                                # 각 서브 청크를 chunk_data로 생성
+                                for sub_chunk_text in sub_chunks:
+                                    global_chunk_counter += 1
+                                    chunk_id = f"chi_{global_chunk_counter}"
+                                    chunk_fields = {field_name: sub_chunk_text}
+                                    
+                                    chunk_data = {
+                                        "chunk_id": chunk_id,
+                                        "nctId": metadata.get('nctId', ''),
+                                        "chunk_text": sub_chunk_text,
+                                        "metadata": metadata,
+                                        "core_fields": chunk_fields
+                                    }
+                                    chunk_batch.append(chunk_data)
+                                    total_chunks += 1
+                            else:
+                                # 예상치가 넘었지만 실제로는 MAX_CHUNK_CHARS 이하인 경우
+                                global_chunk_counter += 1
+                                chunk_id = f"chi_{global_chunk_counter}"
+                                chunk_fields = {field_name: field_chunk_text}
+                                
+                                chunk_data = {
+                                    "chunk_id": chunk_id,
+                                    "nctId": metadata.get('nctId', ''),
+                                    "chunk_text": field_chunk_text,
+                                    "metadata": metadata,
+                                    "core_fields": chunk_fields
+                                }
+                                chunk_batch.append(chunk_data)
+                                total_chunks += 1
+                        else:
+                            # MAX_CHUNK_CHARS 이하면 그대로 저장
+                            global_chunk_counter += 1
+                            chunk_id = f"chi_{global_chunk_counter}"
+                            
+                            # 해당 필드명(key)과 필드 청크(value)만 포함
+                            chunk_fields = {field_name: field_chunk_text}
+                            
+                            chunk_data = {
+                                "chunk_id": chunk_id,
+                                "nctId": metadata.get('nctId', ''),
+                                "chunk_text": field_chunk_text,
+                                "metadata": metadata,
+                                "core_fields": chunk_fields  # 필드명: 필드 청크만 포함
+                            }
+                            
+                            chunk_batch.append(chunk_data)
+                            total_chunks += 1
+                        
+                        # 배치 크기에 도달하면 파일에 쓰기
+                        if len(chunk_batch) >= BATCH_SIZE:
+                            write_chunk_batch(chunk_writer, chunk_batch)
+                            new_studies = {metadata.get('nctId', ''): metadata}
+                            write_metadata_batch(metadata_writer, seen_studies, new_studies)
+                            chunk_batch = []
+                            # 가비지 컬렉션 빈도: Lambda는 더 자주, 로컬은 덜 자주
+                            if total_chunks % (BATCH_SIZE * GC_BATCH_INTERVAL) == 0:
+                                import gc
+                                gc.collect()
+                            # 출력 빈도: Lambda는 더 자주, 로컬은 덜 자주
+                            output_interval = 5 if IS_LAMBDA else 10
+                            if total_chunks % (BATCH_SIZE * output_interval) == 0:
+                                print(f"\n      💾 {total_chunks}개 청크 저장 완료 (배치 저장)")
 
             processed_studies += 1
 
             # 처리 완료된 study의 청크 데이터는 이미 파일에 저장되었으므로
             # 메모리에서 제거 (study_chunks는 로컬 변수이므로 자동 해제됨)
-            # 주기적으로 가비지 컬렉션 실행
-            if processed_studies % 100 == 0:
+            # 주기적으로 가비지 컬렉션 실행 (Lambda는 더 자주, 로컬은 덜 자주)
+            if processed_studies % GC_STUDY_INTERVAL == 0:
                 import gc
                 gc.collect()
 

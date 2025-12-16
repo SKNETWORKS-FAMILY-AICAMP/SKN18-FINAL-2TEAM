@@ -122,6 +122,146 @@ docker ps
 ---
 ## 2. NIH
 
+### 전체 프로세스 흐름
+
+```
+1. Ingest (수집)
+   → data/raw/nih/{YYYYMMDD}/*.json
+
+2. Normalize (정규화)
+   → data/processed/nih/success/year=YYYY/month=MM/day=DD/stage=cleaned/cleaned_data_*.json
+
+3. Chunk (청킹)
+   → data/processed/nih/success/year=YYYY/month=MM/day=DD/stage=chunked/chunk.csv
+   → data/processed/nih/success/year=YYYY/month=MM/day=DD/stage=chunked/metadata.csv
+
+4. Embed (임베딩)
+   → data/processed/nih/success/year=YYYY/month=MM/day=DD/stage=embed/{HHMMSS}_nih_embeddings.csv
+
+5. Upsert (DB 저장)
+   → PostgreSQL (pgvector)
+```
+
+### 각 단계별 특징
+
+#### 1. Ingest (수집)
+- **입력**: ClinicalTrials.gov API
+- **출력**: `data/raw/nih/{YYYYMMDD}/*.json`
+- **특징**:
+  - 조건(condition) 및 국가(country)별로 데이터 수집
+  - 페이지 단위로 JSON 파일 저장
+  - Rate limiting 적용
+
+#### 2. Normalize (정규화)
+- **입력**: `data/raw/nih/{YYYYMMDD}/*.json`
+- **출력**: `data/processed/nih/success/year=YYYY/month=MM/day=DD/stage=cleaned/cleaned_data_*.json`
+- **특징**:
+  - 메타데이터 추출 (`extract_metadata`)
+  - 핵심 필드 추출 (`extract_core_fields`):
+    - `detailedDescription`: 자세한 설명
+    - `armGroups`: 치료군 설명
+    - `primaryOutcomes`: 주요 결과
+    - `secondaryOutcomes`: 부가 결과 (중복 제거 적용, " ||| " 구분자로 연결)
+    - `eligibilityCriteria`: 참가 자격 기준
+  - 텍스트 클렌징 (`clean_text`)
+  - 파일 분할: 큰 파일은 여러 part로 분할 (`cleaned_data_*_part000.json`)
+
+#### 3. Chunk (청킹)
+- **입력**: `stage=cleaned/cleaned_data_*.json` (최신 파일 1개만 선택)
+- **출력**: 
+  - `stage=chunked/chunk.csv` (덮어쓰기 방식)
+  - `stage=chunked/metadata.csv` (덮어쓰기 방식)
+- **특징**:
+  - **필드별 개별 청킹**: 각 필드를 독립적으로 청킹하여 `{"필드명": "청크 텍스트"}` 형태로 저장
+  - **필드별 오버랩 설정**:
+    - `detailedDescription`, `armGroups`, `primaryOutcomes`: 오버랩 적용 (문맥 중요)
+    - `secondaryOutcomes`, `eligibilityCriteria`: 오버랩 미적용 (독립적인 항목)
+  - **중복 제거**:
+    - `secondaryOutcomes`: 원본 데이터에서 중복 description 제거
+    - 청킹 단계에서도 part 간 중복 제거 (이중 안전장치)
+  - **특수 처리**:
+    - `secondaryOutcomes`: " ||| " 구분자로 나눈 후 각 part를 독립적으로 청킹
+    - `eligibilityCriteria`: 섹션 구분자(Inclusion/Exclusion Criteria)로 나눈 후 각 섹션을 독립적으로 청킹
+  - **청킹 설정**:
+    - 청크 크기: 600 토큰
+    - 오버랩 크기: 120 토큰 (적용되는 필드만)
+  - **시맨틱 청킹**: 문장 단위로 분리 후 오버랩 적용 (NLTK 사용)
+
+#### 4. Embed (임베딩)
+- **입력**: `stage=chunked/chunk.csv` (최신 파일 1개만 선택)
+- **출력**: `stage=embed/{HHMMSS}_nih_embeddings.csv` (타임스탬프 포함 새 파일 생성)
+- **특징**:
+  - **새 파일 생성 방식**: 타임스탬프를 포함한 파일명으로 매번 새 파일 생성
+  - **배치 처리**: 배치 단위로 저장하여 중간에 끊겨도 데이터 보존
+  - **모델**: OpenAI `text-embedding-3-small` (기본값)
+  - **임베딩 차원**: 1536
+  - **중복 제거 없음**: 모든 청크를 그대로 임베딩 (오버랩된 청크도 모두 임베딩)
+
+#### 5. Upsert (DB 저장)
+- **입력**: `stage=embed/{HHMMSS}_nih_embeddings.csv`
+- **출력**: PostgreSQL (pgvector)
+- **특징**:
+  - 벡터 DB에 임베딩 저장
+  - 중복 체크 및 업데이트
+
+### 데이터 구조
+
+#### Core Fields 구조
+```json
+{
+  "detailedDescription": "자세한 설명 텍스트",
+  "armGroups": "치료군 설명 텍스트",
+  "primaryOutcomes": "주요 결과 텍스트",
+  "secondaryOutcomes": "결과1 ||| 결과2 ||| 결과3",
+  "eligibilityCriteria": "Inclusion Criteria: ... Exclusion Criteria: ..."
+}
+```
+
+#### Chunk CSV 구조
+```csv
+nctid,chunk_id,chunk
+NCT12345,chi_1,"{\"secondaryOutcomes\": \"Measured in minutes.\"}"
+NCT12345,chi_2,"{\"eligibilityCriteria\": \"Inclusion Criteria: Age 18-75.\"}"
+```
+
+#### Embedding CSV 구조
+```csv
+nctid,chunk_id,text,embedding_model,embedding_dim,embedding
+NCT12345,chi_1,"Secondary Outcomes: Measured in minutes.",text-embedding-3-small,1536,"[0.123, 0.456, ...]"
+```
+
+### 파일 처리 방식
+
+| 단계 | 파일 처리 방식 | 기존 파일 처리 |
+|------|---------------|----------------|
+| **Normalize** | 새 파일 생성 (타임스탬프) | 기존 파일 유지 |
+| **Chunk** | 덮어쓰기 (`'w'` 모드) | 삭제 후 재생성 |
+| **Embed** | 새 파일 생성 (타임스탬프) | 기존 파일 유지 |
+
+### 청킹 프로세스 상세
+
+#### 1. 시맨틱 청킹 (문장 단위 분리)
+- NLTK `sent_tokenize` 사용
+- 약어 처리: "Fig.", "No." 등 자동 인식
+- 문장 경계를 기준으로 분리
+
+#### 2. 오버랩 적용 (필드별)
+- **오버랩 적용 필드**: 문장 단위로 오버랩
+  - 예: 청크1 = "문장1. 문장2. 문장3."
+  - 청크2 = "문장2. 문장3. 문장4." (문장2, 문장3 오버랩)
+- **오버랩 미적용 필드**: 각 항목을 독립 청크로
+  - 예: `secondaryOutcomes`의 각 outcome이 독립 청크
+
+#### 3. 중복 제거
+- **Normalize 단계**: 원본 데이터에서 중복 description 제거
+- **Chunk 단계**: part 간 중복 제거 (이중 안전장치)
+
+### 주요 설정
+
+- **청크 크기**: 600 토큰 (CHUNK_SIZE_MIN/MAX)
+- **오버랩 크기**: 120 토큰 (OVERLAP_MIN/MAX, 적용되는 필드만)
+- **배치 크기**: 로컬 200개, Lambda 70개
+- **파일 분할**: Normalize 단계에서 100개 study마다 파일 분할
 
 ---
 ## 3. Protocols
