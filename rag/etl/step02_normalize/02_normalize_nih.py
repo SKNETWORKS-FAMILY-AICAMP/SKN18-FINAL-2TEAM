@@ -345,8 +345,12 @@ def run_cleansing_only(json_files, output_file=None, success=True):
                         cleaned_text = clean_text(combined_text) if combined_text else ""
                         
                         # 클렌징된 데이터 저장
+                        # - combined_text, core_fields를 함께 저장하여
+                        #   이후 청킹 단계에서 필드별 위치 기반 core_fields 매핑이 가능하도록 함
                         cleaned_study = {
                             "metadata": metadata,
+                            "core_fields": core_fields,
+                            "combined_text": combined_text,
                             "cleaned_text": cleaned_text,
                             "source_file": os.path.basename(json_file)
                         }
@@ -709,6 +713,28 @@ def main():
     else:
         print(f"\n❌ 프로세스 실패")
         sys.exit(1)
+
+
+def run(raw_dir: str, processed_dir: str) -> None:
+    """
+    pipeline_runner에서 호출하는 진입점.
+    
+    Args:
+        raw_dir: raw 데이터 루트 디렉토리 (예: 'data/raw')
+        processed_dir: 정규화된 데이터 루트 디렉토리 (예: 'data/processed')
+        
+    현재 구현은 내부에서 사용하는 디렉토리 구조
+    (get_project_root() 기준 data/raw/nih, data/processed/nih)를 그대로 사용하며,
+    인자로 전달된 경로는 주로 로그용으로만 활용합니다.
+    """
+    print("=" * 60)
+    print("NIH Normalize (pipeline_runner 호출)")
+    print(f"RAW DIR (arg): {raw_dir}")
+    print(f"PROCESSED DIR (arg): {processed_dir}")
+    print("=" * 60)
+    
+    # 기존 main 로직 재사용
+    main()
 
 
 if __name__ == "__main__":
