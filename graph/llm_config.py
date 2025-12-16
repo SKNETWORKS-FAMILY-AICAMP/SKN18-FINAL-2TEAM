@@ -11,7 +11,7 @@ llm_config.py
     {파일명}_{함수명}_llm
 """
 
-from graph.nodes.call_llm import gpt4o_mini, gpt5_nano, sllm
+from graph.nodes.call_llm import gpt4_1_nano, gpt4o_mini, gpt5_nano, sllm
 
 
 # ===== guardrail.py =====
