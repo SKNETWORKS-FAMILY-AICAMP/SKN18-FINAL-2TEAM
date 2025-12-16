@@ -179,8 +179,8 @@ INSERT INTO t_chat_reference (chat_sid, message_sid, source, badge, title, descr
 (6, 2, 'P', 'L', 'Evolution and diversity of eukaryotic cells', 'Exploring the evolutionary history and remarkable diversity of eukaryotic cell types across different kingdoms of life.', 'J', 'PubMed : 29876543', '29876543', '2023-05-10'::timestamp, 'Anderson R et al.', 9, CURRENT_TIMESTAMP);
 
 -- t_paper_graph 테이블 더미 데이터 삽입
-INSERT INTO t_paper_graph (graph_title, graph_description, status, created_id, updated_id, created_at) VALUES
-('관련 논문 네트워크', '논문 간 인용 관계를 시각화한 그래프', 'E', 'system', 'system', CURRENT_TIMESTAMP);
+INSERT INTO t_paper_graph (graph_title, graph_description, status, created_id, created_at) VALUES
+('관련 논문 네트워크', '논문 간 인용 관계를 시각화한 그래프', 'E', 'system', CURRENT_TIMESTAMP);
 
 -- t_paper_node 테이블 더미 데이터 삽입 (graph_sid=1)
 INSERT INTO t_paper_node (graph_sid, paper_id, paper_label, node_size, node_color, x_position, y_position, created_id, created_at) VALUES
