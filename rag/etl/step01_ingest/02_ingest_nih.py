@@ -17,8 +17,8 @@ from threading import Lock  # 스레드 안전성
 # ===== 설정 변수 =====
 CONDITIONS = [
     "Neoplasms",
-    "Autoimmune Diseases", 
-    "Cardiovascular Diseases"
+    "Autoimmune Diseases",
+    "Cardiovascular Diseases",
 ]  # 고정된 질병명 목록
 COUNTRIES = ["US", "KR", "JP"]  # 고정된 국가 코드 목록
 DATE_FROM = "2023-01-01"  # 시작 날짜 (고정)
@@ -620,3 +620,32 @@ if __name__ == "__main__":
     print("\n" + "=" * 60)
     print("모든 Condition 및 Country 조합 다운로드 완료!")
     print("=" * 60)
+
+
+def run(raw_dir: str, limit: int | None = None) -> None:
+    """
+    pipeline_runner에서 호출하는 진입점.
+    
+    Args:
+        raw_dir: 전체 raw 데이터 루트 디렉토리 (예: 'data/raw')
+        limit: 가져올 문서 수 제한 (현재 NIH ingest에서는 사용하지 않음)
+    """
+    global OUTPUT_FOLDER
+
+    # pipeline_runner의 cfg.raw_dir 하위에 nih/{오늘날짜} 디렉토리를 생성하여 사용
+    # 예: raw_dir='data/raw' → 'data/raw/nih/20251215'
+    today = datetime.now().strftime("%Y%m%d")
+    base_output = os.path.join(raw_dir, "nih", today)
+    os.makedirs(base_output, exist_ok=True)
+    OUTPUT_FOLDER = base_output
+
+    print("=" * 60)
+    print("Clinical Trials 데이터 다운로드 (pipeline_runner 호출)")
+    print(f"RAW DIR: {raw_dir}")
+    print(f"OUTPUT_FOLDER (NIH): {OUTPUT_FOLDER}")
+    if limit is not None:
+        print(f"※ NIH ingest는 limit 파라미터를 직접 사용하지 않습니다 (무시).")
+    print("=" * 60)
+
+    # 기존 메인 로직 재사용
+    fetch_all_conditions()
