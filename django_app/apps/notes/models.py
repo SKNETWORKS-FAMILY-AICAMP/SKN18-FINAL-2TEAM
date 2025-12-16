@@ -14,11 +14,6 @@ class Note(models.Model):
     ]
     
     note_sid = models.AutoField(primary_key=True, db_column='note_sid')
-    owner = models.ForeignKey(
-        'account.CustomUser',
-        on_delete=models.CASCADE,
-        db_column='owner_id'
-    )
     title = models.CharField(max_length=500, db_column='title')
     content = models.TextField(null=True, blank=True, db_column='content')
     status = models.CharField(
