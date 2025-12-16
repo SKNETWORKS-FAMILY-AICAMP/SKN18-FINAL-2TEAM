@@ -33,7 +33,7 @@
                             <div class="meta-author">
                                 <img src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop" alt="Author" class="author-avatar" />
                                 <span id="noteDetailAuthor">
-                                    {% if note %}{{ note.owner.get_full_name|default:note.owner.email }}{% endif %}
+                                    {% if author %}{{ author }}{% elif note %}{{ note.created_id }}{% endif %}
                                 </span>
                             </div>
                             <span class="meta-separator">•</span>

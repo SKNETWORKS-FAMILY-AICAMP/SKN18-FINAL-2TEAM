@@ -24,7 +24,7 @@ def api_notes_list(request):
     # 해당 계정의 노트만 조회 + 댓글 수 집계
     notes = (
         Note.objects
-        .filter(owner=request.user, status='E')
+        .filter(created_id=request.user.user_id, status='E')
         .annotate(comment_count=Count('comments'))
     )
     
@@ -70,13 +70,47 @@ def api_note_create(request):
             if not title:
                 return JsonResponse({'error': 'Title is required'}, status=400)
             note = Note.objects.create(
-                owner=request.user,
                 title=title,
                 content=data.get('content', ''),
                 created_id=request.user.user_id,
                 updated_id=request.user.user_id
             )
             return JsonResponse({'id': note.note_sid, 'status': 'created'})
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'Invalid JSON'}, status=400)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+    return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+@login_required
+@csrf_exempt
+def api_note_update(request):
+    """API: 노트 수정"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            note_id = data.get('id')
+            title = data.get('title')
+            
+            if not note_id:
+                return JsonResponse({'error': 'Note ID is required'}, status=400)
+            if not title:
+                return JsonResponse({'error': 'Title is required'}, status=400)
+            
+            try:
+                note_id_int = int(note_id)
+            except ValueError:
+                return JsonResponse({'error': 'Invalid note ID'}, status=400)
+            
+            note = Note.objects.get(note_sid=note_id_int, created_id=request.user.user_id, status='E')
+            note.title = title
+            note.content = data.get('content', '')
+            note.updated_id = request.user.user_id
+            note.save()
+            
+            return JsonResponse({'id': note.note_sid, 'status': 'updated'})
+        except Note.DoesNotExist:
+            return JsonResponse({'error': 'Note not found'}, status=404)
         except json.JSONDecodeError:
             return JsonResponse({'error': 'Invalid JSON'}, status=400)
         except Exception as e:
@@ -96,13 +130,13 @@ def api_note_detail(request):
         return JsonResponse({'error': 'Invalid note ID'}, status=400)
     
     try:
-        note = Note.objects.get(note_sid=note_id, owner=request.user, status='E')
+        note = Note.objects.get(note_sid=note_id, created_id=request.user.user_id, status='E')
         data = {
             'id': note.note_sid,
             'title': note.title,
             'content': note.content or '',
             'date': note.created_at.strftime('%Y-%m-%d'),
-            'author': note.owner.get_full_name() or note.owner.email,
+            'author': request.user.get_full_name() or request.user.email,
             'shared': 0,  # 공유 로직 추가 시 구현
             'comments': note.comments.count(),
             'tags': [tag.tag_name for tag in note.tags.all()],
@@ -122,11 +156,12 @@ def note_detail(request):
     
     try:
         note_id_int = int(note_id)
-        note = Note.objects.get(note_sid=note_id_int, owner=request.user, status='E')
+        note = Note.objects.get(note_sid=note_id_int, created_id=request.user.user_id, status='E')
         comments = NoteComment.objects.filter(note=note).order_by('created_at')
         context = {
             'note': note,
             'comments': comments,
+            'author': request.user.get_full_name() or request.user.email,
         }
         return render(request, 'note/note_detail.html', context)
     except ValueError:
@@ -161,7 +196,7 @@ def api_note_add_comment(request):
         if not note_id or not comment_text:
             return JsonResponse({'error': 'Note ID and comment text are required'}, status=400)
         
-        note = Note.objects.get(note_sid=note_id, owner=request.user, status='E')
+        note = Note.objects.get(note_sid=note_id, created_id=request.user.user_id, status='E')
         
         comment = NoteComment.objects.create(
             note=note,
@@ -197,7 +232,7 @@ def api_note_comments(request):
     
     try:
         note_id = int(note_id_str)
-        note = Note.objects.get(note_sid=note_id, owner=request.user, status='E')
+        note = Note.objects.get(note_sid=note_id, created_id=request.user.user_id, status='E')
         comments = NoteComment.objects.filter(note=note).order_by('created_at')
         
         data = [{
