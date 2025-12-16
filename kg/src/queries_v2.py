@@ -309,7 +309,7 @@ class PaperRAGQueries:
     RETURN chunks
     ",
     "
-    CALL apoc.nodes.link(chunks, 'NEXT') YIELD input, output
+    CALL apoc.nodes.link(chunks, 'NEXT')
     RETURN 0
     ",
     {batchSize: 1000, parallel: false, iterateList: true}
@@ -432,21 +432,30 @@ class PaperRAGQueries:
 
     # 3단계: 집계 (Aggregation) - 로딩 완료 후 한방에 계산
     # Row-by-Row로 +1 하는 것보다 이게 훨씬 빠르고 Lock이 안 걸림
+    # 3단계: 집계 (Aggregation) - 최적화 버전
     CALC_ARTICLE_ENTITY_AGGREGATION = """
     CALL apoc.periodic.iterate(
     "
+    // [최적화 1] 멘션이 있는 논문만 가져오기 (불필요한 NULL 체크 제거)
     MATCH (a:Article)
+    WHERE (a)-[:HAS_MENTION]->() 
     RETURN a
     ",
     "
-    // 해당 논문의 멘션을 통해 Entity 집계
+    // [최적화 2] 해당 논문의 멘션을 통해 Entity 집계
     MATCH (a)-[:HAS_MENTION]->(m:Mention)-[:MENTION_OF]->(e:Entity)
     WITH a, e, count(m) as mention_count
     
+    // [최적화 3] 관계 생성
     MERGE (a)-[r:HAS_ENTITY]->(e)
     SET r.count = mention_count
     ",
-    {batchSize: 1000, parallel: false}
+    {
+        batchSize: 100,       // [중요] 1000은 너무 큽니다. 50~100 추천
+        parallel: true,       // [중요] 병렬 처리 활성화
+        concurrency: 4,       // CPU 코어 수에 맞춰 조절 (보통 4~8)
+        retries: 3            // 병렬 처리 시 락 충돌 대비 재시도 설정
+    }
     )
     """
 
@@ -658,14 +667,25 @@ class ClinicalTrialQueries:
     LINK_TRIAL_ENTITIES_FROM_MENTIONS = """
     CALL apoc.periodic.iterate(
     "
-    MATCH (ct:ClinicalTrial)-[:HAS_MENTION]->(m:Mention)-[:MENTION_OF]->(e:Entity)
-    RETURN ct, e
+    // 1. 멘션이 있는 ClinicalTrial만 골라냅니다 (불필요한 탐색 제거)
+    MATCH (ct:ClinicalTrial)
+    WHERE (ct)-[:HAS_MENTION]->()
+    RETURN ct
     ",
     "
+    // 2. 해당 CT 내부에서 Entity별로 멘션 수를 미리 셉니다 (Aggregation)
+    MATCH (ct)-[:HAS_MENTION]->(m:Mention)-[:MENTION_OF]->(e:Entity)
+    WITH ct, e, count(m) as mention_count
+    
+    // 3. 관계는 딱 한 번만 만들거나 갱신합니다 (쓰기 작업 최소화)
     MERGE (ct)-[r:HAS_ENTITY]->(e)
-    ON CREATE SET r.count = 1
-    ON MATCH  SET r.count = r.count + 1
+    SET r.count = mention_count
     ",
-    {batchSize: 5000, parallel: false}
+    {
+        batchSize: 100,      // 트랜잭션당 처리할 CT 개수 (메모리 보호)
+        parallel: true,      // 병렬 처리 활성화
+        concurrency: 4,      // CPU 활용도 UP
+        retries: 3           // 락 충돌 시 재시도
+    }
     )
     """
