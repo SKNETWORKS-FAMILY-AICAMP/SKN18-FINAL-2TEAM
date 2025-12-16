@@ -24,66 +24,77 @@ VALID_CASE_TYPES = ["SIMULATION_Q", "INFERENCE_Q", "BIO_Q", "PROTOCOL_Q"]
 
 
 # ---------------------------------------------
-# 🔹 응답 요약 함수 (LLM 기반)
+# 🔹 질문과 응답 요약 함수 (LLM 기반)
 # ---------------------------------------------
-def summarize_llm_response(full_response: str, max_length: int = 200) -> str:
+def summarize_llm_response(question: str, full_response: str, max_length: int = 500) -> str:
     """
-    LLM을 사용하여 응답을 의미있게 요약
+    LLM을 사용하여 질문과 응답을 함께 요약
     
     Args:
+        question: 사용자 질문
         full_response: 전체 LLM 응답
-        max_length: 최대 요약 길이
+        max_length: 최대 요약 길이 (기본값 500자)
     
     Returns:
-        요약된 응답
+        "~질문에 대한 응답으로 ~~~다." 형식의 요약
     """
-    if not full_response:
+    if not full_response or not question:
         return ""
     
-    # 이미 짧으면 그대로 반환
-    if len(full_response) <= max_length:
-        return full_response
+    # 응답 길이에 따라 문장 수 결정
+    response_length = len(full_response)
+    if response_length < 500:
+        sentence_count = 3
+        target_length = 300
+    else:
+        sentence_count = 10
+        target_length = max_length
     
     # LLM으로 요약
     try:
-        prompt = f"""다음 답변을 핵심 내용만 {max_length}자 이내로 간결하게 요약하세요.
+        prompt = f"""다음 질문과 답변을 "{question[:50]}... 질문에 대한 응답으로" 형식으로 시작하여 요약하세요.
 
-원본 답변:
+질문:
+{question}
+
+답변:
 {full_response}
 
 요약 규칙:
-1. 핵심 정보만 포함
-2. 리스트 형식이면 주요 항목만 언급 (전체 나열 금지)
-3. {max_length}자 이내로 작성
-4. 자연스럽고 완전한 문장으로 마무리
-5. 불완전한 문장이나 숫자로 끝나지 않기
+1. 반드시 "~질문에 대한 응답으로"로 시작하고 "~다."로 끝내기
+2. 질문의 핵심과 답변의 주요 내용을 모두 포함
+3. {"3문장" if response_length < 500 else "10문장 미만"}으로 작성
+4. {target_length}자 이내로 작성
+5. 자연스럽고 완전한 문장으로 구성
+6. 리스트 형식이면 주요 항목만 언급
 
 요약만 출력하세요:"""
 
         summary = memory_summarize_tool_llm(prompt).strip()
         
         # 길이 초과 시 문장 단위로 자르기
-        if len(summary) > max_length:
+        if len(summary) > target_length:
             # 마지막 완전한 문장까지만 포함
-            sentences = summary[:max_length].split('.')
+            sentences = summary[:target_length].split('.')
             if len(sentences) > 1:
                 summary = '.'.join(sentences[:-1]) + '.'
             else:
-                summary = summary[:max_length-3] + "..."
+                summary = summary[:target_length-3] + "..."
         
-        print(f"[Summarize] LLM 요약 완료: {len(full_response)}자 → {len(summary)}자")
+        print(f"[Summarize] Q&A 요약 완료: 질문 {len(question)}자 + 응답 {len(full_response)}자 → 요약 {len(summary)}자 ({sentence_count}문장)")
         return summary
         
     except Exception as e:
         print(f"[Summarize] LLM 요약 실패: {e}, fallback 사용")
-        # fallback: 첫 문장만 추출
+        # fallback: 질문 요약 + 답변 첫 문장
+        question_summary = question[:50] + "..." if len(question) > 50 else question
         sentences = full_response.split('.')
         if sentences and sentences[0]:
-            fallback = sentences[0] + '.'
-            if len(fallback) > max_length:
-                fallback = fallback[:max_length-3] + "..."
+            fallback = f"{question_summary} 질문에 대한 응답으로 {sentences[0]}."
+            if len(fallback) > target_length:
+                fallback = fallback[:target_length-3] + "..."
             return fallback
-        return full_response[:max_length-3] + "..."
+        return f"{question_summary} 질문에 대한 응답입니다."
 
 
 # ---------------------------------------------
@@ -102,7 +113,7 @@ def memory_read_basic_tool(chat_room_id: str, user_id: str = "default") -> dict:
         dict: 직전 대화 정보
         {
             "last_question": "이전 질문",
-            "last_answer_summary": "이전 답변 요약", 
+            "last_summary": "질문과 답변 요약", 
             "last_case_type": "BIO_Q",
             "last_topic": "단백질 폴딩",
             "has_previous": True/False
@@ -120,7 +131,7 @@ def memory_read_basic_tool(chat_room_id: str, user_id: str = "default") -> dict:
         if memory is None:
             return {
                 "last_question": "",
-                "last_answer_summary": "",
+                "last_summary": "",
                 "last_case_type": "",
                 "last_topic": "",
                 "has_previous": False
@@ -137,19 +148,19 @@ def memory_read_basic_tool(chat_room_id: str, user_id: str = "default") -> dict:
         if not latest_conv:
             return {
                 "last_question": "",
-                "last_answer_summary": "",
+                "last_summary": "",
                 "last_case_type": "",
                 "last_topic": "",
                 "has_previous": False
             }
         
-        # 케이스 타입과 요약 답변 가져오기
+        # 케이스 타입과 요약 가져오기
         last_case_type = latest_conv.case_type or ""
-        last_answer_summary = latest_conv.summarize_response or ""
+        last_summary = latest_conv.summary or ""
         
         return {
             "last_question": latest_conv.original_question or "",
-            "last_answer_summary": last_answer_summary,
+            "last_summary": last_summary,
             "last_case_type": last_case_type,
             "last_topic": latest_conv.topic or "",
             "has_previous": True
@@ -159,7 +170,7 @@ def memory_read_basic_tool(chat_room_id: str, user_id: str = "default") -> dict:
         print(f"[memory_read_basic_tool Error] {e}")
         return {
             "last_question": "",
-            "last_answer_summary": "",
+            "last_summary": "",
             "last_case_type": "",
             "last_topic": "",
             "has_previous": False
@@ -202,7 +213,7 @@ def memory_read_node(state):
         # 조회된 대화들의 chat_id 로그
         print(f"\n[MemoryRead] 조회된 대화 개수: {len(conversations)}")
         for conv in conversations:
-            summary_preview = (conv.summarize_response or "")[:30] + "..." if conv.summarize_response else "N/A"
+            summary_preview = (conv.summary or "")[:30] + "..." if conv.summary else "N/A"
             print(f"[MemoryRead] chat_id={conv.chat_id}, case_type={conv.case_type}, created_at={conv.created_at}, summary={summary_preview}")
         
         # 가장 최근 대화 정보
@@ -210,7 +221,7 @@ def memory_read_node(state):
         last_summary = None
         if conversations:
             latest = conversations[0]
-            last_summary = latest.summarize_response
+            last_summary = latest.summary
             last_case = latest.case_type
         
         state["memory_slot"] = {
@@ -238,7 +249,7 @@ def memory_read_node(state):
         # 해당 케이스 타입의 히스토리만 최대 5개 조회
         relevant_conversations = [
             conv for conv in conversations 
-            if conv.case_type == target_case_type and conv.summarize_response
+            if conv.case_type == target_case_type and conv.summary
         ][:CASE_HISTORY_LIMIT]  # 최대 5개
         
         # relevant_history 구성
@@ -246,7 +257,7 @@ def memory_read_node(state):
             {
                 "chat_id": conv.chat_id,
                 "question": conv.original_question,
-                "answer_summary": conv.summarize_response,
+                "summary": conv.summary,
                 "keywords": conv.latest_keywords or []
             }
             for conv in relevant_conversations
@@ -271,7 +282,7 @@ def memory_read_node(state):
 def memory_write_node(state):
     """
     각 질문마다 새로운 ConversationMemory row 생성.
-    해당 케이스 컬럼에만 answer_summary 저장.
+    해당 케이스 컬럼에만 summary 저장.
     """
     # 노드 진입 로그
     print(f"\n{'='*60}")
@@ -292,7 +303,8 @@ def memory_write_node(state):
             and current_case_type != "NO_RELATION"):
 
             full_answer = state.get("final_answer", "")
-            answer_summary = summarize_llm_response(full_answer, max_length=200)
+            question = state.get("question", "")
+            summary = summarize_llm_response(question, full_answer, max_length=500)
             
             # 유효한 케이스 타입인지 확인
             if current_case_type in VALID_CASE_TYPES:
@@ -318,7 +330,7 @@ def memory_write_node(state):
                     referenced_memory_count=referenced_count,
                     case_type=current_case_type,
                     full_response=full_answer,
-                    summarize_response=answer_summary
+                    summary=summary
                 )
                 
                 db.add(new_memory)
@@ -329,7 +341,7 @@ def memory_write_node(state):
                 print(f"  - case_type: {current_case_type}")
                 print(f"  - referenced_memory_count: {referenced_count}개")
                 print(f"  - full_response: {len(full_answer)}자")
-                print(f"  - summarize_response: {answer_summary[:50]}...")
+                print(f"  - summary: {summary[:50]}...")
             else:
                 print(f"[MemoryWrite] Warning: 알 수 없는 case_type입니다: {current_case_type}")
 

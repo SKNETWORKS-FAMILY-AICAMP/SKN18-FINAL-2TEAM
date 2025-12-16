@@ -59,7 +59,7 @@ def _classify_with_llm(q: str, chat_room_id: str = None, user_id: str = "default
                 previous_context = f"""
 이전 대화 정보:
 - 이전 질문: {prev_data['last_question']}
-- 이전 답변 요약: {prev_data['last_answer_summary']}
+- 이전 요약: {prev_data['last_summary']}
 - 이전 케이스 타입: {prev_data['last_case_type']}
 - 이전 주제: {prev_data['last_topic']}
 """

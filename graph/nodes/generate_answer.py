@@ -87,7 +87,7 @@ def _generate_bio_answer(state: Dict[str, Any]) -> Dict[str, Any]:
         context_parts.append("=== 이전 대화 참고 ===")
         for i, hist in enumerate(relevant_history[:2], 1):  # 최근 2개만
             context_parts.append(f"[대화 {i}] Q: {hist['question'][:60]}")
-            context_parts.append(f"        A: {hist['answer_summary'][:100]}\n")
+            context_parts.append(f"        A: {hist['summary'][:100]}\n")
     
     # RAG 검색 결과 추가
     selected_chunks = state.get("selected_chunks", [])
@@ -160,7 +160,7 @@ def _generate_simulation_answer(state: Dict[str, Any]) -> Dict[str, Any]:
         history_parts = ["=== 이전 대화 참고 ==="]
         for i, hist in enumerate(relevant_history[:3], 1):  # 최근 3개만
             history_parts.append(f"[대화 {i}] Q: {hist['question'][:50]}...")
-            history_parts.append(f"        A: {hist['answer_summary'][:80]}...\n")
+            history_parts.append(f"        A: {hist['summary'][:80]}...\n")
         previous_context = "\n".join(history_parts) + "\n"
     
     # 시뮬레이션 툴 경로 안내 정보
@@ -236,7 +236,7 @@ def _generate_protocol_answer(state: Dict[str, Any]) -> Dict[str, Any]:
         context_parts.append("=== 이전 대화 참고 ===")
         for i, hist in enumerate(relevant_history[:2], 1):  # 최근 2개만
             context_parts.append(f"[대화 {i}] Q: {hist['question'][:60]}")
-            context_parts.append(f"        A: {hist['answer_summary'][:100]}\n")
+            context_parts.append(f"        A: {hist['summary'][:100]}\n")
     
     # RAG 검색 결과 추가
     selected_chunks = state.get("selected_chunks", [])
@@ -314,13 +314,13 @@ def _generate_inference_answer(state: Dict[str, Any]) -> Dict[str, Any]:
         history_parts = ["\n=== 이전 대화 참고 ==="]
         for i, hist in enumerate(relevant_history[:3], 1):  # 최근 3개만
             history_parts.append(f"[대화 {i}] Q: {hist['question'][:60]}")
-            history_parts.append(f"        A: {hist['answer_summary'][:100]}\n")
+            history_parts.append(f"        A: {hist['summary'][:100]}\n")
         previous_context = "\n".join(history_parts)
     else:
         # fallback: memory_slot 사용
         memory_slot = state.get("memory_slot", {})
         if memory_slot.get("last_summary"):
-            previous_context = f"\n이전 답변 요약: {memory_slot.get('last_summary')}"
+            previous_context = f"\n이전 요약: {memory_slot.get('last_summary')}"
     
     # 프롬프트 구성 (실험 결과 해석 특화)
     prompt = f"""다음은 생물학 실험 결과 해석에 관한 질문입니다.
