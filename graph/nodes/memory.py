@@ -20,7 +20,7 @@ MEMORY_CONTEXT_LIMIT = 3  # State 전달 시 최근 N개만
 CASE_HISTORY_LIMIT = 5    # 각 케이스별 최대 저장 개수
 
 # 지원하는 케이스 타입 목록
-VALID_CASE_TYPES = ["SIMULATION_Q", "INFERENCE_Q", "BIO_Q", "PROTOCOL_Q"]
+VALID_CASE_TYPES = ["SIMULATION_Q", "INFERENCE_Q", "BIO_Q", "PROTOCOL_Q", "USER_INFO"]
 
 
 # ---------------------------------------------
@@ -234,15 +234,21 @@ def memory_read_node(state):
         is_follow_up = state.get("is_follow_up", False)
         reference_case = state.get("reference_case_type")
         
+        # USER_INFO인 경우 항상 USER_INFO 타입 메모리 조회
+        if current_case == "USER_INFO":
+            target_case_type = "USER_INFO"
+            history_source = "USER_INFO"
+            print(f"[MemoryRead] USER_INFO 질문: USER_INFO 타입 히스토리 로드")
         # 꼬리질문이어도 원본 질문의 case_type을 기준으로 조회
         # 예: "내가 최근에 물어봤던 논문 내용이 뭐더라?" → BIO_Q로 분류 → BIO_Q 타입 메모리 조회
-        target_case_type = current_case
-        if is_follow_up:
+        elif is_follow_up:
+            target_case_type = current_case
             history_source = "FOLLOW_UP"
             print(f"[MemoryRead] 꼬리질문 감지: 원본 질문 타입({current_case}) 기준으로 히스토리 로드")
             if reference_case and reference_case != current_case:
                 print(f"[MemoryRead] 참고: 이전 대화 타입은 {reference_case}였지만, 원본 질문 타입({current_case}) 기준으로 조회")
         else:
+            target_case_type = current_case
             history_source = "CURRENT_TYPE"
             print(f"[MemoryRead] 일반 질문: {current_case} 타입 히스토리 로드")
         
@@ -304,7 +310,36 @@ def memory_write_node(state):
 
             full_answer = state.get("final_answer", "")
             question = state.get("question", "")
-            summary = summarize_llm_response(question, full_answer, max_length=500)
+            
+            # USER_INFO인 경우 요약은 사용자의 인적사항 1문장만
+            if current_case_type == "USER_INFO":
+                # LLM을 사용하여 사용자 인적사항을 1문장으로 요약
+                try:
+                    prompt = f"""다음 사용자의 인적사항을 1문장으로 요약하세요.
+
+사용자 발화: {question}
+
+요약 규칙:
+1. 반드시 1문장으로 작성 (마침표 포함)
+2. "사용자는 ~입니다." 또는 "사용자는 ~이다." 형식 사용
+3. 핵심 신분/직업 정보만 포함 (학생, 연구원, 교수 등)
+4. 50자 이내로 간결하게 작성
+
+요약만 출력하세요:"""
+                    summary = memory_summarize_tool_llm(prompt).strip()
+                    
+                    # 길이 제한
+                    if len(summary) > 100:
+                        summary = summary[:97] + "..."
+                    
+                    print(f"[MemoryWrite] USER_INFO 요약: {summary}")
+                except Exception as e:
+                    print(f"[MemoryWrite] USER_INFO 요약 실패: {e}, fallback 사용")
+                    # fallback: 질문을 그대로 사용하되 50자로 제한
+                    summary = question[:50] + "..." if len(question) > 50 else question
+            else:
+                # 기존 로직: 일반 요약
+                summary = summarize_llm_response(question, full_answer, max_length=500)
             
             # 유효한 케이스 타입인지 확인
             if current_case_type in VALID_CASE_TYPES:
@@ -318,6 +353,8 @@ def memory_write_node(state):
                     referenced_count = len(state.get("bio_q_history", []))
                 elif current_case_type == "PROTOCOL_Q":
                     referenced_count = len(state.get("protocal_q_history", []))
+                elif current_case_type == "USER_INFO":
+                    referenced_count = 0  # USER_INFO는 이전 대화 참고 없음
                 
                 # 새 ConversationMemory row 생성
                 new_memory = ConversationMemory(

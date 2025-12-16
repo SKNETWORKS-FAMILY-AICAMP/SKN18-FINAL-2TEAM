@@ -76,6 +76,7 @@ def create_workflow():
         route_case,
         {
             "NO_RELATION": END,  # 바로 종료 (메모리 저장 안함)
+            "USER_INFO": "memory_read",  # 사용자 인적사항은 메모리 읽고 답변 생성
             "BIO_Q": "memory_read",
             "SIMULATION_Q": "generate_answer",  # 일관성을 위해 memory_read로 변경
             "PROTOCOL_Q": "memory_read",
@@ -83,7 +84,16 @@ def create_workflow():
         }
     )
     
-    graph.add_edge("memory_read", "query_rewrite_agent")
+    # memory_read 이후 라우팅: USER_INFO는 바로 generate_answer로
+    graph.add_conditional_edges(
+        "memory_read",
+        route_case,
+        {
+            "USER_INFO": "generate_answer",  # USER_INFO는 query_rewrite 불필요
+            "BIO_Q": "query_rewrite_agent",
+            "PROTOCOL_Q": "query_rewrite_agent",
+        }
+    )
 
 
     # 2단계: bio_q 로 분류된 경우 RAG → Evaluate → Fallback → Answer

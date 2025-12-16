@@ -21,7 +21,7 @@ guardrail_check_safety_llm = gpt4o_mini
 # ===== classifier.py =====
 classifier_is_bio_related_simple_check_llm = gpt5_nano
 classifier_classify_question_node_llm = gpt5_nano
-
+generate_answer_info_llm = gpt5_nano
 
 # ===== memory.py =====
 memory_summarize_tool_llm = gpt4o_mini
