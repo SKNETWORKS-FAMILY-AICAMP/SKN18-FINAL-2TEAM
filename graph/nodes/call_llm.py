@@ -62,6 +62,16 @@ def _parse_openai_response(resp):
 # 4) 모델별 LLM 함수
 # -----------------------------------------
 
+def gpt4_1_nano(prompt: str):
+    """GPT-4.1-nano 호출"""
+    resp = openai_client.chat.completions.create(
+        model="gpt-4.1-nano",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.2
+    )
+    return _parse_openai_response(resp)
+
+
 def gpt4o_mini(prompt: str):
     """GPT-4o-mini 호출"""
     resp = openai_client.chat.completions.create(
