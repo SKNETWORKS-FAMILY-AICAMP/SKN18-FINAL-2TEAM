@@ -63,6 +63,7 @@ function initNoteDetail() {
     if (btnAddComment) btnAddComment.addEventListener('click', handleAddCommentClick);
     if (btnCommentSubmit) btnCommentSubmit.addEventListener('click', handleAddComment);
     if (btnCommentCancel) btnCommentCancel.addEventListener('click', handleCancelComment);
+    if (btnEditNote) btnEditNote.addEventListener('click', handleEditNote);
     if (noteContentBox) noteContentBox.addEventListener('mouseup', handleTextSelection);
 
     const urlParams = new URLSearchParams(window.location.search);
@@ -213,6 +214,11 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+function handleEditNote() {
+    // 현재 선택된 노트 ID를 쿼리 파라미터로 넘겨 편집 페이지로 이동
+    window.location.href = `/notes/editor/?id=${selectedNoteId}`;
 }
 
 // =====================
