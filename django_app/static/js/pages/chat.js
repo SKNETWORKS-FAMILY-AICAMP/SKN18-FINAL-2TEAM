@@ -467,7 +467,7 @@ function renderMessages() {
                             ` : ''}
                             <div class="message-actions">
                                 <div class="message-actions-left">
-                                    <button class="action-btn" title="복사" data-action="copy" data-message-id="${msg.message_id || index}">
+                                    <button class="action-btn" title="복사" data-action="copy" data-message-index="${index}">
                                         <i class="fas fa-copy"></i>
                                     </button>
                                     <button class="action-btn" title="좋아요" data-action="like" data-message-id="${msg.message_id || index}">
@@ -1121,11 +1121,16 @@ function renderReferences() {
 // Attach message action handlers
 function attachMessageActionHandlers() {
     const actionBtns = messagesView ? messagesView.querySelectorAll('.action-btn, .action-btn-text, .special-action-btn') : null;
+    console.log('Attaching handlers to', actionBtns?.length || 0, 'buttons');
     if (actionBtns) {
         actionBtns.forEach(btn => {
             btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
                 const action = btn.getAttribute('data-action');
-                const messageId = btn.getAttribute('data-message-id');
+                // For copy action, use index; for others, use message_id
+                const messageId = btn.getAttribute('data-message-index') || btn.getAttribute('data-message-id');
+                console.log('Button clicked:', { action, messageId, btn });
                 handleMessageAction(action, messageId);
             });
         });
@@ -1134,6 +1139,7 @@ function attachMessageActionHandlers() {
 
 // Handle message action
 function handleMessageAction(action, messageId) {
+    console.log('handleMessageAction called:', { action, messageId, messagesLength: messages.length });
     switch (action) {
         case 'copy':
             copyMessage(messageId);
@@ -1161,24 +1167,41 @@ function handleMessageAction(action, messageId) {
         case 'experiment':
             window.location.href = '/experiments/';
             break;
+        default:
+            console.error('Unknown action:', action);
     }
 }
 
 // Copy message
-function copyMessage(messageId) {
-    const message = messages.find(m => (m.message_id || m.id) === messageId);
+function copyMessage(messageIdOrIndex) {
+    console.log('copyMessage called with:', messageIdOrIndex, 'type:', typeof messageIdOrIndex);
+
+    // Parse as index (should always be a number or string number)
+    const messageIndex = parseInt(messageIdOrIndex);
+
+    if (isNaN(messageIndex) || messageIndex < 0 || messageIndex >= messages.length) {
+        console.error('Invalid message index:', messageIdOrIndex, 'Available messages:', messages.length);
+        if (window.notyf) {
+            window.notyf.error('복사할 메시지를 찾을 수 없습니다.');
+        }
+        return;
+    }
+
+    const message = messages[messageIndex];
+
     if (!message || !message.content) {
+        console.error('Message has no content:', message);
         if (window.notyf) {
             window.notyf.error('복사할 메시지가 없습니다.');
         }
         return;
     }
-    
+
     // Get text content - if it's markdown, try to get plain text from rendered element
     let textToCopy = message.content;
-    
+
     // Try to get plain text from rendered markdown element if available
-    const messageElement = messagesView?.querySelector(`[data-message-index="${messages.indexOf(message)}"]`);
+    const messageElement = messagesView?.querySelector(`[data-message-index="${messageIndex}"]`);
     if (messageElement) {
         // Get text content from the rendered markdown element
         const textContent = messageElement.textContent || messageElement.innerText;
@@ -1186,19 +1209,23 @@ function copyMessage(messageId) {
             textToCopy = textContent.trim();
         }
     }
-    
+
+    console.log('Copying message:', { index: messageIndex, contentLength: textToCopy.length, preview: textToCopy.substring(0, 50) + '...' });
+
     // Use Clipboard API
     if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(textToCopy).then(() => {
+            console.log('Copy successful');
             if (window.notyf) {
                 window.notyf.success('메시지가 복사되었습니다.');
             }
         }).catch((error) => {
-            console.error('Failed to copy:', error);
+            console.error('Clipboard API failed:', error);
             // Fallback to old method
             fallbackCopyTextToClipboard(textToCopy);
         });
     } else {
+        console.log('Clipboard API not available, using fallback');
         // Fallback for older browsers
         fallbackCopyTextToClipboard(textToCopy);
     }
