@@ -29,6 +29,7 @@ def api_notes_list(request):
         Note.objects
         .filter(created_id=login_email, status='E')
         .annotate(comment_count=Count('comments'))
+        .order_by('-created_at')
     )
 
     if search:
@@ -182,7 +183,7 @@ def note_detail(request):
             created_id=login_email,
             status='E'
         )
-        comments = NoteComment.objects.filter(note=note).order_by('created_at')
+        comments = NoteComment.objects.filter(note=note).order_by('-created_at')
         context = {
             'note': note,
             'comments': comments,
@@ -273,7 +274,7 @@ def api_note_comments(request):
             created_id=login_email,
             status='E'
         )
-        comments = NoteComment.objects.filter(note=note).order_by('created_at')
+        comments = NoteComment.objects.filter(note=note).order_by('-created_at')
 
         data = [{
             'id': comment.comment_sid,
