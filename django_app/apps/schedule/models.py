@@ -1,11 +1,12 @@
 from django.db import models
+from django.conf import settings
 
 
 class Schedule(models.Model):
     """
     일정 모델
     """
-    
+
     # 타입 선택지
     TYPE_CHOICES = [
         ('E', '실험'),
@@ -13,14 +14,14 @@ class Schedule(models.Model):
         ('A', '분석'),
         ('S', '세미나'),
     ]
-    
+
     # 상태 선택지 (주석: E: 예정, R: 진행중, C: 완료)
     STATUS_CHOICES = [
         ('E', '예정'),
         ('R', '진행중'),
         ('C', '완료'),
     ]
-    
+
     # 반복 타입 선택지
     REPEAT_CHOICES = [
         ('N', '반복 안 함'),
@@ -29,7 +30,7 @@ class Schedule(models.Model):
         ('M', '매월'),
         ('Y', '매년'),
     ]
-    
+
     schedule_sid = models.AutoField(primary_key=True, db_column='schedule_sid')
     title = models.CharField(max_length=255, db_column='title')
     description = models.TextField(null=True, blank=True, db_column='description')
@@ -41,39 +42,40 @@ class Schedule(models.Model):
     is_all_day = models.CharField(max_length=1, default='N', db_column='is_all_day')
     location = models.CharField(max_length=255, null=True, blank=True, db_column='location')
     color = models.CharField(max_length=50, null=True, blank=True, db_column='color')
+
     # TODO: Note 모델 생성 후 ForeignKey로 변경
-    # linked_note = models.ForeignKey('notes.Note', on_delete=models.SET_NULL, null=True, blank=True, db_column='linked_note_sid')
     linked_note_sid = models.IntegerField(null=True, blank=True, db_column='linked_note_sid')
+
     repeat_type = models.CharField(max_length=50, choices=REPEAT_CHOICES, default='N', db_column='repeat_type')
     created_at = models.DateTimeField(auto_now_add=True, db_column='created_at')
     created_id = models.CharField(max_length=60, db_column='created_id')
     updated_at = models.DateTimeField(auto_now=True, db_column='updated_at')
     updated_id = models.CharField(max_length=60, db_column='updated_id')
-    
+
     class Meta:
         db_table = 't_schedule'
         ordering = ['-created_at']
         verbose_name = '일정'
         verbose_name_plural = '일정들'
-    
+
     def __str__(self):
         return f"{self.title} ({self.get_schedule_type_display()})"
-    
+
     @property
     def start_datetime(self):
         """FullCalendar와 호환을 위한 속성"""
         return self.start_date
-    
+
     @property
     def end_datetime(self):
         """FullCalendar와 호환을 위한 속성"""
         return self.end_date
-    
+
     @property
     def type(self):
         """schedule_type의 별칭"""
         return self.schedule_type
-    
+
     @property
     def status(self):
         """schedule_status를 소문자로 변환 (scheduled, in_progress, completed)"""
@@ -83,7 +85,7 @@ class Schedule(models.Model):
             'C': 'completed',
         }
         return status_map.get(self.schedule_status, 'scheduled')
-    
+
     @property
     def get_type_display(self):
         """타입 표시명"""
@@ -94,7 +96,7 @@ class ScheduleShare(models.Model):
     """
     일정 공유 모델
     """
-    
+
     schedule_share_sid = models.AutoField(primary_key=True, db_column='schedule_share_sid')
     schedule = models.ForeignKey(
         Schedule,
@@ -105,7 +107,7 @@ class ScheduleShare(models.Model):
     user_id = models.CharField(max_length=60, db_column='user_id')
     created_at = models.DateTimeField(auto_now_add=True, db_column='created_at')
     created_id = models.CharField(max_length=60, db_column='created_id')
-    
+
     class Meta:
         db_table = 't_schedule_share'
         ordering = ['-created_at']
@@ -114,7 +116,7 @@ class ScheduleShare(models.Model):
         indexes = [
             models.Index(fields=['schedule', 'user_id']),
         ]
-    
+
     def __str__(self):
         return f"{self.schedule.title} - {self.user_id}"
 
@@ -123,7 +125,7 @@ class UserCalendar(models.Model):
     """
     사용자 캘린더 모델
     """
-    
+
     calendar_sid = models.AutoField(primary_key=True, db_column='calendar_sid')
     calendar_name = models.CharField(max_length=255, db_column='calendar_name')
     color = models.CharField(max_length=50, null=True, blank=True, db_column='color')
@@ -133,26 +135,26 @@ class UserCalendar(models.Model):
     created_id = models.CharField(max_length=60, db_column='created_id')
     updated_at = models.DateTimeField(auto_now=True, db_column='updated_at')
     updated_id = models.CharField(max_length=60, db_column='updated_id')
-    
+
     class Meta:
         db_table = 't_user_calendar'
         ordering = ['sort_order', 'created_at']
         verbose_name = '사용자 캘린더'
         verbose_name_plural = '사용자 캘린더들'
-    
+
     def __str__(self):
         return self.calendar_name
-    
+
     @property
     def visible(self):
         """is_visible을 boolean으로 변환"""
         return self.is_visible == 1
-    
+
     @property
     def name(self):
         """calendar_name의 별칭"""
         return self.calendar_name
-    
+
     @property
     def id(self):
         """calendar_sid의 별칭"""
@@ -163,7 +165,7 @@ class GoogleCalendar(models.Model):
     """
     Google Calendar 연동 모델
     """
-    
+
     google_calendar_id = models.AutoField(primary_key=True, db_column='google_calendar_id')
     calendar_name = models.CharField(max_length=255, db_column='calendar_name')
     calendar_email = models.CharField(max_length=255, null=True, blank=True, db_column='calendar_email')
@@ -176,22 +178,81 @@ class GoogleCalendar(models.Model):
     created_id = models.CharField(max_length=60, db_column='created_id')
     updated_at = models.DateTimeField(auto_now=True, db_column='updated_at')
     updated_id = models.CharField(max_length=60, db_column='updated_id')
-    
+
     class Meta:
         db_table = 't_google_calendar'
         ordering = ['-created_at']
         verbose_name = 'Google 캘린더'
         verbose_name_plural = 'Google 캘린더들'
-    
+
     def __str__(self):
         return self.calendar_name
-    
+
     @property
     def connected(self):
         """is_connected를 boolean으로 변환"""
         return self.is_connected == 'Y'
-    
+
     @property
     def selected(self):
         """is_selected를 boolean으로 변환"""
         return self.is_selected == 1
+
+
+# ============================================================
+# ✅ (추가) views_google.py가 요구하는 모델 2개
+# ============================================================
+
+class GoogleCredentials(models.Model):
+    """
+    유저별 Google OAuth 토큰 저장용
+    (views_google.py: _get_valid_creds()에서 사용)
+    """
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="google_credentials",
+        db_column="user_id",
+    )
+    access_token = models.TextField(db_column="access_token")
+    refresh_token = models.TextField(null=True, blank=True, db_column="refresh_token")
+
+    client_id = models.TextField(db_column="client_id")
+    client_secret = models.TextField(db_column="client_secret")
+    scopes = models.TextField(db_column="scopes")
+
+    expiry = models.DateTimeField(db_column="expiry")  # access_token 만료 시각
+
+    class Meta:
+        db_table = "t_google_credentials"
+        verbose_name = "Google 자격증명"
+        verbose_name_plural = "Google 자격증명들"
+
+    def __str__(self):
+        return f"GoogleCredentials({self.user})"
+
+
+class SyncedCalendar(models.Model):
+    """
+    유저가 '어떤 구글 캘린더를 연동/표시할지' 저장용
+    (views_google.py: calendar_settings(), google_events_api()에서 사용)
+    """
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="synced_calendars",
+        db_column="user_id",
+    )
+    calendar_id = models.CharField(max_length=255, db_column="calendar_id")
+    summary = models.CharField(max_length=255, db_column="summary")
+    selected = models.BooleanField(default=True, db_column="selected")
+    color = models.CharField(max_length=20, null=True, blank=True, db_column="color")
+
+    class Meta:
+        db_table = "t_synced_calendar"
+        verbose_name = "연동 캘린더"
+        verbose_name_plural = "연동 캘린더들"
+        unique_together = ("user", "calendar_id")
+
+    def __str__(self):
+        return f"{self.summary} ({self.calendar_id})"
