@@ -142,6 +142,8 @@ class PaperLoader:
             ("9-1. [Paper] Mentions 노드 생성 (집계 제외)", PaperRAGQueries.LOAD_MENTIONS_FAST),
             ("9-2. [Paper] Mentions-Section 연결", PaperRAGQueries.LINK_MENTIONS_TO_SECTIONS),
             ("9-3. [Paper] Article-Entity 집계 계산", PaperRAGQueries.CALC_ARTICLE_ENTITY_AGGREGATION),
+            # 1. 실험 이동 (아까 한 것)
+            
             
             # PrimeKG 연결 (인덱스 덕분에 빨라짐)
             ("10. [Paper] PrimeKG 1차(name) 연결", PaperRAGQueries.CONNECT_TO_PRIMEKG),
@@ -155,24 +157,34 @@ class PaperLoader:
             # ("14. [Protocol] 레퍼런스 로딩", ProtocolQueries.LOAD_PROTOCOL_REFERENCES), # 필요시 주석 해제
             ("15. [Protocol] Chunk/임베딩 로딩", ProtocolQueries.LOAD_PROTOCOL_CHUNKS),
 
+            # [중요] 마이그레이션 단계 (Experiment & Protocol)
+            ("16. [Migration] Experiment: CategoryLeaf -> Entity(Method)", PaperRAGQueries.LOAD_EXPERIMENTS_METHOD_AS_ENTITY),
+            ("17. [Migration] Protocol: CategoryLeaf -> Entity(Method)", ProtocolQueries.MIGRATE_PROTOCOL_TO_ENTITY_METHOD),
+
             # ---------------------------
             # [Part 3] ClinicalTrials
             # ---------------------------
-            ("16. [ClinicalTrial] 제약조건/인덱스 생성", clinical_indices),
-            ("17. [ClinicalTrial] 메타데이터 로딩", ClinicalTrialQueries.LOAD_METADATA),
-            # 연결 단계 (인덱스 덕분에 빨라짐)
-            ("18. [ClinicalTrial] Trial -> Mention 연결", ClinicalTrialQueries.LINK_TRIAL_MENTIONS),
-            ("19. [ClinicalTrial] (mention 기반) Trial -> Entity 연결/집계", ClinicalTrialQueries.LINK_TRIAL_ENTITIES_FROM_MENTIONS),
+            ("18. [ClinicalTrial] 제약조건/인덱스 생성", clinical_indices),
+            ("19. [ClinicalTrial] 메타데이터 로딩", ClinicalTrialQueries.LOAD_METADATA),
+            ("20. [ClinicalTrial] Trial용 Mention 생성 및 연결", ClinicalTrialQueries.LOAD_TRIAL_MENTIONS),
+            ("21. [ClinicalTrial] (mention 기반) Trial -> Entity 집계", ClinicalTrialQueries.LINK_TRIAL_ENTITIES_FROM_MENTIONS),
+
+            # ---------------------------
+            # [Part 4] Cleanup (마지막 자동 청소)
+            # ---------------------------
+            ("99. [Cleanup] 구버전(CategoryLeaf) 연결 삭제 및 고아 노드 정리", [
+                "MATCH (:Experiment)-[r:HAS_LEAF_CATEGORY]->() DELETE r",
+                "MATCH (:Protocol)-[r:HAS_LEAF_CATEGORY]->() DELETE r",
+                "MATCH (n:CategoryLeaf) WHERE NOT (n)--() DELETE n"
+            ])
         ]
 
-        # 순차 실행
-        for desc, q in tqdm(tasks, desc="Neo4j Loading Pipeline"):
+        # 실행
+        for desc, q in tqdm(tasks, desc="Neo4j Full Loading & Migration"):
             if isinstance(q, list):
-                # 리스트인 경우 (인덱스 목록 또는 쿼리 묶음)
                 for sub_q in q:
                     self._run(sub_q, desc=desc)
             else:
-                # 단일 쿼리인 경우
                 self._run(q, desc=desc)
 
 
@@ -184,5 +196,8 @@ if __name__ == "__main__":
     loader = PaperLoader(URI, USER, PASSWORD)
 
     if loader.connector.test_connection():
-        # 기존 데이터를 지우고 다시 적재하려면 clear=True
+        print("🚀 [Full Load & Migration] 전체 데이터 적재 및 구조 개선 작업을 시작합니다.")
+        # clear=True로 기존 데이터를 지우고, 처음부터 깨끗하게 다시 적재합니다.
+        # 이 과정에서 마이그레이션과 자동 청소까지 모두 수행됩니다.
         loader.load(clear=True)
+        print("✅ [Done] 모든 데이터 적재, 변환, 청소가 완료되었습니다!")

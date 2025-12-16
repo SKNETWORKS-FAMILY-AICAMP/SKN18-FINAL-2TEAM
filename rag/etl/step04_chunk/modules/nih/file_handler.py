@@ -228,10 +228,17 @@ def save_chunks_to_csv(all_chunks, output_file=None):
         
         for chunk_data in all_chunks:
             nct_id = chunk_data.get('nctId', '').strip()
-            chunk_text = chunk_data.get('chunk_text', '').strip()
+            chunk_fields = chunk_data.get('core_fields', {})
             
-            # 청크 텍스트를 문장 단위 JSON 배열로 변환
-            chunk_json = parse_chunk_text_to_sentences(chunk_text)
+            # 청크에 해당하는 필드들을 JSON 객체로 변환
+            chunk_obj = {}
+            for field_name, field_value in chunk_fields.items():
+                if field_value:
+                    chunk_obj[field_name] = field_value
+            
+            # JSON 객체를 문자열로 변환 (필드명 포함)
+            import json
+            chunk_json = json.dumps(chunk_obj, ensure_ascii=False)
             
             row = {
                 'nctid': get_value_or_no_data(nct_id),
@@ -241,7 +248,7 @@ def save_chunks_to_csv(all_chunks, output_file=None):
             writer.writerow(row)
     
     print(f"✓ 핵심 청킹 CSV 생성 완료: {output_file}")
-    print(f"  - 3개 컬럼: nctid, chunk_id (chi_형식), chunk (JSON 배열 형식, 문장 단위)")
+    print(f"  - 3개 컬럼: nctid, chunk_id (chi_형식), chunk (JSON 객체 형식, 필드명 포함)")
 
 
 def save_metadata_to_csv(all_chunks, output_file=None):

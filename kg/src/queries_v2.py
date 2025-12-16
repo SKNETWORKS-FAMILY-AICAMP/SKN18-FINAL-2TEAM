@@ -452,7 +452,7 @@ class PaperRAGQueries:
     ",
     {
         batchSize: 100,       // [중요] 1000은 너무 큽니다. 50~100 추천
-        parallel: true,       // [중요] 병렬 처리 활성화
+        parallel: false,       // [중요] 병렬 처리 활성화
         concurrency: 4,       // CPU 코어 수에 맞춰 조절 (보통 4~8)
         retries: 3            // 병렬 처리 시 락 충돌 대비 재시도 설정
     }
@@ -551,7 +551,24 @@ class PaperRAGQueries:
     );
     """
 
+    #1. 실험(Experiment) 변환: 기존에 연결된 CategoryLeaf를 찾아 Entity로 복제 연결
+    query_exp_migration = """
+        CALL apoc.periodic.iterate(
+            "MATCH (ep:Experiment)-[:HAS_LEAF_CATEGORY]->(cl:CategoryLeaf) RETURN ep, cl",
+            "
+            // [수정] apoc.text.toUpper -> toUpper (표준 함수 사용)
+            MERGE (e:Entity {entity_id: 'METHOD_' + toUpper(replace(cl.name, ' ', '_'))})
+            ON CREATE SET 
+                e.name = cl.name,
+                e.type = 'Method',
+                e.source = 'Graph_Migration'
+            MERGE (ep)-[:USED_METHOD]->(e)
+            ",
+            {batchSize: 2000, parallel: false}
+        )
 
+
+        """
 class ProtocolQueries:
     """
     Protocol 데이터용 쿼리셋
@@ -599,6 +616,23 @@ class ProtocolQueries:
     )
     """
 
+# 2. 프로토콜(Protocol) 변환: 기존에 연결된 CategoryLeaf를 찾아 Entity로 복제 연결
+    query_proto_migration = """
+        CALL apoc.periodic.iterate(
+            "MATCH (p:Protocol)-[:HAS_LEAF_CATEGORY]->(cl:CategoryLeaf) RETURN p, cl",
+            "
+            // [수정] apoc.text.toUpper -> toUpper (표준 함수 사용)
+            MERGE (e:Entity {entity_id: 'METHOD_' + toUpper(replace(cl.name, ' ', '_'))})
+            ON CREATE SET 
+                e.name = cl.name,
+                e.type = 'Method',
+                e.source = 'Graph_Migration'
+            MERGE (p)-[:USED_METHOD]->(e)
+            ",
+            {batchSize: 2000, parallel: false}
+        )
+        """
+
 class ClinicalTrialQueries:
     """
     ClinicalTrials.gov 데이터 로딩 및 연결 쿼리
@@ -644,48 +678,51 @@ class ClinicalTrialQueries:
     )
     """
 
-    # [수정] 3. 연결 속도 최적화 (Mention 기준 검색)
-    # 기존: MATCH (ct), (m) -> Cartesian Product 위험
-    # 변경: MATCH (m) WHERE m.nct_id ... -> Index Scan
-    LINK_TRIAL_MENTIONS = """
+# [NEW] ★ 임상시험 전용 멘션 로더 (이게 없어서 연결이 안 된 겁니다)
+    LOAD_TRIAL_MENTIONS = """
     CALL apoc.periodic.iterate(
+    "LOAD CSV WITH HEADERS FROM 'file:///global_mention_master.csv' AS row RETURN row",
     "
-    MATCH (m:Mention)
-    WHERE m.nct_id IS NOT NULL AND m.nct_id <> ''
-    RETURN m
-    ",
-    "
-    MATCH (ct:ClinicalTrial {nct_id: m.nct_id})
+    // 1. NCT ID로 시작하는 행만 필터링 (논문 데이터 제외)
+    WHERE row.doc_id STARTS WITH 'NCT'
+    
+    // 2. ClinicalTrial 노드 찾기
+    MATCH (ct:ClinicalTrial {nct_id: row.doc_id})
+    MATCH (e:Entity {entity_id: row.entity_id})
+
+    // 3. Mention 노드 생성
+    MERGE (m:Mention {mention_id: row.mention_id})
+    SET m.source = row.source,
+        m.doc_id = row.doc_id,
+        m.location_id = row.location_id,
+        m.raw_text = row.raw_text,
+        m.normalized_text = row.normalized_text,
+        m.entity_type = row.entity_type,
+        m.umls_cui = row.umls_cui
+
+    // 4. 즉시 연결 (별도 쿼리로 분리할 필요 없이 여기서 바로 연결)
     MERGE (ct)-[:HAS_MENTION]->(m)
+    MERGE (m)-[:MENTION_OF]->(e)
     ",
-    {batchSize: 2000, parallel: false}
+    {batchSize: 5000, parallel: false}
     )
     """
 
-    # [수정] 4. 연결 집계 최적화
-    # 이미 CT->Mention 연결이 완료된 상태에서 수행
+    # [수정] 4. 연결 집계 최적화 (이건 그대로 사용)
     LINK_TRIAL_ENTITIES_FROM_MENTIONS = """
     CALL apoc.periodic.iterate(
     "
-    // 1. 멘션이 있는 ClinicalTrial만 골라냅니다 (불필요한 탐색 제거)
     MATCH (ct:ClinicalTrial)
     WHERE (ct)-[:HAS_MENTION]->()
     RETURN ct
     ",
     "
-    // 2. 해당 CT 내부에서 Entity별로 멘션 수를 미리 셉니다 (Aggregation)
     MATCH (ct)-[:HAS_MENTION]->(m:Mention)-[:MENTION_OF]->(e:Entity)
     WITH ct, e, count(m) as mention_count
     
-    // 3. 관계는 딱 한 번만 만들거나 갱신합니다 (쓰기 작업 최소화)
     MERGE (ct)-[r:HAS_ENTITY]->(e)
     SET r.count = mention_count
     ",
-    {
-        batchSize: 100,      // 트랜잭션당 처리할 CT 개수 (메모리 보호)
-        parallel: true,      // 병렬 처리 활성화
-        concurrency: 4,      // CPU 활용도 UP
-        retries: 3           // 락 충돌 시 재시도
-    }
+    { batchSize: 100, parallel: false }
     )
     """
