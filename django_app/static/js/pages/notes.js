@@ -3,7 +3,7 @@
 // State variables
 let currentPage = 1;
 let searchQuery = "";
-let selectedDateRange = undefined;
+let selectedDateRange = undefined; // { from: Date, to?: Date }
 let notesPerPage = 10;
 let viewMode = 'card';
 
@@ -28,15 +28,23 @@ async function loadNotes() {
         const params = new URLSearchParams({
             page: currentPage,
             per_page: notesPerPage,
-            search: searchQuery
+            search: searchQuery || ""
         });
         
-        if (selectedDateRange && selectedDateRange.from) {
-            params.append('date_from', selectedDateRange.from.toISOString().split('T')[0]);
-            if (selectedDateRange.to) {
-                params.append('date_to', selectedDateRange.to.toISOString().split('T')[0]);
+        const safeFrom = normalizeDate(selectedDateRange?.from);
+        const safeTo = normalizeDate(selectedDateRange?.to);
+
+        if (safeFrom) {
+            params.append('date_from', safeFrom.toISOString().split('T')[0]);
+            if (safeTo) {
+                params.append('date_to', safeTo.toISOString().split('T')[0]);
             }
         }
+        
+        // 디버깅: 쿼리 파라미터 확인
+        console.log('loadNotes - searchQuery:', searchQuery);
+        console.log('loadNotes - params.search:', params.get('search'));
+        console.log('loadNotes - full URL:', `/notes/api/list/?${params}`);
         
         const response = await fetch(`/notes/api/list/?${params}`);
         const data = await response.json();
@@ -118,7 +126,7 @@ function initDateFilter() {
     // 기존 인스턴스가 있으면 파괴 (중복 초기화 방지)
     window.airDatepickerInstance?.destroy();
 
-    // Get Korean locale
+        // Get Korean locale
     const localeKo = window.AirDatepickerLocaleKo || {
         days: ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'],
         daysShort: ['일', '월', '화', '수', '목', '금', '토'],
@@ -143,26 +151,20 @@ function initDateFilter() {
         visibleMonths: 2,
         // monthsField: 'months',
         classes: 'notes-date-range-picker',
-        onSelect: function({ date, formattedDate, datepicker }) {
+        onSelect: function({ date }) {
             if (Array.isArray(date) && date.length > 0) {
-                selectedDateRange = {
-                    from: date[0],
-                    to: date[1] || null
-                };
+                selectedDateRange = makeDateRange(date[0], date[1]);
                 updateDateFilterText();
                 
                 // 범위 선택 완료 시
-                if (date.length === 2) {
+                if (date.length === 2 && selectedDateRange?.to) {
                     if (dateFilterActions) dateFilterActions.style.display = 'block';
                 } else {
                     if (dateFilterActions) dateFilterActions.style.display = 'none';
                 }
             } else if (date) {
                 // 단일 날짜 선택
-                selectedDateRange = {
-                    from: date,
-                    to: null
-                };
+                selectedDateRange = makeDateRange(date, null);
                 updateDateFilterText();
                 if (dateFilterActions) dateFilterActions.style.display = 'none';
             } else {
@@ -241,6 +243,23 @@ function handleResetAllFilters() {
         searchInput.value = "";
     }
     
+    // 디버깅: 초기화 확인
+    console.log('handleResetAllFilters - searchQuery:', searchQuery);
+    console.log('handleResetAllFilters - searchInput.value:', searchInput?.value);
+    
+    // 뷰 모드 초기화 (카드 뷰로)
+    viewMode = 'card';
+    if (btnCardView && btnTableView) {
+        btnCardView.classList.add('active');
+        btnTableView.classList.remove('active');
+    }
+    
+    // 페이지당 노트 개수 초기화 (10개로)
+    notesPerPage = 10;
+    if (notesPerPageSelect) {
+        notesPerPageSelect.value = '10';
+    }
+    
     // 페이지 초기화 및 리로드
     currentPage = 1;
     loadNotes();
@@ -248,7 +267,20 @@ function handleResetAllFilters() {
 
 // Handle search submit (검색 버튼 클릭 시)
 function handleSearchSubmit() {
-    searchQuery = searchInput?.value || "";
+    // 검색어를 입력창에서 가져오기 (trim으로 공백 제거)
+    if (!searchInput) {
+        console.error('searchInput element not found');
+        return;
+    }
+    
+    const inputValue = (searchInput.value || "").trim();
+    searchQuery = inputValue;
+    
+    // 디버깅: 검색어 확인
+    console.log('handleSearchSubmit - searchInput.value:', searchInput.value);
+    console.log('handleSearchSubmit - inputValue (trimmed):', inputValue);
+    console.log('handleSearchSubmit - searchQuery:', searchQuery);
+    
     currentPage = 1;
     loadNotes();
     
@@ -262,13 +294,14 @@ function handleSearchSubmit() {
 function updateDateFilterText() {
     if (!dateFilterText) return;
 
-    if (selectedDateRange?.from) {
-        const fromDate = selectedDateRange.from;
-        const fromStr = `${fromDate.getFullYear()}. ${String(fromDate.getMonth() + 1).padStart(2, '0')}. ${String(fromDate.getDate()).padStart(2, '0')}`;
+    const safeFrom = normalizeDate(selectedDateRange?.from);
+    const safeTo = normalizeDate(selectedDateRange?.to);
+
+    if (safeFrom) {
+        const fromStr = formatDateDot(safeFrom);
         
-        if (selectedDateRange.to) {
-            const toDate = selectedDateRange.to;
-            const toStr = `${toDate.getFullYear()}. ${String(toDate.getMonth() + 1).padStart(2, '0')}. ${String(toDate.getDate()).padStart(2, '0')}`;
+        if (safeTo) {
+            const toStr = formatDateDot(safeTo);
             dateFilterText.textContent = `${fromStr} - ${toStr}`;
         } else {
             dateFilterText.textContent = fromStr;
@@ -472,6 +505,33 @@ function stripHtml(html) {
     const div = document.createElement('div');
     div.innerHTML = html;
     return div.textContent || div.innerText || '';
+}
+
+// Safely normalize to Date instance; returns null if invalid
+function normalizeDate(value) {
+    if (!value) return null;
+    if (value instanceof Date) return isNaN(value) ? null : value;
+    const parsed = new Date(value);
+    return isNaN(parsed) ? null : parsed;
+}
+
+// Make safe date range object from raw values
+function makeDateRange(from, to) {
+    const safeFrom = normalizeDate(from);
+    const safeTo = normalizeDate(to);
+    if (!safeFrom) return undefined;
+    return {
+        from: safeFrom,
+        to: safeTo || null
+    };
+}
+
+// Format date as "YYYY. MM. DD"
+function formatDateDot(date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}. ${m}. ${d}`;
 }
 
 // Initialize on DOM ready
