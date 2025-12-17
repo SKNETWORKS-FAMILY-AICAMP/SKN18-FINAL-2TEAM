@@ -10,7 +10,7 @@ urlpatterns = [
     path("api/graph-summary/", views.graph_summary, name="graph_summary"),
     path("api/messages/<int:message_id>/feedback/", views.message_feedback, name="message_feedback"),
     path("api/chats/<int:chat_id>/favorite/", views.toggle_favorite, name="toggle_favorite"),
-    path("api/chats/<int:chat_id>/archive/", views.toggle_archive, name="toggle_archive"),
-    # 주석처리: message_concept_graph는 graph_summary와 중복 기능이며 사용되지 않아 주석처리함
-    # path("api/messages/<int:message_id>/concept-graph/", views.message_concept_graph, name="message_concept_graph"),
+    path("api/chats/<int:chat_id>/archive/", views.toggle_archive, name="toggle_archive"),     
+    # 같은 목적: message_concept_graph는 graph_summary와 ChatMessage.concept_graph 생성/조회하는 중복 가능이며 사용되지 않아 삭제함
+
 ]
