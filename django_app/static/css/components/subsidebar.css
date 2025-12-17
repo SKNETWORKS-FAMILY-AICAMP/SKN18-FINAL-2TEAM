@@ -293,8 +293,9 @@
     font-weight: 500;
     color: var(--color-text-secondary);
     margin: 0 0 0.25rem 0;
-    display: -webkit-box;
+    display: -webkit-box; 
     -webkit-line-clamp: 2;
+    line-clamp: 2; /* 표준 속성 (서브사이드바의 채팅 제목이 길어도 2줄로 제한되어 레이아웃이 깨지지 않도록) */
     -webkit-box-orient: vertical;
     overflow: hidden;
     line-height: 1.4;
