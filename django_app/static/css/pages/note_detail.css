@@ -598,3 +598,28 @@
     color: #9ca3af;
     margin-top: 0.25rem;
 }
+
+/* CKEditor table rendering fix */
+.note-content-text figure.table {
+    margin: 16px 0;
+    overflow-x: auto;
+}
+
+.note-content-text table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+.note-content-text table td,
+.note-content-text table th {
+    border: 1px solid #dcdcdc;
+    padding: 8px 12px;
+    vertical-align: middle;
+    text-align: left;
+}
+
+.note-content-text table th {
+    background-color: #f5f5f5;
+    font-weight: 600;
+}
