@@ -182,15 +182,21 @@
     border-radius: 0.25rem;
     transition: background-color 0.2s;
     text-align: left;
+    outline: none; /* Remove focus outline */
+}
+
+.section-item:focus {
+    outline: none; /* Remove focus outline */
 }
 
 .section-item:hover {
     background: var(--color-bg-gray-50);
 }
 
-.section-item.active {
-    background: #eff6ff; /* blue-50 - keep specific color for active state */
-    color: var(--color-primary);
+.section-item.active,
+.section-item[data-active="true"] {
+    background: #eff6ff !important; /* blue-50 - keep specific color for active state */
+    color: var(--color-primary) !important;
 }
 
 .section-item i {
@@ -201,8 +207,9 @@
     margin-right: 0.5rem;
 }
 
-.section-item.active i {
-    color: var(--color-primary);
+.section-item.active i,
+.section-item[data-active="true"] i {
+    color: var(--color-primary) !important;
 }
 
 .section-item span:first-of-type {
@@ -221,9 +228,10 @@
     font-weight: 500;
 }
 
-.section-item.active .section-count {
-    background: #dbeafe; /* blue-100 - keep specific color for active state */
-    color: var(--color-primary);
+.section-item.active .section-count,
+.section-item[data-active="true"] .section-count {
+    background: #dbeafe !important; /* blue-100 - keep specific color for active state */
+    color: var(--color-primary) !important;
 }
 
 .section-title {

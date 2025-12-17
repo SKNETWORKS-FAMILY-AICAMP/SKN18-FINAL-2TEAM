@@ -59,20 +59,19 @@ def chat_list(request):
     queryset = Chat.objects.filter(status='E')
     
     # 섹션별 필터링
-    if section == 'pinned':
-        queryset = queryset.filter(pinned='Y')
+    if section == 'favorites':
+        queryset = queryset.filter(favorite='Y')
     elif section == 'archived':
         queryset = queryset.filter(archived='Y')
     else:
-        # 기본: 일반 채팅 (고정/보관 제외)
-        queryset = queryset.filter(pinned='N', archived='N')
-    
-    # 정렬: 고정된 채팅 우선, 그 다음 최신순
-    # pinned는 CHAR 필드이므로 문자열 비교로 정렬
+        # 기본: 보관되지 않은 모든 채팅
+        queryset = queryset.filter(archived='N')
+
+    # 정렬: 즐겨찾기 채팅 우선, 그 다음 최신순
     chats = queryset.order_by('-created_at').values(
-        'chat_sid', 'title', 'preview', 'pinned', 'archived', 'created_at'
+        'chat_sid', 'title', 'preview', 'favorite', 'archived', 'created_at'
     )
-    
+
     # 데이터 포맷팅
     items = []
     for chat in chats:
@@ -80,16 +79,25 @@ def chat_list(request):
             'id': chat['chat_sid'],
             'title': chat['title'] or '제목 없음',
             'preview': chat['preview'] or '',
-            'pinned': chat['pinned'] == 'Y',
+            'favorite': chat.get('favorite', 'N'),
             'archived': chat['archived'] == 'Y',
             'created_at': chat['created_at'].isoformat() if chat['created_at'] else None,
         })
-    
-    # 고정된 채팅을 앞으로 이동
-    items.sort(key=lambda x: (not x['pinned'], x['created_at'] or ''), reverse=True)
-    
+
+    # 즐겨찾기 채팅을 앞으로 이동
+    items.sort(key=lambda x: (x['favorite'] != 'Y', x['created_at'] or ''), reverse=True)
+
+    # 카운트 정보 계산 (필터와 관계없이 전체 채팅 기준)
+    all_active_chats = Chat.objects.filter(status='E')
+    favorites_count = all_active_chats.filter(favorite='Y').count()
+    archived_count = all_active_chats.filter(archived='Y').count()
+
     return JsonResponse({
-        'items': items
+        'items': items,
+        'counts': {
+            'favorites': favorites_count,
+            'archived': archived_count
+        }
     })
 
 
@@ -592,6 +600,98 @@ def message_feedback(request, message_id):
         }, status=400)
     except Exception as e:
         print(f"[ERROR] Error in message_feedback: {e}")
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({
+            'error': f'Internal server error: {str(e)}'
+        }, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def toggle_favorite(request, chat_id):
+    """
+    채팅 favorite 상태를 토글하는 API 엔드포인트
+    Y <-> N 전환
+    """
+    try:
+        # 채팅 조회
+        chat = get_object_or_404(Chat, chat_sid=chat_id, status='E')
+
+        # favorite 상태 토글
+        if chat.favorite == 'Y':
+            chat.favorite = 'N'
+            action = 'unfavorited'
+            message = '즐겨찾기가 해제되었습니다.'
+        else:
+            chat.favorite = 'Y'
+            action = 'favorited'
+            message = '즐겨찾기에 추가되었습니다.'
+
+        # 사용자 ID 설정
+        user_id = str(request.user.user_id) if request.user.is_authenticated else 'anonymous'
+        chat.updated_id = user_id
+        chat.save()
+
+        return JsonResponse({
+            'success': True,
+            'action': action,
+            'favorite': chat.favorite,
+            'message': message
+        })
+
+    except Chat.DoesNotExist:
+        return JsonResponse({
+            'error': 'Chat not found'
+        }, status=404)
+    except Exception as e:
+        print(f"[ERROR] Error in toggle_favorite: {e}")
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({
+            'error': f'Internal server error: {str(e)}'
+        }, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def toggle_archive(request, chat_id):
+    """
+    채팅 archived 상태를 토글하는 API 엔드포인트
+    Y <-> N 전환
+    """
+    try:
+        # 채팅 조회
+        chat = get_object_or_404(Chat, chat_sid=chat_id, status='E')
+
+        # archived 상태 토글
+        if chat.archived == 'Y':
+            chat.archived = 'N'
+            action = 'unarchived'
+            message = '보관이 해제되었습니다.'
+        else:
+            chat.archived = 'Y'
+            action = 'archived'
+            message = '채팅이 보관되었습니다.'
+
+        # 사용자 ID 설정
+        user_id = str(request.user.user_id) if request.user.is_authenticated else 'anonymous'
+        chat.updated_id = user_id
+        chat.save()
+
+        return JsonResponse({
+            'success': True,
+            'action': action,
+            'archived': chat.archived,
+            'message': message
+        })
+
+    except Chat.DoesNotExist:
+        return JsonResponse({
+            'error': 'Chat not found'
+        }, status=404)
+    except Exception as e:
+        print(f"[ERROR] Error in toggle_archive: {e}")
         import traceback
         traceback.print_exc()
         return JsonResponse({

@@ -80,10 +80,10 @@ class Chat(models.Model):
         default='E',
         db_column='status'
     )
-    pinned = models.CharField(
+    favorite = models.CharField(
         max_length=1,
         default='N',
-        db_column='pinned'
+        db_column='favorite'
     )
     archived = models.CharField(
         max_length=1,
