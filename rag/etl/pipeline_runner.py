@@ -268,7 +268,7 @@ def run_embed(source: SourceType, cfg: PipelineConfig) -> None:
 
     기대 시그니처:
       rag.etl.step05_embed.01_embed_pubmed.run(chunks_dir, embeddings_dir)
-      rag.etl.step05_embed.02_embed_nih.run(...)  # 아직 구현되지 않음
+      rag.etl.step05_embed.02_embed_nih.run(...)
       rag.etl.step05_embed.03_embed_protocols.main()  # main() 함수 사용
     """
     logger = logging.getLogger("etl.embed")
@@ -293,8 +293,12 @@ def run_embed(source: SourceType, cfg: PipelineConfig) -> None:
                     logger.warning("⚠ [EMBED] pubmed: run() 또는 main() 함수가 없습니다. 스킵합니다.")
             elif s == "nih":
                 mod = import_module("rag.etl.step05_embed.02_embed_nih")
+                nih_processed_root = Path(cfg.processed_dir) / "nih"
                 if hasattr(mod, 'run'):
-                    mod.run(chunks_dir=cfg.chunks_dir, embeddings_dir=cfg.embeddings_dir)
+                    mod.run(
+                        chunks_dir=str(nih_processed_root),
+                        embeddings_dir=cfg.embeddings_dir,
+                    )
                 elif hasattr(mod, 'main'):
                     mod.main()
                 else:

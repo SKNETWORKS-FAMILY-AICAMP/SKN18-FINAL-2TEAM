@@ -127,11 +127,49 @@ def extract_core_fields(study):
     
     # 2. 치료군 설명 (armGroups)
     # 여러 개의 arm이 있을 수 있으므로 자연스럽게 연결
+    # description이 없거나 짧으면 label 또는 interventionNames 사용
     arm_groups_list = []
+    MIN_DESCRIPTION_LENGTH = 10  # description 최소 길이 (문자 수)
+    
     for arm in ps.get("armsInterventionsModule", {}).get("armGroups", []):
         arm_desc = clean_text(arm.get("description", ""))
-        if arm_desc:
+        arm_label = arm.get("label", "")
+        intervention_names = arm.get("interventionNames", [])
+        
+        # description이 충분히 길면 그대로 사용
+        if arm_desc and len(arm_desc) >= MIN_DESCRIPTION_LENGTH:
             arm_groups_list.append(arm_desc)
+        else:
+            # description이 없거나 짧으면 label, description, interventionNames 조합
+            parts = []
+            
+            # label 추가 (예: "Cohort2")
+            if arm_label:
+                parts.append(arm_label)
+            
+            # 짧은 description도 포함 (예: "SAD", "MAD")
+            if arm_desc and arm_desc.strip():
+                parts.append(arm_desc)
+            
+            # interventionNames 추가 (약물 정보)
+            if intervention_names:
+                # "Drug: " 접두사 제거하고 약물명만 추출
+                drug_names = []
+                for intervention in intervention_names:
+                    if isinstance(intervention, str):
+                        # "Drug: DWP212525 30mg" -> "DWP212525 30mg"
+                        drug_name = intervention.replace("Drug: ", "").strip()
+                        if drug_name:
+                            drug_names.append(drug_name)
+                
+                if drug_names:
+                    parts.append(", ".join(drug_names))
+            
+            # 조합된 텍스트 생성
+            if parts:
+                combined_text = ": ".join(parts) if len(parts) > 1 else parts[0]
+                arm_groups_list.append(combined_text)
+    
     arm_groups_text = ". ".join(arm_groups_list)  # 자연스러운 문장 연결
     core_fields["armGroups"] = arm_groups_text
     
@@ -146,11 +184,14 @@ def extract_core_fields(study):
     
     # 4. 부가 결과 (secondaryOutcomes)
     secondary_outcomes_list = []
+    seen_descriptions = set()  # 중복 체크용
     for so in ps.get("outcomesModule", {}).get("secondaryOutcomes", []):
         so_desc = clean_text(so.get("description", ""))
-        if so_desc:
+        if so_desc and so_desc not in seen_descriptions:
+            seen_descriptions.add(so_desc)
             secondary_outcomes_list.append(so_desc)
-    secondary_outcomes_text = ". ".join(secondary_outcomes_list)  # 자연스러운 문장 연결
+    # test&meta 형식에 맞춰 " ||| " 구분자로 연결
+    secondary_outcomes_text = " ||| ".join(secondary_outcomes_list)
     core_fields["secondaryOutcomes"] = secondary_outcomes_text
     
     # 5. 참가 자격 기준 (eligibilityCriteria)
