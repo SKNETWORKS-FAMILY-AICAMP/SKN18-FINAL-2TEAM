@@ -410,4 +410,8 @@ infra/aws/lambda_build/pubmed/
 django_app/static/js-lib/**
 django_app/static/assets/**
 
+# neo4j plugins
+infra/neo4j/plugins/**
+
+
 # End of https://www.toptal.com/developers/gitignore/api/python,django,windows,macos,jupyternotebooks
