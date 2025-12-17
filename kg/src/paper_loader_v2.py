@@ -152,8 +152,8 @@ class PaperLoader:
             ("15. [Protocol] Chunk/임베딩 로딩", ProtocolQueries.LOAD_PROTOCOL_CHUNKS),
 
             # [중요] 마이그레이션 단계 (Experiment & Protocol)
-            ("16. [Migration] Experiment: CategoryLeaf -> Entity(Method)", PaperRAGQueries.LOAD_EXPERIMENTS_METHOD_AS_ENTITY),
-            ("17. [Migration] Protocol: CategoryLeaf -> Entity(Method)", ProtocolQueries.MIGRATE_PROTOCOL_TO_ENTITY_METHOD),
+            ("16. [Migration] Experiment: CategoryLeaf -> Entity(Method)", PaperRAGQueries.query_exp_migration),
+            ("17. [Migration] Protocol: CategoryLeaf -> Entity(Method)", ProtocolQueries.query_proto_migration),
 
             # PrimeKG 연결 (인덱스 덕분에 빨라짐)
             ("10. [Paper] PrimeKG 1차(name) 연결", PaperRAGQueries.CONNECT_TO_PRIMEKG),
