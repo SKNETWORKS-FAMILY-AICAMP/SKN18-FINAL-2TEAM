@@ -335,7 +335,7 @@ def chat_detail(request, chat_id):
             'id': chat.chat_sid,
             'title': chat.title or '제목 없음',
             'preview': chat.preview or '',
-            'pinned': chat.pinned == 'Y',
+            'favorite': chat.favorite == 'Y',
             'archived': chat.archived == 'Y',
             'filter_type': chat.filter_type or '',
             'auto_mode': chat.auto_mode == 'Y',
