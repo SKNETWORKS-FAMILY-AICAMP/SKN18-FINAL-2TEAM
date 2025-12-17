@@ -93,8 +93,9 @@ RFdiffusion이 제안한 구조를 기반으로 ProteinMPNN을 이용해 해당 
 INSERT INTO t_chat (title, preview, status, pinned, archived, filter_type, auto_mode, created_id, updated_id, created_at, updated_at) VALUES
 ('Eukaryotic cell 설명', 'Eukaryotic cell(진핵세포)에 대한 상세한 설명을 요청했습니다.', 'E', 'N', 'N', 'P', 'Y', 'user001', 'user001', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
+-- $$로 감싸면 그 안의 데이터에 ''이 있어도 하나의 컬럼 안에 들어가는 데이터 임을 알 수 있음
 INSERT INTO t_chat_message (chat_sid, role, content, sort_order, created_id, created_at) VALUES
-(6, 'U', 'Eukaryotic cell이 뭐야?', 1, 'user001', CURRENT_TIMESTAMP),
+(6, 'U', 'Eukaryotic cell이 뭐야?', 1, 'user001', CURRENT_TIMESTAMP), 
 (6, 'A', $$'Eukaryotic cell(진핵세포)는 분명한 막으로 둘러싸인 핵과 다양한 세포 소기관을 지니는 진핵생물을 구성하는 기본 단위입니다. 진핵세포는 박테리아 및 고세균과 같은 원핵세포(prokaryote)와 구별되며, 동물, 식물, 곰팡이, 그리고 많은 단세포 생물이 이에 해당합니다.
 
 **1. 진핵세포란 무엇인가?**
