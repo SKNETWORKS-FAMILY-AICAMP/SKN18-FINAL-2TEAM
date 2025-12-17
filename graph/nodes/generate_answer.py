@@ -14,6 +14,7 @@ generate_answer.py
 from typing import Dict, Any
 from graph.llm_config import (
     generate_answer_bio_llm,
+    generate_answer_info_llm,
     generate_answer_simulation_llm,
     generate_answer_protocol_llm,
     generate_answer_protocol_fallback_llm,
@@ -50,7 +51,9 @@ def generate_answer_node(state: Dict[str, Any]) -> Dict[str, Any]:
         return state
     
     # 케이스별 답변 생성
-    if case_type == "BIO_Q":
+    if case_type == "USER_INFO":
+        return _generate_user_info_answer(state)
+    elif case_type == "BIO_Q":
         return _generate_bio_answer(state)
     elif case_type == "SIMULATION_Q":
         return _generate_simulation_answer(state)
@@ -66,6 +69,69 @@ def generate_answer_node(state: Dict[str, Any]) -> Dict[str, Any]:
     print(f"\n[GENERATE_ANSWER NODE] 종료")
     print(f"  final_answer: {str(state.get('final_answer', ''))[:30]}...")
     print(f"{'='*60}\n")
+    
+    return state
+
+
+def _generate_user_info_answer(state: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    USER_INFO: 사용자 인적사항 관련 질문
+    사용자의 인적사항을 언급하며 친근하게 응답
+    """
+    question = state.get("question", "")
+    
+    # 이전 USER_INFO 대화 컨텍스트 구성
+    previous_user_info = ""
+    relevant_history = state.get("relevant_history", [])
+    
+    if relevant_history:
+        # USER_INFO 타입의 이전 대화가 있는 경우
+        user_info_parts = ["=== 이전에 알려주신 정보 ==="]
+        for i, hist in enumerate(relevant_history[:3], 1):  # 최근 3개만
+            user_info_parts.append(f"[정보 {i}] {hist['summary']}")
+        previous_user_info = "\n".join(user_info_parts) + "\n"
+    
+    # 프롬프트 구성
+    if previous_user_info:
+        # 이전 정보가 있는 경우 (질문형 - "내 이름이 뭐라고?", "내 직업이 뭐더라?")
+        prompt = f"""사용자가 이전에 알려준 자신의 정보를 묻고 있습니다.
+
+{previous_user_info}
+현재 질문: {question}
+
+위 이전 정보를 바탕으로 사용자의 질문에 답변해주세요.
+- 이전에 알려준 정보를 자연스럽게 상기시켜주세요
+- 친근하고 따뜻한 어조로 답변해주세요
+- 만약 이전 정보에 해당 내용이 없다면, "죄송합니다. 그 정보는 아직 알려주지 않으셨어요. 알려주시겠어요?"라고 응답하세요
+- 2-3문장으로 간결하게 작성해주세요
+
+답변:"""
+    else:
+        # 이전 정보가 없는 경우 (처음 알려주는 경우 - "저는 학생입니다")
+        prompt = f"""사용자가 자신의 인적사항을 처음 알려주고 있습니다.
+
+질문: {question}
+
+위 정보를 바탕으로 사용자에게 친근하고 환영하는 답변을 작성해주세요.
+- 사용자의 신분/직업을 자연스럽게 언급해주세요
+- 따뜻하고 친근한 어조로 환영해주세요
+- 해당 신분에 맞는 도움을 제공할 수 있다는 점을 안내해주세요
+- 2-3문장으로 간결하게 작성해주세요
+
+답변:"""
+
+    try:
+        # GPT로 답변 생성
+        answer = generate_answer_info_llm(prompt)
+        state["final_answer"] = answer
+        state["final_context"] = f"사용자 정보: {question}\n{previous_user_info}"
+        
+    except Exception as e:
+        # fallback: 기본 메시지
+        if previous_user_info:
+            state["final_answer"] = f"이전에 알려주신 정보는 다음과 같습니다:\n{previous_user_info}"
+        else:
+            state["final_answer"] = "반갑습니다! 생물학 연구와 관련하여 도움이 필요하시면 언제든지 말씀해주세요."
     
     return state
 
@@ -87,7 +153,7 @@ def _generate_bio_answer(state: Dict[str, Any]) -> Dict[str, Any]:
         context_parts.append("=== 이전 대화 참고 ===")
         for i, hist in enumerate(relevant_history[:2], 1):  # 최근 2개만
             context_parts.append(f"[대화 {i}] Q: {hist['question'][:60]}")
-            context_parts.append(f"        A: {hist['answer_summary'][:100]}\n")
+            context_parts.append(f"        A: {hist['summary'][:100]}\n")
     
     # RAG 검색 결과 추가
     selected_chunks = state.get("selected_chunks", [])
@@ -160,7 +226,7 @@ def _generate_simulation_answer(state: Dict[str, Any]) -> Dict[str, Any]:
         history_parts = ["=== 이전 대화 참고 ==="]
         for i, hist in enumerate(relevant_history[:3], 1):  # 최근 3개만
             history_parts.append(f"[대화 {i}] Q: {hist['question'][:50]}...")
-            history_parts.append(f"        A: {hist['answer_summary'][:80]}...\n")
+            history_parts.append(f"        A: {hist['summary'][:80]}...\n")
         previous_context = "\n".join(history_parts) + "\n"
     
     # 시뮬레이션 툴 경로 안내 정보
@@ -236,7 +302,7 @@ def _generate_protocol_answer(state: Dict[str, Any]) -> Dict[str, Any]:
         context_parts.append("=== 이전 대화 참고 ===")
         for i, hist in enumerate(relevant_history[:2], 1):  # 최근 2개만
             context_parts.append(f"[대화 {i}] Q: {hist['question'][:60]}")
-            context_parts.append(f"        A: {hist['answer_summary'][:100]}\n")
+            context_parts.append(f"        A: {hist['summary'][:100]}\n")
     
     # RAG 검색 결과 추가
     selected_chunks = state.get("selected_chunks", [])
@@ -314,13 +380,13 @@ def _generate_inference_answer(state: Dict[str, Any]) -> Dict[str, Any]:
         history_parts = ["\n=== 이전 대화 참고 ==="]
         for i, hist in enumerate(relevant_history[:3], 1):  # 최근 3개만
             history_parts.append(f"[대화 {i}] Q: {hist['question'][:60]}")
-            history_parts.append(f"        A: {hist['answer_summary'][:100]}\n")
+            history_parts.append(f"        A: {hist['summary'][:100]}\n")
         previous_context = "\n".join(history_parts)
     else:
         # fallback: memory_slot 사용
         memory_slot = state.get("memory_slot", {})
         if memory_slot.get("last_summary"):
-            previous_context = f"\n이전 답변 요약: {memory_slot.get('last_summary')}"
+            previous_context = f"\n이전 요약: {memory_slot.get('last_summary')}"
     
     # 프롬프트 구성 (실험 결과 해석 특화)
     prompt = f"""다음은 생물학 실험 결과 해석에 관한 질문입니다.

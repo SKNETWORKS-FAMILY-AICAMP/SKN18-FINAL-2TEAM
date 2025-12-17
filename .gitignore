@@ -12,7 +12,7 @@ db.sqlite3-journal
 *.sqlite3
 *.sqlite3-journal
 media
-
+*.csv
 # If your build process includes running collectstatic, then you probably don't need or want to include staticfiles/
 # in your Git repository. Update and uncomment the following line accordingly.
 # <django-project-name>/staticfiles/
@@ -412,5 +412,9 @@ infra/aws/lambda_build/pubmed/
 # Vite 빌드 결과물 (django_app/static에 생성되는 파일들)
 django_app/static/js-lib/**
 django_app/static/assets/**
+
+# neo4j plugins
+infra/neo4j/plugins/**
+
 
 # End of https://www.toptal.com/developers/gitignore/api/python,django,windows,macos,jupyternotebooks

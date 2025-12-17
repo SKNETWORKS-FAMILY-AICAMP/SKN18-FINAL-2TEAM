@@ -37,20 +37,24 @@ services:
     # 필요 시 다른 커맨드로 교체 (Celery, cron용 스크립트 등)
 
   neo4j:
-    image: neo4j:5.26.17-community
+    image: neo4j:5.15.0
     container_name: neo4j-final
     environment:
-      NEO4J_AUTH: neo4j/neo4jpass
+      - NEO4J_AUTH=neo4j/neo4jpass
+      - NEO4J_PLUGINS=["apoc", "graph-data-science"]
+      - NEO4J_dbms_security_procedures_unrestricted=apoc.*,gds.*
+      - NEO4J_dbms_security_procedures_allowlist=apoc.*,gds.*
     ports:
-      - "7474:7474"
-      - "7687:7687"
+      - "7474:7474"  # HTTP
+      - "7687:7687"  # Bolt
     volumes:
       - neo4j-data:/data
       - neo4j-logs:/logs
       - ./infra/neo4j/neo4j.conf:/config/neo4j.conf
       - ./infra/neo4j/init.cypher:/docker-entrypoint-initdb.d/init.cypher
+      - ./infra/neo4j/plugins:/plugins
+      - ./infra/neo4j/import:/import
     restart: unless-stopped
-
 
 volumes:
   pgvector-data:

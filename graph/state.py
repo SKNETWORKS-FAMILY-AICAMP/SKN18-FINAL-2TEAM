@@ -56,7 +56,8 @@ class BioRAGState(TypedDict, total=False):
         "BIO_Q",                        # 논문, 임상 실험 결과, 근거 검색
         "SIMULATION_Q",                 # 단백질 실험 Tool 경로 안내
         "PROTOCOL_Q",
-        "INFERENCE_Q"
+        "INFERENCE_Q",
+        "USER_INFO"                     # 사용자 인적사항 (학생, 연구원, 대학원생, 교수 등)
     ]                                   # classifier가 반환하는 CASE
 
 

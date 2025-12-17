@@ -5,6 +5,7 @@
 
 # 기본 패키지
 numpy==1.26.4
+torch==2.2.2
 pandas
 scipy
 
