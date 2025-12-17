@@ -59,7 +59,7 @@ def _classify_with_llm(q: str, chat_room_id: str = None, user_id: str = "default
                 previous_context = f"""
 이전 대화 정보:
 - 이전 질문: {prev_data['last_question']}
-- 이전 답변 요약: {prev_data['last_answer_summary']}
+- 이전 요약: {prev_data['last_summary']}
 - 이전 케이스 타입: {prev_data['last_case_type']}
 - 이전 주제: {prev_data['last_topic']}
 """
@@ -69,9 +69,15 @@ def _classify_with_llm(q: str, chat_room_id: str = None, user_id: str = "default
     
     # AI에게 보낼 프롬프트(Prompt)를 만듭니다
     system_prompt = (
-        "다음 사용자 질문을 5가지 카테고리 중 하나로 분류하세요.\n\n"
+        "다음 사용자 질문을 6가지 카테고리 중 하나로 분류하세요.\n\n"
         "⚠️ 중요: 꼬리질문(이전 대화 참조)이어도, 원본 질문의 주제와 의도를 먼저 파악하세요.\n"
         "예: '내가 최근에 물어봤던 논문 내용이 뭐더라?' → '논문'이 핵심이므로 BIO_Q로 분류\n\n"
+        
+        "USER_INFO (사용자 인적사항)\n"
+        " - 사용자가 자신의 신분, 직업, 배경 등을 알려주는 경우\n"
+        " - 사용자가 이전에 알려준 자신의 정보를 묻는 경우\n"
+        " - 키워드: '학생', '연구원', '대학원생', '교수', '포닥', '박사과정', '석사과정', '학부생', '내 이름', '내 직업', '나는 누구' 등\n"
+        " - 예: '저는 생물학과 학생입니다', '저는 단백질 연구하는 연구원이에요', '내 이름이 뭐라고?', '내 직업이 뭐더라?', '나는 누구야?'\n\n"
         
         "NO_RELATION\n"
         " - 단백질 등 생물학적 관련 질문이 아닌 질문\n"
@@ -99,10 +105,11 @@ def _classify_with_llm(q: str, chat_room_id: str = None, user_id: str = "default
         "분류 기준:\n"
         "1. 원본 질문의 핵심 키워드와 주제를 먼저 파악\n"
         "2. 이전 대화 정보는 참고용일 뿐, 분류 결정에 과도하게 영향주지 않음\n"
-        "3. 꼬리질문이어도 원본 질문의 의도(논문, 프로토콜, 시뮬레이션 등)를 기준으로 분류\n\n"
+        "3. 꼬리질문이어도 원본 질문의 의도(논문, 프로토콜, 시뮬레이션 등)를 기준으로 분류\n"
+        "4. 사용자가 자신의 신분/배경을 밝히는 경우 반드시 USER_INFO로 분류\n\n"
         
         "반드시 아래 중 하나만 출력하세요:\n"
-        "NO_RELATION, BIO_Q, SIMULATION_Q, PROTOCOL_Q, INFERENCE_Q"
+        "USER_INFO, NO_RELATION, BIO_Q, SIMULATION_Q, PROTOCOL_Q, INFERENCE_Q"
     )
 
     # 사용자가 입력한 실제 질문을 AI에게 전달할 형식으로 만듭니다
@@ -118,8 +125,9 @@ def _classify_with_llm(q: str, chat_room_id: str = None, user_id: str = "default
         # .strip()은 앞뒤 공백을 제거하는 함수입니다
         label = response.strip()
 
-        # 허용된 카테고리 목록 (정확히 이 5가지만 유효합니다)
+        # 허용된 카테고리 목록 (정확히 이 6가지만 유효합니다)
         valid_categories = {
+            "USER_INFO",
             "NO_RELATION",
             "BIO_Q",
             "SIMULATION_Q",
