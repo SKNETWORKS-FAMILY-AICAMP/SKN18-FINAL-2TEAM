@@ -411,6 +411,3 @@ django_app/static/js-lib/**
 django_app/static/assets/**
 
 # End of https://www.toptal.com/developers/gitignore/api/python,django,windows,macos,jupyternotebooks
-
-# demo page
-IDE/
