@@ -8,7 +8,7 @@ if SRC_DIR not in sys.path:
     sys.path.append(SRC_DIR)
 
 from db_connector import Neo4jConnector
-from queries import PaperRAGQueries, ProtocolQueries, ClinicalTrialQueries
+from queries_v2 import PaperRAGQueries, ProtocolQueries, ClinicalTrialQueries
 
 
 class PaperLoader:
@@ -135,12 +135,17 @@ class PaperLoader:
             # ---------------------------
             # [Part 3] ClinicalTrials
             # ---------------------------
-            ("16. [ClinicalTrial] 제약조건", clinical_indices),
+            # 실행할 태스크 목록 (ClinicalTrial 전용)
+            ("16. [ClinicalTrial] 제약조건/인덱스 생성", clinical_indices),
             ("17. [ClinicalTrial] 메타데이터 로딩", ClinicalTrialQueries.LOAD_METADATA),
-            # 아래 2개는 '기존 Mention 노드가 이미 있고, 거기에 nct_id가 들어있다'는 전제의 연결만 수행
-            ("18. [ClinicalTrial] Trial -> Mention 연결", ClinicalTrialQueries.LINK_TRIAL_MENTIONS),
-            ("19. [ClinicalTrial] (mention 기반) Trial -> Entity 연결/집계", ClinicalTrialQueries.LINK_TRIAL_ENTITIES_FROM_MENTIONS),
+            
+            # [핵심 변경] Mention 생성과 연결을 동시에 수행하는 쿼리 실행
+            ("18. [ClinicalTrial] Trial용 Mention 생성 및 연결", ClinicalTrialQueries.LOAD_TRIAL_MENTIONS),
+            
+            # 집계 단계
+            ("19. [ClinicalTrial] (mention 기반) Trial -> Entity 집계", ClinicalTrialQueries.LINK_TRIAL_ENTITIES_FROM_MENTIONS),
         ]
+
 
         # 실행
         for desc, q in tqdm(tasks, desc="Neo4j Loading"):
@@ -159,4 +164,50 @@ if __name__ == "__main__":
     loader = PaperLoader(URI, USER, PASSWORD)
 
     if loader.connector.test_connection():
-        loader.load(clear=True)
+        print("🚀 [ClinicalTrial Only] 모드로 실행합니다. (Paper/Protocol 보존)")
+
+        # -------------------------------------------------------
+        # [Step 1] ClinicalTrial 데이터만 삭제 (Reset)
+        # -------------------------------------------------------
+        # 주의: ClinicalTrial 노드와 그에 연결된 관계만 끊습니다.
+        print("🧹 [Cleanup] 기존 ClinicalTrial 노드 및 관계 삭제 중...")
+        cleanup_query = """
+        CALL apoc.periodic.iterate(
+            "MATCH (n:ClinicalTrial) RETURN n",
+            "DETACH DELETE n",
+            {batchSize: 5000, parallel: true}
+        )
+        """
+        loader._run(cleanup_query, desc="Clear ClinicalTrial Nodes")
+
+        # -------------------------------------------------------
+        # [Step 2] ClinicalTrial 적재 태스크 정의
+        # -------------------------------------------------------
+        # 인덱스 쿼리 가져오기
+        clinical_indices = []
+        clinical_indices.extend(getattr(ClinicalTrialQueries, "CREATE_CONSTRAINTS", []))
+        clinical_indices.extend(getattr(ClinicalTrialQueries, "CREATE_INDEXES", []))
+
+        # 실행할 태스크 목록
+        clinical_only_tasks = [
+            ("16. [ClinicalTrial] 제약조건/인덱스 생성", clinical_indices),
+            ("17. [ClinicalTrial] 메타데이터 로딩", ClinicalTrialQueries.LOAD_METADATA),
+            
+            # [중요] 새로 추가한 '전용 멘션 로더' 실행 (생성+연결 동시 수행)
+            ("18. [ClinicalTrial] Trial용 Mention 생성 및 연결", ClinicalTrialQueries.LOAD_TRIAL_MENTIONS),
+            
+            # 집계 단계 (Entity 연결 카운트 계산)
+            ("19. [ClinicalTrial] (mention 기반) Trial -> Entity 집계", ClinicalTrialQueries.LINK_TRIAL_ENTITIES_FROM_MENTIONS),
+        ]
+
+        # -------------------------------------------------------
+        # [Step 3] 실행 루프
+        # -------------------------------------------------------
+        for desc, q in tqdm(clinical_only_tasks, desc="Reloading ClinicalTrials"):
+            if isinstance(q, list):
+                for sub_q in q:
+                    loader._run(sub_q, desc=desc)
+            else:
+                loader._run(q, desc=desc)
+        
+        print("✅ [Done] ClinicalTrial 재적재 완료!")

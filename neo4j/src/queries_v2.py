@@ -700,38 +700,51 @@ class ClinicalTrialQueries:
     )
     """
 
-    # 3) (연결만) ClinicalTrial -> Mention
-    # 전제: 임상 mention이 기존 (:Mention) 안에 있고, m.nct_id에 trial id가 들어있음
-    # 만약 m.doc_id에 들어있다면, 아래 WHERE에서 m.nct_id 대신 toString(m.doc_id) 사용
-    LINK_TRIAL_MENTIONS = """
+# [NEW] ★ 임상시험 전용 멘션 로더 (이게 없어서 연결이 안 된 겁니다)
+    LOAD_TRIAL_MENTIONS = """
     CALL apoc.periodic.iterate(
+    "LOAD CSV WITH HEADERS FROM 'file:///global_mention_master.csv' AS row RETURN row",
     "
-    MATCH (ct:ClinicalTrial)
-    RETURN ct
-    ",
-    "
-    WITH ct
-    MATCH (m:Mention)
-    WHERE m.nct_id = ct.nct_id
+    // 1. NCT ID로 시작하는 행만 필터링 (논문 데이터 제외)
+    WHERE row.doc_id STARTS WITH 'NCT'
+    
+    // 2. ClinicalTrial 노드 찾기
+    MATCH (ct:ClinicalTrial {nct_id: row.doc_id})
+    MATCH (e:Entity {entity_id: row.entity_id})
+
+    // 3. Mention 노드 생성
+    MERGE (m:Mention {mention_id: row.mention_id})
+    SET m.source = row.source,
+        m.doc_id = row.doc_id,
+        m.location_id = row.location_id,
+        m.raw_text = row.raw_text,
+        m.normalized_text = row.normalized_text,
+        m.entity_type = row.entity_type,
+        m.umls_cui = row.umls_cui
+
+    // 4. 즉시 연결 (별도 쿼리로 분리할 필요 없이 여기서 바로 연결)
     MERGE (ct)-[:HAS_MENTION]->(m)
+    MERGE (m)-[:MENTION_OF]->(e)
     ",
-    {batchSize: 1000, parallel: true}
+    {batchSize: 5000, parallel: false}
     )
     """
 
-    # 4) (mention 기반) ClinicalTrial -> Entity 다이렉트 연결 + count 집계
-    # ct-mention-entity 경로를 타고 연결 생성
+    # [수정] 4. 연결 집계 최적화 (이건 그대로 사용)
     LINK_TRIAL_ENTITIES_FROM_MENTIONS = """
     CALL apoc.periodic.iterate(
     "
-    MATCH (ct:ClinicalTrial)-[:HAS_MENTION]->(m:Mention)-[:MENTION_OF]->(e:Entity)
-    RETURN ct, e
+    MATCH (ct:ClinicalTrial)
+    WHERE (ct)-[:HAS_MENTION]->()
+    RETURN ct
     ",
     "
+    MATCH (ct)-[:HAS_MENTION]->(m:Mention)-[:MENTION_OF]->(e:Entity)
+    WITH ct, e, count(m) as mention_count
+    
     MERGE (ct)-[r:HAS_ENTITY]->(e)
-    ON CREATE SET r.count = 1
-    ON MATCH  SET r.count = r.count + 1
+    SET r.count = mention_count
     ",
-    {batchSize: 5000, parallel: true}
+    { batchSize: 100, parallel: false }
     )
     """

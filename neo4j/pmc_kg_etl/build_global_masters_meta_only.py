@@ -5,12 +5,12 @@ import numpy as np
 # ====================================
 # 0. 파일 경로 설정
 # ====================================
-TS_ENTITY_MASTER_FILE = "ts_entity_master.csv"
-TS_MENTIONS_FILE      = "ts_section_entity_mentions.csv"
-CLIN_META_FILE        = "nih_mapped_metadata_entities_1208.csv"
+TS_ENTITY_MASTER_FILE = "C:\\dev\\study\\skn18_fianl-2team\\SKN18-FINAL-2TEAM\\neo4j\\import\\ts_entity_master.csv"
+TS_MENTIONS_FILE      = "C:\\dev\\study\\skn18_fianl-2team\\SKN18-FINAL-2TEAM\\neo4j\\import\\ts_section_entity_mentions.csv"
+CLIN_META_FILE        = "C:\\dev\\study\\skn18_fianl-2team\\SKN18-FINAL-2TEAM\\neo4j\\import\\nih_mapped_metadata_entities_1208.csv"
 
-ENTITY_MASTER_OUT  = "global_entity_master.csv"
-MENTION_MASTER_OUT = "global_mention_master.csv"
+ENTITY_MASTER_OUT  = "C:\\dev\\study\\skn18_fianl-2team\\SKN18-FINAL-2TEAM\\neo4j\\import\\global_entity_master.csv"
+MENTION_MASTER_OUT = "C:\\dev\\study\\skn18_fianl-2team\\SKN18-FINAL-2TEAM\\neo4j\\import\\global_mention_master.csv"
 
 
 # ====================================
