@@ -151,6 +151,7 @@ class ChatMessagePaperGraph(models.Model):
     sort_order = models.SmallIntegerField(default=0, db_column='sort_order')
     created_at = models.DateTimeField(auto_now_add=True, db_column='created_at')
     created_id = models.CharField(max_length=60, db_column='created_id')
+    # 필요없는 updated_id 삭제
     
     class Meta:
         db_table = 't_chat_message_paper_graph'
