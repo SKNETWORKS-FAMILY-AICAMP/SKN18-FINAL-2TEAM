@@ -61,10 +61,10 @@ def init_db():
     모든 ORM 모델의 테이블을 생성한다.
     """
     print("▶️ Creating PostgreSQL tables...")
-    print("   - conversation_memory (각 질문마다 새 row)")
+    print("   - t_memory (각 질문마다 새 row)")
     print("   - case_type: 데이터 타입 컬럼 (SIMULATION_Q, INFERENCE_Q, BIO_Q, PROTOCOL_Q)")
     print("   - full_response: 원본 답변 컬럼")
-    print("   - summarize_response: 요약 답변 컬럼")
+    print("   - summary: 질문과 답변 요약 컬럼")
     
     Base.metadata.create_all(bind=engine)
     print("✅ Tables created successfully!")

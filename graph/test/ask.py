@@ -129,7 +129,7 @@ def main():
     print_banner()
     
     # DB 초기화 (테이블이 없으면 자동 생성)
-    initialize_db()
+    initialize_db()  # 주석처리: 기존 DB 데이터 유지
     
     # 그래프 컴파일 테스트
     app = test_graph_compilation()

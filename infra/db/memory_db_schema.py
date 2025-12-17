@@ -3,7 +3,7 @@
 - chat_room_id: 채팅창 ID (conversation_id와 동일)
 - case_type: 데이터 타입 구분 (SIMULATION_Q, INFERENCE_Q, BIO_Q, PROTOCOL_Q)
 - full_response: 원본 답변 저장
-- summarize_response: 요약 답변 저장
+- summary: 질문과 답변 요약 저장
 - 단순화된 3컬럼 구조로 효율적인 조회 및 관리
 '''
 
@@ -21,10 +21,10 @@ class ConversationMemory(Base):
     """
     각 질문-답변을 개별 row로 저장하는 테이블.
     chat_room_id는 채팅방을 구분하고, 각 질문마다 새 row 생성.
-    case_type으로 데이터 타입 구분, full_response와 summarize_response에 답변 저장.
+    case_type으로 데이터 타입 구분, full_response와 summary에 답변 저장.
     """
 
-    __tablename__ = "t_conversation_memory"
+    __tablename__ = "t_memory"
 
     # ---------------------------
     # 기본 정보
@@ -49,7 +49,7 @@ class ConversationMemory(Base):
     # ---------------------------
     case_type = Column(String, nullable=False, index=True)  # 데이터 타입: SIMULATION_Q, INFERENCE_Q, BIO_Q, PROTOCOL_Q
     full_response = Column(Text, nullable=True)             # 원본 답변 전체
-    summarize_response = Column(Text, nullable=True)        # 요약된 답변
+    summary = Column(Text, nullable=True)                   # 질문과 답변 요약
 
     def __repr__(self):
         return f"<ConversationMemory(chat_id={self.chat_id}, chat_room_id={self.chat_room_id}, user_id={self.user_id})>"
