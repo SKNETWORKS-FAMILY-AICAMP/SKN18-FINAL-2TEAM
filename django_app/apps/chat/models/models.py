@@ -80,7 +80,7 @@ class Chat(models.Model):
         default='E',
         db_column='status'
     )
-    favorite = models.CharField(
+    favorite = models.CharField(   # pin기능이 곧 favorites 이므로 pin이름을 favorites로 통일
         max_length=1,
         default='N',
         db_column='favorite'
