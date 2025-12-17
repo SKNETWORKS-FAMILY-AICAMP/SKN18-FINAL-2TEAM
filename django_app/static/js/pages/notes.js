@@ -339,7 +339,12 @@ function renderCardView(currentNotes) {
     notesGrid.innerHTML = currentNotes.map(note => `
         <div class="note-card" data-note-id="${note.id}">
             <h3 class="note-title">${escapeHtml(note.title)}</h3>
-            <p class="note-content">${escapeHtml(stripHtml(note.content))}</p>
+            <p class="note-content">
+                ${escapeHtml(getNotePreview(note.content, 120))}
+                ${hasTable(note.content) ? '<span class="note-has-table"> 📊 표 포함</span>' : ''}
+                ${hasImage(note.content) ? '<span class="note-has-image"> 🖼 이미지 포함</span>': ''}
+            </p>
+
             <div class="note-tags">
                 ${note.tags.map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join('')}
             </div>
@@ -500,6 +505,40 @@ function escapeHtml(text) {
     div.textContent = text;
     return div.innerHTML;
 }
+
+function getNotePreview(html, maxLength = 120) {
+    if (!html) return '';
+
+    // 1. table / figure.table 제거
+    let cleaned = html
+        .replace(/<figure class="table">[\s\S]*?<\/figure>/gi, '')
+        .replace(/<table[\s\S]*?<\/table>/gi, '');
+
+    // 2. HTML → 텍스트
+    const div = document.createElement('div');
+    div.innerHTML = cleaned;
+    let text = div.textContent || div.innerText || '';
+    text = text.trim();
+
+    // 3. 길이 제한
+    if (text.length > maxLength) {
+        text = text.slice(0, maxLength) + '…';
+    }
+
+    return text;
+}
+
+function hasTable(html) {
+    return typeof html === 'string' && html.includes('<table');
+}
+
+function hasImage(html) {
+    return typeof html === 'string' && (
+        html.includes('<img') ||
+        html.includes('figure class="image"')
+    );
+}
+
 
 function stripHtml(html) {
     const div = document.createElement('div');
