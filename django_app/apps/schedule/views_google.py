@@ -2,7 +2,7 @@
 
 import json
 import urllib.parse
-from urllib.parse import quote  # ✅ 추가: calendar_id URL 인코딩용
+from urllib.parse import quote  # ✅ calendar_id URL 인코딩용
 from datetime import datetime, timedelta
 
 import requests
@@ -61,6 +61,26 @@ def _parse_json_body(request: HttpRequest) -> dict:
         return {}
 
 
+# ✅ 추가: 기본 색상/색상 검증
+DEFAULT_CAL_COLOR = "#4285F4"
+
+def _normalize_hex_color(value: str | None) -> str:
+    """
+    '#RRGGBB' 형태만 허용하고 아니면 기본값으로.
+    """
+    if not value or not isinstance(value, str):
+        return DEFAULT_CAL_COLOR
+    v = value.strip()
+    if len(v) == 7 and v.startswith("#"):
+        hex_part = v[1:]
+        try:
+            int(hex_part, 16)
+            return v
+        except Exception:
+            return DEFAULT_CAL_COLOR
+    return DEFAULT_CAL_COLOR
+
+
 # ---------------------------------------------------------------------
 # 반복 RRULE 생성
 # ---------------------------------------------------------------------
@@ -85,7 +105,6 @@ def _build_rrule_from_payload(repeat_type: str | None, repeat_until_date: str | 
     if repeat_until_date:
         try:
             dt = datetime.fromisoformat(repeat_until_date).date()
-            # UNTIL은 UTC(Z) 기준 문자열을 권장 (간단히 00:00Z로 고정)
             until_str = dt.strftime("%Y%m%dT000000Z")
             parts.append(f"UNTIL={until_str}")
         except Exception:
@@ -96,7 +115,6 @@ def _build_rrule_from_payload(repeat_type: str | None, repeat_until_date: str | 
 
 # ---------------------------------------------------------------------
 # Google 이벤트 start/end payload 생성
-# 핵심: 올데이 <-> 시간 이벤트 전환 시 date/dateTime 혼동 제거
 # ---------------------------------------------------------------------
 def _build_event_datetime_payload(
     *,
@@ -110,9 +128,7 @@ def _build_event_datetime_payload(
 ) -> dict:
     """
     - all_day=True  => start.date / end.date (+1day exclusive)
-      (업데이트면 dateTime/timeZone 명시적으로 None 처리)
-    - all_day=False => start.dateTime / end.dateTime (RFC3339 +09:00)
-      (업데이트면 date 명시적으로 None 처리)
+    - all_day=False => start.dateTime / end.dateTime
     """
     if all_day:
         try:
@@ -125,7 +141,6 @@ def _build_event_datetime_payload(
         end_obj = {"date": e.isoformat()}
 
         if for_update:
-            # 이전에 timed 였다면 잔여 필드를 확실히 지움
             start_obj["dateTime"] = None
             start_obj["timeZone"] = None
             end_obj["dateTime"] = None
@@ -133,7 +148,6 @@ def _build_event_datetime_payload(
 
         return {"summary": title, "start": start_obj, "end": end_obj}
 
-    # timed
     if not start_time:
         start_time = "09:00"
     if not end_time:
@@ -146,7 +160,6 @@ def _build_event_datetime_payload(
     end_obj = {"dateTime": end_dt, "timeZone": "Asia/Seoul"}
 
     if for_update:
-        # 이전에 allDay 였다면 잔여 필드를 확실히 지움
         start_obj["date"] = None
         end_obj["date"] = None
 
@@ -161,7 +174,7 @@ def google_login(request: HttpRequest) -> HttpResponse:
         return redirect(settings.LOGIN_URL)
 
     if GoogleCredentials.objects.filter(user=request.user).exists():
-        return redirect("schedule:schedule")  # schedule index로
+        return redirect("schedule:schedule")
 
     base_url = "https://accounts.google.com/o/oauth2/v2/auth"
     params = {
@@ -171,7 +184,7 @@ def google_login(request: HttpRequest) -> HttpResponse:
         "scope": settings.GOOGLE_CALENDAR_SCOPE,
         "access_type": "offline",
         "include_granted_scopes": "true",
-        "prompt": "consent",   # ✅ 추가 (매번 동의창 띄워서 refresh_token 받기)
+        "prompt": "consent",
     }
     url = f"{base_url}?{urllib.parse.urlencode(params)}"
     return redirect(url)
@@ -259,11 +272,19 @@ def calendar_settings(request: HttpRequest) -> HttpResponse:
         for item in data.get("items", []):
             cid = item["id"]
             summary = item.get("summary", cid)
-            SyncedCalendar.objects.update_or_create(
+
+            # ✅ color는 기존 DB 값 유지 (없으면 기본값)
+            obj, created = SyncedCalendar.objects.update_or_create(
                 user=request.user,
                 calendar_id=cid,
                 defaults={"summary": summary},
             )
+            if not getattr(obj, "color", None):
+                try:
+                    obj.color = DEFAULT_CAL_COLOR
+                    obj.save(update_fields=["color"])
+                except Exception:
+                    pass
 
     if request.method == "POST":
         selected_ids = request.POST.getlist("calendars")
@@ -301,10 +322,10 @@ def google_events_api(request: HttpRequest) -> JsonResponse:
 
     if not synced:
         calendar_ids = ["primary"]
-        color_map = {"primary": "#4285F4"}
+        color_map = {"primary": DEFAULT_CAL_COLOR}
     else:
         calendar_ids = [c.calendar_id for c in synced]
-        color_map = {c.calendar_id: (getattr(c, "color", None) or "#4285F4") for c in synced}
+        color_map = {c.calendar_id: _normalize_hex_color(getattr(c, "color", None)) for c in synced}
 
     time_min = request.GET.get("start")
     time_max = request.GET.get("end")
@@ -322,19 +343,14 @@ def google_events_api(request: HttpRequest) -> JsonResponse:
         encoded_cal_id = quote(cal_id, safe="")
         url = f"https://www.googleapis.com/calendar/v3/calendars/{encoded_cal_id}/events"
 
-        # 1차 호출
         res = requests.get(url, headers=headers, params=params)
 
-        # ✅ 핵심: 401이면 refresh 후 1번만 재시도
         if res.status_code == 401:
             print("⚠️ 401 from Google. Try refresh token once. cal_id =", cal_id)
-
-            # refresh_token 없으면 여기서 끝 (재연동 필요)
             if not creds.refresh_token:
                 print("⛔ no refresh_token. Need reconnect.")
                 continue
 
-            # 강제 refresh
             creds = _refresh_google_token(creds)
             headers = {"Authorization": f"Bearer {creds.access_token}"}
             res = requests.get(url, headers=headers, params=params)
@@ -369,7 +385,10 @@ def google_events_api(request: HttpRequest) -> JsonResponse:
                 "start": start,
                 "end": end,
                 "allDay": all_day,
-                "color": color_map.get(cal_id, "#4285F4"),
+
+                # ✅ 캘린더별 색 적용
+                "color": color_map.get(cal_id, DEFAULT_CAL_COLOR),
+
                 "extendedProps": {
                     "googleEventId": event_id,
                     "calendarId": cal_id,
@@ -425,7 +444,6 @@ def google_event_create(request: HttpRequest) -> JsonResponse:
 
     headers = {"Authorization": f"Bearer {creds.access_token}"}
 
-    # ✅ calendar_id 인코딩
     encoded_calendar_id = quote(calendar_id, safe="")
     url = f"https://www.googleapis.com/calendar/v3/calendars/{encoded_calendar_id}/events"
 
@@ -498,7 +516,7 @@ def google_event_update(request: HttpRequest) -> JsonResponse:
     except Exception:
         reminder_minutes = None
 
-    repeat_type = body.get("repeat_type")  # 명시된 경우에만 바꾸도록
+    repeat_type = body.get("repeat_type")
     repeat_until_date = body.get("repeat_until_date")
     rrule = _build_rrule_from_payload(repeat_type, repeat_until_date)
 
@@ -509,7 +527,6 @@ def google_event_update(request: HttpRequest) -> JsonResponse:
 
     headers = {"Authorization": f"Bearer {creds.access_token}"}
 
-    # ✅ calendar_id 인코딩
     encoded_calendar_id = quote(calendar_id, safe="")
     url = f"https://www.googleapis.com/calendar/v3/calendars/{encoded_calendar_id}/events/{event_id}"
 
@@ -521,7 +538,7 @@ def google_event_update(request: HttpRequest) -> JsonResponse:
             end_date=end_date,
             start_time=start_time,
             end_time=end_time,
-            for_update=True,  # ✅ 핵심
+            for_update=True,
         )
     else:
         payload = {"summary": title}
@@ -549,7 +566,7 @@ def google_event_update(request: HttpRequest) -> JsonResponse:
 
 
 # ---------------------------------------------------------------------
-# 8) DELETE (단일/전체 반복 등은 여기서 확장)
+# 8) DELETE
 # ---------------------------------------------------------------------
 def google_event_delete(request: HttpRequest) -> JsonResponse:
     if not request.user.is_authenticated:
@@ -571,7 +588,6 @@ def google_event_delete(request: HttpRequest) -> JsonResponse:
 
     headers = {"Authorization": f"Bearer {creds.access_token}"}
 
-    # ✅ calendar_id 인코딩
     encoded_calendar_id = quote(calendar_id, safe="")
     url = f"https://www.googleapis.com/calendar/v3/calendars/{encoded_calendar_id}/events/{event_id}"
 
@@ -583,7 +599,7 @@ def google_event_delete(request: HttpRequest) -> JsonResponse:
 
 
 ##############################
-# 9) ✅ (추가) 구글 캘린더 연동 상태 API
+# 9) ✅ 구글 캘린더 연동 상태 API
 ##############################
 @require_GET
 def google_calendar_status(request: HttpRequest) -> JsonResponse:
@@ -598,19 +614,36 @@ def google_calendar_status(request: HttpRequest) -> JsonResponse:
 def google_calendar_calendars_api(request: HttpRequest) -> JsonResponse:
     """
     모달용:
-    - GET  : 구글에서 가져온 캘린더를 SyncedCalendar에 저장해둔 목록 반환
-    - POST : 선택된 캘린더(selected) 저장
+    - GET  : 구글에서 가져온 캘린더를 SyncedCalendar에 저장해둔 목록 반환 (✅ color 포함)
+    - POST : 선택/색상 저장
+
+    지원 payload A (권장/신규):
+      {
+        "calendars": [
+          {"calendar_id":"id1", "selected":true, "color":"#ff0000", "name":"..." },
+          {"calendar_id":"id2", "selected":false, "color":"#00ff00"}
+        ]
+      }
+
+    지원 payload B (JS에서 많이 쓰는 형태):
+      {
+        "selected_calendar_ids": ["id1","id2"],
+        "calendar_colors": {"id1":"#ff0000","id2":"#00ff00"}
+      }
+
+    ✅ 호환: calendar-colors 도 허용
     """
     if not request.user.is_authenticated:
         return _json_error("login_required", status=401)
 
-    # 자격증명 없으면 빈 목록
     try:
         creds = _get_valid_creds(request.user)
     except GoogleCredentials.DoesNotExist:
         return JsonResponse([], safe=False)
 
-    # GET이면: (최신 목록을 위해) 구글 CalendarList 한번 불러와서 DB 갱신 후 반환
+    # -----------------------------------------------------------------
+    # GET: 구글 CalendarList 불러와 DB 갱신 후 반환
+    # -----------------------------------------------------------------
     if request.method == "GET":
         headers = {"Authorization": f"Bearer {creds.access_token}"}
         resp = requests.get(
@@ -624,12 +657,19 @@ def google_calendar_calendars_api(request: HttpRequest) -> JsonResponse:
                 cid = item["id"]
                 summary = item.get("summary", cid)
 
-                # colorId -> hex 는 별도 매핑이 필요해서 일단 None 처리
-                SyncedCalendar.objects.update_or_create(
+                obj, _ = SyncedCalendar.objects.update_or_create(
                     user=request.user,
                     calendar_id=cid,
                     defaults={"summary": summary},
                 )
+
+                # ✅ color가 비어있으면 기본값으로 세팅
+                if not getattr(obj, "color", None):
+                    try:
+                        obj.color = DEFAULT_CAL_COLOR
+                        obj.save(update_fields=["color"])
+                    except Exception:
+                        pass
 
         rows = SyncedCalendar.objects.filter(user=request.user).order_by("summary")
         result = [
@@ -638,19 +678,82 @@ def google_calendar_calendars_api(request: HttpRequest) -> JsonResponse:
                 "name": r.summary,
                 "email": r.calendar_id,
                 "selected": bool(r.selected),
-                "color": getattr(r, "color", None),
+                "color": _normalize_hex_color(getattr(r, "color", None)),
             }
             for r in rows
         ]
         return JsonResponse(result, safe=False, json_dumps_params={"ensure_ascii": False})
 
-    # POST이면: selected_calendar_ids 저장
+    # -----------------------------------------------------------------
+    # POST: 선택/색상 저장
+    # -----------------------------------------------------------------
     body = _parse_json_body(request)
+
+    # ✅ 1) 신규 payload: calendars: [...]
+    calendars_payload = body.get("calendars")
+    if isinstance(calendars_payload, list) and len(calendars_payload) > 0:
+        SyncedCalendar.objects.filter(user=request.user).update(selected=False)
+
+        updated = 0
+        for item in calendars_payload:
+            if not isinstance(item, dict):
+                continue
+
+            cal_id = item.get("calendar_id") or item.get("email") or item.get("id")
+            if not cal_id:
+                continue
+
+            selected = bool(item.get("selected", False))
+            color = _normalize_hex_color(item.get("color"))
+            name = item.get("name") or item.get("summary") or cal_id
+
+            obj, _ = SyncedCalendar.objects.update_or_create(
+                user=request.user,
+                calendar_id=cal_id,
+                defaults={"summary": name},
+            )
+
+            try:
+                obj.selected = selected
+                obj.color = color
+                obj.save(update_fields=["selected", "color"])
+                updated += 1
+            except Exception:
+                pass
+
+        return JsonResponse({"ok": True, "updated": updated}, json_dumps_params={"ensure_ascii": False})
+
+    # ✅ 2) JS payload: selected_calendar_ids + calendar_colors(dict)
     selected_ids = body.get("selected_calendar_ids", [])
     if not isinstance(selected_ids, list):
         selected_ids = []
 
-    SyncedCalendar.objects.filter(user=request.user).update(selected=False)
-    SyncedCalendar.objects.filter(user=request.user, calendar_id__in=selected_ids).update(selected=True)
+    # calendar_colors (언더스코어/대시 둘 다 허용)
+    calendar_colors = body.get("calendar_colors")
+    if calendar_colors is None:
+        calendar_colors = body.get("calendar-colors")
+    if not isinstance(calendar_colors, dict):
+        calendar_colors = {}
 
-    return JsonResponse({"ok": True})
+    # (A) selected 저장
+    SyncedCalendar.objects.filter(user=request.user).update(selected=False)
+    SyncedCalendar.objects.filter(
+        user=request.user,
+        calendar_id__in=selected_ids
+    ).update(selected=True)
+
+    # (B) color 저장 (넘어온 것만 업데이트)
+    updated_colors = 0
+    for cal_id, color in calendar_colors.items():
+        if not isinstance(cal_id, str):
+            continue
+        normalized = _normalize_hex_color(color)
+        updated_colors += SyncedCalendar.objects.filter(
+            user=request.user,
+            calendar_id=cal_id
+        ).update(color=normalized)
+
+    return JsonResponse(
+        {"ok": True, "updated_colors": updated_colors},
+        json_dumps_params={"ensure_ascii": False}
+    )

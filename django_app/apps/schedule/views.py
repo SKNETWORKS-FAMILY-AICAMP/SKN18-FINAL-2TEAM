@@ -3,7 +3,8 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
 from datetime import datetime
-from .models import Schedule, UserCalendar, GoogleCalendar
+
+from .models import Schedule, UserCalendar, SyncedCalendar, GoogleCredentials
 
 
 @login_required
@@ -11,13 +12,13 @@ def index(request):
     """Schedule page view (인증 필수)."""
     # Load schedules for initial page render
     schedules = Schedule.objects.filter(use_yn='Y').order_by('start_date', 'created_at')[:10]
-    
+
     # Load user calendars
     user_calendars = UserCalendar.objects.all().order_by('sort_order', 'created_at')
-    
-    # Check Google Calendar connection
-    is_google_connected = GoogleCalendar.objects.filter(is_connected='Y').exists()
-    
+
+    # ✅ Google Calendar connection (토큰 존재 여부로 판단)
+    is_google_connected = GoogleCredentials.objects.filter(user=request.user).exists()
+
     context = {
         'is_google_connected': is_google_connected,
         'user_calendars': [
@@ -34,7 +35,7 @@ def index(request):
                 'id': s.schedule_sid,
                 'title': s.title,
                 'start_datetime': s.start_date,
-                'status': s.status,
+                'status': s.schedule_status,
                 'get_type_display': s.get_schedule_type_display(),
                 'linked_note': s.linked_note_sid,
             }
@@ -49,7 +50,7 @@ def index(request):
 def schedule_list(request):
     """일정 목록 API 엔드포인트"""
     schedules = Schedule.objects.filter(use_yn='Y').order_by('start_date', 'created_at')
-    
+
     formatted_schedules = []
     for schedule in schedules:
         # Get color based on type
@@ -60,7 +61,7 @@ def schedule_list(request):
             'S': '#ec4899',  # 세미나 - pink
         }
         color = schedule.color or type_colors.get(schedule.schedule_type, '#3b82f6')
-        
+
         formatted_schedules.append({
             'id': schedule.schedule_sid,
             'title': schedule.title,
@@ -77,24 +78,22 @@ def schedule_list(request):
             'repeat_type': schedule.repeat_type,
             'created_at': schedule.created_at.isoformat() if schedule.created_at else None,
         })
-    
-    return JsonResponse({
-        'results': formatted_schedules
-    })
+
+    return JsonResponse({'results': formatted_schedules})
 
 
 @require_http_methods(["GET", "PATCH"])
 def schedule_detail(request, schedule_id):
     """일정 상세 조회/수정 API 엔드포인트"""
     print(f"[DEBUG] schedule_detail() called - schedule_id: {schedule_id}, method: {request.method}")
-    
+
     try:
         schedule = Schedule.objects.get(schedule_sid=schedule_id, use_yn='Y')
         print(f"[DEBUG] Schedule found: {schedule.title}")
     except Schedule.DoesNotExist:
         print(f"[ERROR] Schedule not found - schedule_id: {schedule_id}")
         return JsonResponse({'error': '일정을 찾을 수 없습니다.'}, status=404)
-    
+
     if request.method == 'GET':
         print(f"[DEBUG] GET request - returning schedule detail")
         # Get color based on type
@@ -105,24 +104,23 @@ def schedule_detail(request, schedule_id):
             'S': '#ec4899',  # 세미나 - pink
         }
         color = schedule.color or type_colors.get(schedule.schedule_type, '#3b82f6')
-        
+
         # Load shared users
         shared_users = []
         try:
             from .models import ScheduleShare
             schedule_shares = ScheduleShare.objects.filter(schedule=schedule).select_related()
-            # TODO: User 모델이 있으면 user 정보를 가져오고, 없으면 user_id만 반환
             shared_users = [
                 {
                     'user_id': share.user_id,
-                    'email': share.user_id,  # user_id를 email로 사용 (임시)
-                    'name': share.user_id,  # user_id를 name으로 사용 (임시)
+                    'email': share.user_id,  # 임시
+                    'name': share.user_id,   # 임시
                 }
                 for share in schedule_shares
             ]
         except Exception as e:
             print(f"[WARNING] Error loading shared users: {e}")
-        
+
         return JsonResponse({
             'id': schedule.schedule_sid,
             'title': schedule.title,
@@ -140,21 +138,20 @@ def schedule_detail(request, schedule_id):
             'created_at': schedule.created_at.isoformat() if schedule.created_at else None,
             'shared_with': shared_users,
         })
-    
+
     elif request.method == 'PATCH':
         import json
         data = json.loads(request.body)
-        
+
         # Update status if provided
         if 'status' in data:
-            # status를 schedule_status로 변환
             status_map = {
                 'scheduled': 'E',
                 'in_progress': 'R',
                 'completed': 'C',
             }
             schedule.schedule_status = status_map.get(data['status'], 'E')
-        
+
         # Update other fields if provided
         if 'title' in data:
             schedule.title = data['title']
@@ -166,29 +163,22 @@ def schedule_detail(request, schedule_id):
             schedule.location = data.get('location', '')
         if 'color' in data:
             schedule.color = data.get('color', '')
+
         if 'start_datetime' in data:
             from django.utils.dateparse import parse_datetime
             start_date = parse_datetime(data['start_datetime'])
             if start_date:
                 schedule.start_date = start_date
+
         if 'end_datetime' in data:
             from django.utils.dateparse import parse_datetime
             end_date = parse_datetime(data['end_datetime'])
             if end_date:
                 schedule.end_date = end_date
-        
+
         schedule.updated_id = request.user.username if request.user.is_authenticated else 'system'
         schedule.save()
-        
-        # Return updated schedule data
-        type_colors = {
-            'E': '#3b82f6',
-            'M': '#a855f7',
-            'A': '#f97316',
-            'S': '#ec4899',
-        }
-        color = schedule.color or type_colors.get(schedule.schedule_type, '#3b82f6')
-        
+
         return JsonResponse({
             'id': schedule.schedule_sid,
             'title': schedule.title,
@@ -204,26 +194,22 @@ def schedule_shared_users(request, schedule_id):
         schedule = Schedule.objects.get(schedule_sid=schedule_id, use_yn='Y')
     except Schedule.DoesNotExist:
         return JsonResponse({'error': '일정을 찾을 수 없습니다.'}, status=404)
-    
+
     try:
         from .models import ScheduleShare
         schedule_shares = ScheduleShare.objects.filter(schedule=schedule)
-        
+
         shared_users = [
             {
                 'user_id': share.user_id,
-                'email': share.user_id,  # user_id를 email로 사용 (임시)
-                'name': share.user_id,  # user_id를 name으로 사용 (임시)
+                'email': share.user_id,  # 임시
+                'name': share.user_id,   # 임시
                 'created_at': share.created_at.isoformat() if share.created_at else None,
             }
             for share in schedule_shares
         ]
-        
-        return JsonResponse({
-            'results': shared_users
-        })
+
+        return JsonResponse({'results': shared_users})
     except Exception as e:
         print(f"[ERROR] Error loading shared users: {e}")
-        return JsonResponse({
-            'results': []
-        })
+        return JsonResponse({'results': []})

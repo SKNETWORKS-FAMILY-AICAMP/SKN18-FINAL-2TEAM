@@ -30,11 +30,7 @@ urlpatterns = [
     path("api/google-events/update/", views_google.google_event_update, name="google_event_update"),
     path("api/google-events/delete/", views_google.google_event_delete, name="google_event_delete"),
 
-    # ✅ 구글 상태 API (추가)
-    path("api/google-calendar/status/", views_google.google_calendar_status, name="google_calendar_status"),
-
-    # ✅ 모달이 호출할 Google 상태/캘린더 API
+    # ✅ 구글 상태/캘린더 API
     path("api/google-calendar/status/", views_google.google_calendar_status, name="google_calendar_status"),
     path("api/google-calendar/calendars/", views_google.google_calendar_calendars_api, name="google_calendar_calendars_api"),
-
 ]

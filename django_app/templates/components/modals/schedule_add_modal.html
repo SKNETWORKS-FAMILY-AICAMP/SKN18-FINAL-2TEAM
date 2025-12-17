@@ -76,6 +76,18 @@
                                 <p class="shared-count-text"><span id="sharedEmailsCount">0</span>명 선택됨</p>
                             </div>
                         </div>
+
+                        <!-- ✅ 캘린더 선택 (추가) -->
+                        <div class="form-group">
+                          <label for="targetCalendarSelect">캘린더</label>
+                          <select id="targetCalendarSelect" class="form-select">
+                            <option value="local" selected>내 일정(웹 캘린더)</option>
+                            <!-- JS가 여기에 Google 캘린더 옵션을 자동으로 붙임 -->
+                          </select>
+                          <p class="helper-text" style="margin-top:6px; color:#6b7280; font-size:12px;">
+                            Google 캘린더를 선택하면, 일정 저장 시 Google에도 같이 생성됩니다.
+                          </p>
+                        </div>
                     </div>
 
                     <!-- Right Column -->

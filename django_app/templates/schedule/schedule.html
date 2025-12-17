@@ -30,7 +30,7 @@
                 </div>
             </div>
         </div>
-        
+
         <div class="subsidebar-content">
             <div class="schedule-sidebar-content">
                 <!-- Google Calendar Connect Button -->
@@ -80,8 +80,8 @@
                 <!-- Schedule List -->
                 <div class="schedule-list-section" id="scheduleList">
                     {% for schedule in schedules %}
-                    <div 
-                        class="schedule-list-item" 
+                    <div
+                        class="schedule-list-item"
                         data-schedule-id="{{ schedule.id }}"
                     >
                         <div class="schedule-list-header">
@@ -139,6 +139,10 @@
                 <h1 id="calendarTitle">{{ current_date|date:"Y년 m월" }}</h1>
                 <div class="calendar-nav">
                     <button class="nav-btn" id="todayBtn">오늘</button>
+
+                    <!-- ✅ 추가: 최신일정 가져오기 버튼 -->
+                    <button class="nav-btn" id="refreshLatestBtn">최신일정 가져오기</button>
+
                     <button class="nav-btn-icon" id="prevBtn">
                         <i class="fa-solid fa-chevron-left"></i>
                     </button>

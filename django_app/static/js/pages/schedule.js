@@ -29,6 +29,10 @@ const fullcalendarEl = document.getElementById('fullcalendar');
 const todayBtn = document.getElementById('todayBtn');
 const prevBtn = document.getElementById('prevBtn');
 const nextBtn = document.getElementById('nextBtn');
+
+// ✅ 추가: 최신일정 가져오기 버튼
+const refreshLatestBtn = document.getElementById('refreshLatestBtn');
+
 const viewModeBtns = document.querySelectorAll('.view-mode-btn[data-view]');
 
 // Initialize schedule page
@@ -65,6 +69,11 @@ function initSchedule() {
         nextBtn.addEventListener('click', handleNext);
     }
 
+    // ✅ 추가: 최신일정 가져오기 버튼 이벤트
+    if (refreshLatestBtn) {
+        refreshLatestBtn.addEventListener('click', handleRefreshLatest);
+    }
+
     // View mode buttons
     viewModeBtns.forEach(btn => {
         btn.addEventListener('click', (e) => {
@@ -81,7 +90,7 @@ function initSchedule() {
 
     // Status change handlers
     attachStatusChangeHandlers();
-    
+
     // Add calendar button handler
     const addCalendarBtn = document.getElementById('addCalendarBtn');
     if (addCalendarBtn) {
@@ -143,13 +152,14 @@ function initFullCalendar() {
         },
 
         datesSet: function(info) {
-            currentDate = info.start;
-            updateCalendarTitle();
+            // ✅ FullCalendar가 화면 바꿀 때마다 여기 들어옴
+            currentDate = calendar.getDate();   // ✅ 핵심: activeStart 말고 "현재 보고있는 기준 날짜"
+            updateCalendarTitle();              // ✅ 제목 업데이트
         },
 
         // ✅ 핵심: eventSources 2개(내 일정 + 구글 이벤트)
         eventSources: [
-            // (1) 내 일정(DB schedules) - 기존 로직 그대로
+            // (1) 내 일정(DB schedules)
             {
                 id: 'local-schedules',
                 events: function(fetchInfo, successCallback, failureCallback) {
@@ -163,22 +173,17 @@ function initFullCalendar() {
                 }
             },
 
-            // (2) 구글 캘린더 이벤트 - 백엔드: /schedule/api/google-events/
-            // FullCalendar가 start/end를 자동으로 쿼리스트링으로 붙여줌 (?start=...&end=...)
+            // (2) 구글 캘린더 이벤트
             {
                 id: 'google-events',
                 url: `${API_BASE}/api/google-events/`,
                 method: 'GET',
-                // ✅ 인증 쿠키가 필요하니 same-origin (대부분 기본이지만 명시)
                 extraParams: function() {
-                    return {}; // 필요 시 확장
+                    return {};
                 },
                 failure: function(err) {
-                    // 연결 안 되어 있으면 401/400 날 수 있음 → 조용히 처리
                     console.warn('Google events load failed:', err);
                 }
-                // headers 옵션은 FullCalendar 버전에 따라 동작이 다를 수 있어서 일단 생략
-                // (CSRF는 GET이라 보통 불필요)
             }
         ]
     });
@@ -187,6 +192,9 @@ function initFullCalendar() {
 
     // ✅ 다른 모듈이 접근할 수 있게 노출(선택)
     window.fullCalendarInstance = calendar;
+
+    // ✅ 최초 렌더 직후에도 제목 한 번 맞춰주기
+    updateCalendarTitle();
 
     // Force FullCalendar to recalculate height after rendering
     setTimeout(() => {
@@ -252,7 +260,7 @@ async function loadSchedules() {
             const data = await response.json();
             schedules = data.results || data;
             renderScheduleList();
-            refreshCalendar(); // ✅ local + google 둘 다 refetch 됨
+            refreshCalendar(); // ✅ local + google 둘 다 refetch
         }
     } catch (error) {
         console.error('Error loading schedules:', error);
@@ -262,7 +270,6 @@ async function loadSchedules() {
 // Load user calendars from API
 async function loadUserCalendars() {
     try {
-        // ⚠️ 이 API는 너 프로젝트에 따라 다를 수 있음(없으면 404)
         const response = await fetch('/api/calendars/', {
             method: 'GET',
             headers: {
@@ -277,6 +284,25 @@ async function loadUserCalendars() {
         }
     } catch (error) {
         console.error('Error loading calendars:', error);
+    }
+}
+
+// ✅ 추가: 최신일정 가져오기
+async function handleRefreshLatest() {
+    try {
+        // 1) 캘린더를 진짜 "오늘"로 이동
+        if (calendar) calendar.today();
+
+        // 2) 내 일정 API 다시 가져오고(왼쪽 목록도 갱신됨)
+        await loadSchedules();
+
+        // 3) 혹시 모달이나 다른 소스에서 구글 캘린더 선택이 바뀌었을 수도 있으니 한 번 더 refetch
+        refreshCalendar();
+
+        if (window.notyf) window.notyf.success('최신 일정을 불러왔습니다.');
+    } catch (e) {
+        console.error('Error refreshing latest:', e);
+        if (window.notyf) window.notyf.error('최신 일정 불러오기에 실패했습니다.');
     }
 }
 
@@ -302,7 +328,7 @@ function handleGoogleCalendarConnect() {
     if (window.Modal) {
         window.Modal.open('googleCalendarModal');
 
-        // ⭐ 핵심: 모달 열자마자 강제로 캘린더 목록 로드
+        // 모달 열자마자 강제로 캘린더 목록 로드
         if (window.GoogleCalendarModal && window.GoogleCalendarModal.reload) {
             window.GoogleCalendarModal.reload();
         }
@@ -324,8 +350,8 @@ function handleAddCalendar() {
 function handleToday() {
     if (calendar) {
         calendar.today();
-        currentDate = new Date();
-        updateCalendarTitle();
+        currentDate = calendar.getDate(); // ✅ 기준 날짜 갱신
+        updateCalendarTitle();            // ✅ 제목 갱신
     }
 }
 
@@ -333,6 +359,8 @@ function handleToday() {
 function handlePrevious() {
     if (calendar) {
         calendar.prev();
+        currentDate = calendar.getDate();
+        updateCalendarTitle();
     }
 }
 
@@ -340,6 +368,8 @@ function handlePrevious() {
 function handleNext() {
     if (calendar) {
         calendar.next();
+        currentDate = calendar.getDate();
+        updateCalendarTitle();
     }
 }
 
@@ -369,40 +399,55 @@ function setViewMode(mode) {
                 break;
         }
         calendar.changeView(fullcalendarView);
+        currentDate = calendar.getDate();
         updateCalendarTitle();
     }
 }
 
-// Update calendar title
+// ✅ 수정 핵심: 달력 제목은 "activeStart"가 아니라 "현재 보고 있는 기준 날짜"로 만든다
 function updateCalendarTitle() {
     if (!calendarTitle || !calendar) return;
 
     const view = calendar.view;
-    const start = view.activeStart;
-    const end = view.activeEnd;
+    const base = calendar.getDate(); // ✅ 핵심
 
     if (viewMode === 'day') {
-        const year = start.getFullYear();
-        const month = start.getMonth() + 1;
-        const day = start.getDate();
+        const year = base.getFullYear();
+        const month = base.getMonth() + 1;
+        const day = base.getDate();
         calendarTitle.textContent = `${year}년 ${month}월 ${day}일`;
-    } else if (viewMode === 'week') {
-        const year = start.getFullYear();
-        const month = start.getMonth() + 1;
-        const day = start.getDate();
-        const endDay = end.getDate();
-        calendarTitle.textContent = `${year}년 ${month}월 ${day}일 - ${endDay}일`;
-    } else {
-        const year = start.getFullYear();
-        const month = start.getMonth() + 1;
-        calendarTitle.textContent = `${year}년 ${month}월`;
+        return;
     }
+
+    if (viewMode === 'week') {
+        const start = view.currentStart; // 주 시작
+        const end = new Date(view.currentEnd.getTime() - 24 * 60 * 60 * 1000); // currentEnd는 exclusive라 -1일
+        const sY = start.getFullYear();
+        const sM = start.getMonth() + 1;
+        const sD = start.getDate();
+        const eY = end.getFullYear();
+        const eM = end.getMonth() + 1;
+        const eD = end.getDate();
+
+        if (sY === eY && sM === eM) {
+            calendarTitle.textContent = `${sY}년 ${sM}월 ${sD}일 - ${eD}일`;
+        } else if (sY === eY) {
+            calendarTitle.textContent = `${sY}년 ${sM}월 ${sD}일 - ${eM}월 ${eD}일`;
+        } else {
+            calendarTitle.textContent = `${sY}년 ${sM}월 ${sD}일 - ${eY}년 ${eM}월 ${eD}일`;
+        }
+        return;
+    }
+
+    // month
+    const year = base.getFullYear();
+    const month = base.getMonth() + 1;
+    calendarTitle.textContent = `${year}년 ${month}월`;
 }
 
 // Refresh calendar events
 function refreshCalendar() {
     if (calendar) {
-        // ✅ eventSources 전체 재조회 (local function + google url 둘 다)
         calendar.refetchEvents();
 
         setTimeout(() => {
@@ -637,5 +682,6 @@ if (typeof window !== 'undefined') {
         handleToday,
         handlePrevious,
         handleNext,
+        handleRefreshLatest, // ✅ 추가
     };
 }
