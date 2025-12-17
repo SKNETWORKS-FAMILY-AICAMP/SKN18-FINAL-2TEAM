@@ -1,4 +1,4 @@
-/* django_app/static/js/pages/note_detail.js */
+// django_app/static/js/pages/note_detail.js
 
 // =====================
 // State variables
@@ -109,7 +109,20 @@ async function loadComments(noteId) {
 // =====================
 function handleAddComment() {
     const commentText = newCommentTextarea.value.trim();
-    if (!commentText) return;
+    const highlighted = selectedText.trim();
+
+    if (!commentText) {
+        alert('댓글 내용을 입력해주세요.');
+        newCommentTextarea.focus();
+        return;
+    }
+
+    if (!highlighted) {
+        alert('하이라이트된 텍스트가 없습니다. 텍스트를 선택한 후 댓글을 작성해주세요.');
+        return;
+    }
+
+    btnCommentSubmit.disabled = true;
 
     fetch('/notes/api/add_comment/', {
         method: 'POST',
@@ -119,18 +132,31 @@ function handleAddComment() {
         },
         body: JSON.stringify({
             note_id: selectedNoteId,
-            highlighted_text: selectedText || '',
+            highlighted_text: highlighted,
             comment_text: commentText,
             position_top: commentPosition ? commentPosition.top : 0,
         }),
     })
-        .then(() => loadComments(selectedNoteId))
-        .then(() => {
-            selectedText = '';
-            commentPosition = null;
-            showCommentInput = false;
-            newCommentTextarea.value = '';
-            newCommentBox.style.display = 'none';
+        .then(response => response.json())
+        .then(data => {
+            btnCommentSubmit.disabled = false;
+
+            if (data.status === 'created') {
+                newCommentBox.style.display = 'none';
+                newCommentTextarea.value = '';
+                selectedText = '';
+                selectedTextPreview.textContent = '';
+                window.getSelection().removeAllRanges();
+
+                loadComments(selectedNoteId);
+            } else {
+                alert(data.error || '댓글 등록에 실패했습니다.');
+            }
+        })
+        .catch(err => {
+            btnCommentSubmit.disabled = false;
+            console.error(err);
+            alert('오류가 발생했습니다.');
         });
 }
 
@@ -169,8 +195,6 @@ function renderComments() {
         </div>
     `).join('');
 
-    // ⭐ 핵심 수정 부분
-    // 최신 댓글이 바로 보이도록 스크롤을 맨 위로 이동
     commentSidebarContent.scrollTop = 0;
 }
 
@@ -192,6 +216,9 @@ function handleCancelComment() {
     showCommentInput = false;
     newCommentBox.style.display = 'none';
     newCommentTextarea.value = '';
+    selectedText = '';
+    selectedTextPreview.textContent = '';
+    window.getSelection().removeAllRanges();
 }
 
 function handleToggleCommentSidebar(force) {
@@ -203,11 +230,32 @@ function handleBackToList() {
     window.location.href = '/notes/';
 }
 
-function handleTextSelection() {}
+// 핵심: 텍스트 선택시 선택된 텍스트 업데이트 및 UI 표시
+function handleTextSelection() {
+    const selection = window.getSelection();
+    if (!selection) return;
+    const text = selection.toString().trim();
+
+    if (text.length > 0 && noteContentText.contains(selection.anchorNode)) {
+        selectedText = text;
+        selectedTextPreview.textContent = text;
+        newCommentBox.style.display = 'block';
+        newCommentTextarea.value = '';
+        newCommentTextarea.focus();
+
+        if (commentSidebar.classList.contains('hidden')) {
+            handleToggleCommentSidebar(true);
+        }
+    } else {
+        selectedText = '';
+        selectedTextPreview.textContent = '';
+        newCommentBox.style.display = 'none';
+    }
+}
 
 function getCSRFToken() {
-    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
-    return csrfToken ? csrfToken.value : '';
+    const csrfTokenElem = document.querySelector('[name=csrfmiddlewaretoken]');
+    return csrfTokenElem ? csrfTokenElem.value : '';
 }
 
 function escapeHtml(text) {

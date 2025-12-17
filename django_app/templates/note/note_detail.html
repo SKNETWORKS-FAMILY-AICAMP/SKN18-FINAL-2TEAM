@@ -4,13 +4,11 @@
 {% block title %}노트 상세 - HelixOps{% endblock %}
 
 {% block extra_css %}
-
 <link rel="stylesheet" href="{% static 'css/pages/note_detail.css' %}">
 <link rel="stylesheet" href="{% static 'css/components/modals/share_modal.css' %}">
 {% endblock %}
 
 {% block content %}
-
 <div class="note-detail-container">
     <div id="noteDetailView" class="note-detail-view">
         <div class="note-detail-wrapper">
@@ -26,7 +24,6 @@
                         </h1>
                     </div>
 
-```
                 <div class="note-detail-meta-row">
                     <div class="note-detail-meta">
                         <div class="meta-author">
@@ -88,10 +85,6 @@
             <div class="comment-sidebar-header">
                 <h3>댓글</h3>
                 <div class="comment-header-actions">
-                    <button class="btn-add-comment" id="btnAddComment">
-                        <i class="fa-solid fa-plus"></i>
-                        <span>댓글 달기</span>
-                    </button>
                     <button class="btn-close-sidebar" id="btnCloseCommentSidebar">
                         <i class="fa-solid fa-times"></i>
                     </button>
@@ -100,14 +93,14 @@
 
             <div class="comment-sidebar-content" id="commentSidebarContent">
                 <div class="new-comment-box" id="newCommentBox" style="display: none;">
-                    <div class="selected-text-preview" id="selectedTextPreview"></div>
+                    <div class="selected-text-preview" id="selectedTextPreview" style="font-weight:bold; margin-bottom:8px;"></div>
                     <textarea
                         id="newCommentTextarea"
                         placeholder="댓글 작성..."
                         class="comment-textarea"
                         rows="3"
                     ></textarea>
-                    <div class="comment-actions">
+                    <div class="comment-actions" style="margin-top:8px;">
                         <button class="btn-comment-submit" id="btnCommentSubmit">
                             <i class="fa-solid fa-paper-plane"></i>
                             <span>댓글 달기</span>
@@ -116,7 +109,6 @@
                     </div>
                 </div>
 
-                <!-- 최신순 댓글은 JS에서 api_note_comments 재호출로 렌더링 -->
                 <div class="comments-list" id="commentsList"></div>
 
                 <div class="comments-empty" id="commentsEmpty">
@@ -128,26 +120,19 @@
         </div>
     </div>
 </div>
-```
-
-</div>
 
 {% include 'components/modals/share_modal.html' %}
 {% endblock %}
 
 {% block extra_data %}
 {% csrf_token %}
-
 <script>
     window.noteId = {{ note.note_sid|default:0 }};
 </script>
-
 {% endblock %}
 
 {% block extra_js %}
-
 <script src="{% static 'js/pages/note_detail.js' %}"></script>
-
 <script src="{% static 'js/components/modals/share_modal.js' %}"></script>
 
 {% endblock %}
