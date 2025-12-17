@@ -143,12 +143,6 @@ class PaperLoader:
             ("9-2. [Paper] Mentions-Section 연결", PaperRAGQueries.LINK_MENTIONS_TO_SECTIONS),
             ("9-3. [Paper] Article-Entity 집계 계산", PaperRAGQueries.CALC_ARTICLE_ENTITY_AGGREGATION),
             # 1. 실험 이동 (아까 한 것)
-            
-            
-            # PrimeKG 연결 (인덱스 덕분에 빨라짐)
-            ("10. [Paper] PrimeKG 1차(name) 연결", PaperRAGQueries.CONNECT_TO_PRIMEKG),
-            ("11. [Paper] PrimeKG 2차(primekg_label) 연결", PaperRAGQueries.CONNECT_TO_PRIMEKG_SECONDARY),
-
             # ---------------------------
             # [Part 2] Protocol
             # ---------------------------
@@ -160,6 +154,10 @@ class PaperLoader:
             # [중요] 마이그레이션 단계 (Experiment & Protocol)
             ("16. [Migration] Experiment: CategoryLeaf -> Entity(Method)", PaperRAGQueries.LOAD_EXPERIMENTS_METHOD_AS_ENTITY),
             ("17. [Migration] Protocol: CategoryLeaf -> Entity(Method)", ProtocolQueries.MIGRATE_PROTOCOL_TO_ENTITY_METHOD),
+
+            # PrimeKG 연결 (인덱스 덕분에 빨라짐)
+            ("10. [Paper] PrimeKG 1차(name) 연결", PaperRAGQueries.CONNECT_TO_PRIMEKG),
+            ("11. [Paper] PrimeKG 2차(primekg_label) 연결", PaperRAGQueries.CONNECT_TO_PRIMEKG_SECONDARY),
 
             # ---------------------------
             # [Part 3] ClinicalTrials
