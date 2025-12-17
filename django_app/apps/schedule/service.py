@@ -1,4 +1,4 @@
-# schedule/views_google.py
+# schedule/service.py
 
 import json
 import urllib.parse
