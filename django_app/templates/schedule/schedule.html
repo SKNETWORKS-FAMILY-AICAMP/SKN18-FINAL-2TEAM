@@ -11,6 +11,36 @@
 <link rel="stylesheet" href="{% static 'css/components/modals/google_calendar_modal.css' %}">
 <link rel="stylesheet" href="{% static 'css/components/modals/share_modal.css' %}">
 <link rel="stylesheet" href="{% static 'css/components/modals/calendar_add_modal.css' %}">
+
+<!-- ✅ (옵션) 여기서만 쓸 거면 인라인로 추가해도 됨 -->
+<style>
+  .google-calendar-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .google-calendar-refresh-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    background: #ffffff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .google-calendar-refresh-btn i {
+    font-size: 14px;
+    color: #374151;
+  }
+
+  .google-calendar-refresh-btn:hover {
+    background: #f3f4f6;
+  }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -35,17 +65,29 @@
             <div class="schedule-sidebar-content">
                 <!-- Google Calendar Connect Button -->
                 <div class="google-calendar-section">
-                    <button
-                        id="googleCalendarBtn"
-                        class="google-calendar-btn"
-                    >
-                        <i class="fa-solid fa-gear"></i>
-                        {% if is_google_connected %}
-                        Google Calendar 관리
-                        {% else %}
-                        Google Calendar 연동
-                        {% endif %}
-                    </button>
+                    <!-- ✅ Google 버튼 + 최신일정 버튼을 같은 줄로 -->
+                    <div class="google-calendar-row">
+                        <button
+                            id="googleCalendarBtn"
+                            class="google-calendar-btn"
+                        >
+                            <i class="fa-solid fa-gear"></i>
+                            {% if is_google_connected %}
+                            Google Calendar
+                            {% else %}
+                            Google Calendar
+                            {% endif %}
+                        </button>
+
+                        <!-- ✅ 최신일정 가져오기 버튼(리프레시 아이콘) -->
+                        <button
+                            id="refreshLatestBtn"
+                            class="google-calendar-refresh-btn"
+                            title="최신 일정 불러오기"
+                        >
+                            <i class="fa-solid fa-rotate-right"></i>
+                        </button>
+                    </div>
                 </div>
 
                 <!-- My Calendars List -->
@@ -140,8 +182,7 @@
                 <div class="calendar-nav">
                     <button class="nav-btn" id="todayBtn">오늘</button>
 
-                    <!-- ✅ 추가: 최신일정 가져오기 버튼 -->
-                    <button class="nav-btn" id="refreshLatestBtn">최신일정 가져오기</button>
+                    <!-- ❌ 여기 있던 최신일정 버튼은 제거됨 -->
 
                     <button class="nav-btn-icon" id="prevBtn">
                         <i class="fa-solid fa-chevron-left"></i>

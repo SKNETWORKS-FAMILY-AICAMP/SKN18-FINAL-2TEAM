@@ -2,20 +2,20 @@
 (function () {
   "use strict";
 
-  // ✅ schedule 앱 Base URL (네 프로젝트 기준)
   const API_BASE = "/schedule";
 
   // State
   let isGoogleConnected = false;
-  let googleCalendars = []; // [{ id, name, email, selected, color }]
-  let selectedGoogleCalendars = new Set(); // calendar_id set
-  let calendarColors = {}; // { [calendar_id]: "#RRGGBB" }
+  let googleCalendars = [];
+  let selectedGoogleCalendars = new Set();
+  let calendarColors = {};
 
   // DOM
   const modalId = "googleCalendarModal";
   const connectionStatusIndicator = document.getElementById("connectionStatusIndicator");
   const connectionStatusText = document.getElementById("connectionStatusText");
   const googleCalendarConnectBtn = document.getElementById("googleCalendarConnectBtn");
+  const googleCalendarDisconnectBtn = document.getElementById("googleCalendarDisconnectBtn"); // ✅ 추가
   const googleCalendarList = document.getElementById("googleCalendarList");
   const googleCalendarSaveBtn = document.getElementById("googleCalendarSaveBtn");
 
@@ -43,7 +43,6 @@
   function normalizeHex(color, fallback = "#3b82f6") {
     if (!color || typeof color !== "string") return fallback;
     const c = color.trim();
-    // allow #RGB or #RRGGBB
     if (c.startsWith("#") && (c.length === 4 || c.length === 7)) return c;
     return fallback;
   }
@@ -113,18 +112,11 @@
         };
       });
 
-      // state sync
       selectedGoogleCalendars.clear();
       calendarColors = {};
       googleCalendars.forEach((c) => {
         if (c.selected) selectedGoogleCalendars.add(c.id);
         calendarColors[c.id] = normalizeHex(c.color, "#3b82f6");
-      });
-
-      console.log("✅ fetchGoogleCalendars() loaded:", {
-        count: googleCalendars.length,
-        selected: Array.from(selectedGoogleCalendars),
-        colors: { ...calendarColors },
       });
 
       renderGoogleCalendars();
@@ -140,13 +132,10 @@
   async function saveGoogleCalendarsSelection() {
     const selectedIds = Array.from(selectedGoogleCalendars);
 
-    // ✅ payload: selected + calendar_colors 같이 보냄
     const payload = {
       selected_calendar_ids: selectedIds,
       calendar_colors: calendarColors,
     };
-
-    console.log("📤 SAVE payload:", JSON.parse(JSON.stringify(payload)));
 
     const res = await fetch(`${API_BASE}/api/google-calendar/calendars/`, {
       method: "POST",
@@ -165,8 +154,6 @@
       json = { raw: text };
     }
 
-    console.log("📥 SAVE response:", { ok: res.ok, status: res.status, json });
-
     if (!res.ok) {
       throw new Error(json.error || json.detail || "저장에 실패했습니다.");
     }
@@ -183,14 +170,26 @@
     if (isGoogleConnected) {
       connectionStatusIndicator.classList.add("connected");
       connectionStatusText.textContent = "Google Calendar 연동됨";
+
+      // ✅ 연동됨: 관리 버튼 보여주고, 연동 해제 버튼도 보여줌
       if (googleCalendarConnectBtn) {
+        googleCalendarConnectBtn.style.display = "inline-flex";
         googleCalendarConnectBtn.textContent = "연동 관리";
+      }
+      if (googleCalendarDisconnectBtn) {
+        googleCalendarDisconnectBtn.style.display = "inline-flex";
       }
     } else {
       connectionStatusIndicator.classList.remove("connected");
       connectionStatusText.textContent = "Google Calendar 미연동";
+
+      // ✅ 미연동: 연결 버튼만 보여줌
       if (googleCalendarConnectBtn) {
+        googleCalendarConnectBtn.style.display = "inline-flex";
         googleCalendarConnectBtn.textContent = "Google Calendar 연결";
+      }
+      if (googleCalendarDisconnectBtn) {
+        googleCalendarDisconnectBtn.style.display = "none";
       }
     }
   }
@@ -216,7 +215,6 @@
       return;
     }
 
-    // ✅ selected 먼저, unselected 나중
     const selected = googleCalendars.filter((c) => selectedGoogleCalendars.has(c.id));
     const unselected = googleCalendars.filter((c) => !selectedGoogleCalendars.has(c.id));
     const ordered = [...selected, ...unselected];
@@ -250,7 +248,6 @@
             </div>
 
             <div style="display:flex; align-items:center; gap:10px; flex:0 0 auto;">
-              <!-- ✅ 색상 선택 -->
               <input
                 type="color"
                 class="google-calendar-color"
@@ -259,7 +256,6 @@
                 title="캘린더 색상"
                 style="width:44px; height:26px; padding:0; border:1px solid #d1d5db; border-radius:6px; background:#fff; cursor:pointer;"
               />
-              <!-- ✅ 체크박스 -->
               <input
                 type="checkbox"
                 class="google-calendar-checkbox"
@@ -273,55 +269,32 @@
       })
       .join("");
 
-    // Events bind
     bindCalendarRowEvents();
   }
 
   function bindCalendarRowEvents() {
-    // checkbox change
     document.querySelectorAll('input.google-calendar-checkbox[data-calendar-id]').forEach((cb) => {
       cb.addEventListener("change", (e) => {
         const calId = e.target.getAttribute("data-calendar-id");
-
-        console.log("☑️ CHECK change fired", { calId, checked: e.target.checked });
-
         if (!calId) return;
 
         if (e.target.checked) selectedGoogleCalendars.add(calId);
         else selectedGoogleCalendars.delete(calId);
-
-        console.log("✅ selectedGoogleCalendars now:", Array.from(selectedGoogleCalendars));
       });
     });
 
-    // color change
     document.querySelectorAll('input.google-calendar-color[data-calendar-id]').forEach((inp) => {
       inp.addEventListener("change", (e) => {
         const calId = e.target.getAttribute("data-calendar-id");
-
-        console.log("🎨 COLOR CHANGE fired", {
-          calId,
-          raw: e.target.value,
-        });
-
-        if (!calId) {
-          console.warn("⚠️ COLOR CHANGE: calId is missing (data-calendar-id 없음)");
-          return;
-        }
+        if (!calId) return;
 
         const color = normalizeHex(e.target.value, "#3b82f6");
         calendarColors[calId] = color;
 
-        console.log("✅ calendarColors updated", { calId, color, calendarColors: { ...calendarColors } });
-
-        // 왼쪽 dot 색도 같이 갱신 (row 안에서만)
         const row = e.target.closest(".google-calendar-item");
         if (row) {
           const dot = row.querySelector(".google-calendar-dot");
           if (dot) dot.style.backgroundColor = color;
-          else console.warn("⚠️ dot element not found (.google-calendar-dot 없음)");
-        } else {
-          console.warn("⚠️ row not found (.google-calendar-item 없음)");
         }
       });
     });
@@ -341,14 +314,18 @@
     }
   }
 
-  function handleModalClose(e) {
-    if (!e?.detail || e.detail.modalId !== modalId) return;
-    // 필요하면 state reset 가능
+  async function handleConnectClick() {
+    // ✅ 연동 안 됨: OAuth 시작 / 연동 됨: 설정 관리로
+    if (isGoogleConnected) {
+      window.location.href = `${API_BASE}/google/settings/`;
+    } else {
+      window.location.href = `${API_BASE}/google/login/`;
+    }
   }
 
-  async function handleConnectClick() {
-    // 연결 버튼은 보통 백엔드 OAuth 시작 URL로 이동
-    window.location.href = `${API_BASE}/google/login/`;
+  async function handleDisconnectClick() {
+    // ✅ 연동 해제(우리 서비스에서 토큰/설정 삭제)
+    window.location.href = `${API_BASE}/google/logout/`;
   }
 
   async function handleSaveClick() {
@@ -357,10 +334,8 @@
 
       if (window.notyf) window.notyf.success("저장되었습니다.");
 
-      // 저장 후 최신값 다시 불러오기 (DB 반영 확인)
       await fetchGoogleCalendars();
 
-      // 캘린더 화면 갱신 (FullCalendar reload)
       if (window.SchedulePage) {
         if (window.SchedulePage.loadSchedules) window.SchedulePage.loadSchedules();
         if (window.SchedulePage.refreshCalendar) window.SchedulePage.refreshCalendar();
@@ -378,11 +353,8 @@
     const modal = document.getElementById(modalId);
     if (!modal) return;
 
-    // modal open/close (너희 Modal 시스템 이벤트)
     modal.addEventListener("modal:open", handleModalOpen);
-    modal.addEventListener("modal:close", handleModalClose);
 
-    // connect btn
     if (googleCalendarConnectBtn) {
       googleCalendarConnectBtn.addEventListener("click", (e) => {
         e.preventDefault();
@@ -390,7 +362,13 @@
       });
     }
 
-    // save btn
+    if (googleCalendarDisconnectBtn) {
+      googleCalendarDisconnectBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        handleDisconnectClick();
+      });
+    }
+
     if (googleCalendarSaveBtn) {
       googleCalendarSaveBtn.addEventListener("click", (e) => {
         e.preventDefault();
@@ -398,7 +376,6 @@
       });
     }
 
-    // 초기 status 한 번
     fetchGoogleStatus();
   }
 
@@ -408,7 +385,6 @@
     initGoogleCalendarModal();
   }
 
-  // expose
   if (typeof window !== "undefined") {
     window.GoogleCalendarModal = {
       init: initGoogleCalendarModal,

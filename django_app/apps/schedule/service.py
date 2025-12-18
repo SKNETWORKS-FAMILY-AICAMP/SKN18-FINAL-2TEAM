@@ -194,14 +194,17 @@ def google_login(request: HttpRequest) -> HttpResponse:
 # 2) OAuth 콜백
 # ---------------------------------------------------------------------
 def google_callback(request: HttpRequest) -> HttpResponse:
+    print("✅ google_callback called", request.user, "has_code=", bool(request.GET.get("code")))
     if not request.user.is_authenticated:
         return redirect(settings.LOGIN_URL)
 
     if "error" in request.GET:
+        print("⛔ google_callback error param:", request.GET.get("error"))
         return redirect("schedule:schedule")
 
     code = request.GET.get("code")
     if not code:
+        print("⛔ google_callback: no code in querystring", dict(request.GET))
         return redirect("schedule:schedule")
 
     token_url = "https://oauth2.googleapis.com/token"
@@ -213,6 +216,7 @@ def google_callback(request: HttpRequest) -> HttpResponse:
         "grant_type": "authorization_code",
     }
     res = requests.post(token_url, data=data)
+    print("✅ token response status:", res.status_code, "body:", res.text[:300])
     token_info = res.json()
 
     access_token = token_info.get("access_token")
