@@ -112,9 +112,9 @@ def chat_detail(request, chat_id):
     )
     
     # 참고 문헌 조회 (채팅 전체 또는 특정 메시지에 연결된 것)
-    references = ChatReference.objects.filter(chat=chat).order_by('sort_order', 'created_at').values(
+    references = ChatReference.objects.filter(chat=chat).order_by('ref_id', 'created_at').values(
         'reference_sid', 'message_id', 'source', 'badge', 'title', 'description',
-        'journal', 'link', 'ref_pubmed_id', 'ref_date', 'ref_authors', 'sort_order'
+        'journal', 'link', 'ref_pubmed_id', 'ref_date', 'ref_authors', 'ref_id'
     )
     
     # 논문 그래프 조회 (메시지별로 연결된 그래프)
@@ -327,7 +327,7 @@ def chat_detail(request, chat_id):
             'pmid': ref['ref_pubmed_id'] or '',
             'date': ref['ref_date'].strftime('%Y. %m. %d') if ref['ref_date'] else '',
             'authors': ref['ref_authors'] or '',
-            'sort_order': ref['sort_order'],
+            'ref_id': ref['ref_id'],  # UI에서 [24], [25]로 표시되는 참고문헌 번호
         })
     
     return JsonResponse({
@@ -741,7 +741,7 @@ def _serialize_reference(ref):
         'pmid': ref.ref_pubmed_id or '',
         'date': ref.ref_date.strftime('%Y. %m. %d') if ref.ref_date else '',
         'authors': ref.ref_authors or '',
-        'sort_order': ref.sort_order,
+        'ref_id': ref.ref_id,  # UI에서 [24], [25]로 표시되는 참고문헌 번호
     }
 
 
@@ -849,7 +849,10 @@ def chat_messages(request, chat_id=None):
     chat.save(update_fields=['preview', 'updated_at'])
 
     # 9. citations를 ChatReference로 저장
-    for idx, citation in enumerate(citations, 1):
+    for citation in citations:
+        # ref_id는 citation의 'id' 필드 사용 (services.py에서 1부터 생성됨)
+        ref_id = citation.get('id', 0)
+
         # source 매핑
         source_type = citation.get('source_type', '')
         if source_type == 'web':
@@ -877,19 +880,31 @@ def chat_messages(request, chat_id=None):
         else:
             journal_code = 'R'  # Report (기본값)
 
+        # 날짜 처리: year, month, day를 datetime.date로 변환
+        ref_date = None
+        year = citation.get('year')
+        month = citation.get('month')
+        day = citation.get('day')
+        if year and month and day:
+            try:
+                from datetime import date
+                ref_date = date(int(year), int(month), int(day))
+            except (ValueError, TypeError):
+                ref_date = None
+
         ChatReference.objects.create(
             chat=chat,
             message=assistant_message,
             source=source,
             badge=badge,
-            title=citation.get('title', f'출처 {idx}'),
+            title=citation.get('title', f'출처 {ref_id}'),
             description='',
             journal=journal_code,
             link=citation.get('url', ''),
             ref_pubmed_id=citation.get('pmid', ''),
-            ref_date=None,
+            ref_date=ref_date,  # 수정: year, month, day로부터 생성된 date 객체
             ref_authors=citation.get('authors', ''),
-            sort_order=idx,
+            ref_id=ref_id,  # 참고문헌 번호 (services.py의 id 사용, UI에서 [1], [2], [3]...로 표시됨)
         )
 
     # 10. Chat.title이 없으면 요약 생성
@@ -907,7 +922,7 @@ def chat_messages(request, chat_id=None):
     chat_references = ChatReference.objects.filter(
         chat=chat,
         message=assistant_message
-    ).order_by('sort_order')
+    ).order_by('ref_id')
 
     # 12. 두 메시지 + 참고문헌 반환 (chat_id 포함)
     # 목적: 프론트엔드에서 즉시 메시지와 참고문헌을 렌더링할 수 있도록

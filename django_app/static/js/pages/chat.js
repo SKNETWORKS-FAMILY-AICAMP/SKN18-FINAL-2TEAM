@@ -425,6 +425,7 @@ async function loadChat(chatId) {
             // Format references
             references = (data.references || []).map(ref => ({
                 id: ref.id,
+                ref_id: ref.ref_id,  // 참고문헌 번호 (UI 표시용)
                 source: ref.source,
                 badge: ref.badge,
                 title: ref.title,
@@ -1307,7 +1308,7 @@ function renderReferences() {
                     <i class="fas fa-bookmark"></i>
                 </button>
                 <div class="reference-content">
-                    <div class="reference-number">${ref.id}</div>
+                    <div class="reference-number">${ref.ref_id || ref.id}</div>
                     <div class="reference-details">
                         <div class="reference-meta">
                             <span class="reference-source">${escapeHtml(ref.source || 'Unknown')}</span>

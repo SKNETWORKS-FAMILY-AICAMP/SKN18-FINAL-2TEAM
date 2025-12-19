@@ -77,6 +77,8 @@ def _format_citations(raw_result: Dict[str, Any]) -> tuple[List[Dict[str, Any]],
                 "title": metadata.get("title") or f"검색 결과 {idx}",
                 "journal": metadata.get("journal") or "",
                 "year": str(metadata.get("year") or ""),
+                "month": metadata.get("month") or "",  # 추가: 월 정보
+                "day": metadata.get("day") or "",      # 추가: 일 정보
                 "doi": metadata.get("doi") or "",
                 "pmid": metadata.get("pmid") or "",
                 "authors": metadata.get("authors") or "",
@@ -91,6 +93,8 @@ def _format_citations(raw_result: Dict[str, Any]) -> tuple[List[Dict[str, Any]],
                 "title": metadata.get("title") or f"검색 결과 {idx}",
                 "journal": metadata.get("journal") or "",
                 "year": str(metadata.get("year") or ""),
+                "month": metadata.get("month") or "",  # 추가: 월 정보
+                "day": metadata.get("day") or "",      # 추가: 일 정보
                 "doi": metadata.get("doi") or "",
                 "pmid": metadata.get("pmid") or "",
                 "authors": metadata.get("authors") or "",
