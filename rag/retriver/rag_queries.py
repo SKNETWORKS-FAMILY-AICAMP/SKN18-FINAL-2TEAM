@@ -3,7 +3,7 @@
 class GraphSchemaQueries:
     """
     전체 그래프 스키마(Constraint, Index) 통합 관리
-    - queries_v2.py 스키마 및 query_dual_rrf.cypher 검색 요구사항 반영
+    - DB 실존 인덱스 이름 반영 (chunk_vector_index 등)
     - 작성일: 2025-12-19
     """
 
@@ -53,10 +53,10 @@ class GraphSchemaQueries:
         "CREATE INDEX clinical_trial_nct_id_idx IF NOT EXISTS FOR (ct:ClinicalTrial) ON (ct.nct_id);"
     ]
 
-    # 3. 벡터 인덱스 (Vector Indexes)
+    # 3. 벡터 인덱스 (Vector Indexes) - [수정됨] DB 실제 이름과 통일
     CREATE_VECTOR_INDEXES = [
         """
-        CREATE VECTOR INDEX articleChunkEmbeddingIndex IF NOT EXISTS
+        CREATE VECTOR INDEX chunk_vector_index IF NOT EXISTS
         FOR (c:Chunk) ON (c.embedding)
         OPTIONS {indexConfig: {
         `vector.dimensions`: 1536,
@@ -64,7 +64,7 @@ class GraphSchemaQueries:
         }}
         """,
         """
-        CREATE VECTOR INDEX protocolChunkEmbeddingIndex IF NOT EXISTS
+        CREATE VECTOR INDEX protocol_chunk_vector_index IF NOT EXISTS
         FOR (pc:ProtocolChunk) ON (pc.embedding)
         OPTIONS {indexConfig: {
         `vector.dimensions`: 1024,
@@ -143,16 +143,18 @@ class GraphSearchQueries:
     LIMIT coalesce($k, 80)
     """
 
+    # [수정] articleChunkEmbeddingIndex -> chunk_vector_index
     VEC_PAPER_CHUNK = """
-    CALL db.index.vector.queryNodes('articleChunkEmbeddingIndex', coalesce($k, 80), $embedding)
-    YIELD node AS c, score
+    CALL db.index.vector.queryNodes('chunk_vector_index', coalesce($k, 80), $embedding)
+    YIELD node AS c, score AS vec_score
     RETURN c.chunk_id AS chunk_id, score AS vec_score
     ORDER BY vec_score DESC
     LIMIT coalesce($k, 80)
     """
 
+    # [수정] articleChunkEmbeddingIndex -> chunk_vector_index
     HY_PAPER_CHUNK_VEC_PLUS_MUST = """
-    CALL db.index.vector.queryNodes('articleChunkEmbeddingIndex', 150, $embedding)
+    CALL db.index.vector.queryNodes('chunk_vector_index', 150, $embedding)
     YIELD node AS c, score AS vec_score
     WITH c, vec_score,
         [t IN coalesce($must_terms, []) | toLower(t)] AS must_terms,
@@ -166,13 +168,13 @@ class GraphSearchQueries:
     LIMIT coalesce($k, 80)
     """
 
-    # [수정] WITH 절에 k_vec, k_ft 전달 추가
+    # [수정] articleChunkEmbeddingIndex -> chunk_vector_index
     HY_PAPER_CHUNK_DUAL_RRF = """
     CALL {
     WITH $embedding AS embedding, coalesce($fetch_vec, 150) AS fetch_vec, coalesce($k_vec, 80) AS k_vec
-    CALL db.index.vector.queryNodes('articleChunkEmbeddingIndex', fetch_vec, embedding)
+    CALL db.index.vector.queryNodes('chunk_vector_index', fetch_vec, embedding)
     YIELD node AS c, score AS vec_score
-    WITH c, vec_score, k_vec ORDER BY vec_score DESC  // [수정] k_vec 전달
+    WITH c, vec_score, k_vec ORDER BY vec_score DESC
     WITH collect({chunk_id: c.chunk_id, vec_score: vec_score}) AS vec_raw, k_vec
     WITH vec_raw[0..k_vec] AS vec_top
     UNWIND range(0, size(vec_top)-1) AS i
@@ -182,7 +184,7 @@ class GraphSearchQueries:
     CALL {
         WITH $q AS q, coalesce($k_ft, 80) AS k_ft
         CALL db.index.fulltext.queryNodes('chunkTextIndex', q) YIELD node AS c, score AS ft_score
-    WITH c, ft_score, k_ft ORDER BY ft_score DESC  // [수정] k_ft 전달
+    WITH c, ft_score, k_ft ORDER BY ft_score DESC
     WITH collect({chunk_id: c.chunk_id, ft_score: ft_score}) AS ft_raw, k_ft
     WITH ft_raw[0..k_ft] AS ft_top
     UNWIND range(0, size(ft_top)-1) AS i
@@ -223,16 +225,18 @@ class GraphSearchQueries:
     LIMIT coalesce($k, 80)
     """
 
+    # [수정] protocolChunkEmbeddingIndex -> protocol_chunk_vector_index
     VEC_PROTOCOL_CHUNK = """
-    CALL db.index.vector.queryNodes('protocolChunkEmbeddingIndex', coalesce($k, 80), $embedding)
+    CALL db.index.vector.queryNodes('protocol_chunk_vector_index', coalesce($k, 80), $embedding)
     YIELD node AS pc, score AS vec_score
     RETURN pc.chunking_id AS protocol_chunk_id, vec_score
     ORDER BY vec_score DESC
     LIMIT coalesce($k, 80)
     """
 
+    # [수정] protocolChunkEmbeddingIndex -> protocol_chunk_vector_index
     HY_PROTOCOL_CHUNK_VEC_PLUS_MUST = """
-    CALL db.index.vector.queryNodes('protocolChunkEmbeddingIndex', 150, $embedding)
+    CALL db.index.vector.queryNodes('protocol_chunk_vector_index', 150, $embedding)
     YIELD node AS pc, score AS vec_score
     WITH pc, vec_score,
         [t IN coalesce($must_terms, []) | toLower(t)] AS must_terms,
@@ -245,13 +249,13 @@ class GraphSearchQueries:
     LIMIT coalesce($k, 80)
     """
 
-    # [수정] WITH 절에 k_vec, k_ft 전달 추가
+    # [수정] protocolChunkEmbeddingIndex -> protocol_chunk_vector_index
     HY_PROTOCOL_CHUNK_DUAL_RRF = """
     CALL {
     WITH $embedding AS embedding, coalesce($fetch_vec, 150) AS fetch_vec, coalesce($k_vec, 80) AS k_vec
-    CALL db.index.vector.queryNodes('protocolChunkEmbeddingIndex', fetch_vec, embedding)
+    CALL db.index.vector.queryNodes('protocol_chunk_vector_index', fetch_vec, embedding)
     YIELD node AS pc, score AS vec_score
-    WITH pc, vec_score, k_vec ORDER BY vec_score DESC  // [수정] k_vec 전달
+    WITH pc, vec_score, k_vec ORDER BY vec_score DESC
     WITH collect({chunk_id: pc.chunking_id, vec_score: vec_score}) AS vec_raw, k_vec
     WITH vec_raw[0..k_vec] AS vec_top
     UNWIND range(0, size(vec_top)-1) AS i
@@ -261,7 +265,7 @@ class GraphSearchQueries:
     CALL {
     WITH $q AS q, coalesce($k_ft, 80) AS k_ft
     CALL db.index.fulltext.queryNodes('protocolChunkTextIndex', q) YIELD node AS pc, score AS ft_score
-    WITH pc, ft_score, k_ft ORDER BY ft_score DESC  // [수정] k_ft 전달
+    WITH pc, ft_score, k_ft ORDER BY ft_score DESC
     WITH collect({chunk_id: pc.chunking_id, ft_score: ft_score}) AS ft_raw, k_ft
     WITH ft_raw[0..k_ft] AS ft_top
     UNWIND range(0, size(ft_top)-1) AS i
@@ -324,13 +328,12 @@ class GraphSearchQueries:
     LIMIT coalesce($k, 80)
     """
 
-    # [수정] WITH 절에 k_vec, k_ft 전달 추가
     HY_CLINICAL_CHUNK_DUAL_RRF = """
     CALL {
     WITH $embedding AS embedding, coalesce($fetch_vec, 150) AS fetch_vec, coalesce($k_vec, 80) AS k_vec
     CALL db.index.vector.queryNodes('clinicalChunkEmbeddingIndex', fetch_vec, embedding)
     YIELD node AS cc, score AS vec_score
-    WITH cc, vec_score, k_vec ORDER BY vec_score DESC  // [수정] k_vec 전달
+    WITH cc, vec_score, k_vec ORDER BY vec_score DESC
     WITH collect({chunk_id: cc.chunk_id, vec_score: vec_score}) AS vec_raw, k_vec
     WITH vec_raw[0..k_vec] AS vec_top
     UNWIND range(0, size(vec_top)-1) AS i
@@ -340,7 +343,7 @@ class GraphSearchQueries:
     CALL {
     WITH $q AS q, coalesce($k_ft, 80) AS k_ft
     CALL db.index.fulltext.queryNodes('clinicalChunkTextIndex', q) YIELD node AS cc, score AS ft_score
-    WITH cc, ft_score, k_ft ORDER BY ft_score DESC  // [수정] k_ft 전달
+    WITH cc, ft_score, k_ft ORDER BY ft_score DESC
     WITH collect({chunk_id: cc.chunk_id, ft_score: ft_score}) AS ft_raw, k_ft
     WITH ft_raw[0..k_ft] AS ft_top
     UNWIND range(0, size(ft_top)-1) AS i

@@ -3,6 +3,7 @@
 retriever_runner.py
 [수정 사항]
 - rag_state.py의 PipelineRAGState 적용
+- 검색 결과 파일 저장 기능 추가 (Rewritten Query, Routing Path, Contexts)
 """
 
 from __future__ import annotations
@@ -12,6 +13,7 @@ import inspect
 import json
 import os
 import sys
+from datetime import datetime  # [New] 시간 기록용
 from typing import Any, Callable, Dict, List, Optional
 
 from dotenv import load_dotenv
@@ -27,7 +29,6 @@ from embedding_router import EmbeddingRoutingNode
 from rag_orchestrator import RAGOrchestrator
 
 
-# ... (Helpers 함수들은 그대로 유지) ...
 def _call_with_supported_kwargs(fn: Callable[..., Any], **kwargs) -> Any:
     sig = inspect.signature(fn)
     supported = {}
@@ -37,7 +38,6 @@ def _call_with_supported_kwargs(fn: Callable[..., Any], **kwargs) -> Any:
     return fn(**supported)
 
 def _pick_id(item: Any) -> str:
-    # ... (기존 코드 동일) ...
     if isinstance(item, dict):
         for k in ("chunk_id", "chunking_id", "protocol_chunking_id", "id", "doc_id", "pmid", "pmcid", "doi", "nct_id"):
             v = item.get(k)
@@ -49,7 +49,6 @@ def _pick_id(item: Any) -> str:
     return f"obj:{str(item)[:500]}"
 
 def make_llm_call() -> Callable[[str], str]:
-    # ... (기존 코드 동일) ...
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
         raise ValueError("❌ OPENAI_API_KEY is missing. Check your .env file.")
@@ -73,7 +72,6 @@ class RetrieverExecutor:
     def __init__(self, neo4j_driver) -> None:
         self.orchestrator = RAGOrchestrator(neo4j_driver)
 
-    # [수정] Type Hint 적용
     def __call__(self, state: PipelineRAGState) -> PipelineRAGState:
         question = (state.get("question") or "").strip()
         rewrite = state.get("rewrite") or {}
@@ -157,9 +155,10 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--question", required=True, help="사용자 질문")
     ap.add_argument("--pretty", action="store_true", help="JSON pretty print")
+    # [New] 저장 파일명 옵션 추가
+    ap.add_argument("--save", default="rag_result.json", help="결과 저장 파일 경로 (기본: rag_result.json)")
     args = ap.parse_args()
 
-    # ... (환경변수 체크 부분 동일) ...
     required_vars = ["NEO4J_URI", "NEO4J_USERNAME", "NEO4J_PASSWORD", "OPENAI_API_KEY", "HUGGINGFACEHUB_API_TOKEN"]
     if any(not os.getenv(v) for v in required_vars):
         sys.exit("❌ Missing environment variables.")
@@ -176,7 +175,7 @@ def main() -> None:
         embed_router = EmbeddingRoutingNode()
         executor = RetrieverExecutor(driver)
 
-        # [수정] TypedDict 초기화
+        # TypedDict 초기화
         state: PipelineRAGState = {"question": args.question}
 
         # 파이프라인 실행
@@ -185,6 +184,37 @@ def main() -> None:
         state = embed_router(state)
         state = executor(state)
 
+        # ---------------------------------------------------------
+        # [New] 결과 저장 로직 (Rewrite, Route, Contexts)
+        # ---------------------------------------------------------
+        result_record = {
+            "metadata": {
+                "timestamp": datetime.now().isoformat(),
+                "question_original": state.get("question")
+            },
+            "process": {
+                "1_rewrite": state.get("rewrite"),          # 재작성된 쿼리 정보
+                "2_route": state.get("route"),              # 상위 라우팅 결과
+                "3_plan": state.get("retrieval_plan")       # 상세 실행 계획
+            },
+            "results": {
+                "count": state.get("contexts_count"),
+                "contexts": state.get("contexts")           # 최종 검색 결과
+            }
+        }
+
+        # 파일 저장
+        if args.save:
+            try:
+                with open(args.save, "w", encoding="utf-8") as f:
+                    json.dump(result_record, f, ensure_ascii=False, indent=2)
+                # stdout 출력을 방해하지 않기 위해 stderr로 로그 출력
+                print(f"💾 Search results saved to: {args.save}", file=sys.stderr)
+            except Exception as e:
+                print(f"⚠️ Failed to save results: {e}", file=sys.stderr)
+        # ---------------------------------------------------------
+
+        # 기존 stdout 출력 (파이프라이닝용)
         out = {
             "question": state.get("question"),
             "route": state.get("route"),
