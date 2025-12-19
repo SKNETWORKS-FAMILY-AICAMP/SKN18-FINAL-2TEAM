@@ -576,26 +576,27 @@ sequenceDiagram
   - **classify_agent** : 사용자의 질문을 USER_INFO, NO_RELATION, BIO_Q, SIMULATION_Q, PROTOCOL_Q, INFERENCE_Q로 분류
   - **memory_read** : PostgreSQL에 저장된 기존 대화내역 전달(케이스 타입별 최대 5개, 꼬리질문 감지 시 원본 질문 타입 기준으로 조회)
   - **query_rewrite_agent** : 검색 성능 향상을 위해 LLM이 질문을 재작성
-  - **retriever_bio_node : BIO_Q용 - OpenAI 임베딩(text-embedding-3-large) 사용, LLM이 pgvector vs neo4j 검색 전략 결정
-  - retriever_protocol_node : PROTOCOL_Q용 - 로컬 임베딩(sentence-transformers/all-MiniLM-L6-v2) 사용, 보안 고려, LLM이 pgvector vs neo4j 검색 전략 결정
-  - rerank : Cross-Encoder(ms-marco-MiniLM-L-6-v2)로 검색 결과 재순위화
-  - bio_evaluate_chunk_node : BIO_Q용 - 추출된 청크가 원본 질문과 연관성이 있는지 GPT-4o-mini가 판단하여 점수 부여, 관련성이 낮으면 웹 검색으로 이동
-  - protocol_evaluate_chunk_node : PROTOCOL_Q용 - 추출된 청크가 원본 질문과 연관성이 있는지 로컬 sllm이 판단하여 점수 부여
-  - web_search : Tavily를 사용해 의학 용어 정의 및 최신 정보 검색 (BIO_Q에서 RAG 검색 실패 시 fallback)
-  - evaluate_web : 웹 검색 결과의 관련성 평가
-  - generate_answer : 케이스 타입별 답변 생성 (USER_INFO는 친근한 응답, BIO_Q/PROTOCOL_Q는 RAG/웹 결과 기반, SIMULATION_Q는 시뮬레이션 경로 안내, INFERENCE_Q는 실험 결과 해석), 출처 추출
-  - memory_write : 질문과 Generate_answer에서 생성된 답변 원본과 summary, 채팅방 아이디(conversation_id)를 PostgreSQL에 저장
+  - **retriever_bio_node** : BIO_Q용 - OpenAI 임베딩(text-embedding-3-large) 사용
+  - **retriever_protocol_node** : PROTOCOL_Q용 - 로컬 임베딩(sentence-transformers/all-MiniLM-L6-v2) 사용, 보안 고려
+  - **rerank** : Cross-Encoder(ms-marco-MiniLM-L-6-v2)로 검색 결과 재순위화
+  - **bio_evaluate_chunk_node** : BIO_Q용 - 추출된 청크가 원본 질문과 연관성이 있는지 GPT-4o-mini가 판단하여 점수 부여, 관련성이 낮으면 웹 검색으로 이동
+  - **protocol_evaluate_chunk_node** : PROTOCOL_Q용 - 추출된 청크가 원본 질문과 연관성이 있는지 로컬 sllm이 판단하여 점수 부여
+  - **web_search** : Tavily를 사용해 의학 용어 정의 및 최신 정보 검색 (BIO_Q에서 RAG 검색 실패 시 fallback)
+  - **evaluate_web** : 웹 검색 결과의 관련성 평가
+  - **generate_answer** : 케이스 타입별 답변 생성 (USER_INFO는 친근한 응답, BIO_Q/PROTOCOL_Q는 RAG/웹 결과 기반, SIMULATION_Q는 시뮬레이션 경로 안내, INFERENCE_Q는 실험 결과 해석), 출처 추출
+  - **memory_write** : 질문과 Generate_answer에서 생성된 답변과 summary, 채팅방 아이디(conversation_id)를 PostgreSQL에 저장
 
 - **메모리 시스템**
   - LLM 에이전트는 기본적으로 금붕어 뇌와 같아서, 그래프가 한 턴 실행될 때마다 바로 전 문장도 잊어버리는 특성
-  - MemorySaver는 이 에이전트에게 블랙박스(기억 장치)를 달아주는 역할
-  - 각 대화에서 중요한 순간만 캡처해 저장하고, 다음 턴에서 필요할 때만 적절히 불러와 사고 흐름에 삽입
+  - PostgreSQL 기반 메모리 시스템은 이 에이전트에게 블랙박스(기억 장치)를 달아주는 역할
+  - 각 대화에서 중요한 순간만 캡처해 저장하고(질문-답변 요약), 다음 턴에서 필요할 때만 적절히 불러와 사고 흐름에 삽입
+  - 케이스 타입별로 최대 5개까지 히스토리를 관리하며, 꼬리질문 감지 시 원본 질문의 케이스 타입 기준으로 관련 히스토리 조회
   - **결론** : 에이전트는 이전 대화를 전부 기억하지 않아도 안정적인 추론 흐름을 유지 가능
     
 [ LangGraph 흐름도]  
 
   - **구상** 
-    - {excalidraw 이미지 }
+    - <img width="600" alt="Image" src="https://github.com/user-attachments/assets/2f604cbe-d965-4bf6-8514-76d9f798acb1" />
   
   - **구현**
    - {이미지 }  
