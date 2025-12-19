@@ -1,0 +1,82 @@
+{% load static %}
+<div class="sidebar-container">
+    <!-- Icon Rail -->
+    <aside class="sidebar-rail">
+        <!-- Main Menu Icons -->
+        <nav class="sidebar-nav">
+            <a href="{% url 'dashboard:dashboard' %}" class="sidebar-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" data-menu-id="dashboard">
+                {% comment %} <i class="far fa-house"></i> {% endcomment %}
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="7" height="7"/>
+                    <rect x="14" y="3" width="7" height="7"/>
+                    <rect x="14" y="14" width="7" height="7"/>
+                    <rect x="3" y="14" width="7" height="7"/>
+                </svg>
+                <span>홈</span>
+            </a>
+            <a href="{% url 'chat:chat' %}" class="sidebar-item {% if request.resolver_match.url_name == 'chat' %}active{% endif %}" data-menu-id="chat">
+                {% comment %} <i class="far fa-brain"></i> {% endcomment %}
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/>
+                    <path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"/>
+                    <path d="M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4"/>
+                </svg>
+                <span>연구AI</span>
+            </a>
+            <a href="{% url 'schedule:schedule' %}" class="sidebar-item {% if request.resolver_match.url_name == 'schedule' %}active{% endif %}" data-menu-id="schedule">
+                {% comment %} <i class="far fa-calendar"></i> {% endcomment %}
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                    <line x1="16" y1="2" x2="16" y2="6"/>
+                    <line x1="8" y1="2" x2="8" y2="6"/>
+                    <line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
+                <span>일정</span>
+            </a>
+            <a href="javascript:void(0);" class="sidebar-item disabled {% if request.resolver_match.url_name == 'experiments' %}active{% endif %}" data-menu-id="experiments">
+                {% comment %} <i class="fa fa-flask"></i> {% endcomment %}
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2"/>
+                    <path d="M8.5 2h7"/>
+                    <path d="M7 16h10"/>
+                </svg>
+                <span>실험</span>
+            </a>
+            <a href="{% url 'notes:notes' %}" class="sidebar-item {% if request.resolver_match.url_name == 'notes' %}active{% endif %}" data-menu-id="notes">
+                {% comment %} <i class="far fa-file-lines"></i> {% endcomment %}
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="16" y1="13" x2="8" y2="13"/>
+                    <line x1="16" y1="17" x2="8" y2="17"/>
+                    <line x1="10" y1="9" x2="8" y2="9"/>
+                </svg>
+                <span>노트</span>
+            </a>
+        </nav>
+
+        <!-- Bottom Menu -->
+        <div class="sidebar-bottom">
+            {% comment %} <a href="{% url 'settings' %}" class="sidebar-item {% if request.resolver_match.url_name == 'settings' %}active{% endif %}" data-menu-id="settings"> {% endcomment %}
+            <a href="" class="sidebar-item {% if request.resolver_match.url_name == 'settings' %}active{% endif %}" data-menu-id="settings">
+                {% comment %} <i class="far fa-gear"></i> {% endcomment %}
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                </svg>
+                <span>설정</span>
+            </a>
+            {% comment %} <a href="{% url 'feedback' %}" class="sidebar-item {% if request.resolver_match.url_name == 'feedback' %}active{% endif %}" data-menu-id="feedback"> {% endcomment %}
+            <a href="" class="sidebar-item {% if request.resolver_match.url_name == 'feedback' %}active{% endif %}" data-menu-id="feedback">
+                {% comment %} <i class="far fa-comment-dots"></i> {% endcomment %}
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                </svg>
+                <span>의견</span>
+            </a>
+            
+            <!-- Profile Section -->
+            {% include 'components/profile_dropdown.html' with user_data=user button_id='sidebarProfileBtn' dropdown_id='sidebarProfileDropdown' overlay_id=None wrapper_class='profile-section' button_class='sidebar-item' show_name_email=False position_type='sidebar' %}
+        </div>
+    </aside>
+</div>

@@ -1,0 +1,16 @@
+name: Run tests (placeholder)
+
+on:
+  # 테스트도 아직 프로젝트 세팅 전이라 수동 실행만
+  workflow_dispatch:
+
+jobs:
+  test_placeholder:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Show placeholder message
+        run: |
+          echo "test.yml placeholder workflow"
+          echo "👉 pytest / Django 테스트 환경이 아직 준비되지 않았습니다."
+          echo "👉 tests/ 구조와 settings 분리 후에 실제 테스트 스텝을 추가하세요."

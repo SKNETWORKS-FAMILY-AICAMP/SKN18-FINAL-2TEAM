@@ -1,0 +1,154 @@
+{% load static %}
+<div class="modal-overlay" id="graphCreateModal" role="dialog" aria-labelledby="graphCreateModalTitle" aria-modal="true">
+    <div class="modal-container modal-xlarge">
+        <!-- Modal Header -->
+        <div class="modal-header">
+            <h3 class="modal-title" id="graphCreateModalTitle">그래프 생성</h3>
+            <button class="modal-close-btn" aria-label="닫기" id="graphCreateModalCloseBtn">
+                <i class="fa-solid fa-times"></i>
+            </button>
+        </div>
+        
+        <!-- Modal Body -->
+        <div class="graph-create-modal-body">
+            <!-- Left Panel: Configuration -->
+            <div class="graph-config-panel">
+                <!-- Chart Type Selection -->
+                <div class="config-section">
+                    <label class="config-label">차트 유형</label>
+                    <div class="chart-type-selector" id="chartTypeSelector">
+                        <button class="chart-type-btn active" data-type="line" title="라인 차트">
+                            <i class="fa-solid fa-chart-line"></i>
+                            <span>Line</span>
+                        </button>
+                        <button class="chart-type-btn" data-type="bar" title="바 차트">
+                            <i class="fa-solid fa-chart-bar"></i>
+                            <span>Bar</span>
+                        </button>
+                        <button class="chart-type-btn" data-type="column" title="컬럼 차트">
+                            <i class="fa-solid fa-chart-column"></i>
+                            <span>Column</span>
+                        </button>
+                        <button class="chart-type-btn" data-type="pie" title="파이 차트">
+                            <i class="fa-solid fa-chart-pie"></i>
+                            <span>Pie</span>
+                        </button>
+                        <button class="chart-type-btn" data-type="area" title="영역 차트">
+                            <i class="fa-solid fa-chart-area"></i>
+                            <span>Area</span>
+                        </button>
+                        <button class="chart-type-btn" data-type="scatter" title="산점도">
+                            <i class="fa-solid fa-braille"></i>
+                            <span>Scatter</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Chart Title -->
+                <div class="config-section">
+                    <label class="config-label" for="graphTitleInput">차트 제목</label>
+                    <input 
+                        type="text" 
+                        id="graphTitleInput" 
+                        class="config-input" 
+                        placeholder="차트 제목을 입력하세요"
+                        value="실험 결과 분석"
+                    />
+                </div>
+
+                <!-- Data Input Section -->
+                <div class="config-section">
+                    <label class="config-label">데이터 입력</label>
+                    
+                    <!-- X-Axis Data -->
+                    <div class="data-input-group">
+                        <label class="data-label" for="xAxisInput">
+                            <i class="fa-solid fa-arrows-left-right"></i>
+                            X축 (카테고리)
+                        </label>
+                        <input 
+                            type="text" 
+                            id="xAxisInput" 
+                            class="config-input" 
+                            placeholder="쉼표로 구분 (예: 1월, 2월, 3월, 4월)"
+                            value="Day 1, Day 2, Day 3, Day 4, Day 5"
+                        />
+                        <span class="input-hint">쉼표(,)로 각 항목을 구분하세요</span>
+                    </div>
+
+                    <!-- Y-Axis Data -->
+                    <div class="data-input-group">
+                        <label class="data-label" for="yAxisInput">
+                            <i class="fa-solid fa-arrows-up-down"></i>
+                            Y축 (값)
+                        </label>
+                        <input 
+                            type="text" 
+                            id="yAxisInput" 
+                            class="config-input" 
+                            placeholder="쉼표로 구분 (예: 10, 20, 30, 40)"
+                            value="23.5, 28.1, 32.4, 29.8, 35.2"
+                        />
+                        <span class="input-hint">숫자를 쉼표(,)로 구분하세요</span>
+                    </div>
+
+                    <!-- Series Name -->
+                    <div class="data-input-group">
+                        <label class="data-label" for="seriesNameInput">
+                            <i class="fa-solid fa-tag"></i>
+                            시리즈 이름
+                        </label>
+                        <input 
+                            type="text" 
+                            id="seriesNameInput" 
+                            class="config-input" 
+                            placeholder="데이터 시리즈 이름"
+                            value="측정값"
+                        />
+                    </div>
+                </div>
+
+                <!-- Additional Series (Optional) -->
+                <div class="config-section">
+                    <div class="section-header-with-action">
+                        <label class="config-label">추가 시리즈 (선택사항)</label>
+                        <button class="btn-add-series" id="btnAddSeries">
+                            <i class="fa-solid fa-plus"></i>
+                            시리즈 추가
+                        </button>
+                    </div>
+                    <div id="additionalSeriesContainer">
+                        <!-- Additional series will be added here dynamically -->
+                    </div>
+                </div>
+
+                <!-- Update Chart Button -->
+                <button class="btn-update-chart" id="btnUpdateChart">
+                    <i class="fa-solid fa-sync-alt"></i>
+                    차트 미리보기 업데이트
+                </button>
+            </div>
+
+            <!-- Right Panel: Chart Preview -->
+            <div class="graph-preview-panel">
+                <div class="preview-header">
+                    <span class="preview-title">미리보기</span>
+                </div>
+                <div class="chart-container" id="graphPreviewContainer">
+                    <!-- Highcharts will render here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="modal-footer graph-create-modal-footer">
+            <button class="modal-btn modal-btn-secondary" id="graphCreateModalCancelBtn">
+                취소
+            </button>
+            <button class="modal-btn modal-btn-primary" id="graphCreateModalInsertBtn">
+                <i class="fa-solid fa-plus"></i>
+                노트에 삽입
+            </button>
+        </div>
+    </div>
+</div>

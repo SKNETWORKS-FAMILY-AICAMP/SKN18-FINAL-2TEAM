@@ -1,0 +1,62 @@
+name: SKN18-final
+
+services:
+  db:
+    image: pgvector/pgvector:pg18
+    container_name: pg-db-final
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-sknfinaldb}
+      POSTGRES_USER: ${POSTGRES_USER:-root}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-root1234}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      # PostgreSQL 18+ 호환: /var/lib/postgresql에 마운트하면
+      # 자동으로 버전별 디렉토리(예: /var/lib/postgresql/18)를 생성합니다
+      - pgvector-data:/var/lib/postgresql
+      - ./infra/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d ${POSTGRES_DB:-sknfinaldb} -U ${POSTGRES_USER:-root}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  # worker:  # ETL / 배치 / RAG 인덱싱
+  #   build:
+  #     context: .
+  #     dockerfile: ./infra/docker/Dockerfile.worker
+  #   container_name: etl-worker
+  #   env_file:
+  #     - .env
+  #   depends_on:
+  #     - db
+  #   restart: unless-stopped
+  #   command: ["python", "-m", "jobs.manage_etl"]
+    # 필요 시 다른 커맨드로 교체 (Celery, cron용 스크립트 등)
+
+  neo4j:
+    image: neo4j:5.15.0
+    container_name: neo4j-final
+    environment:
+      - NEO4J_AUTH=neo4j/neo4jpass
+      - NEO4J_PLUGINS=["apoc", "graph-data-science"]
+      - NEO4J_dbms_security_procedures_unrestricted=apoc.*,gds.*
+      - NEO4J_dbms_security_procedures_allowlist=apoc.*,gds.*
+    ports:
+      - "7474:7474"  # HTTP
+      - "7687:7687"  # Bolt
+    volumes:
+      - neo4j-data:/data
+      - neo4j-logs:/logs
+      - ./infra/neo4j/neo4j.conf:/config/neo4j.conf
+      - ./infra/neo4j/init.cypher:/docker-entrypoint-initdb.d/init.cypher
+      - ./infra/neo4j/plugins:/plugins
+      - ./infra/neo4j/import:/import
+    restart: unless-stopped
+
+volumes:
+  pgvector-data:
+  neo4j-data:
+  neo4j-logs:

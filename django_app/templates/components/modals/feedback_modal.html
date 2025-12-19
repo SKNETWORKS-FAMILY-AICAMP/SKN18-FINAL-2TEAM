@@ -1,0 +1,46 @@
+{% load static %}
+<div class="modal-overlay" id="feedbackModal" role="dialog" aria-labelledby="feedbackModalTitle" aria-modal="true">
+    <div class="modal-container modal-medium">
+        <!-- Modal Header - matching React: flex items-center justify-between p-6 border-b border-gray-200 -->
+        <div class="modal-header">
+            <h2 class="modal-title" id="feedbackModalTitle">Feedback</h2>
+            <button class="modal-close-btn" aria-label="닫기">
+                <i class="fa-solid fa-times"></i>
+            </button>
+        </div>
+
+        <!-- Modal Body - matching React: p-6 space-y-4 -->
+        <div class="modal-body">
+            <div class="feedback-form-group">
+                <label class="feedback-label">카테고리</label>
+                <select
+                    id="feedbackCategory"
+                    class="feedback-select"
+                >
+                    <option value="general">일반</option>
+                    <option value="bug">버그 리포트</option>
+                    <option value="feature">기능 제안</option>
+                    <option value="improvement">개선 사항</option>
+                </select>
+            </div>
+
+            <div class="feedback-form-group">
+                <label class="feedback-label">피드백 내용</label>
+                <textarea
+                    id="feedbackText"
+                    placeholder="피드백을 입력해주세요..."
+                    rows="8"
+                    class="feedback-textarea"
+                ></textarea>
+            </div>
+        </div>
+
+        <!-- Modal Footer - matching React: flex items-center justify-end gap-3 p-6 border-t border-gray-200 -->
+        <div class="modal-footer">
+            <button class="modal-btn modal-btn-secondary" data-action="close">취소</button>
+            <button class="modal-btn modal-btn-primary" data-action="submit" id="submitFeedbackBtn">
+                전송
+            </button>
+        </div>
+    </div>
+</div>

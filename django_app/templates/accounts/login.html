@@ -1,0 +1,204 @@
+{% extends 'base_auth.html' %}
+{% load static %}
+
+{% block title %}로그인 - HelixOps{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/pages/login.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="login-container">
+    <!-- Left Side - Branding with Gradient Background -->
+    <div class="login-left">
+        <!-- YouTube Video Background - matching React -->
+        <iframe
+            class="login-video-bg"
+            src="https://www.youtube.com/embed/fokCC6aQKGM?autoplay=1&mute=1&loop=1&playlist=fokCC6aQKGM&controls=0&showinfo=0&rel=0&modestbranding=1&playsinline=1&enablejsapi=1"
+            title="Background Video"
+            frameborder="0"
+            allow="autoplay; encrypted-media"
+        ></iframe>
+
+        <!-- Dark Overlay - matching React: bg-gradient-to-br from-blue-500/80 to-purple-950/80 backdrop-blur-[1px] -->
+        <div class="overlay"></div>
+
+        <!-- Content -->
+        <div class="login-left-content">
+            <div>
+                <div class="logo-section">
+                    <div class="logo-frame">
+                        <img src="{% static 'img/logo_01.png' %}" alt="HelixOps Logo" class="logo-img" />
+                    </div>
+                    <div>
+                        <h1>HelixOps</h1>
+                        <p>Bio/Med R&D Agentic Platform</p>
+                    </div>
+                </div>
+
+                <div class="features-list">
+                    <div class="feature-item">
+                        <div class="feature-icon">
+                            <!-- SVG Check Icon - matching React -->
+                            <svg class="feature-icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h3>AI 기반 연구 지원</h3>
+                            <p>실험 설계부터 데이터 분석까지</p>
+                        </div>
+                    </div>
+
+                    <div class="feature-item">
+                        <div class="feature-icon">
+                            <!-- SVG Book Icon - matching React -->
+                            <svg class="feature-icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h3>연구 노트 자동화</h3>
+                            <p>실험 기록과 데이터 통합 관리</p>
+                        </div>
+                    </div>
+
+                    <div class="feature-item">
+                        <div class="feature-icon">
+                            <!-- SVG Users Icon - matching React -->
+                            <svg class="feature-icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h3>팀 협업 도구</h3>
+                            <p>조직 관리 및 실시간 공유</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="copyright">
+                © 2025 HelixOps. All rights reserved.
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Side - Login Form -->
+    <div class="login-right">
+        <div class="login-form-wrapper">
+            <!-- Mobile Logo -->
+            <div class="mobile-logo">
+                <div class="mobile-logo-frame">
+                    <img src="{% static 'img/logo_01.png' %}" alt="HelixOps Logo" class="logo-img" />
+                </div>
+                <div>
+                    <h1>HelixOps</h1>
+                    <p>Bio/Med R&D Agentic Platform</p>
+                </div>
+            </div>
+
+            <div class="login-form-card">
+                <div class="form-header">
+                    <h2>로그인</h2>
+                    <p>계정 정보를 입력해주세요</p>
+                </div>
+
+                {% if form.errors %}
+                <div class="error-message" role="alert">
+                    {% if form.non_field_errors %}
+                        {{ form.non_field_errors }}
+                    {% else %}
+                        이메일 또는 비밀번호가 올바르지 않습니다.
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                {% if messages %}
+                {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}" role="alert">
+                    {{ message }}
+                </div>
+                {% endfor %}
+                {% endif %}
+
+                <form class="login-form" method="post" action="{% url 'accounts:login' %}" id="loginForm">
+                    {% csrf_token %}
+                    
+                    <div class="form-group">
+                        <label for="{{ form.username.id_for_label }}">이메일</label>
+                        <div class="input-wrapper">
+                            <i class="fa-solid fa-envelope input-icon"></i>
+                            <input
+                                id="{{ form.username.id_for_label }}"
+                                name="{{ form.username.name }}"
+                                type="email"
+                                placeholder="example@lab.com"
+                                class="form-input {% if form.username.errors %}error-input{% endif %}"
+                                value="{{ form.username.value|default:'' }}"
+                                required
+                                autocomplete="email"
+                            />
+                        </div>
+                        {% if form.username.errors %}
+                        <div class="error-message">{{ form.username.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-group">
+                        <label for="{{ form.password.id_for_label }}">비밀번호</label>
+                        <div class="input-wrapper">
+                            <i class="fa-solid fa-lock input-icon"></i>
+                            <input
+                                id="{{ form.password.id_for_label }}"
+                                name="{{ form.password.name }}"
+                                type="password"
+                                placeholder="••••••••"
+                                class="form-input {% if form.password.errors %}error-input{% endif %}"
+                                required
+                                autocomplete="current-password"
+                            />
+                            <button type="button" class="password-toggle" id="passwordToggle">
+                                <i class="fa-solid fa-eye"></i>
+                            </button>
+                        </div>
+                        {% if form.password.errors %}
+                        <div class="error-message">{{ form.password.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-options">
+                        <label class="checkbox-label">
+                            <input 
+                                type="checkbox" 
+                                class="checkbox" 
+                                name="remember_me"
+                                id="rememberMe"
+                            />
+                            <span>로그인 상태 유지</span>
+                        </label>
+                        {% comment %} <a href="{% url 'accounts:password_reset' %}" class="forgot-link">비밀번호 찾기</a> {% endcomment %}
+                    </div>
+
+                    <input type="hidden" name="next" value="{{ next|default:'/' }}" />
+
+                    <button type="submit" class="btn-submit" id="submitBtn">
+                        <span id="submitText">로그인</span>
+                        <span id="submitLoading" style="display: none;">
+                            <i class="fa-solid fa-spinner fa-spin"></i> 로그인 중...
+                        </span>
+                    </button>
+                </form>
+
+                {% comment %} <div class="form-footer">
+                    <p>계정이 없으신가요? <a href="{% url 'accounts:signup' %}">회원가입</a></p>
+                </div> {% endcomment %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/pages/login.js' %}"></script>
+{% endblock %}

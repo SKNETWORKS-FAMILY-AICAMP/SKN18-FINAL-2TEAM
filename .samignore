@@ -1,0 +1,191 @@
+# SAM 빌드 시 제외할 파일/폴더
+# 참고: SAM은 .gitignore도 참조하므로 중복 제외 가능
+
+# 가상환경 (반드시 제외)
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+.AppleDouble
+.LSOverride
+._*
+
+# 빌드 산출물
+.aws-sam/
+dist/
+build/
+develop-eggs/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# 데이터 파일 (Lambda에는 불필요) - 절대 경로로 명시
+# SAM은 .gitignore 스타일을 사용하므로 경로 패턴 중요
+/data/
+data/
+**/data/
+rag/data/
+django_app/uploads/
+data/raw/
+data/processed/
+data/chunks/
+data/embeddings/
+data/entities/
+*.csv
+*.json
+*.parquet
+*.pkl
+*.pickle
+*.sqlite3
+*.db
+
+# 문서
+*.md
+README*
+LICENSE*
+*.txt
+requirements.txt
+!requirements-lambda-protocols.txt
+!requirements-lambda-nih.txt
+
+# Docker (Lambda에는 불필요)
+docker-compose*.yml
+Dockerfile*
+.dockerignore
+
+# CI/CD (Lambda에는 불필요)
+.github/
+cicd/
+.gitlab-ci.yml
+.travis.yml
+
+# 인프라 (Lambda 함수 코드만 필요)
+infra/db/
+infra/docker/
+infra/nginx/
+infra/neo4j/
+infra/cicd/
+infra/aws/cloudformation/
+infra/aws/terraform/
+infra/aws/lambda_functions/trigger_sim/
+infra/aws/lambda_functions/daily_report/
+# trigger_etl은 포함 (Lambda 핸들러)
+
+# Django 앱 (Lambda에는 불필요)
+django_app/
+graph/
+kg/
+sim_tools/
+sllm/
+assets/
+static/
+staticfiles/
+media/
+uploads/
+
+# 테스트
+tests/
+test_*/
+*_test.py
+test_*.py
+pytest.ini
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+cover/
+
+# 기타
+.env
+.env.local
+*.log
+.history/
+.claude/
+*.local.json
+
+# 큰 파일들 및 바이너리
+*.so
+*.dylib
+*.dll
+*.exe
+*.bin
+*.manifest
+*.spec
+
+# 불필요한 패키지들 및 모델 파일
+.cache/
+*.h5
+*.ckpt
+*.pt
+*.pth
+*.onnx
+*.pb
+*.tflite
+*.pkl
+*.pickle
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# 기타 개발 도구
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+cython_debug/
+.spyderproject
+.spyproject
+.ropeproject
+site/
+.pdm.toml
+__pypackages__/
+.ruff_cache/
+pyrightconfig.json
+poetry.toml
+celerybeat-schedule
+celerybeat.pid
+*.sage.py
+
+# Lambda Layers는 빌드에 포함되어야 함
+# infra/aws/lambda_layers/는 제외하지 않음
