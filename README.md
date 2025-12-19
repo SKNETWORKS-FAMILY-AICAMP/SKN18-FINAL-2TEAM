@@ -567,11 +567,11 @@ sequenceDiagram
 <img width="406" height="276" alt="Image" src="https://github.com/user-attachments/assets/4dcf6eca-e104-42f5-8003-112e62ae0c37" />  
 
 #### 1-3) retriver(검색)  
-- **역할**: 질문 타입(BIO_Q, PROTOCOL_Q)에 따라 임베딩 모델을 선택하고, LLM이 재순위화/필터링을 거쳐 생성 모델에 근거를 전달한다.
-- **검색방식**: Classify → query rewrite → (OpenAI 또는 로컬) 임베딩 → LLM 전략 선택 → Neo4j 검색 → Cross-Encoder 재순위화 → LLM 기반 청크 적합도 평가 → 부족 시 웹 검색 백업 → 답변 생성
+- **역할**:
+- **검색방식**:
 
 #### 1-4) evaluation
-- **역할**: Cross-Encoder 재순위화 + LLM 기반 청크 리젝션으로 노이즈를 걸러내고, 웹 결과도 별도 LLM 평가 후 포함한다.
+- **역할**:
 
 
 ## 2. LangGraph
