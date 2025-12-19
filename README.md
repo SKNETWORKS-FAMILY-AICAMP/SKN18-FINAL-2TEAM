@@ -563,19 +563,22 @@ sequenceDiagram
 ## 2. LangGraph
 - **역할** : **전체 AI 파이프라인을 오케스트레이션(orchestration)** 하는 핵심 엔진 (운영, 실험, 안전, 재시도 등)
 - **목적**:  
-  `langgraph` 워크플로우로 의료 특화 Self-RAG 파이프라인을 구성해 질문 유형에 따라 사용자 정보·비의학·의학 질문을 자동 라우팅하고, 용어 질문은 WebSearch, 일반 의학 질문은 RAG 검색으로 보내도록 설계
-- **워크플로우 :** 메모리 → 질문 분류 → 용어 판별 → 검색/웹서치 → 검증 → 답변 → 메모리 기록  
+  `langgraph` 워크플로우로 생물학 특화 Self-RAG 파이프라인을 구성해 질문 유형에 따라 사용자 정보·비의학·의학 질문을 자동 라우팅하고, BIO_Q는 RAG 검색, PROTOCOL_Q는 보안을 고려한 로컬 임베딩 기반 RAG 검색, 관련성이 낮은 경우 WebSearch로 보내도록 설계
+- **워크플로우 :** 가드레일 → 질문 분류 → 메모리 읽기 → 쿼리 재작성 → 검색 → 재순위화 → 평가 → 웹 검색(필요시) → 답변 생성 → 메모리 기록
 - **노드 별 기능**  
-  - **memory_read** : sqlite3에 저장된 기존 대화내역 전달(user_info는 5개, medical은 1개)  
-  - **classifier** : 사용자의 질문을 medical, user_info, none_medical로 분류  
-  - **medical_check** : vectorDB / Websearch 대상(의학 용어)인지 판별  
-  - **retriver** : vectorDB에서 유사도 검색을 통해 유사도 높은 청크 5개 추출  
-    **evaluate_chunk** : 추출된 5개의 청크가 원본질문과 연관성이 있는지 llm이 판단하여 점수 부여.  
-  		       재작성 후 추출된 모든 청크가 질문과 관련이 없는 경우  최종 메세지와 함께 END  
-    **rewrite_query** : evaluate_chunk에서 낮은 점수가 나오면 llm이 질문을 재작성하여 retriver로 전달(최대 1번)  
-  - **WebSearch** : Tavily를 사용해 의학 용어 정의 검색  
-  - **Generate_answer** : 답변 형식 고정, llm 판단 점수출력, 출처 추출  
-  - **memory_write** : 질문과 Generate_answer에서 생성된 답변 원본과 summary, 채팅창 아이디(conversation_id)를 sqlite3에 저장
+  - **guardrail_input** : 입력 안전성 검사 (불법/위험 질문 차단)
+  - **classify_agent** : 사용자의 질문을 USER_INFO, NO_RELATION, BIO_Q, SIMULATION_Q, PROTOCOL_Q, INFERENCE_Q로 분류
+  - **memory_read** : PostgreSQL에 저장된 기존 대화내역 전달(케이스 타입별 최대 5개, 꼬리질문 감지 시 원본 질문 타입 기준으로 조회)
+  - **query_rewrite_agent** : 검색 성능 향상을 위해 LLM이 질문을 재작성
+  - **retriever_bio_node : BIO_Q용 - OpenAI 임베딩(text-embedding-3-large) 사용, LLM이 pgvector vs neo4j 검색 전략 결정
+  - retriever_protocol_node : PROTOCOL_Q용 - 로컬 임베딩(sentence-transformers/all-MiniLM-L6-v2) 사용, 보안 고려, LLM이 pgvector vs neo4j 검색 전략 결정
+  - rerank : Cross-Encoder(ms-marco-MiniLM-L-6-v2)로 검색 결과 재순위화
+  - bio_evaluate_chunk_node : BIO_Q용 - 추출된 청크가 원본 질문과 연관성이 있는지 GPT-4o-mini가 판단하여 점수 부여, 관련성이 낮으면 웹 검색으로 이동
+  - protocol_evaluate_chunk_node : PROTOCOL_Q용 - 추출된 청크가 원본 질문과 연관성이 있는지 로컬 sllm이 판단하여 점수 부여
+  - web_search : Tavily를 사용해 의학 용어 정의 및 최신 정보 검색 (BIO_Q에서 RAG 검색 실패 시 fallback)
+  - evaluate_web : 웹 검색 결과의 관련성 평가
+  - generate_answer : 케이스 타입별 답변 생성 (USER_INFO는 친근한 응답, BIO_Q/PROTOCOL_Q는 RAG/웹 결과 기반, SIMULATION_Q는 시뮬레이션 경로 안내, INFERENCE_Q는 실험 결과 해석), 출처 추출
+  - memory_write : 질문과 Generate_answer에서 생성된 답변 원본과 summary, 채팅방 아이디(conversation_id)를 PostgreSQL에 저장
 
 - **메모리 시스템**
   - LLM 에이전트는 기본적으로 금붕어 뇌와 같아서, 그래프가 한 턴 실행될 때마다 바로 전 문장도 잊어버리는 특성
