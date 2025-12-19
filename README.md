@@ -14,8 +14,8 @@
 ## [주제]
 
 ### **🧬 HelixOps**
-> Bio/Med R&D Agentic Platform 
-> 자체 sLLM 개발을 통한 기업 업무 활용 생성형 AI 플랫폼
+ > Bio/Med R&D Agentic Platform<br/>
+ > 자체 sLLM 개발을 통한 기업 업무 활용 생성형 AI 플랫폼
 
 ### 📌 서비스 개요
 바이오/제약 기업의 신약 개발 및 연구팀을 대상으로 **문헌 탐색 → AI 기반 후보물질 발굴/시뮬레이션 → 실험 설계 → 실험 결과 해석**의 R&D 전주기를 지원하는 플랫폼입니다. 
@@ -323,11 +323,17 @@ SKN18-FINAL-2TEAM/
    - 타겟–질병–약물 관계 분석
    - 실험 설계 및 후보 타겟 우선순위 도출
 
-## [화면 구성]
+## [화면 설계]
 
 - **도구** : Figma, HTML, CSS, Javascript
+<img width="1335" height="645" alt="스크린샷 2025-12-19 14 46 41" src="https://github.com/user-attachments/assets/8fe7b17d-6c47-4794-930b-a3ffbd99b3de" />
+<img width="1338" height="635" alt="스크린샷 2025-12-19 14 46 51" src="https://github.com/user-attachments/assets/48198b7c-0e48-4a3d-a176-2d56bab17a81" />
+<img width="1333" height="638" alt="스크린샷 2025-12-19 14 47 00" src="https://github.com/user-attachments/assets/ff308a8d-2563-4345-889e-10c2f45a6de4" />
+<img width="1335" height="636" alt="스크린샷 2025-12-19 14 47 14" src="https://github.com/user-attachments/assets/d91118c8-bf71-4ed6-ac37-82f70b8cc6d2" />
+<img width="1336" height="638" alt="스크린샷 2025-12-19 14 47 25" src="https://github.com/user-attachments/assets/fe07c8d1-6d9c-4c2c-85f7-8880ce105fe1" />
+<img width="1335" height="637" alt="스크린샷 2025-12-19 14 47 37" src="https://github.com/user-attachments/assets/aab05fa8-5214-4453-8981-eb2332b2045d" />
 
-{이미지}
+
 
 
 # [설계]
@@ -544,7 +550,7 @@ sequenceDiagram
 
 ## [구현]
 
-### 1. RAG
+### 1. Hybrid RAG
  - **목적**: 데이터 전처리~ 임베딩(ETL) 모듈화 및 진행 후 유저의 질문의 유사도가 높은 청킹데이터 추출  
  - **결과**: ETL 파이프라인 구축, 유사도 테스트를 통한 질문과 관련성 높은 청킹 추출  
  
@@ -622,16 +628,14 @@ sequenceDiagram
 
 ## [평가/결과]
 
-{ 이미지 }
 
 ## [인사이트]
 
 
 
-
 ## [이슈]
 - Github Issues
-  - 
+  - https://github.com/SKNETWORKS-FAMILY-AICAMP/SKN18-FINAL-2TEAM/issues?q=is%3Aissue
 
 
 
