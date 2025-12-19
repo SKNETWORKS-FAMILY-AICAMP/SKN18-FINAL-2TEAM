@@ -279,64 +279,101 @@ async function handleSend() {
     // Close recommendations
     closeRecommendations();
 
-    // Send to API
+    // 목적: AI 응답 대기 중 사용자에게 로딩 상태 표시
+    // AI 로딩 메시지 추가 (애니메이션 효과와 함께 표시됨)
+    const loadingMessage = {
+        role: 'assistant',
+        content: 'AI가 응답을 작성하는 중입니다',
+        is_loading: true,  // 로딩 메시지 식별용 플래그
+    };
+    messages.push(loadingMessage);
+    renderMessages();
+
+    // Send to API - 랭그래프의 응답을 화면으로 쏴줌
     try {
-        const response = await fetch('/api/chat/send/', {
+        // 목적: 새 채팅과 기존 채팅 모두 처리 가능한 통합 엔드포인트 사용
+        const apiUrl = activeChatId
+            ? `/chat/api/chats/${activeChatId}/messages/`  // 기존 채팅에 메시지 추가
+            : '/chat/api/chats/messages/';  // 새 채팅 생성
+
+        const response = await fetch(apiUrl, {
             method: 'POST',
             headers: {
                 'X-CSRFToken': getCsrfToken(),
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                message: input,
-                chat_id: activeChatId,
-                filter: selectedFilter,
-                auto_mode: isAutoMode,
+                content: input,
             }),
         });
 
         if (response.ok) {
             const data = await response.json();
-            
-            // Add assistant message
-            const assistantMessage = {
-                role: 'assistant',
-                content: data.response,
-                message_id: data.message_id,
-                timestamp: new Date().toISOString(),
-            };
-            messages.push(assistantMessage);
-            
-            // Update references
-            if (data.references) {
-                references = data.references;
-            } 
-            // else if (activeChatId === 1) {
-            //     // Use mock references for chat 1
-            //     references = mockReferences;
-            // } 
-            else {
-                references = [];
+
+            // 목적: AI 응답을 받았으므로 로딩 메시지 제거
+            messages = messages.filter(m => !m.is_loading);
+
+            // 목적: 새 채팅 생성 시 chat_id 저장 및 URL 업데이트
+            if (!activeChatId && data.chat_id) {
+                activeChatId = data.chat_id;
+                // URL을 업데이트하여 새로고침해도 같은 채팅 유지
+                window.history.pushState({}, '', `/chat/?id=${activeChatId}`);
+                // 서브사이드바에 새 채팅 표시
+                loadChatList();
             }
-            renderReferences();
-            
+
+            // 목적: 서버에서 받은 메시지(사용자 + AI)로 로컬 메시지 업데이트
+            if (data.messages && Array.isArray(data.messages) && data.messages.length >= 2) {
+                // 마지막 사용자 메시지를 서버 응답으로 교체 (message_id 포함)
+                messages[messages.length - 1] = {
+                    role: data.messages[0].role,
+                    content: data.messages[0].content,
+                    message_id: data.messages[0].id,
+                    timestamp: data.messages[0].created_at,
+                };
+
+                // AI 응답 메시지 추가
+                const assistantMessage = {
+                    role: data.messages[1].role,
+                    content: data.messages[1].content,
+                    message_id: data.messages[1].id,
+                    timestamp: data.messages[1].created_at,
+                };
+                messages.push(assistantMessage);
+            } else if (data.error) {
+                // AI generation failed, but user message was saved
+                console.error('AI generation error:', data.error);
+            }
+
+            // 목적: AI 응답과 함께 받은 참고문헌을 사이드바에 즉시 표시
+            if (data.references && Array.isArray(data.references)) {
+                references = data.references;
+                renderReferences();
+            }
+
             renderMessages();
         } else {
+            // 목적: 에러 발생 시에도 로딩 메시지 제거
+            messages = messages.filter(m => !m.is_loading);
+
             const error = await response.json();
             console.error('Error sending message:', error);
-            
+
             // Show error message
             const errorMessage = {
                 role: 'assistant',
-                content: '죄송합니다. 오류가 발생했습니다. 다시 시도해주세요.',
+                content: error.error || '죄송합니다. 오류가 발생했습니다. 다시 시도해주세요.',
                 is_error: true,
             };
             messages.push(errorMessage);
             renderMessages();
         }
     } catch (error) {
+        // 목적: 네트워크 오류 시에도 로딩 메시지 제거
+        messages = messages.filter(m => !m.is_loading);
+
         console.error('Error sending message:', error);
-        
+
         // Show error message
         const errorMessage = {
             role: 'assistant',
@@ -445,14 +482,30 @@ function renderMessages() {
                 </div>
             `;
         } else {
+            // 목적: AI 응답 대기 중 로딩 상태를 애니메이션과 함께 표시
+            if (msg.is_loading) {
+                return `
+                    <div class="message-item">
+                        <div class="message-assistant">
+                            <div class="message-avatar assistant-avatar">AI</div>
+                            <div class="message-content-assistant message-loading">
+                                <div class="markdown-content">
+                                    <p>${escapeHtml(msg.content)}<span class="typing-indicator"><span>.</span><span>.</span><span>.</span></span></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
             // Check if this message has paper_graphs
             const hasPaperGraphs = msg.paper_graphs && Array.isArray(msg.paper_graphs) && msg.paper_graphs.length > 0;
             const showPaperGraphBtn = hasPaperGraphs;
-            
+
             // Check if this is the last message for experiment button
             const isLastMessage = index === messages.length - 1;
             const showExperimentBtn = activeChatId === 2 && isLastMessage;
-            
+
             return `
                 <div class="message-item">
                     <div class="message-assistant">
