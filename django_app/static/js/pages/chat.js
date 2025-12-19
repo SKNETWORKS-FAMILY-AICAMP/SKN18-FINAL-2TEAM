@@ -13,6 +13,7 @@ let showFilterTooltip = false;
 let activeSectionFilter = null; // 'favorites', 'archived', or null
 let messages = [];
 let references = [];
+let allReferences = []; // 전체 참고문헌 (메시지별 그룹화용)
 let selectedReferences = [];
 let selectedReferenceId = null;
 let showBookmarkModal = false;
@@ -101,6 +102,7 @@ function initChatAI() {
     } else {
         // Show empty state
         references = [];
+        allReferences = [];
         renderReferences();
     }
 
@@ -345,13 +347,18 @@ async function handleSend() {
                 console.error('AI generation error:', data.error);
             }
 
-            // 목적: AI 응답과 함께 받은 참고문헌을 사이드바에 즉시 표시
+            // 목적: AI 응답과 함께 받은 참고문헌을 전체 목록에 추가
             if (data.references && Array.isArray(data.references)) {
-                references = data.references;
-                renderReferences();
+                // 새 참고문헌을 allReferences에 추가
+                const newRefs = data.references.map(ref => ({
+                    ...ref,
+                    message_id: data.messages && data.messages[1] ? data.messages[1].id : null
+                }));
+                allReferences = [...allReferences, ...newRefs];
             }
 
             renderMessages();
+            updateVisibleReferences(); // 스크롤 기반 참고문헌 업데이트
         } else {
             // 목적: 에러 발생 시에도 로딩 메시지 제거
             messages = messages.filter(m => !m.is_loading);
@@ -422,10 +429,11 @@ async function loadChat(chatId) {
                 paper_graphs: msg.paper_graphs || [], // Include paper_graphs data
             }));
             
-            // Format references
-            references = (data.references || []).map(ref => ({
+            // Format references (전체 참고문헌 저장)
+            allReferences = (data.references || []).map(ref => ({
                 id: ref.id,
                 ref_id: ref.ref_id,  // 참고문헌 번호 (UI 표시용)
+                message_id: ref.message_id,  // 메시지 ID (필터링용)
                 source: ref.source,
                 badge: ref.badge,
                 title: ref.title,
@@ -436,7 +444,7 @@ async function loadChat(chatId) {
                 date: ref.date,
                 authors: ref.authors,
             }));
-            
+
             // Show messages view
             if (emptyState) {
                 emptyState.style.display = 'none';
@@ -447,9 +455,9 @@ async function loadChat(chatId) {
             if (inputArea) {
                 inputArea.style.display = 'block';
             }
-            
+
             renderMessages();
-            renderReferences();
+            updateVisibleReferences(); // 스크롤 기반 참고문헌 업데이트
         } else {
             console.error('Failed to load chat:', response.status);
             if (messagesView) {
@@ -471,7 +479,7 @@ function renderMessages() {
     messagesView.innerHTML = messages.map((msg, index) => {
         if (msg.role === 'user') {
             return `
-                <div class="message-item">
+                <div class="message-item" data-message-id="${msg.message_id || ''}">
                     <div class="message-user">
                         <div class="message-content-user">
                             <div class="message-bubble-user">
@@ -486,7 +494,7 @@ function renderMessages() {
             // 목적: AI 응답 대기 중 로딩 상태를 애니메이션과 함께 표시
             if (msg.is_loading) {
                 return `
-                    <div class="message-item">
+                    <div class="message-item" data-message-id="${msg.message_id || ''}">
                         <div class="message-assistant">
                             <div class="message-avatar assistant-avatar">AI</div>
                             <div class="message-content-assistant message-loading">
@@ -508,7 +516,7 @@ function renderMessages() {
             const showExperimentBtn = activeChatId === 2 && isLastMessage;
 
             return `
-                <div class="message-item">
+                <div class="message-item" data-message-id="${msg.message_id || ''}">
                     <div class="message-assistant">
                         <div class="message-avatar assistant-avatar">AI</div>
                         <div class="message-content-assistant">
@@ -586,6 +594,13 @@ function renderMessages() {
 
     // Re-attach handlers
     attachMessageActionHandlers();
+
+    // Attach scroll event listener for dynamic reference updates
+    if (chatMessagesList) {
+        // Remove existing listener to avoid duplicates
+        chatMessagesList.removeEventListener('scroll', handleMessagesScroll);
+        chatMessagesList.addEventListener('scroll', handleMessagesScroll);
+    }
 }
 
 // Load recommended questions from API
@@ -862,20 +877,21 @@ function handleNewChat() {
     message = "";
     editingChatId = null;
     editingTitle = "";
-    
+
     // Show empty state
     if (emptyState) emptyState.style.display = 'flex';
     if (messagesView) messagesView.style.display = 'none';
     if (inputArea) inputArea.style.display = 'none';
-    
+
     // Clear input
     if (chatInputField) chatInputField.value = "";
     if (chatInputFieldBottom) chatInputFieldBottom.value = "";
-    
-    // Load mock references
-    references = mockReferences;
+
+    // Clear references
+    references = [];
+    allReferences = [];
     renderReferences();
-    
+
     // Update URL
     window.history.pushState({}, '', '/chat/');
 }
@@ -2004,6 +2020,52 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+// Handle messages scroll to update visible references
+function handleMessagesScroll() {
+    updateVisibleReferences();
+}
+
+// Update visible references based on currently visible messages
+function updateVisibleReferences() {
+    if (!chatMessagesList || !allReferences || allReferences.length === 0) {
+        // No references to show
+        references = [];
+        renderReferences();
+        return;
+    }
+
+    // Get all message items
+    const messageItems = chatMessagesList.querySelectorAll('.message-item[data-message-id]');
+
+    if (messageItems.length === 0) {
+        references = [];
+        renderReferences();
+        return;
+    }
+
+    // Find visible messages (using Intersection Observer would be better, but for simplicity use scroll position)
+    const container = chatMessagesList;
+    const containerRect = container.getBoundingClientRect();
+    const visibleMessageIds = new Set();
+
+    messageItems.forEach(item => {
+        const rect = item.getBoundingClientRect();
+        const messageId = item.getAttribute('data-message-id');
+
+        // Check if message is visible in viewport
+        if (messageId && rect.top < containerRect.bottom && rect.bottom > containerRect.top) {
+            visibleMessageIds.add(parseInt(messageId));
+        }
+    });
+
+    // Filter references for visible messages
+    const visibleRefs = allReferences.filter(ref => visibleMessageIds.has(ref.message_id));
+
+    // Update references and render
+    references = visibleRefs;
+    renderReferences();
 }
 
 // Initialize when DOM is ready
