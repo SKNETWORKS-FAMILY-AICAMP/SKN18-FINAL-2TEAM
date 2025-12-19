@@ -601,37 +601,62 @@ sequenceDiagram
 
 ### 3. WEB
 
-- **목적** :   
+- **목적** : AI 기반 연구지원 플랫폼의 웹 인터페이스를 구현하여, 사용자 인증·대화 이력 관리·데이터 시각화 등을 통합적으로 제공한다.  
 - **도구** : Django Framework (SSR 기반 MVT 구조)  
   - Django의 MVT(Model–View–Template) 패턴을 사용  
   - 서버에서 HTML을 렌더링하는 **SSR(Server-Side Rendering)** 방식으로 화면을 제공  
 - **핵심 기능**:  
   - 인증 / 가입  
-    
-  - AI 대화 기능  
+    - 로그인, 회원가입, 프로필 관리 (django.contrib.auth)
+    - 사용자 활동 로그(audit) 및 접속 기록 추적
+  - 대시보드 (Dashboard)
+    - 전체 대화량, 정확도, RAG 활용 비율 등 주요 지표 시각화
+    - 사용자별 최근 활동 및 통계 제공
+  - AI 대화 기능 (Chat)
+    - LangGraph 기반 챗봇 인터페이스 및 히스토리 저장
+    - 참고 문헌(Reference) 및 근거 기반 답변 표시
+    - 메시지 피드백(좋아요/싫어요) 및 사유 수집
+    - AI 생성 컨셉 그래프(Mermaid) 시각화 및 후속 질문 추천
+  - 일정 및 알림 (Schedule & Notifications)
+    - 연구/실험 일정 관리 (FullCalendar 연동)
+    - 시스템 알림 및 메시지 수신
+  - 실험 시뮬레이션 (Experiments)
+    - AlphaFold3, ProteinMPNN, RFDiffusion 등 바이오 모델 기반 시뮬레이션 지원
+    - 실험 파라미터(YAML) 설정 및 Docker 컨테이너 실행 요청
+    - 실험 상태 모니터링 및 결과 데이터(PDB 구조 등) 조회/다운로드
+  - 연구 노트 및 실험 관리 (Notes & Experiments)
+    - AI 대화 내용 기반 연구 노트 작성 및 저장
+    - 실험 시뮬레이션(AlphaFold3 등) 설정 및 결과 관리
 
-  - 대시보드  
 
 - **주요 모델** :   
-  - **CustomUser** : 사용자 이름과 이메일을 기반으로 로그인하는 **커스텀 사용자 모델**  
-  
+  - **Account**: `User` (커스텀 사용자), `UserActivityLog` (활동 로그)
+  - **Chat**: `Chat` (대화 세션), `ChatMessage` (메시지), `ChatReference` (참고문헌), `ChatMessageFeedback` (피드백), `PaperGraph` (논문 그래프)
+  - **Note**: `Note` (연구 노트 본문/메타데이터)
+  - **Experiment**: `Experiment` (실험 설정 및 결과)
+  - **Schedule**: `Event` (일정 이벤트)
+
 - **주요 API**   
-  - **Accounts**:   
- 
-  - **Chat**  
+  - **Accounts**: `/accounts/login/`, `/accounts/register/`, `/accounts/profile/`
+  - **Chat**: 
+    - `/chat/api/conversations/` (대화 목록/생성)
+    - `/chat/api/messages/` (메시지 전송/조회)
+    - `/chat/api/feedback/` (피드백 등록)
+  - **Dashboard**: `/dashboard/` (통계 데이터 렌더링)
+  - **Note**: `/notes/` (노트 CRUD)
   
 - **향후 개선 방향**:  
-  - 
-  - 
-  - 
-  - 
+  - 2차 개발 예정
+    - 소셜 인증/가입/비밀번호 찾기
+    - 알림 시스템 (Notification 도입)
+    - 실험 데이터 시각화 도구(3D MolStar 등) 웹 통합 강화
+    - 관리자 페이지(Admin) 대시보드 고도화
 
 ## [평가/결과]
-
+- 최종 발표 예정
 
 ## [인사이트]
-
-
+- 최종 발표 예정
 
 ## [이슈]
 - Github Issues
