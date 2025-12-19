@@ -551,19 +551,27 @@ sequenceDiagram
 ## [구현]
 
 ### 1. Hybrid RAG
- - **목적**: 데이터 전처리~ 임베딩(ETL) 모듈화 및 진행 후 유저의 질문의 유사도가 높은 청킹데이터 추출  
- - **결과**: ETL 파이프라인 구축, 유사도 테스트를 통한 질문과 관련성 높은 청킹 추출  
- 
-#### 1) ETL  
+ - **목적**: Bio/Med 연구자의 질문을 논문·임상·프로토콜 근거로 답변하고, 관계 추론(KG)까지 한 번에 실행하는 하이브리드 검색/생성 파이프 구축
 
+ - **결과**: LangGraph 플로우에서 pgvector+Neo4j를 LLM이 선택적으로 조합하고, Cross-Encoder 재순위화·LLM 필터링·웹 검색 백업까지 거친 근거 기반 답변을 Django UI에 제공한다.  
+
+#### 1) ETL
+  - ingest → normalize → extract → chunk → embed → upsert 단계로 PubMed/NIH/Protocols.io를 정규화 한 뒤에 pgVector에 적재한다.
+  - KG(knowledge Graph) 연계를 위해 엔티티/관계 추출 결과를 Neo4j 노드 & 엣지로 동기화하며, 시뮬레이션 결과도 반영한다.
 
 #### 2) Database (Graph + VectorDB)  
-- 
+- **Graph DB**: Neo4j로 그래프를 구성하고 TextRetriever 인덱스와 Cypher 템플릿으로 관계 기반 검색을 수행한다.
+<img width="600" alt="Image" src="https://github.com/user-attachments/assets/be17406d-a0ec-4327-b082-b2d131ba2ea8" />
 
-#### 3) retriver  
+- **Vector DB**: PostgreSQL + pgVector에 문서·청크·임베딩을 저장하며 OpneAI text-embedding-3-Small 모델과 로컬 SentenceTransformer 임베딩으로 검색한다.  
+<img width="406" height="276" alt="Image" src="https://github.com/user-attachments/assets/4dcf6eca-e104-42f5-8003-112e62ae0c37" />  
 
+#### 3) retriver(검색)  
+- **역할**: 질문 타입(BIO_Q, PROTOCOL_Q)에 따라 임베딩 모델을 선택하고, LLM이 pgvector와 Neo4j 전략을 결정한 뒤 재순위화/필터링을 거쳐 생성 모델에 근거를 전달한다.
+- **검색방식**: Classify → query rewrite → (OpenAI 또는 로컬) 임베딩 → LLM 전략 선택 → pgvector/Neo4j 검색 → Cross-Encoder 재순위화 → LLM 기반 청크 적합도 평가 → 부족 시 웹 검색 백업 → 답변 생성
 
-#### 4) evaluation  
+#### 4) evaluation
+- **역할**: Cross-Encoder 재순위화 + LLM 기반 청크 리젝션으로 노이즈를 걸러내고, 웹 결과도 별도 LLM 평가 후 포함한다.
 
 
 ## 2. LangGraph
@@ -622,7 +630,7 @@ sequenceDiagram
     - <img width="600" alt="Image" src="https://github.com/user-attachments/assets/2f604cbe-d965-4bf6-8514-76d9f798acb1" />
   
   - **구현**
-   - {이미지 }  
+    - <img width="784" alt="Image" src="https://github.com/user-attachments/assets/f9a9c695-8787-48f8-a687-edf41de7a600" />
 
 
 
