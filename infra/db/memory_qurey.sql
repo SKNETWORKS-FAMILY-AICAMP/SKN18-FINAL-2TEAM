@@ -18,28 +18,28 @@ ORDER BY created_at DESC;
       - 사용 예: classifier가 후속 질문인지 판단할 때
 -------------------------------------------- */
 -- SIMULATION_Q 대화만 조회
-SELECT chat_id, original_question, summary, full_response, created_at
+SELECT chat_sid, original_question, summary, full_response, created_at
 FROM t_memory
 WHERE chat_room_id = :chat_room_id 
   AND case_type = 'SIMULATION_Q'
 ORDER BY created_at DESC;
 
 -- INFERENCE_Q 대화만 조회
-SELECT chat_id, original_question, summary, full_response, created_at
+SELECT chat_sid, original_question, summary, full_response, created_at
 FROM t_memory
 WHERE chat_room_id = :chat_room_id 
   AND case_type = 'INFERENCE_Q'
 ORDER BY created_at DESC;
 
 -- BIO_Q 대화만 조회
-SELECT chat_id, original_question, summary, full_response, created_at
+SELECT chat_sid, original_question, summary, full_response, created_at
 FROM t_memory
 WHERE chat_room_id = :chat_room_id 
   AND case_type = 'BIO_Q'
 ORDER BY created_at DESC;
 
 -- PROTOCOL_Q 대화만 조회
-SELECT chat_id, original_question, summary, full_response, created_at
+SELECT chat_sid, original_question, summary, full_response, created_at
 FROM t_memory
 WHERE chat_room_id = :chat_room_id 
   AND case_type = 'PROTOCOL_Q'
@@ -50,7 +50,7 @@ ORDER BY created_at DESC;
    3) 핵심 메타 정보만 조회
 -------------------------------------------- */
 SELECT 
-    chat_id,
+    chat_sid,
     case_type,
     original_question,
     latest_keywords,
@@ -67,7 +67,7 @@ ORDER BY created_at DESC;
    4) 가장 최근 N개의 대화만 조회
 -------------------------------------------- */
 -- 전체 최근 3개
-SELECT chat_id, case_type, original_question, summary, created_at
+SELECT chat_sid, case_type, original_question, summary, created_at
 FROM t_memory
 WHERE chat_room_id = :chat_room_id
 ORDER BY created_at DESC
@@ -110,9 +110,9 @@ SELECT EXISTS (
 DELETE FROM t_memory
 WHERE chat_room_id = :chat_room_id;
 
--- 특정 대화(chat_id) 하나만 삭제
+-- 특정 대화(chat_sid) 하나만 삭제
 DELETE FROM t_memory
-WHERE chat_id = :chat_id;
+WHERE chat_sid = :chat_sid;
 
 
 /* -------------------------------------------
@@ -139,7 +139,7 @@ ORDER BY conversation_count DESC;
 /* -------------------------------------------
    10) 요약본만 조회 (메모리 효율적)
 -------------------------------------------- */
-SELECT chat_id, case_type, original_question, summary, created_at
+SELECT chat_sid, case_type, original_question, summary, created_at
 FROM t_memory
 WHERE chat_room_id = :chat_room_id
 ORDER BY created_at DESC;
@@ -148,9 +148,9 @@ ORDER BY created_at DESC;
 /* -------------------------------------------
    11) 원본 답변 조회 (필요시에만)
 -------------------------------------------- */
-SELECT chat_id, case_type, original_question, full_response, created_at
+SELECT chat_sid, case_type, original_question, full_response, created_at
 FROM t_memory
-WHERE chat_id = :chat_id;
+WHERE chat_sid = :chat_sid;
 
 
 /* -------------------------------------------
@@ -170,7 +170,7 @@ GROUP BY case_type;
 /* -------------------------------------------
    13) 메모리를 많이 참고한 대화 조회 (복잡한 질문 분석)
 -------------------------------------------- */
-SELECT chat_id, case_type, original_question, referenced_memory_count, created_at
+SELECT chat_sid, case_type, original_question, referenced_memory_count, created_at
 FROM t_memory
 WHERE chat_room_id = :chat_room_id
   AND referenced_memory_count > 0
