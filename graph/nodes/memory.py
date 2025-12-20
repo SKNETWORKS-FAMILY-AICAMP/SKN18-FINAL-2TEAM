@@ -214,7 +214,7 @@ def memory_read_node(state):
         print(f"\n[MemoryRead] 조회된 대화 개수: {len(conversations)}")
         for conv in conversations:
             summary_preview = (conv.summary or "")[:30] + "..." if conv.summary else "N/A"
-            print(f"[MemoryRead] chat_id={conv.chat_id}, case_type={conv.case_type}, created_at={conv.created_at}, summary={summary_preview}")
+            print(f"[MemoryRead] chat_sid={conv.chat_sid}, case_type={conv.case_type}, created_at={conv.created_at}, summary={summary_preview}")
         
         # 가장 최근 대화 정보
         last_case = None
@@ -261,10 +261,10 @@ def memory_read_node(state):
         # relevant_history 구성
         state["relevant_history"] = [
             {
-                "chat_id": conv.chat_id,
+                "chat_sid": conv.chat_sid,
                 "question": conv.original_question,
                 "summary": conv.summary,
-                "keywords": conv.latest_keywords or []
+                "keywords": []  # latest_keywords 컬럼 삭제로 빈 리스트 사용
             }
             for conv in relevant_conversations
         ]
@@ -285,10 +285,58 @@ def memory_read_node(state):
 # ---------------------------------------------
 # 🔹 2) Memory Write Node (마지막 단계)
 # ---------------------------------------------
+def generate_topic_title(question: str, full_response: str) -> str:
+    """
+    질문과 응답을 기반으로 채팅방 제목용 1줄 요약 생성
+
+    Args:
+        question: 사용자 질문
+        full_response: 전체 LLM 응답
+
+    Returns:
+        채팅방 제목으로 사용할 1줄 요약 (최대 50자)
+    """
+    if not question:
+        return "새 대화"
+
+    try:
+        prompt = f"""다음 질문을 기반으로 채팅방 제목으로 사용할 1줄 요약을 생성하세요.
+
+질문: {question}
+
+요약 규칙:
+1. 질문의 핵심 주제만 간결하게 추출
+2. 최대 50자 이내 (공백 포함)
+3. 명사구 형태로 작성 (예: "단백질 변이 분석", "KaiC 정제 프로토콜", "AlphaFold 사용법")
+4. 마침표 없이 작성
+5. 너무 일반적이지 않게, 구체적인 주제 포함
+
+제목만 출력하세요:"""
+
+        title = memory_summarize_tool_llm(prompt).strip()
+
+        # 길이 제한
+        if len(title) > 50:
+            title = title[:47] + "..."
+
+        # 마침표 제거
+        title = title.rstrip('.')
+
+        print(f"[TopicTitle] 채팅방 제목 생성: {title}")
+        return title
+
+    except Exception as e:
+        print(f"[TopicTitle] 제목 생성 실패: {e}, fallback 사용")
+        # fallback: 질문 앞 30자 사용
+        fallback = question[:30] + "..." if len(question) > 30 else question
+        return fallback
+
+
 def memory_write_node(state):
     """
     각 질문마다 새로운 ConversationMemory row 생성.
     해당 케이스 컬럼에만 summary 저장.
+    topic 필드에 채팅방 제목용 1줄 요약 저장.
     """
     # 노드 진입 로그
     print(f"\n{'='*60}")
@@ -310,7 +358,11 @@ def memory_write_node(state):
 
             full_answer = state.get("final_answer", "")
             question = state.get("question", "")
-            
+
+            # topic (채팅방 제목) 생성
+            topic_title = generate_topic_title(question, full_answer)
+            state["chat_title"] = topic_title  # Django로 전달용
+
             # USER_INFO인 경우 요약은 사용자의 인적사항 1문장만
             if current_case_type == "USER_INFO":
                 # LLM을 사용하여 사용자 인적사항을 1문장으로 요약
@@ -361,9 +413,8 @@ def memory_write_node(state):
                     chat_room_id=chat_room_id,
                     user_id=user_id,
                     original_question=state.get("question", ""),
-                    topic=" ".join(state.get("extracted_keywords", [])[:3]),
-                    entities=state.get("extracted_entities", []) or [],
-                    latest_keywords=state.get("extracted_keywords", []) or [],
+                    topic=topic_title,  # 채팅방 제목용 1줄 요약
+                    entities=state.get("entities", []) or [],
                     referenced_memory_count=referenced_count,
                     case_type=current_case_type,
                     full_response=full_answer,
@@ -373,9 +424,10 @@ def memory_write_node(state):
                 db.add(new_memory)
                 db.commit()
 
-                print(f"[MemoryWrite] 새 row 생성: chat_id={new_memory.chat_id}, case_type={current_case_type}")
+                print(f"[MemoryWrite] 새 row 생성: chat_sid={new_memory.chat_sid}, case_type={current_case_type}")
                 print(f"[MemoryWrite] 저장 완료:")
                 print(f"  - case_type: {current_case_type}")
+                print(f"  - topic: {topic_title}")
                 print(f"  - referenced_memory_count: {referenced_count}개")
                 print(f"  - full_response: {len(full_answer)}자")
                 print(f"  - summary: {summary[:50]}...")

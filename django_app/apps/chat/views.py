@@ -6,7 +6,7 @@ from django.contrib.auth.decorators import login_required
 import json
 from .models import RecommendedQuestion, Chat, ChatMessage, ChatReference, ChatMessageFeedback
 from .models.papers_models import PaperGraph, PaperNode, PaperEdge, ChatMessagePaperGraph
-from .services import generate_concept_graph
+from .services import generate_concept_graph, generate_ai_response, summarize_conversation_title
 
 
 @login_required
@@ -112,9 +112,9 @@ def chat_detail(request, chat_id):
     )
     
     # 참고 문헌 조회 (채팅 전체 또는 특정 메시지에 연결된 것)
-    references = ChatReference.objects.filter(chat=chat).order_by('sort_order', 'created_at').values(
+    references = ChatReference.objects.filter(chat=chat).order_by('ref_id', 'created_at').values(
         'reference_sid', 'message_id', 'source', 'badge', 'title', 'description',
-        'journal', 'link', 'ref_pubmed_id', 'ref_date', 'ref_authors', 'sort_order'
+        'journal', 'link', 'ref_pubmed_id', 'ref_date', 'ref_authors', 'ref_id'
     )
     
     # 논문 그래프 조회 (메시지별로 연결된 그래프)
@@ -327,7 +327,7 @@ def chat_detail(request, chat_id):
             'pmid': ref['ref_pubmed_id'] or '',
             'date': ref['ref_date'].strftime('%Y. %m. %d') if ref['ref_date'] else '',
             'authors': ref['ref_authors'] or '',
-            'sort_order': ref['sort_order'],
+            'ref_id': ref['ref_id'],  # UI에서 [24], [25]로 표시되는 참고문헌 번호
         })
     
     return JsonResponse({
@@ -697,3 +697,294 @@ def toggle_archive(request, chat_id):
         return JsonResponse({
             'error': f'Internal server error: {str(e)}'
         }, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST", "DELETE"])
+def delete_chat(request, chat_id):
+    """
+    채팅을 삭제하는 API 엔드포인트
+    status를 'R' (Removed)로 변경하여 soft delete
+    """
+    try:
+        # 채팅 조회 (이미 삭제된 것도 조회 가능하도록 status 필터 제거)
+        chat = get_object_or_404(Chat, chat_sid=chat_id)
+
+        # 이미 삭제된 채팅인지 확인
+        if chat.status == 'R':
+            return JsonResponse({
+                'success': True,
+                'message': '이미 삭제된 채팅입니다.',
+                'already_deleted': True
+            })
+
+        # status를 'R'로 변경
+        chat.status = 'R'
+
+        # 사용자 ID 설정
+        user_id = str(request.user.user_id) if request.user.is_authenticated else 'anonymous'
+        chat.updated_id = user_id
+        chat.save()
+
+        return JsonResponse({
+            'success': True,
+            'message': '채팅이 삭제되었습니다.',
+            'chat_id': chat_id
+        })
+
+    except Chat.DoesNotExist:
+        return JsonResponse({
+            'error': 'Chat not found'
+        }, status=404)
+    except Exception as e:
+        print(f"[ERROR] Error in delete_chat: {e}")
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({
+            'error': f'Internal server error: {str(e)}'
+        }, status=500)
+
+
+def _serialize_message(message):
+    """메시지 객체를 JSON 직렬화 가능한 딕셔너리로 변환"""
+    return {
+        'id': message.message_sid,
+        'role': 'user' if message.role == 'U' else 'assistant',
+        'content': message.content,
+        'sort_order': message.sort_order,
+        'created_at': message.created_at.isoformat() if message.created_at else None,
+    }
+
+
+def _serialize_reference(ref):
+    """
+    참고문헌 객체를 JSON 직렬화 가능한 딕셔너리로 변환
+
+    목적: AI 응답과 함께 참고문헌을 UI에 실시간으로 표시하기 위해
+          ChatReference 모델의 DB 코드 값을 사용자가 읽을 수 있는 텍스트로 변환
+    """
+    # source 변환: DB 코드 -> 표시명 (P=PubMed, W=Web, N=NIH, T=PROTOCOL)
+    source_map = {'P': 'PubMed', 'W': 'Web', 'N': 'NIH', 'T': 'PROTOCOL'}
+    source = source_map.get(ref.source, ref.source)
+
+    # badge 변환: DB 코드 -> 관련성 텍스트 (H=높음, M=중간, L=낮음)
+    badge_map = {'H': '높은 관련성', 'M': '중간 관련성', 'L': '낮은 관련성'}
+    badge = badge_map.get(ref.badge, '')
+
+    # journal 변환: DB 코드 -> 표시명 (J=Journal, B=Book, R=Report, P=Protocol)
+    journal_map = {'J': 'Journal', 'B': 'Book', 'R': 'Report', 'P': 'Protocol'}
+    journal = journal_map.get(ref.journal, ref.journal)
+
+    return {
+        'id': ref.reference_sid,
+        'message_id': ref.message_id,
+        'source': source,
+        'badge': badge,
+        'title': ref.title,
+        'description': ref.description or '',
+        'journal': journal,
+        'link': ref.link or '',
+        'pmid': ref.ref_pubmed_id or '',
+        'date': ref.ref_date.strftime('%Y. %m. %d') if ref.ref_date else '',
+        'authors': ref.ref_authors or '',
+        'ref_id': ref.ref_id,  # UI에서 [24], [25]로 표시되는 참고문헌 번호
+    }
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def chat_messages(request, chat_id=None):
+    """
+    채팅에 새 메시지를 추가하고 AI 응답 생성
+
+    목적: UI에서 사용자 입력을 받아 LangGraph로 전달하고,
+          AI 응답 + 참고문헌을 UI로 반환하는 통합 엔드포인트
+
+    - chat_id가 없으면: 새 채팅 생성 후 메시지 추가 (새 대화 시작)
+    - chat_id가 있으면: 기존 채팅에 메시지 추가 (기존 대화 이어가기)
+
+    요구사항:
+    - 인증된 사용자만 호출 가능
+    - POST 메서드만 허용
+    - body: { "content": (메시지 내용) } 필수
+
+    응답: { "chat_id": 123, "messages": [...], "references": [...] }
+    """
+    # 1. 인증 확인
+    if not request.user.is_authenticated:
+        return JsonResponse({"error": "unauthorized"}, status=401)
+
+    # 2. 요청 본문 파싱
+    try:
+        payload = json.loads(request.body or "{}")
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "invalid_json"}, status=400)
+
+    content = (payload.get("content") or "").strip()
+    if not content:
+        return JsonResponse({"error": "content_required"}, status=400)
+
+    user_id = str(request.user.user_id) if request.user.is_authenticated else 'anonymous'
+
+    # 3. 채팅 조회 또는 생성
+    if chat_id:
+        # 기존 채팅에 메시지 추가
+        chat = get_object_or_404(
+            Chat,
+            chat_sid=chat_id,
+            status='E',
+            archived='N',
+        )
+        # 다음 sort_order 계산
+        last_message = chat.messages.order_by('-sort_order').first()
+        next_sort_order = (last_message.sort_order + 1) if last_message else 1
+    else:
+        # 새 채팅 생성
+        chat = Chat.objects.create(
+            title='새로운 대화',
+            preview=content[:200],
+            status='E',
+            favorite='N',
+            archived='N',
+            auto_mode='Y',
+            created_id=user_id,
+            updated_id=user_id,
+        )
+        next_sort_order = 1
+
+    # 4. 사용자 메시지 생성
+    user_message = ChatMessage.objects.create(
+        chat=chat,
+        role='U',
+        content=content,
+        sort_order=next_sort_order,
+        created_id=user_id,
+    )
+
+    # 6. Chat.preview 업데이트
+    chat.preview = content[:200]  # 최대 200자
+    chat.updated_id = user_id
+    chat.save(update_fields=['preview', 'updated_id', 'updated_at'])
+
+    # 7. AI 응답 생성
+    try:
+        ai_text, citations, scores, reference_type, chat_title = generate_ai_response(chat, content)
+    except Exception as exc:
+        print(f"[ERROR] AI response generation failed: {exc}")
+        import traceback
+        traceback.print_exc()
+        return JsonResponse(
+            {
+                "messages": [_serialize_message(user_message)],
+                "error": f"AI 응답 생성 실패: {str(exc)}",
+            },
+            status=201,
+        )
+
+    # 8. AI 메시지 생성
+    assistant_message = ChatMessage.objects.create(
+        chat=chat,
+        role='A',
+        content=ai_text,
+        sort_order=next_sort_order + 1,
+        created_id='system',
+    )
+
+    # Chat.preview를 AI 응답으로 업데이트
+    chat.preview = ai_text[:200]
+    chat.save(update_fields=['preview', 'updated_at'])
+
+    # 9. citations를 ChatReference로 저장
+    for citation in citations:
+        # ref_id는 citation의 'id' 필드 사용 (services.py에서 1부터 생성됨)
+        ref_id = citation.get('id', 0)
+
+        # source 매핑
+        source_type = citation.get('source_type', '')
+        if source_type == 'web':
+            source = 'W'  # Web
+        elif 'pubmed' in source_type.lower() or citation.get('pmid'):
+            source = 'P'  # PubMed
+        elif 'protocol' in source_type.lower():
+            source = 'T'  # PROTOCOL
+        else:
+            source = 'P'  # 기본값: PubMed
+
+        # badge 매핑 (score 기반)
+        score = citation.get('score', 0.0)
+        if score >= 0.8:
+            badge = 'H'  # High
+        elif score >= 0.5:
+            badge = 'M'  # Medium
+        else:
+            badge = 'L'  # Low
+
+        # journal 매핑
+        journal = citation.get('journal', '')
+        if journal:
+            journal_code = 'J'  # Journal
+        else:
+            journal_code = 'R'  # Report (기본값)
+
+        # 날짜 처리: year, month, day를 datetime.date로 변환
+        ref_date = None
+        year = citation.get('year')
+        month = citation.get('month')
+        day = citation.get('day')
+        if year and month and day:
+            try:
+                from datetime import date
+                ref_date = date(int(year), int(month), int(day))
+            except (ValueError, TypeError):
+                ref_date = None
+
+        ChatReference.objects.create(
+            chat=chat,
+            message=assistant_message,
+            source=source,
+            badge=badge,
+            title=citation.get('title', f'출처 {ref_id}'),
+            description='',
+            journal=journal_code,
+            link=citation.get('url', ''),
+            ref_pubmed_id=citation.get('pmid', ''),
+            ref_date=ref_date,  # 수정: year, month, day로부터 생성된 date 객체
+            ref_authors=citation.get('authors', ''),
+            ref_id=ref_id,  # 참고문헌 번호 (services.py의 id 사용, UI에서 [1], [2], [3]...로 표시됨)
+        )
+
+    # 10. Chat.title 업데이트
+    # chat_title이 LangGraph에서 생성되었으면 사용, 없으면 기존 로직 사용
+    if chat_title:
+        chat.title = chat_title
+        chat.save(update_fields=['title'])
+    elif not chat.title or chat.title == '제목 없음' or chat.title == '새로운 대화':
+        try:
+            summary = summarize_conversation_title(content)
+            chat.title = summary
+            chat.save(update_fields=['title'])
+        except Exception as exc:
+            print(f"[ERROR] Title summarization failed: {exc}")
+            # 요약 실패 시 기본 제목 유지
+
+    # 11. 참고문헌 조회
+    # 목적: AI 응답과 함께 참고문헌을 UI에 즉시 표시하기 위해 조회
+    chat_references = ChatReference.objects.filter(
+        chat=chat,
+        message=assistant_message
+    ).order_by('ref_id')
+
+    # 12. 두 메시지 + 참고문헌 반환 (chat_id 포함)
+    # 목적: 프론트엔드에서 즉시 메시지와 참고문헌을 렌더링할 수 있도록
+    #       chat_id, messages, references를 한 번에 반환
+    return JsonResponse(
+        {
+            "chat_id": chat.chat_sid,  # 새 채팅 생성 시 프론트엔드가 chat_id를 알 수 있도록
+            "messages": [
+                _serialize_message(user_message),
+                _serialize_message(assistant_message),
+            ],
+            "references": [_serialize_reference(ref) for ref in chat_references]  # 실시간 참고문헌 표시용
+        },
+        status=201,
+    )
