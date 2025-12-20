@@ -10,6 +10,7 @@ let isAutoMode = true;
 let showRecommendations = false;
 let showPlusModal = false;
 let showFilterTooltip = false;
+let activeSectionFilter = null; // 'favorites', 'archived', or null
 let messages = [];
 let references = [];
 let selectedReferences = [];
@@ -27,7 +28,7 @@ let attachedTables = [];
 let attachedExperiments = [];
 let fileInputRef = null;
 
-const chatList = [];
+let chatList = [];
 
 // Chat messages for each chat
 const chatMessagesData = {};
@@ -162,6 +163,18 @@ function initChatAI() {
         btn.addEventListener('click', (e) => {
             const filter = e.currentTarget.getAttribute('data-filter');
             handleFilterSelect(filter);
+        });
+    });
+
+    // Section buttons (Favorites, Archived)
+    const sectionBtns = document.querySelectorAll('[data-section]');
+    sectionBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopImmediatePropagation(); // Prevent subsidebar.js handler from firing
+            const section = btn.getAttribute('data-section');
+            handleSectionSelect(section);
+            // Remove focus to prevent blue outline
+            e.currentTarget.blur();
         });
     });
 
@@ -467,7 +480,7 @@ function renderMessages() {
                             ` : ''}
                             <div class="message-actions">
                                 <div class="message-actions-left">
-                                    <button class="action-btn" title="복사" data-action="copy" data-message-id="${msg.message_id || index}">
+                                    <button class="action-btn" title="복사" data-action="copy" data-message-index="${index}">
                                         <i class="fas fa-copy"></i>
                                     </button>
                                     <button class="action-btn" title="좋아요" data-action="like" data-message-id="${msg.message_id || index}">
@@ -713,6 +726,81 @@ function handleFilterSelect(filter) {
     });
 }
 
+// Handle section select (Favorites, Archived) - with toggle
+async function handleSectionSelect(section) {
+    try {
+        console.log('handleSectionSelect called with section:', section);
+        console.log('Current activeSectionFilter:', activeSectionFilter);
+
+        // Toggle logic: if same section clicked, deactivate it
+        if (activeSectionFilter === section) {
+            activeSectionFilter = null;
+            console.log('Deactivating section filter, loading all chats');
+        } else {
+            activeSectionFilter = section;
+            console.log('Activating section filter:', section);
+        }
+
+        console.log('New activeSectionFilter:', activeSectionFilter);
+
+        // Update button styles IMMEDIATELY before fetch
+        updateSectionButtonStyles();
+
+        // Fetch chat list
+        let url = '/chat/api/chats/';
+        if (activeSectionFilter) {
+            url += `?section=${activeSectionFilter}`;
+        }
+
+        const response = await fetch(url);
+        if (response.ok) {
+            const data = await response.json();
+            chatList = data.items || [];
+
+            // Render chat list
+            if (window.SubSidebarComponent && window.SubSidebarComponent.renderItems) {
+                window.SubSidebarComponent.renderItems(chatList);
+            }
+
+            // Update section counts from server data
+            if (data.counts) {
+                updateSectionCounts(data.counts);
+            }
+
+            // Update button styles AGAIN after render to ensure it sticks
+            setTimeout(() => {
+                updateSectionButtonStyles();
+            }, 10);
+        }
+    } catch (error) {
+        console.error('Error loading section:', error);
+    }
+}
+
+// Update section button styles based on activeSectionFilter
+function updateSectionButtonStyles() {
+    console.log('updateSectionButtonStyles called, activeSectionFilter:', activeSectionFilter);
+    const sectionBtns = document.querySelectorAll('[data-section]');
+    console.log('Found section buttons:', sectionBtns.length);
+    sectionBtns.forEach(btn => {
+        const section = btn.getAttribute('data-section');
+        if (section === activeSectionFilter) {
+            console.log('Adding active class to section:', section);
+            btn.classList.add('active');
+            btn.setAttribute('data-active', 'true'); // Also set data attribute for persistence
+        } else {
+            console.log('Removing active class from section:', section);
+            btn.classList.remove('active');
+            btn.removeAttribute('data-active');
+        }
+    });
+
+    // Force a reflow to ensure styles are applied
+    sectionBtns.forEach(btn => {
+        void btn.offsetHeight; // Trigger reflow
+    });
+}
+
 // Handle new chat
 function handleNewChat() {
     activeChatId = null;
@@ -757,15 +845,19 @@ function handleChatMenuClick(chatId) {
 function renderChatMenu(chatId) {
     // Remove existing menus
     document.querySelectorAll('.chat-menu-dropdown').forEach(menu => menu.remove());
-    
+
     if (openMenuId !== chatId) return;
-    
+
     const chatItem = document.querySelector(`.chat-item[data-item-id="${chatId}"]`);
     if (!chatItem) return;
-    
+
     const menuBtn = chatItem.querySelector('.chat-menu-btn');
     if (!menuBtn) return;
-    
+
+    // Get current chat state
+    const chat = chatList.find(c => c.id === chatId);
+    const isFavorite = chat && chat.favorite === 'Y';
+
     const rect = menuBtn.getBoundingClientRect();
     const menu = document.createElement('div');
     menu.className = 'chat-menu-dropdown';
@@ -781,11 +873,11 @@ function renderChatMenu(chatId) {
         z-index: 1000;
         overflow: hidden;
     `;
-    
+
     menu.innerHTML = `
-        <button class="chat-menu-item" data-action="pin">
-            <i class="fa fa-thumbtack"></i>
-            <span>Pin Chat</span>
+        <button class="chat-menu-item" data-action="favorite">
+            <span>📌</span>
+            <span>${isFavorite ? 'Unfavorite' : 'Favorite'}</span>
         </button>
         <button class="chat-menu-item" data-action="edit">
             <i class="fa fa-pencil"></i>
@@ -828,24 +920,8 @@ function renderChatMenu(chatId) {
 // Handle chat menu action
 function handleChatMenuAction(action, chatId) {
     switch (action) {
-        case 'pin':
-            // TODO: Implement pin API call
-            // Close menu
-            openMenuId = null;
-            document.querySelectorAll('.chat-menu-dropdown').forEach(menu => menu.remove());
-            
-            // Show toast notification
-            if (window.notyf) {
-                try {
-                    window.notyf.success('채팅이 고정되었습니다.');
-                } catch (error) {
-                    console.error('Notyf error:', error);
-                    alert('채팅이 고정되었습니다.');
-                }
-            } else {
-                console.warn('Notyf is not initialized');
-                alert('채팅이 고정되었습니다.');
-            }
+        case 'favorite':
+            toggleFavorite(chatId);
             break;
         case 'edit':
             editingChatId = chatId;
@@ -854,23 +930,7 @@ function handleChatMenuAction(action, chatId) {
             renderChatEdit(chatId);
             break;
         case 'archive':
-            // TODO: Implement archive API call
-            // Close menu
-            openMenuId = null;
-            document.querySelectorAll('.chat-menu-dropdown').forEach(menu => menu.remove());
-            
-            // Show toast notification
-            if (window.notyf) {
-                try {
-                    window.notyf.success('채팅이 보관되었습니다.');
-                } catch (error) {
-                    console.error('Notyf error:', error);
-                    alert('채팅이 보관되었습니다.');
-                }
-            } else {
-                console.warn('Notyf is not initialized');
-                alert('채팅이 보관되었습니다.');
-            }
+            toggleArchive(chatId);
             break;
         case 'delete':
             // Use SweetAlert2 for confirmation
@@ -919,6 +979,96 @@ function handleChatMenuAction(action, chatId) {
                 }
             }
             break;
+    }
+}
+
+// Toggle favorite status
+async function toggleFavorite(chatId) {
+    try {
+        // Close menu
+        openMenuId = null;
+        document.querySelectorAll('.chat-menu-dropdown').forEach(menu => menu.remove());
+
+        const response = await fetch(`/chat/api/chats/${chatId}/favorite/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCsrfToken(),
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+
+            // Update chat list item UI
+            const chat = chatList.find(c => c.id === chatId);
+            if (chat) {
+                chat.favorite = data.favorite;
+            }
+
+            // Reload chat list to reflect favorite status
+            await loadChatList();
+
+            // Show notification
+            if (window.notyf) {
+                window.notyf.success(data.message);
+            }
+        } else {
+            const error = await response.json();
+            if (window.notyf) {
+                window.notyf.error(error.error || 'Favorite 상태 변경에 실패했습니다.');
+            }
+        }
+    } catch (error) {
+        console.error('Error toggling favorite:', error);
+        if (window.notyf) {
+            window.notyf.error('Favorite 상태 변경 중 오류가 발생했습니다.');
+        }
+    }
+}
+
+// Toggle archive status
+async function toggleArchive(chatId) {
+    try {
+        // Close menu
+        openMenuId = null;
+        document.querySelectorAll('.chat-menu-dropdown').forEach(menu => menu.remove());
+
+        const response = await fetch(`/chat/api/chats/${chatId}/archive/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCsrfToken(),
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+
+            // Update chat list item UI
+            const chat = chatList.find(c => c.id === chatId);
+            if (chat) {
+                chat.archived = data.archived === 'Y';
+            }
+
+            // Reload chat list to reflect archived status
+            await loadChatList();
+
+            // Show notification
+            if (window.notyf) {
+                window.notyf.success(data.message);
+            }
+        } else {
+            const error = await response.json();
+            if (window.notyf) {
+                window.notyf.error(error.error || 'Archive 상태 변경에 실패했습니다.');
+            }
+        }
+    } catch (error) {
+        console.error('Error toggling archive:', error);
+        if (window.notyf) {
+            window.notyf.error('Archive 상태 변경 중 오류가 발생했습니다.');
+        }
     }
 }
 
@@ -1021,17 +1171,52 @@ function handleCancelEdit(chatId) {
 // Load chat list
 async function loadChatList() {
     try {
-        // TODO: Replace with API call
-        // const response = await fetch('/api/chat/list/');
-        // const data = await response.json();
-        // chatList = data.chats;
-        
-        // For now, use mock data
-        if (window.SubSidebarComponent && window.SubSidebarComponent.renderItems) {
-            window.SubSidebarComponent.renderItems(chatList);
+        // Build URL with active section filter if any
+        let url = '/chat/api/chats/';
+        if (activeSectionFilter) {
+            url += `?section=${activeSectionFilter}`;
+        }
+
+        const response = await fetch(url);
+        if (response.ok) {
+            const data = await response.json();
+            chatList = data.items || [];
+
+            // Render chat list
+            if (window.SubSidebarComponent && window.SubSidebarComponent.renderItems) {
+                window.SubSidebarComponent.renderItems(chatList);
+            }
+
+            // Update section counts from server data
+            if (data.counts) {
+                updateSectionCounts(data.counts);
+            }
+
+            // Update section button styles to reflect current filter
+            // Use setTimeout to ensure DOM has been updated
+            setTimeout(() => {
+                updateSectionButtonStyles();
+            }, 0);
         }
     } catch (error) {
         console.error('Error loading chat list:', error);
+    }
+}
+
+// Update section counts (Favorites, Archived)
+function updateSectionCounts(counts) {
+    console.log('Updating section counts:', counts);
+
+    // Update favorites count
+    const favoritesCountEl = document.querySelector('[data-section="favorites"] .section-count');
+    if (favoritesCountEl && counts) {
+        favoritesCountEl.textContent = counts.favorites || 0;
+    }
+
+    // Update archived count
+    const archivedCountEl = document.querySelector('[data-section="archived"] .section-count');
+    if (archivedCountEl && counts) {
+        archivedCountEl.textContent = counts.archived || 0;
     }
 }
 
@@ -1121,11 +1306,16 @@ function renderReferences() {
 // Attach message action handlers
 function attachMessageActionHandlers() {
     const actionBtns = messagesView ? messagesView.querySelectorAll('.action-btn, .action-btn-text, .special-action-btn') : null;
+    console.log('Attaching handlers to', actionBtns?.length || 0, 'buttons');
     if (actionBtns) {
         actionBtns.forEach(btn => {
             btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
                 const action = btn.getAttribute('data-action');
-                const messageId = btn.getAttribute('data-message-id');
+                // For copy action, use index; for others, use message_id
+                const messageId = btn.getAttribute('data-message-index') || btn.getAttribute('data-message-id');
+                console.log('Button clicked:', { action, messageId, btn });
                 handleMessageAction(action, messageId);
             });
         });
@@ -1134,6 +1324,7 @@ function attachMessageActionHandlers() {
 
 // Handle message action
 function handleMessageAction(action, messageId) {
+    console.log('handleMessageAction called:', { action, messageId, messagesLength: messages.length });
     switch (action) {
         case 'copy':
             copyMessage(messageId);
@@ -1161,24 +1352,41 @@ function handleMessageAction(action, messageId) {
         case 'experiment':
             window.location.href = '/experiments/';
             break;
+        default:
+            console.error('Unknown action:', action);
     }
 }
 
 // Copy message
-function copyMessage(messageId) {
-    const message = messages.find(m => (m.message_id || m.id) === messageId);
+function copyMessage(messageIdOrIndex) {
+    console.log('copyMessage called with:', messageIdOrIndex, 'type:', typeof messageIdOrIndex);
+
+    // Parse as index (should always be a number or string number)
+    const messageIndex = parseInt(messageIdOrIndex);
+
+    if (isNaN(messageIndex) || messageIndex < 0 || messageIndex >= messages.length) {
+        console.error('Invalid message index:', messageIdOrIndex, 'Available messages:', messages.length);
+        if (window.notyf) {
+            window.notyf.error('복사할 메시지를 찾을 수 없습니다.');
+        }
+        return;
+    }
+
+    const message = messages[messageIndex];
+
     if (!message || !message.content) {
+        console.error('Message has no content:', message);
         if (window.notyf) {
             window.notyf.error('복사할 메시지가 없습니다.');
         }
         return;
     }
-    
+
     // Get text content - if it's markdown, try to get plain text from rendered element
     let textToCopy = message.content;
-    
+
     // Try to get plain text from rendered markdown element if available
-    const messageElement = messagesView?.querySelector(`[data-message-index="${messages.indexOf(message)}"]`);
+    const messageElement = messagesView?.querySelector(`[data-message-index="${messageIndex}"]`);
     if (messageElement) {
         // Get text content from the rendered markdown element
         const textContent = messageElement.textContent || messageElement.innerText;
@@ -1186,19 +1394,23 @@ function copyMessage(messageId) {
             textToCopy = textContent.trim();
         }
     }
-    
+
+    console.log('Copying message:', { index: messageIndex, contentLength: textToCopy.length, preview: textToCopy.substring(0, 50) + '...' });
+
     // Use Clipboard API
     if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(textToCopy).then(() => {
+            console.log('Copy successful');
             if (window.notyf) {
                 window.notyf.success('메시지가 복사되었습니다.');
             }
         }).catch((error) => {
-            console.error('Failed to copy:', error);
+            console.error('Clipboard API failed:', error);
             // Fallback to old method
             fallbackCopyTextToClipboard(textToCopy);
         });
     } else {
+        console.log('Clipboard API not available, using fallback');
         // Fallback for older browsers
         fallbackCopyTextToClipboard(textToCopy);
     }
@@ -1239,25 +1451,33 @@ function fallbackCopyTextToClipboard(text) {
 // Like message
 async function likeMessage(messageId) {
     try {
-        // TODO: API call to like message
-        // const response = await fetch(`/api/chat/message/${messageId}/like/`, {
-        //     method: 'POST',
-        //     headers: {
-        //         'X-CSRFToken': getCsrfToken(),
-        //         'Content-Type': 'application/json',
-        //     },
-        // });
-        // 
-        // if (response.ok) {
-        //     const data = await response.json();
-        //     // Handle success
-        // }
+        const response = await fetch(`/chat/api/messages/${messageId}/feedback/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCsrfToken(),
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                feedback_type: 'L'
+            }),
+        });
         
-        // Show success notification
-        if (window.notyf) {
-            window.notyf.success('좋아요를 눌렀습니다.');
+        if (response.ok) {
+            const data = await response.json();
+            // Handle success
+            if (window.notyf) {
+                if (data.action === 'removed') {
+                    window.notyf.success('좋아요가 취소되었습니다.');
+                } else {
+                    window.notyf.success('좋아요를 눌렀습니다.');
+                }
+            }
         } else {
-            console.log('Like message:', messageId);
+            const errorData = await response.json();
+            console.error('Error liking message:', errorData);
+            if (window.notyf) {
+                window.notyf.error(errorData.error || '좋아요 처리 중 오류가 발생했습니다.');
+            }
         }
     } catch (error) {
         console.error('Error liking message:', error);
@@ -1270,25 +1490,33 @@ async function likeMessage(messageId) {
 // Dislike message
 async function dislikeMessage(messageId) {
     try {
-        // TODO: API call to dislike message
-        // const response = await fetch(`/api/chat/message/${messageId}/dislike/`, {
-        //     method: 'POST',
-        //     headers: {
-        //         'X-CSRFToken': getCsrfToken(),
-        //         'Content-Type': 'application/json',
-        //     },
-        // });
-        // 
-        // if (response.ok) {
-        //     const data = await response.json();
-        //     // Handle success
-        // }
+        const response = await fetch(`/chat/api/messages/${messageId}/feedback/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCsrfToken(),
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                feedback_type: 'D'
+            }),
+        });
         
-        // Show success notification
-        if (window.notyf) {
-            window.notyf.success('싫어요를 눌렀습니다.');
+        if (response.ok) {
+            const data = await response.json();
+            // Handle success
+            if (window.notyf) {
+                if (data.action === 'removed') {
+                    window.notyf.success('싫어요가 취소되었습니다.');
+                } else {
+                    window.notyf.success('싫어요를 눌렀습니다.');
+                }
+            }
         } else {
-            console.log('Dislike message:', messageId);
+            const errorData = await response.json();
+            console.error('Error disliking message:', errorData);
+            if (window.notyf) {
+                window.notyf.error(errorData.error || '싫어요 처리 중 오류가 발생했습니다.');
+            }
         }
     } catch (error) {
         console.error('Error disliking message:', error);
@@ -1414,8 +1642,29 @@ function toggleReferenceBookmark(referenceId, btn) {
 // Handle save references
 function handleSaveReferences() {
     showReferenceSelectionModal = true;
-    if (window.Modal && window.Modal.open) {
+    
+    // Get current chat ID
+    const chatId = activeChatId;
+    
+    console.log('[Chat] handleSaveReferences - activeChatId:', chatId);
+    
+    if (!chatId) {
+        console.warn('[Chat] No chat ID available to load references');
+        if (window.notyf) {
+            window.notyf.error('채팅을 먼저 선택해주세요.');
+        }
+        return;
+    }
+    
+    // Open reference selection modal with chat ID
+    if (window.ReferenceSelectionModal && window.ReferenceSelectionModal.open) {
+        console.log('[Chat] Opening ReferenceSelectionModal with chatId:', chatId);
+        window.ReferenceSelectionModal.open(chatId);
+    } else if (window.Modal && window.Modal.open) {
+        console.log('[Chat] Fallback to window.Modal.open');
         window.Modal.open('referenceSelectionModal');
+    } else {
+        console.error('[Chat] Reference selection modal not available');
     }
 }
 
