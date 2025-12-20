@@ -1,0 +1,389 @@
+{
+  "metadata": {
+    "timestamp": "2025-12-19T17:21:43.488473",
+    "question_original": "tme가 뭐야?"
+  },
+  "process": {
+    "1_rewrite": {
+      "track": "T1",
+      "intent": "evidence_search",
+      "domains": null,
+      "confidence": 0.7,
+      "reason_short": "정의 요청",
+      "normalized_question": "What is TME?",
+      "entities": [
+        {
+          "name": "TME",
+          "type": "concept",
+          "id": null
+        }
+      ],
+      "must": [
+        "tumor microenvironment"
+      ],
+      "should": [
+        "immune cells",
+        "extracellular matrix",
+        "cytokines",
+        "tumor-associated fibroblasts",
+        "angiogenesis"
+      ],
+      "must_not": [],
+      "filters": {
+        "year_from": null,
+        "year_to": null,
+        "journal": null,
+        "study_type": null,
+        "domain": null
+      },
+      "retrieval": {
+        "k_seed": 300,
+        "k_final": 40,
+        "hop_limit": 2,
+        "fanout_limit": 200
+      },
+      "track_debug": {
+        "llm_track": "T1",
+        "rule_track": "T1",
+        "rule_conf": 0.5,
+        "llm_conf": 0.7,
+        "why": "agree"
+      },
+      "intent_debug": {
+        "domain_strength": {
+          "paper": 0.0,
+          "clinical": 0.0,
+          "protocol": 0.0,
+          "kg": 0.0
+        },
+        "strong_domains": [],
+        "any_domains": [],
+        "explicit_multi": false,
+        "rule_wants_multi": false,
+        "llm_conf": 0.7,
+        "why_intent": "agree",
+        "rule_intent": "evidence_search"
+      },
+      "must_terms_expanded": [
+        "tumor microenvironment"
+      ],
+      "must_not_terms_expanded": []
+    },
+    "2_route": {
+      "track": "T1",
+      "intent": "evidence_search",
+      "domains": [],
+      "confidence": 0.7,
+      "reason_short": "정의 요청",
+      "track_why": "agree",
+      "intent_why": "agree"
+    },
+    "3_plan": [
+      {
+        "domain": "entity",
+        "mode": "ENTITY",
+        "embedder": null,
+        "priority": 10,
+        "why": "T1: entity/term grounding first"
+      },
+      {
+        "domain": "paper",
+        "mode": "FT",
+        "embedder": null,
+        "priority": 20,
+        "why": "T1: fulltext for definitions"
+      },
+      {
+        "domain": "paper",
+        "mode": "HY",
+        "embedder": "main_1536",
+        "priority": 40,
+        "why": "T1: fallback hybrid if sparse"
+      }
+    ]
+  },
+  "results": {
+    "count": 9,
+    "contexts": [
+      {
+        "article": {
+          "title": "Detecting cell types and densities in the tumor microenvironment improves prognostic risk assessment for breast cancer",
+          "year": 2025,
+          "doi": "10.17305/bb.2024.10974"
+        },
+        "vec_score": 0.01639344262295082,
+        "journal_title": null,
+        "evidence_chunks": [
+          {
+            "text": "We collected 40 WSIs of IBC-NST to construct our dataset. All ROIs were delineated by two experienced pathologists using QuPath software. Subsequently, these ROIs were traversed and cropped into patches of 256 × 256 pixels at 40 × magnification. Each patch was annotated with the predominant histological type, determined based on the proportional area it occupied. We categorized patches into six types: adipose, immune cells, necrosis, normal breast cells, stromal cells, and tumor cells, resulting in a total of patches with cell type annotations.",
+            "chunk_id": "SEC39151110_sec12_C01"
+          },
+          {
+            "text": "Subsequently, these ROIs were traversed and cropped into patches of 256 × 256 pixels at 40 × magnification. Each patch was annotated with the predominant histological type, determined based on the proportional area it occupied. We categorized patches into six types: adipose, immune cells, necrosis, normal breast cells, stromal cells, and tumor cells, resulting in a total of patches with cell type annotations. Given the extreme imbalance in sample quantities across different cell types, we performed data resampling to facilitate the training of deep learning models.",
+            "chunk_id": "SEC39151110_sec12_C03"
+          },
+          {
+            "text": "Each patch was annotated with the predominant histological type, determined based on the proportional area it occupied. We categorized patches into six types: adipose, immune cells, necrosis, normal breast cells, stromal cells, and tumor cells, resulting in a total of patches with cell type annotations. Given the extreme imbalance in sample quantities across different cell types, we performed data resampling to facilitate the training of deep learning models.",
+            "chunk_id": "SEC39151110_sec12_C04"
+          },
+          {
+            "text": "This yielded a relatively balanced dataset for training and testing deep learning models. The dataset used for training and testing the deep CNN has been uploaded to Kaggle: https://www.kaggle.com/datasets/pupupu233/breast.",
+            "chunk_id": "SEC39151110_sec12_C06"
+          },
+          {
+            "text": "We categorized patches into six types: adipose, immune cells, necrosis, normal breast cells, stromal cells, and tumor cells, resulting in a total of patches with cell type annotations. Given the extreme imbalance in sample quantities across different cell types, we performed data resampling to facilitate the training of deep learning models. Specifically, we oversampled immune cells, necrosis, and normal breast cells, while undersampling adipose, stromal cells, and tumor cells. This yielded a relatively balanced dataset for training and testing deep learning models.",
+            "chunk_id": "SEC39151110_sec12_C05"
+          }
+        ]
+      },
+      {
+        "article": {
+          "title": "Prognostic value and immune infiltration of a tumor microenvironment-related PTPN6 in metastatic melanoma",
+          "year": 2024,
+          "doi": "10.1186/s12935-024-03625-6"
+        },
+        "vec_score": 0.016129032258064516,
+        "journal_title": null,
+        "evidence_chunks": [
+          {
+            "text": "IHC analysis of paraffin sections of the tumors showed that PTPN6 expression was higher in the overexpression group. Additionally, Ki67, a marker of cell proliferation, and MMP9, a marker of tumor invasion, were reduced in the PTPN6 overexpression group. These results suggested that PTPN6 may inhibit the proliferation and invasion of MM cells in vivo.",
+            "chunk_id": "SEC39732710_sec28_C03"
+          },
+          {
+            "text": "Tumors in the PTPN6 overexpression group grew more slowly compared to those in the control group. After four weeks, photos were taken to document the overall appearance of the mice and the tumors, and it was evident that the tumors in the control group were larger than those in the PTPN6 overexpression group. In addition, a similar trend was observed with the tumor weight. The tumors in the PTPN6-overexpression group weighed less than those in the control group. IHC analysis of paraffin sections of the tumors showed that PTPN6 expression was higher in the overexpression group.",
+            "chunk_id": "SEC39732710_sec28_C02"
+          },
+          {
+            "text": "We subcutaneously injected stable PTPN6 overexpressing melanoma cell lines A2058 and M14, as well as their control cells into the axillae of BALB/c nude mice, respectively, to establish a subcutaneous transplant tumor model. This was done to further investigate whether PTPN6 inhibited melanoma growth in vivo. Tumor diameters were measured with a ruler every three days, and the results were shown in Fig. E, F. Tumors in the PTPN6 overexpression group grew more slowly compared to those in the control group.",
+            "chunk_id": "SEC39732710_sec28_C01"
+          },
+          {
+            "text": "According to the results of the experiments, the OD450 values of the cells overexpressed with PTPN6 at the above specific time points were much smaller than those of the control group. In addition, an EdU incorporation experiment was performed, and the results showed that the percentage of EdU-positive cells in the PTPN6 overexpression group was lower than that in the control group. These findings indicated that overexpression of PTPN6 in MM cells significantly inhibited cell proliferation ability and cell viability.",
+            "chunk_id": "SEC39732710_sec23_C04"
+          },
+          {
+            "text": "The cells transfected with pcDNA3.1-PTPN6 plasmid and empty vector plasmid 12 h were trypsinized and reinoculated on a 96-well plate. The growth of the cell was then detected using the CCK8 kit at 0, and 72 h after cell adhesion. According to the results of the experiments, the OD450 values of the cells overexpressed with PTPN6 at the above specific time points were much smaller than those of the control group.",
+            "chunk_id": "SEC39732710_sec23_C02"
+          }
+        ]
+      },
+      {
+        "article": {
+          "title": "Tumor microenvironment and immunotherapy for triple-negative breast cancer",
+          "year": 2024,
+          "doi": "10.1186/s40364-024-00714-6"
+        },
+        "vec_score": 0.015873015873015872,
+        "journal_title": null,
+        "evidence_chunks": [
+          {
+            "text": "Moreover, the TME of TNBC is rich in tumor-associated macrophages, which constitute more than one-fourth of the immune cells in the TME. TAMs typically promote tumorigenesis and progression through mechanisms such as promoting cell division, inducing invasion, facilitating immune escape, and encouraging angiogenesis.",
+            "chunk_id": "SEC39741315_sec7_C12"
+          },
+          {
+            "text": "DCs can promote anti-tumor immunity in other immune cells in the TME. Myeloid-derived suppressor cells also play a role in the TME of TNBC. These cells weaken the host anti-tumor immune response by inhibiting the function of T cells and NK cells.",
+            "chunk_id": "SEC39741315_sec7_C18"
+          },
+          {
+            "text": "However, it is now clear that B cells tend to aggregate to form clusters of cells in the TME of breast cancer, thereby forming structures that resemble tertiary lymphoid structures. B cells play an immune role mainly through antigen presentation to T cells, but their specific immune role in TNBC remains to be explored. Additionally, NK cells also play a significant anti-tumor role by directly killing tumor cells and secreting cytokines like IFN-γ to inhibit tumor spread and metastasis.",
+            "chunk_id": "SEC39741315_sec7_C08"
+          },
+          {
+            "text": "In TNBC, TAMs tend to exhibit more immunosuppressive effects, and a high abundance of TAMs is linked to poorer prognosis. This is likely due to the impact of TNBC’s immune profile on TAM gene expression, with a high number of macrophages in the TNBC TME enriched with genes essential for activation and antigen presentation. Dendritic cells are a minor component of the TNBC TME, but specific subpopulations, particularly migratory DCs, can exert significant antitumor effects.",
+            "chunk_id": "SEC39741315_sec7_C16"
+          },
+          {
+            "text": "Upon activation by the major histocompatibility complex expressed on tumor cells, CD8 + T cells differentiate into cytotoxic T cells, which release IFN-γ to kill tumor cells and inhibit growth, playing a critical role in adaptive immune defense. CD4 + T cells can differentiate into helper T cells and regulatory Tregs. Activated by MHC molecules, CD4 + helper T cells differentiate into subtypes such as Th1 and Th2, assisting CD8 + T cell-mediated cytotoxicity and playing an active role in tumor immunity. Conversely, Tregs promote immune escape by suppressing effector T cell functions.",
+            "chunk_id": "SEC39741315_sec7_C04"
+          }
+        ]
+      },
+      {
+        "article": {
+          "title": "Immunometabolic Targets in CD8+ T Cells within the Tumor Microenvironment of Hepatocellular Carcinoma",
+          "year": 2024,
+          "doi": "10.1159/000542578"
+        },
+        "vec_score": 0.014925373134328358,
+        "journal_title": null,
+        "evidence_chunks": [
+          {
+            "text": "Abnormalities in hepatic SAM levels can lead to liver injury and fibrosis, contributing to the development of PLCs. The methionine salvage pathway, which includes metabolites like 5′-methylthioadenosine and SAM, is crucial for maintaining cellular methionine levels. Research by Hung et al. revealed a positive correlation between the methionine salvage pathway and tumorigenesis in HCC, where oncogenic reprogramming of methionine recycling in HCC cells results in elevated methylthioadenosine and SAM levels, ultimately exhausting CD8^{+} T cells.",
+            "chunk_id": "SEC40831886_sec9_C08"
+          },
+          {
+            "text": "Glutamine supplies glutamate for de novo GSH synthesis, aiding in ROS defense in T cells. While T-cell function traditionally relies on glucose metabolism, glutamine consumption is essential for T-cell proliferation, providing carbon and nitrogen for biosynthesis and cellular maintenance; however, the specific intermediate metabolites involved require further study. In glucose-deprived conditions, adenosine monophosphate can be salvaged from glutamine through the purine salvage pathway, underscoring glutamine’s importance in nucleotide synthesis and energy production for T cells.",
+            "chunk_id": "SEC40831886_sec9_C23"
+          },
+          {
+            "text": "Leucine contributes carbon groups to form acetyl-CoA, which is essential for mitochondrial oxidation and TCA cycle intermediates. Consequently, leucine deprivation in HCC tissues can reduce the amino acid energy supply, suppressing tumor cell proliferation and invasive capabilities. The catabolism of BCAAs and associated energy pathways in both tumor cells and immune cells presents a potential target for HCC treatment. Furthermore, research by Yao et al. highlighted the role of BCAAs in promoting OXPHOS in tumor-infiltrating CD8^{+} T cells.",
+            "chunk_id": "SEC40831886_sec9_C20"
+          },
+          {
+            "text": "Methionine and its metabolite levels could serve as potential biomarkers predictive of survival in HCC patients. Notably, intracellular methionine can be converted to cysteine through transsulfuration, providing a substrate for glutathione synthesis, which is essential for counteracting ROS-induced apoptosis in naïve T cells. Glutathione depletion in HCC cells significantly contributes to ferroptosis and oxidative damage in tumor cells.",
+            "chunk_id": "SEC40831886_sec9_C11"
+          },
+          {
+            "text": "Amino acid metabolism plays a critical role in the biosynthesis, antioxidant production, and energy supply of CD8^{+} T cells through various intermediate metabolites. Upon activation, T cells uptake amino acids to sustain high metabolic rates and support protein and nucleotide biosynthesis. Concurrently, activated Tn undergo protein catabolism to meet the amino acid demands necessary for differentiation into Teffs.",
+            "chunk_id": "SEC40831886_sec9_C01"
+          }
+        ]
+      },
+      {
+        "article": {
+          "title": "Spatially resolved gene expression profiling of tumor microenvironment reveals key steps of lung adenocarcinoma development",
+          "year": 2024,
+          "doi": "10.1038/s41467-024-54671-7"
+        },
+        "vec_score": 0.014492753623188406,
+        "journal_title": null,
+        "evidence_chunks": [
+          {
+            "text": "For the LUAD No. FFPE sections, the four serial sections’ merged data was used. 1) Transcriptome trajectories on the UMAP plot were created using Visium data by Monocle 3^{51}. The root mode was determined by manually selecting the most normal-like or well-differentiated tumor cluster with high expressions of well-differentiated epithelial markers, such as surfactant proteins. The order of clusters in spatial trajectory paths was manually determined using Monocle 3 results and spatial data.",
+            "chunk_id": "SEC39639005_sec20_C02"
+          },
+          {
+            "text": "When one slope was positive and the other was negative, the cor_st value changed to a negative value. Only TME pairs with positive or negative correlations across all trajectories of all cases are shown.",
+            "chunk_id": "SEC39639005_sec20_C05"
+          },
+          {
+            "text": "To assess changes in TME scores for IA cases, the scores were plotted against spatial transcriptome trajectories, as described below(also see Supplementary Fig. S8a and the “Code Availability” section). For the LUAD No. FFPE sections, the four serial sections’ merged data was used. 1) Transcriptome trajectories on the UMAP plot were created using Visium data by Monocle 3^{51}. The root mode was determined by manually selecting the most normal-like or well-differentiated tumor cluster with high expressions of well-differentiated epithelial markers, such as surfactant proteins.",
+            "chunk_id": "SEC39639005_sec20_C01"
+          },
+          {
+            "text": "4) The regions with slopes greater than the threshold were extracted as TME changes. 5) To better understand the mutual relationships between TME changes, TME pairs were identified when the regions of each TME change overlapped on the same trajectory. For Fig. 5e, the scores of association between TME pairs were calculated by adding the absolute values of both slopes(cor_st). When both slopes were positive, the cor_st value became positive. When one slope was positive and the other was negative, the cor_st value changed to a negative value.",
+            "chunk_id": "SEC39639005_sec20_C04"
+          },
+          {
+            "text": "The order of clusters in spatial trajectory paths was manually determined using Monocle 3 results and spatial data. 2) The center of each cluster was connected using the createTrajectoryManually function of SPATA2^{54} to project the paths to the spatial plot and draw spatial trajectories. 3) The TME scores on the trajectory were extracted and smoothed. Furthermore, the inflection points were extracted, and the slopes between them were calculated. 4) The regions with slopes greater than the threshold were extracted as TME changes.",
+            "chunk_id": "SEC39639005_sec20_C03"
+          }
+        ]
+      },
+      {
+        "article": {
+          "title": "Investigating intra‐tumoural heterogeneity and microenvironment diversity in primary cardiac angiosarcoma through single‐cell RNA sequencing",
+          "year": 2024,
+          "doi": "10.1002/ctm2.70113"
+        },
+        "vec_score": 0.011764705882352941,
+        "journal_title": null,
+        "evidence_chunks": [
+          {
+            "text": "2. The original dataset was processed and aggregated using the Seurat alignment pipeline. After loading NicheNet's networks, we performed the NicheNet analysis. Initially, we defined a ‘receiver/target’ cell population and identified expressed genes. For the sender‐focused approach, we specified sender cell types and catalogue‐expressing genes in all sender populations. We then defined the gene set of interest along with the background genes. Using the top 30 ligands, we predicted active target genes and constructed an active ligand‐receptor network.",
+            "chunk_id": "SEC39658531_sec11_C01"
+          },
+          {
+            "text": "Using the top 30 ligands, we predicted active target genes and constructed an active ligand‐receptor network. We then identified the target genes and receptors of the top‐ranked ligands. The analysis culminated in sender‐focused evaluations and summary visualizations of the NicheNet findings.",
+            "chunk_id": "SEC39658531_sec11_C02"
+          },
+          {
+            "text": "This prevalence enabled a direct comparison of differential infiltration between the groups. To delineate disease‐related cell state trajectories, we conducted a Milo analysis. We initiated by constructing a K Nearest Neighbours graph(k = 20) and identified 682 cell neighbourhoods. At a 10% false discovery rate, a differential abundance test highlighted 479 neighbourhoods with a significantly altered abundance. Sarcoma cells, fibroblasts, numerous T cells, and monocytes showed increased abundance associated with the disease, whereas smooth muscle cells and ECs were less abundant.",
+            "chunk_id": "SEC39658531_sec15_C02"
+          },
+          {
+            "text": "In contrast, monocytes showed increased chemotaxis and proliferation, but not inflammation. To comprehensively assess differential gene expression in disease states, we utilized Muscat for cross‐condition differential state analysis based on pseudo bulk data aggregation. Notably, MTRNR2L12(humanin‐like 12), derived from the mitochondrial gene MT‐RNR2, was markedly diminished in monocytes, T cells, SMCs, and ECs, indicating altered mitochondrial function within the sarcoma microenvironment.",
+            "chunk_id": "SEC39658531_sec15_C08"
+          },
+          {
+            "text": "3. Most immune cells such as monocytes, T cells, and sarcoma cells were predominantly found in the PCAS group. This prevalence enabled a direct comparison of differential infiltration between the groups. To delineate disease‐related cell state trajectories, we conducted a Milo analysis. We initiated by constructing a K Nearest Neighbours graph(k = 20) and identified 682 cell neighbourhoods. At a 10% false discovery rate, a differential abundance test highlighted 479 neighbourhoods with a significantly altered abundance.",
+            "chunk_id": "SEC39658531_sec15_C01"
+          }
+        ]
+      },
+      {
+        "article": {
+          "title": "Genomic and the tumor microenvironment heterogeneity in multifocal hepatocellular carcinoma",
+          "year": 2025,
+          "doi": "10.1097/HEP.0000000000001191"
+        },
+        "vec_score": 0.011627906976744186,
+        "journal_title": null,
+        "evidence_chunks": [
+          {
+            "text": "Integrative analysis of whole-exome sequencing and single-cell RNA sequencing found that malignant cells in IM showed higher intratumor heterogeneity, stemness, and more activated metabolism than those in MO. Tumors from IM shared similar TMEs while distinct TMEs were noticed in those from MO. Furthermore, CD20+ B cells, plasma cells, and conventional type II dendritic cells were decreased in IM relative to MO while T cells in IM exhibited a more terminally exhausted capacity with a higher proportion of proliferative/exhausted T cells than that in MO.",
+            "chunk_id": "SEC40833995_sec0_C03"
+          },
+          {
+            "text": "Background and Aims:Ambiguous understanding of tumors and tumor microenvironments hinders accurate diagnosis and available treatment for multifocal hepatocellular carcinoma covering intrahepatic metastasis and multicentric occurrence. Here, we characterized the diverse TMEs of IM and MO identified by whole-exome sequencing at single-cell resolution.Approach and Results:We performed parallel whole-exome sequencing and scRNA-seq on 23 samples from 7 patients to profile their TMEs when major results were validated by immunohistochemistry in the additional cohort.",
+            "chunk_id": "SEC40833995_sec0_C01"
+          },
+          {
+            "text": "Here, we characterized the diverse TMEs of IM and MO identified by whole-exome sequencing at single-cell resolution.Approach and Results:We performed parallel whole-exome sequencing and scRNA-seq on 23 samples from 7 patients to profile their TMEs when major results were validated by immunohistochemistry in the additional cohort. Integrative analysis of whole-exome sequencing and single-cell RNA sequencing found that malignant cells in IM showed higher intratumor heterogeneity, stemness, and more activated metabolism than those in MO.",
+            "chunk_id": "SEC40833995_sec0_C02"
+          },
+          {
+            "text": "Both CD20 and CD1C correlated with better prognosis in multifocal HCC. Additionally, MMP9+ tumor-associated macrophages were enriched across IM and MO, which formed cellular niches with regulatory T cells and proliferative/exhausted T cells.Conclusions:Our findings deeply decipher the heterogeneous TMEs between IM and MO, which provide a comprehensive landscape of multifocal HCC.",
+            "chunk_id": "SEC40833995_sec0_C05"
+          },
+          {
+            "text": "Tumors from IM shared similar TMEs while distinct TMEs were noticed in those from MO. Furthermore, CD20+ B cells, plasma cells, and conventional type II dendritic cells were decreased in IM relative to MO while T cells in IM exhibited a more terminally exhausted capacity with a higher proportion of proliferative/exhausted T cells than that in MO. Both CD20 and CD1C correlated with better prognosis in multifocal HCC.",
+            "chunk_id": "SEC40833995_sec0_C04"
+          }
+        ]
+      },
+      {
+        "article": {
+          "title": "The extracellular matrix integrates mitochondrial homeostasis",
+          "year": 2024,
+          "doi": "10.1016/j.cell.2024.05.057"
+        },
+        "vec_score": 0.011235955056179775,
+        "journal_title": null,
+        "evidence_chunks": [
+          {
+            "text": "Furthermore, hTMEM2 OE induces hsp-6 expression in an atfs-1 -dependent manner and results in robust nuclear localization of DVE-1, both hallmarks of bona fide UPR^{MT} induction. ^{21} The extracellular matrix of C. elegans is made of chondroitin, an isomer of HA nearly identical except for the stereochemistry of the C-4 hydroxyl group on the hexosamine moieties. Notably, many known hyaluronidases and chondroitinases exhibit overlapping substrate specificities. ^{22} Overexpression of TMEM2 resulted in less chondroitin. Likewise, C. elegans gene chhy-1 encodes a chondroitinase.",
+            "chunk_id": "SEC38942015_sec4_C07"
+          },
+          {
+            "text": "To test this hypothesis, we ectopically over-expressed human TMEM2 in C. elegans and compared their transcriptome with wildtype worms. Multiple mitochondrial stress-related pathways including the UPR^{MT} were activated by hTMEM2. As an additional measure of mitochondrial stress responses induced by hTMEM2 overexpression, we tested if hTMEM2-OE could ectopically induce a known reporter gene of the UPR^{MT}, hsp-6, using animals expressing the hsp-6p:GFP UPR^{MT} reporter.",
+            "chunk_id": "SEC38942015_sec4_C03"
+          },
+          {
+            "text": "Multiple mitochondrial stress-related pathways including the UPR^{MT} were activated by hTMEM2. As an additional measure of mitochondrial stress responses induced by hTMEM2 overexpression, we tested if hTMEM2-OE could ectopically induce a known reporter gene of the UPR^{MT}, hsp-6, using animals expressing the hsp-6p:GFP UPR^{MT} reporter. Overexpression of hTMEM2 significantly increased the expression of the hsp-6p:GFP reporter over 4-fold as assessed by fluorescence microscopy and quantified using a large particle flow cytometer.",
+            "chunk_id": "SEC38942015_sec4_C04"
+          },
+          {
+            "text": "However, aged hTMEM2-OE animals exhibited pronounced mitochondrial fragmentation in comparison to wildtype N2 animals. Consistent with observations in human cells, the oxygen consumption rate also declined in hTMEM2-OE animals. Mitochondria are a major origin of cellular ROS, thereby frequently triggering oxidative stress and the accompanying oxidative stress responses amidst mitochondrial perturbations. In C. elegans, SKN-1, the ortholog of mammalian NRF2, is the key transcription factor that regulates oxidative stress responses.",
+            "chunk_id": "SEC38942015_sec4_C10"
+          },
+          {
+            "text": "Overexpression of hTMEM2 significantly increased the expression of the hsp-6p:GFP reporter over 4-fold as assessed by fluorescence microscopy and quantified using a large particle flow cytometer. Importantly, overexpression of a mutated version of TMEM2 lacking the HA depolymerization activity had no impact on the UPR^{MT} activity^{4,17}, suggesting that hTMEM2 induces the UPR^{MT} by degrading components of the C. elegans ECM.",
+            "chunk_id": "SEC38942015_sec4_C05"
+          }
+        ]
+      },
+      {
+        "article": {
+          "title": "TemBERTure: advancing protein thermostability prediction with deep learning and attention mechanisms",
+          "year": 2024,
+          "doi": "10.1093/bioadv/vbae103"
+        },
+        "vec_score": 0.010309278350515464,
+        "journal_title": null,
+        "evidence_chunks": [
+          {
+            "text": "Analyzing these scores in conjunction with the 3D protein structure can enhance understanding of the complex interactions among amino acid properties, their positioning, and the surrounding microenvironment. By addressing the limitations of current prediction methods and introducing new exploration avenues, this research paves the way for more accurate and informative protein thermostability predictions, ultimately accelerating advancements in protein engineering.Availability and implementationTemBERTure model and the data are available at: https://github.com/ibmm-unibe-ch/TemBERTure.",
+            "chunk_id": "SEC39040220_sec0_C05"
+          },
+          {
+            "text": "AbstractMotivationUnderstanding protein thermostability is essential for numerous biotechnological applications, but traditional experimental methods are time-consuming, expensive, and error-prone. Recently, deep learning techniques from natural language processing was extended to the field of biology, since the primary sequence of proteins can be viewed as a string of amino acids that follow a physicochemical grammar.Results In this study, we developed TemBERTure, a DL framework that predicts thermostability class and melting temperature from protein sequences.",
+            "chunk_id": "SEC39040220_sec0_C01"
+          },
+          {
+            "text": "Our findings emphasize the importance of data diversity for training robust models, especially by including sequences from a wider range of organisms. Additionally, we suggest using attention scores from Deep Learning models to gain deeper insights into protein thermostability. Analyzing these scores in conjunction with the 3D protein structure can enhance understanding of the complex interactions among amino acid properties, their positioning, and the surrounding microenvironment.",
+            "chunk_id": "SEC39040220_sec0_C03"
+          },
+          {
+            "text": "Recently, deep learning techniques from natural language processing was extended to the field of biology, since the primary sequence of proteins can be viewed as a string of amino acids that follow a physicochemical grammar.Results In this study, we developed TemBERTure, a DL framework that predicts thermostability class and melting temperature from protein sequences. Our findings emphasize the importance of data diversity for training robust models, especially by including sequences from a wider range of organisms.",
+            "chunk_id": "SEC39040220_sec0_C02"
+          },
+          {
+            "text": "Additionally, we suggest using attention scores from Deep Learning models to gain deeper insights into protein thermostability. Analyzing these scores in conjunction with the 3D protein structure can enhance understanding of the complex interactions among amino acid properties, their positioning, and the surrounding microenvironment.",
+            "chunk_id": "SEC39040220_sec0_C04"
+          }
+        ]
+      }
+    ]
+  }
+}
