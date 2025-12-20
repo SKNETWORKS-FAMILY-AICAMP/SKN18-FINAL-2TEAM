@@ -229,12 +229,12 @@ class ChatReference(models.Model):
         blank=True,
         db_column='ref_authors'
     )
-    sort_order = models.IntegerField(default=0, db_column='sort_order')
+    ref_id = models.IntegerField(default=0, db_column='ref_id')  # 참고문헌 번호 (UI 표시용)
     created_at = models.DateTimeField(auto_now_add=True, db_column='created_at')
-    
+
     class Meta:
         db_table = 't_chat_reference'
-        ordering = ['sort_order', 'created_at']
+        ordering = ['ref_id', 'created_at']
         verbose_name = '채팅 참고 문헌'
         verbose_name_plural = '채팅 참고 문헌들'
     
