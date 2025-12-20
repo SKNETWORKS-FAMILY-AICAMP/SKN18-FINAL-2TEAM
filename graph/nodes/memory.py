@@ -414,7 +414,7 @@ def memory_write_node(state):
                     user_id=user_id,
                     original_question=state.get("question", ""),
                     topic=topic_title,  # 채팅방 제목용 1줄 요약
-                    entities=state.get("extracted_entities", []) or [],
+                    entities=state.get("entities", []) or [],
                     referenced_memory_count=referenced_count,
                     case_type=current_case_type,
                     full_response=full_answer,

@@ -13,6 +13,7 @@ urlpatterns = [
     path("api/messages/<int:message_id>/feedback/", views.message_feedback, name="message_feedback"),
     path("api/chats/<int:chat_id>/favorite/", views.toggle_favorite, name="toggle_favorite"),
     path("api/chats/<int:chat_id>/archive/", views.toggle_archive, name="toggle_archive"),
+    path("api/chats/<int:chat_id>/delete/", views.delete_chat, name="delete_chat"),
     # 같은 목적: message_concept_graph는 graph_summary와 ChatMessage.concept_graph 생성/조회하는 중복 가능이며 사용되지 않아 삭제함
 
 ]

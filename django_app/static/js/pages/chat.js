@@ -1017,38 +1017,60 @@ function handleChatMenuAction(action, chatId) {
                     reverseButtons: true
                 }).then((result) => {
                     if (result.isConfirmed) {
-                        // TODO: Implement delete API call
-                        // For now, remove from local list
-                        const index = chatList.findIndex(c => c.id === chatId);
-                        if (index > -1) {
-                            chatList.splice(index, 1);
-                        }
-                        
-                        // Re-render chat list
-                        if (window.SubSidebarComponent && window.SubSidebarComponent.renderItems) {
-                            window.SubSidebarComponent.renderItems(chatList);
-                        }
-                        
-                        // If deleted chat was active, clear it
-                        if (activeChatId === chatId) {
-                            handleNewChat();
-                        }
-                        
-                        if (window.notyf) {
-                            window.notyf.success('채팅이 삭제되었습니다.');
-                        }
+                        // Call delete API
+                        deleteChat(chatId);
                     }
                 });
             } else {
                 // Fallback to confirm if SweetAlert2 is not available
                 if (confirm('삭제 하시겠습니까?')) {
-                    // TODO: Implement delete
-                    if (window.notyf) {
-                        window.notyf.success('채팅이 삭제되었습니다.');
-                    }
+                    deleteChat(chatId);
                 }
             }
             break;
+    }
+}
+
+// Delete chat function
+async function deleteChat(chatId) {
+    try {
+        const response = await fetch(`/chat/api/chats/${chatId}/delete/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            // Remove from local list
+            const index = chatList.findIndex(c => c.id === chatId);
+            if (index > -1) {
+                chatList.splice(index, 1);
+            }
+
+            // Re-render chat list
+            if (window.SubSidebarComponent && window.SubSidebarComponent.renderItems) {
+                window.SubSidebarComponent.renderItems(chatList);
+            }
+
+            // If deleted chat was active, clear it
+            if (activeChatId === chatId) {
+                handleNewChat();
+            }
+
+            if (window.notyf) {
+                window.notyf.success('채팅이 삭제되었습니다.');
+            }
+        } else {
+            throw new Error(data.error || '삭제 실패');
+        }
+    } catch (error) {
+        console.error('Delete chat error:', error);
+        if (window.notyf) {
+            window.notyf.error('채팅 삭제 중 오류가 발생했습니다.');
+        }
     }
 }
 

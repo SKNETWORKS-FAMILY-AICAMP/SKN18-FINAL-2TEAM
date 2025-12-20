@@ -699,6 +699,52 @@ def toggle_archive(request, chat_id):
         }, status=500)
 
 
+@csrf_exempt
+@require_http_methods(["POST", "DELETE"])
+def delete_chat(request, chat_id):
+    """
+    채팅을 삭제하는 API 엔드포인트
+    status를 'R' (Removed)로 변경하여 soft delete
+    """
+    try:
+        # 채팅 조회 (이미 삭제된 것도 조회 가능하도록 status 필터 제거)
+        chat = get_object_or_404(Chat, chat_sid=chat_id)
+
+        # 이미 삭제된 채팅인지 확인
+        if chat.status == 'R':
+            return JsonResponse({
+                'success': True,
+                'message': '이미 삭제된 채팅입니다.',
+                'already_deleted': True
+            })
+
+        # status를 'R'로 변경
+        chat.status = 'R'
+
+        # 사용자 ID 설정
+        user_id = str(request.user.user_id) if request.user.is_authenticated else 'anonymous'
+        chat.updated_id = user_id
+        chat.save()
+
+        return JsonResponse({
+            'success': True,
+            'message': '채팅이 삭제되었습니다.',
+            'chat_id': chat_id
+        })
+
+    except Chat.DoesNotExist:
+        return JsonResponse({
+            'error': 'Chat not found'
+        }, status=404)
+    except Exception as e:
+        print(f"[ERROR] Error in delete_chat: {e}")
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({
+            'error': f'Internal server error: {str(e)}'
+        }, status=500)
+
+
 def _serialize_message(message):
     """메시지 객체를 JSON 직렬화 가능한 딕셔너리로 변환"""
     return {
@@ -822,7 +868,7 @@ def chat_messages(request, chat_id=None):
 
     # 7. AI 응답 생성
     try:
-        ai_text, citations, scores, reference_type = generate_ai_response(chat, content)
+        ai_text, citations, scores, reference_type, chat_title = generate_ai_response(chat, content)
     except Exception as exc:
         print(f"[ERROR] AI response generation failed: {exc}")
         import traceback
@@ -907,8 +953,12 @@ def chat_messages(request, chat_id=None):
             ref_id=ref_id,  # 참고문헌 번호 (services.py의 id 사용, UI에서 [1], [2], [3]...로 표시됨)
         )
 
-    # 10. Chat.title이 없으면 요약 생성
-    if not chat.title or chat.title == '제목 없음':
+    # 10. Chat.title 업데이트
+    # chat_title이 LangGraph에서 생성되었으면 사용, 없으면 기존 로직 사용
+    if chat_title:
+        chat.title = chat_title
+        chat.save(update_fields=['title'])
+    elif not chat.title or chat.title == '제목 없음' or chat.title == '새로운 대화':
         try:
             summary = summarize_conversation_title(content)
             chat.title = summary

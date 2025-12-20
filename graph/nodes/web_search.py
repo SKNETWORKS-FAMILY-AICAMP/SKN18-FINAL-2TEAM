@@ -119,7 +119,7 @@ def web_search_node(state: Dict[str, Any]) -> Dict[str, Any]:
     Input:
         - state["question"]: 사용자 질문
         - state["rewritten_query"]: 재작성된 쿼리 (선택적)
-        - state["extracted_keywords"]: 추출된 키워드들 (선택적)
+        - state["entities"]: 추출된 키워드들 (retriever에서 설정, 선택적)
     
     Output:
         - state["web_results"]: 웹 검색 결과
@@ -136,14 +136,14 @@ def web_search_node(state: Dict[str, Any]) -> Dict[str, Any]:
     
     question = state.get("question", "").strip()
     rewritten_query = state.get("rewritten_query", "")
-    keywords = state.get("extracted_keywords", [])
+    entities = state.get("entities", [])  # retriever에서 설정됨
     
     # 검색 쿼리 결정 (우선순위: rewritten_query > question)
     search_query = rewritten_query if rewritten_query else question
     
-    # 키워드가 있으면 검색 쿼리에 추가
-    if keywords:
-        search_query += " " + " ".join(keywords[:3])  # 최대 3개 키워드만 추가
+    # 엔티티티가 있으면 검색 쿼리에 추가
+    if entities:
+        search_query += " " + " ".join(entities[:5])  # 최대 3개 엔티티만 추가
     
     print(f"[WebSearch] 시작 - 쿼리: \"{search_query[:50]}...\"")
     

@@ -514,15 +514,17 @@ def retriever_bio_node(state: Dict[str, Any]) -> Dict[str, Any]:
     BIO_Q 타입 질문용 리트리버
     - OpenAI 임베딩 사용
     - LLM이 pgvector vs neo4j 결정
-    
+    - RAG 결과에서 엔티티 추출 (placeholder - 나중에 RAG 구축 시 구현)
+
     Input:
         - state["question"]: 원본 질문
         - state["rewritten_query"]: 재작성된 쿼리
         - state["case_type"]: "BIO_Q"
-    
+
     Output:
         - state["retrieval_results"]: 검색 결과 리스트
         - state["used_search_db"]: 사용한 DB ("pgvector" 또는 "neo4j")
+        - state["entities"]: RAG 결과에서 추출된 엔티티들
     """
     
     # 노드 진입 로그
@@ -550,14 +552,27 @@ def retriever_bio_node(state: Dict[str, Any]) -> Dict[str, Any]:
     else:
         results = search_pgvector(query_embedding, top_k=50, query_text=query)
     
+    # 4. RAG 결과에서 엔티티 추출 (placeholder)
+    # TODO: 나중에 RAG 구축 시 실제 엔티티 추출 로직 구현
+    print("[BIO Retriever] Step 4: 엔티티 추출 (placeholder)")
+    entities = []
+
+    # Placeholder: 검색 결과의 메타데이터나 내용에서 엔티티 추출
+    # 실제 구현 시 RAG 모듈의 함수를 호출하여 추출
+    # 예: entities = extract_entities_from_rag_results(results)
+
+    # 임시로 빈 리스트 반환 (RAG 구축 전까지)
+    state["entities"] = entities
+
     # State 업데이트
     state["retrieval_results"] = results
     state["used_search_db"] = search_strategy
-    
+
     # 노드 종료 로그
     print(f"\n[RETRIEVER_BIO NODE] 종료")
     print(f"  retrieval_results: {len(results)}개")
     print(f"  used_search_db: {search_strategy}")
+    print(f"  entities: {len(entities)}개 (placeholder)")
     print(f"{'='*60}\n")
     
     return state
@@ -572,17 +587,19 @@ def retriever_protocol_node(state: Dict[str, Any]) -> Dict[str, Any]:
     PROTOCOL_Q 타입 질문용 리트리버
     - 로컬 임베딩 사용 (보안 이슈)
     - LLM이 pgvector vs neo4j 결정
-    
+    - RAG 결과에서 엔티티 추출 (placeholder - 나중에 RAG 구축 시 구현)
+
     Input:
         - state["question"]: 원본 질문
         - state["rewritten_query"]: 재작성된 쿼리
         - state["case_type"]: "PROTOCOL_Q"
-    
+
     Output:
         - state["retrieval_results"]: 검색 결과 리스트
         - state["used_search_db"]: 사용한 DB ("pgvector" 또는 "neo4j")
+        - state["entities"]: RAG 결과에서 추출된 엔티티들
     """
-    
+
     # 노드 진입 로그
     print(f"\n{'='*60}")
     print(f"[RETRIEVER_PROTOCOL NODE] 시작")
@@ -608,14 +625,27 @@ def retriever_protocol_node(state: Dict[str, Any]) -> Dict[str, Any]:
     else:
         results = search_pgvector(query_embedding, top_k=50, query_text=query)
     
+    # 4. RAG 결과에서 엔티티 추출 (placeholder)
+    # TODO: 나중에 RAG 구축 시 실제 엔티티 추출 로직 구현
+    print("[PROTOCOL Retriever] Step 4: 엔티티 추출 (placeholder)")
+    entities = []
+
+    # Placeholder: 검색 결과의 메타데이터나 내용에서 엔티티 추출
+    # 실제 구현 시 RAG 모듈의 함수를 호출하여 추출
+    # 예: entities = extract_entities_from_rag_results(results)
+
+    # 임시로 빈 리스트 반환 (RAG 구축 전까지)
+    state["entities"] = entities
+
     # State 업데이트
     state["retrieval_results"] = results
     state["used_search_db"] = search_strategy
-    
+
     # 노드 종료 로그
     print(f"\n[RETRIEVER_PROTOCOL NODE] 종료")
     print(f"  retrieval_results: {len(results)}개")
     print(f"  used_search_db: {search_strategy}")
+    print(f"  entities: {len(entities)}개 (placeholder)")
     print(f"{'='*60}\n")
     
     return state

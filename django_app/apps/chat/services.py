@@ -149,9 +149,12 @@ def _build_history(conversation: Chat) -> list:
     return messages
 
 
-def generate_ai_response(conversation: Chat, prompt: str) -> tuple[str, list, dict, str]:
+def generate_ai_response(conversation: Chat, prompt: str) -> tuple[str, list, dict, str, str]:
     """
     LangGraph RAG 워크플로우를 호출하여 답변과 참고문헌 정보를 생성한다.
+
+    Returns:
+        tuple: (content, citations, scores, reference_type, chat_title)
     """
 
     app = _get_graph_app() # workflow.compile() 결과
@@ -169,7 +172,11 @@ def generate_ai_response(conversation: Chat, prompt: str) -> tuple[str, list, di
     )
     citations, reference_type = _format_citations(result_state)
     scores = _extract_scores(result_state)
-    return content, citations, scores, reference_type
+
+    # chat_title 추출 (LangGraph에서 생성한 채팅방 제목)
+    chat_title = result_state.get("chat_title") or ""
+
+    return content, citations, scores, reference_type, chat_title
 
 
 def summarize_conversation_title(prompt: str) -> str:
