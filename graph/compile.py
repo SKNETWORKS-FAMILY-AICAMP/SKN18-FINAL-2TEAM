@@ -43,6 +43,13 @@ def route_retrieval_or_web(state: BioRAGState):
     return "skip_web"
 
 
+def route_after_evaluate_web(state: BioRAGState):
+    """evaluate_web 이후 라우팅: 조기 종료가 필요하면 memory_write로, 아니면 generate_answer로"""
+    if state.get("should_skip_generation", False):
+        return "skip_generation"
+    return "generate_answer"
+
+
 # ============================================
 # 🔹  Build Graph
 # ============================================
@@ -146,9 +153,16 @@ def create_workflow():
     # PROTOCOL_Q: evaluate_chunk → generate_answer (web fallback 없음)
     graph.add_edge("protocol_evaluate_chunk_node", "generate_answer")
 
-    # web_search → evaluate_web → generate_answer
+    # web_search → evaluate_web → (조건부 라우팅)
     graph.add_edge("web_search", "evaluate_web")
-    graph.add_edge("evaluate_web", "generate_answer")
+    graph.add_conditional_edges(
+        "evaluate_web",
+        route_after_evaluate_web,
+        {
+            "generate_answer": "generate_answer",
+            "skip_generation": "memory_write"
+        }
+    )
 
     # 마지막에 메모리 저장 후 종료
     graph.add_edge("generate_answer", "memory_write")

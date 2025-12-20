@@ -1340,6 +1340,10 @@ function renderReferences() {
     }
 
     referencesList.innerHTML = references.map((ref) => {
+        // 웹서치 참고문헌 여부 확인
+        const isWebSource = ref.source === 'Web';
+        const sourceIcon = isWebSource ? '<i class="fas fa-globe"></i> ' : '';
+
         return `
             <div class="reference-item" data-reference-id="${ref.id}">
                 <button class="reference-bookmark-btn" data-reference-id="${ref.id}" title="북마크에 저장">
@@ -1349,7 +1353,7 @@ function renderReferences() {
                     <div class="reference-number">${ref.ref_id || ref.id}</div>
                     <div class="reference-details">
                         <div class="reference-meta">
-                            <span class="reference-source">${escapeHtml(ref.source || 'Unknown')}</span>
+                            <span class="reference-source">${sourceIcon}${escapeHtml(ref.source || 'Unknown')}</span>
                             ${ref.badge ? `<span class="reference-badge">${escapeHtml(ref.badge)}</span>` : ''}
                         </div>
                         <h3 class="reference-title">${escapeHtml(ref.title)}</h3>
@@ -1358,7 +1362,7 @@ function renderReferences() {
                             ${ref.link ? `
                             <div class="reference-info-item">
                                 <i class="fas fa-link"></i>
-                                <a href="#" class="reference-link">${escapeHtml(ref.link)}</a>
+                                <a href="${escapeHtml(ref.link)}" target="_blank" rel="noopener noreferrer" class="reference-link">${escapeHtml(ref.link)}</a>
                             </div>
                             ` : ''}
                             ${ref.journal ? `

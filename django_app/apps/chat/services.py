@@ -63,13 +63,24 @@ def _format_citations(raw_result: Dict[str, Any]) -> tuple[List[Dict[str, Any]],
     retrieval_results = raw_result.get("retrieval_results") or []
     reranked_results = raw_result.get("reranked_results") or []
 
+    # selected_chunks: evaluate_chunk에서 선별된 청크 (관련성 있는 것만)
+    selected_chunks = raw_result.get("selected_chunks") or []
+    web_selected_chunks = raw_result.get("web_selected_chunks") or []
+    web_results = raw_result.get("web_results") or []  # 웹 검색 원본 결과 (title 포함)
+
     # case_type을 reference_type으로 사용
     case_type = raw_result.get("case_type") or "NO_RELATION"
 
     formatted = []
 
+    # ⚠️ 중요: selected_chunks가 비어있으면 참고문헌을 생성하지 않음
+    # retrieval_results가 있어도 evaluate_chunk에서 관련성이 없다고 판단되면 selected_chunks가 비어있음
+    if not selected_chunks and not web_selected_chunks:
+        print(f"[DEBUG _format_citations] selected_chunks와 web_selected_chunks가 모두 비어있음 → citations 생성 안 함")
+        return [], case_type
+
     # retrieval_results에서 메타데이터 추출 (reranked_results 우선)
-    if reranked_results:
+    if reranked_results and selected_chunks:
         for idx, result in enumerate(reranked_results[:5], 1):  # 상위 5개만
             metadata = result.get("metadata") or {}
             formatted.append({
@@ -85,7 +96,7 @@ def _format_citations(raw_result: Dict[str, Any]) -> tuple[List[Dict[str, Any]],
                 "source_type": metadata.get("source_type") or metadata.get("db") or "",
                 "score": result.get("rerank_score") or result.get("score") or 0.0,
             })
-    elif retrieval_results:
+    elif retrieval_results and selected_chunks:
         for idx, result in enumerate(retrieval_results[:5], 1):
             metadata = result.get("metadata") or {}
             formatted.append({
@@ -102,19 +113,33 @@ def _format_citations(raw_result: Dict[str, Any]) -> tuple[List[Dict[str, Any]],
                 "score": result.get("score") or 0.0,
             })
 
-    # answer_sources (웹 검색 URL)도 추가
-    for idx, source in enumerate(answer_sources, len(formatted) + 1):
-        if isinstance(source, str):
+    # answer_sources (웹 검색 URL)도 추가 - web_selected_chunks가 있을 때만
+    if web_selected_chunks and web_results:
+        for idx, web_result in enumerate(web_results[:len(web_selected_chunks)], len(formatted) + 1):
+            # 웹 검색 결과에서 제목과 URL 추출
+            result_title = web_result.get("title", "")
+            result_url = web_result.get("url", "")
+
+            # 제목이 없으면 URL에서 도메인 추출
+            if not result_title and result_url:
+                try:
+                    from urllib.parse import urlparse
+                    parsed = urlparse(result_url)
+                    result_title = parsed.netloc.replace("www.", "")
+                except:
+                    result_title = "웹 출처"
+
             formatted.append({
                 "id": idx,
-                "title": f"웹 출처 {idx - len(formatted)}",
+                "title": result_title or f"웹 출처 {idx - len(formatted)}",
                 "journal": "",
                 "year": "",
                 "doi": "",
                 "pmid": "",
                 "authors": "",
                 "source_type": "web",
-                "url": source,
+                "url": result_url,
+                "score": 0.9,  # 웹서치는 evaluate_web에서 이미 관련성 평가 통과 → 높은 관련성
             })
 
     return formatted, case_type
