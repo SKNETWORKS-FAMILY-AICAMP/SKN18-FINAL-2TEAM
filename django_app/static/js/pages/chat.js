@@ -2058,35 +2058,55 @@ function updateVisibleReferences() {
         return;
     }
 
-    // Get all message items
-    const messageItems = chatMessagesList.querySelectorAll('.message-item[data-message-id]');
+    // Get AI message items only (exclude user messages)
+    const aiMessageItems = chatMessagesList.querySelectorAll('.message-item .message-assistant');
 
-    if (messageItems.length === 0) {
+    if (aiMessageItems.length === 0) {
         references = [];
         renderReferences();
         return;
     }
 
-    // Find visible messages (using Intersection Observer would be better, but for simplicity use scroll position)
+    // Define target area in viewport (30% - 70% from top)
     const container = chatMessagesList;
     const containerRect = container.getBoundingClientRect();
-    const visibleMessageIds = new Set();
+    const targetAreaTop = containerRect.top + containerRect.height * 0.3;
+    const targetAreaBottom = containerRect.top + containerRect.height * 0.7;
+    const targetAreaCenter = (targetAreaTop + targetAreaBottom) / 2;
 
-    messageItems.forEach(item => {
-        const rect = item.getBoundingClientRect();
-        const messageId = item.getAttribute('data-message-id');
+    // Find the closest AI message to the target area center
+    let closestMessageId = null;
+    let closestDistance = Infinity;
+
+    aiMessageItems.forEach(aiMsg => {
+        const messageItem = aiMsg.closest('.message-item');
+        const messageId = messageItem?.getAttribute('data-message-id');
+
+        if (!messageId) return;
+
+        const rect = messageItem.getBoundingClientRect();
+        const messageCenter = (rect.top + rect.bottom) / 2;
 
         // Check if message is visible in viewport
-        if (messageId && rect.top < containerRect.bottom && rect.bottom > containerRect.top) {
-            visibleMessageIds.add(parseInt(messageId));
+        if (rect.bottom > containerRect.top && rect.top < containerRect.bottom) {
+            // Calculate distance from target area center
+            const distance = Math.abs(messageCenter - targetAreaCenter);
+
+            if (distance < closestDistance) {
+                closestDistance = distance;
+                closestMessageId = parseInt(messageId);
+            }
         }
     });
 
-    // Filter references for visible messages
-    const visibleRefs = allReferences.filter(ref => visibleMessageIds.has(ref.message_id));
+    // Filter references for the closest message only
+    if (closestMessageId) {
+        const visibleRefs = allReferences.filter(ref => ref.message_id === closestMessageId);
+        references = visibleRefs;
+    } else {
+        references = [];
+    }
 
-    // Update references and render
-    references = visibleRefs;
     renderReferences();
 }
 
