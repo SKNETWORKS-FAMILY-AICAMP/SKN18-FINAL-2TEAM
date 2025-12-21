@@ -36,6 +36,28 @@
                             ></textarea>
                         </div>
                         
+                        <div class="form-group type-status-group">
+                            <div class="type-status-grid">
+                                <div class="form-group">
+                                    <label for="scheduleTypeSelect">타입</label>
+                                    <select id="scheduleTypeSelect" name="type" class="form-select" required>
+                                        <option value="experiment">실험</option>
+                                        <option value="meeting">미팅</option>
+                                        <option value="analysis">분석</option>
+                                        <option value="seminar">세미나</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="scheduleStatusSelectAdd">상태</label>
+                                    <select id="scheduleStatusSelectAdd" name="status" class="form-select" required>
+                                        <option value="scheduled">예정</option>
+                                        <option value="in_progress">진행중</option>
+                                        <option value="completed">완료</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
                         <div class="form-group">
                             <label for="scheduleLocationInput">장소</label>
                             <input
@@ -65,33 +87,28 @@
                             </div>
                             <input type="hidden" id="scheduleLinkedNoteId" name="linked_note_id" />
                         </div>
-                        
-                        <div class="form-group">
-                            <label>일정 공유하기</label>
-                            <button type="button" class="btn-share" id="scheduleAddShareBtn">
-                                <i class="fa-solid fa-share-alt"></i>
-                                <span>사용자와 공유</span>
-                            </button>
-                            <div class="shared-emails-display" id="sharedEmailsDisplay" style="display: none;">
-                                <p class="shared-count-text"><span id="sharedEmailsCount">0</span>명 선택됨</p>
-                            </div>
-                        </div>
-
-                        <!-- ✅ 캘린더 선택 (추가) -->
-                        <div class="form-group">
-                          <label for="targetCalendarSelect">캘린더</label>
-                          <select id="targetCalendarSelect" class="form-select">
-                            <option value="local" selected>내 일정(웹 캘린더)</option>
-                            <!-- JS가 여기에 Google 캘린더 옵션을 자동으로 붙임 -->
-                          </select>
-                          <p class="helper-text" style="margin-top:6px; color:#6b7280; font-size:12px;">
-                            Google 캘린더를 선택하면, 일정 저장 시 Google에도 같이 생성됩니다.
-                          </p>
-                        </div>
                     </div>
 
                     <!-- Right Column -->
                     <div class="schedule-add-right">
+                        <!-- ✅ 캘린더 선택 (우측 컬럼 상단으로 이동) -->
+                        <div class="form-group">
+                            <label for="targetCalendarSelect">
+                                캘린더
+                                <i class="fa-solid fa-circle-question tooltip-icon" 
+                                   data-tooltip="Google 캘린더를 선택하면, 일정 저장 시 Google에도 같이 생성됩니다."
+                                   style="margin-left: 4px; color: #9ca3af; cursor: help; font-size: 14px;">
+                                </i>
+                            </label>
+                            <div class="select-tooltip-wrapper" 
+                                 data-tooltip="Google 캘린더를 선택하면, 일정 저장 시 Google에도 같이 생성됩니다.">
+                                <select id="targetCalendarSelect" class="form-select" title="Google 캘린더를 선택하면, 일정 저장 시 Google에도 같이 생성됩니다.">
+                                    <option value="local" selected>내 일정(웹 캘린더)</option>
+                                    <!-- JS가 여기에 Google 캘린더 옵션을 자동으로 붙임 -->
+                                </select>
+                            </div>
+                        </div>
+
                         <div class="form-group">
                             <div class="form-group-header">
                                 <label for="scheduleStartDate">날짜 및 시간</label>
@@ -166,22 +183,14 @@
                         </div>
                         
                         <div class="form-group">
-                            <label for="scheduleTypeSelect">타입</label>
-                            <select id="scheduleTypeSelect" name="type" class="form-select" required>
-                                <option value="experiment">실험</option>
-                                <option value="meeting">미팅</option>
-                                <option value="analysis">분석</option>
-                                <option value="seminar">세미나</option>
-                            </select>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="scheduleStatusSelectAdd">상태</label>
-                            <select id="scheduleStatusSelectAdd" name="status" class="form-select" required>
-                                <option value="scheduled">예정</option>
-                                <option value="in_progress">진행중</option>
-                                <option value="completed">완료</option>
-                            </select>
+                            <label>일정 공유하기</label>
+                            <button type="button" class="btn-share" id="scheduleAddShareBtn">
+                                <i class="fa-solid fa-share-alt"></i>
+                                <span>사용자와 공유</span>
+                            </button>
+                            <div class="shared-emails-display" id="sharedEmailsDisplay" style="display: none;">
+                                <p class="shared-count-text"><span id="sharedEmailsCount">0</span>명 선택됨</p>
+                            </div>
                         </div>
                     </div>
                     
