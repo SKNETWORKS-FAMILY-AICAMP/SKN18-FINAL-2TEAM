@@ -101,6 +101,10 @@ class Chat(models.Model):
         default='Y',
         db_column='auto_mode'
     )
+    is_title_custom = models.BooleanField(
+        default=False,
+        db_column='is_title_custom'
+    )
     created_at = models.DateTimeField(auto_now_add=True, db_column='created_at')
     created_id = models.CharField(max_length=60, db_column='created_id')
     updated_at = models.DateTimeField(auto_now=True, db_column='updated_at')

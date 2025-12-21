@@ -207,15 +207,25 @@ def generate_ai_response(conversation: Chat, prompt: str) -> tuple[str, list, di
 def summarize_conversation_title(prompt: str) -> str:
     """
     사용자 첫 메시지를 기반으로 대화 타이틀을 요약한다.
+    GPT-4o-mini 사용 (비용 절감)
     """
-    llm = get_llm()
+    from langchain_openai import ChatOpenAI
+
+    # GPT-4o-mini 사용 (저렴한 모델)
+    llm = ChatOpenAI(
+        model="gpt-4o-mini",
+        temperature=0.3,
+        max_tokens=20
+    )
+
     system_prompt = SystemMessage(
-        content="사용자 메시지를 최대 12자 내에서 요약하여 제목을 만들어 주세요. 구체적이고 간결하게."
+        content="사용자의 첫 질문을 간결하게 요약하여 12자 이내의 채팅방 제목을 만들어주세요. "
+                "핵심 키워드만 사용하고, 구체적이고 명확하게 작성하세요."
     )
     messages = [system_prompt, HumanMessage(content=prompt)]
     response = llm.invoke(messages)
     content = response.content if hasattr(response, "content") else str(response)
-    return content.strip()[:120] or "새로운 대화"
+    return content.strip()[:50] or "새로운 대화"
 
 
 def generate_concept_graph(message: ChatMessage) -> str:

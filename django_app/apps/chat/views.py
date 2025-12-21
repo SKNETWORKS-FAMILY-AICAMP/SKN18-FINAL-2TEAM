@@ -346,6 +346,39 @@ def chat_detail(request, chat_id):
     })
 
 
+@require_http_methods(["PATCH"])
+def update_chat_title(request, chat_id):
+    """채팅방 제목 수정 API"""
+    from django.utils import timezone
+
+    chat = get_object_or_404(Chat, chat_sid=chat_id, status='E')
+
+    try:
+        data = json.loads(request.body)
+        new_title = data.get('title', '').strip()
+
+        if not new_title:
+            return JsonResponse({'error': '제목을 입력해주세요.'}, status=400)
+
+        if len(new_title) > 50:
+            return JsonResponse({'error': '제목은 50자 이내로 입력해주세요.'}, status=400)
+
+        # 제목 업데이트
+        chat.title = new_title
+        chat.is_title_custom = True  # 사용자가 수정함
+        chat.save(update_fields=['title', 'is_title_custom', 'updated_at'])
+
+        return JsonResponse({
+            'title': chat.title,
+            'updated_at': chat.updated_at.isoformat()
+        })
+
+    except json.JSONDecodeError:
+        return JsonResponse({'error': '잘못된 요청입니다.'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
 @csrf_exempt  # CSRF 검증을 사용하지 않음 (API 호출 가능)
 @require_http_methods(["POST"])  # POST 요청만 허용
 def graph_summary(request):
@@ -956,19 +989,23 @@ def chat_messages(request, chat_id=None):
             ref_id=ref_id,  # 참고문헌 번호 (services.py의 id 사용, UI에서 [1], [2], [3]...로 표시됨)
         )
 
-    # 10. Chat.title 업데이트
-    # chat_title이 LangGraph에서 생성되었으면 사용, 없으면 기존 로직 사용
-    if chat_title:
-        chat.title = chat_title
-        chat.save(update_fields=['title'])
-    elif not chat.title or chat.title == '제목 없음' or chat.title == '새로운 대화':
+    # 10. Chat.title 업데이트 (첫 메시지에서만, 사용자가 수정하지 않았을 때만)
+    # 조건: (1) 첫 메시지이고, (2) 사용자가 수정하지 않았을 때만
+    message_count = ChatMessage.objects.filter(chat=chat).count()
+    is_first_message = (message_count == 2)  # user + assistant = 2개
+
+    if is_first_message and not chat.is_title_custom:
+        # 첫 메시지: 제목 자동 생성 (사용자의 첫 질문 사용)
         try:
-            summary = summarize_conversation_title(content)
+            summary = summarize_conversation_title(content)  # GPT-4o-mini 사용
             chat.title = summary
-            chat.save(update_fields=['title'])
+            chat.save(update_fields=['title', 'updated_at'])
+            print(f"[INFO] 채팅방 제목 생성: {summary}")
         except Exception as exc:
             print(f"[ERROR] Title summarization failed: {exc}")
-            # 요약 실패 시 기본 제목 유지
+            chat.title = "새로운 대화"
+            chat.save(update_fields=['title'])
+    # LangGraph chat_title은 무시 (첫 메시지 이후에는 제목 변경하지 않음)
 
     # 11. 참고문헌 조회
     # 목적: AI 응답과 함께 참고문헌을 UI에 즉시 표시하기 위해 조회

@@ -1208,10 +1208,10 @@ function renderChatEdit(chatId) {
 }
 
 // Handle save chat title
-function handleSaveChatTitle(chatId) {
+async function handleSaveChatTitle(chatId) {
     const input = document.getElementById(`chatEditInput${chatId}`);
     if (!input) return;
-    
+
     const newTitle = input.value.trim();
     if (!newTitle) {
         if (window.notyf) {
@@ -1219,28 +1219,52 @@ function handleSaveChatTitle(chatId) {
         }
         return;
     }
-    
-    // Update chat list
-    const chat = chatList.find(c => c.id === chatId);
-    if (chat) {
-        chat.title = newTitle;
-    }
-    
-    // Reset edit state
-    editingChatId = null;
-    editingTitle = "";
-    openMenuId = null; // Close menu if open
-    
-    // Remove any open menus
-    document.querySelectorAll('.chat-menu-dropdown').forEach(menu => menu.remove());
-    
-    // Re-render chat list to restore original state
-    if (window.SubSidebarComponent && window.SubSidebarComponent.renderItems) {
-        window.SubSidebarComponent.renderItems(chatList);
-    }
-    
-    if (window.notyf) {
-        window.notyf.success('제목이 저장되었습니다.');
+
+    try {
+        // Send PATCH request to backend
+        const response = await fetch(`/chat/api/chats/${chatId}/title/`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({ title: newTitle })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || '제목 저장에 실패했습니다.');
+        }
+
+        const data = await response.json();
+
+        // Update chat list with response data
+        const chat = chatList.find(c => c.id === chatId);
+        if (chat) {
+            chat.title = data.title;
+        }
+
+        // Reset edit state
+        editingChatId = null;
+        editingTitle = "";
+        openMenuId = null; // Close menu if open
+
+        // Remove any open menus
+        document.querySelectorAll('.chat-menu-dropdown').forEach(menu => menu.remove());
+
+        // Re-render chat list to restore original state
+        if (window.SubSidebarComponent && window.SubSidebarComponent.renderItems) {
+            window.SubSidebarComponent.renderItems(chatList);
+        }
+
+        if (window.notyf) {
+            window.notyf.success('제목이 저장되었습니다.');
+        }
+    } catch (error) {
+        console.error('Error saving chat title:', error);
+        if (window.notyf) {
+            window.notyf.error(error.message || '제목 저장 중 오류가 발생했습니다.');
+        }
     }
 }
 
