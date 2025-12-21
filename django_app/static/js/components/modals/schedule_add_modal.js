@@ -16,9 +16,11 @@
   let customRepeatUnit = 'week';
   let selectedWeekDays = [];
   let repeatEndType = 'never';
+  let repeatEndDate = '';
+  let repeatEndCount = 10;
 
+  // DOM elements
   const modalId = 'scheduleAddModal';
-
   const scheduleAddForm = document.getElementById('scheduleAddForm');
   const scheduleTitleInput = document.getElementById('scheduleTitleInput');
   const scheduleDescriptionInput = document.getElementById('scheduleDescriptionInput');
@@ -56,41 +58,70 @@
 
   let allNotes = [];
 
+// Initialize modal
   function initScheduleAddModal() {
-    // form
+    // Form submission
     if (scheduleAddForm) {
       scheduleAddForm.addEventListener('submit', handleFormSubmit);
     }
 
-    // note search
     if (scheduleNoteSearchInput) {
       scheduleNoteSearchInput.addEventListener('input', handleNoteSearch);
       scheduleNoteSearchInput.addEventListener('focus', () => {
-        showNoteDropdown = true;
-        renderNoteDropdown();
+        if (scheduleNoteSearchInput.value.length > 0) {
+          // 입력값이 있으면 → 드롭다운 표시
+          showNoteDropdown = true;
+          renderNoteDropdown();
+        } else if (allNotes.length > 0) {
+          // 입력값이 비어있고 노트가 이미 로드됨 → 전체 노트 표시
+          noteSearchQuery = '';
+          showNoteDropdown = true;
+          renderNoteDropdown();
+        } else {
+          // 노트가 아직 로드되지 않은 경우 → 드롭다운 표시 안 함
+          showNoteDropdown = false;
+        }
       });
     }
 
-    // all day
+    // All day checkbox
     if (scheduleIsAllDay) {
       scheduleIsAllDay.addEventListener('change', handleAllDayChange);
     }
 
-    // repeat
+    // Repeat select change
     if (scheduleRepeatSelect) {
       scheduleRepeatSelect.addEventListener('change', handleRepeatTypeChange);
     }
 
-    // custom repeat
-    if (customRepeatIntervalInput) customRepeatIntervalInput.addEventListener('input', handleCustomRepeatChange);
-    if (customRepeatUnitSelect) customRepeatUnitSelect.addEventListener('change', handleCustomRepeatChange);
-    if (weekDayButtons) weekDayButtons.forEach(btn => btn.addEventListener('click', handleWeekDayToggle));
-    if (repeatEndRadios) repeatEndRadios.forEach(r => r.addEventListener('change', handleRepeatEndChange));
-    if (repeatEndDateInput) repeatEndDateInput.addEventListener('change', updateCustomRepeatSummary);
-    if (repeatEndCountInput) repeatEndCountInput.addEventListener('input', updateCustomRepeatSummary);
+    // Custom repeat settings
+    if (customRepeatIntervalInput) {
+        customRepeatIntervalInput.addEventListener('input', handleCustomRepeatChange);
+    }
+    if (customRepeatUnitSelect) {
+        customRepeatUnitSelect.addEventListener('change', handleCustomRepeatChange);
+    }
+    if (weekDayButtons) {
+        weekDayButtons.forEach(btn => {
+            btn.addEventListener('click', handleWeekDayToggle);
+        });
+    }
+    if (repeatEndRadios) {
+        repeatEndRadios.forEach(radio => {
+            radio.addEventListener('change', handleRepeatEndChange);
+        });
+    }
+    if (repeatEndDateInput) {
+        repeatEndDateInput.addEventListener('change', updateCustomRepeatSummary);
+    }
+    if (repeatEndCountInput) {
+        repeatEndCountInput.addEventListener('input', updateCustomRepeatSummary);
+    }
 
-    // share
-    if (scheduleAddShareBtn) scheduleAddShareBtn.addEventListener('click', handleShareClick);
+    // Share button
+    if (scheduleAddShareBtn) {
+        scheduleAddShareBtn.addEventListener('click', handleShareClick);
+    }
 
     // save
     if (scheduleAddSaveBtn) scheduleAddSaveBtn.addEventListener('click', handleSaveClick);
@@ -108,13 +139,15 @@
     // click outside dropdown
     document.addEventListener('click', (e) => {
       if (scheduleNoteSearchInput && scheduleNoteDropdown) {
-        if (!scheduleNoteSearchInput.contains(e.target) && !scheduleNoteDropdown.contains(e.target)) {
+            if (!scheduleNoteSearchInput.contains(e.target) && 
+                !scheduleNoteDropdown.contains(e.target)) {
           showNoteDropdown = false;
           scheduleNoteDropdown.style.display = 'none';
         }
       }
     });
 
+    // Load notes
     loadNotes();
   }
 
@@ -203,14 +236,20 @@
 
     if (dateParam) {
       prefillDate = dateParam;
-      if (scheduleStartDate) scheduleStartDate.value = dateParam;
-      if (scheduleEndDate) scheduleEndDate.value = dateParam;
+      if (scheduleStartDate) {
+          scheduleStartDate.value = dateParam;
+      }
+      if (scheduleEndDate) {
+          scheduleEndDate.value = dateParam;
+      }
     } else {
+      // Default to today
       const today = new Date().toISOString().split('T')[0];
       if (scheduleStartDate) scheduleStartDate.value = today;
       if (scheduleEndDate) scheduleEndDate.value = today;
     }
-
+    
+    // Reset form
     resetForm();
 
     if (scheduleIsAllDay) handleAllDayChange({ target: scheduleIsAllDay });
@@ -229,18 +268,23 @@
     prefillDate = null;
   }
 
+  // Reset form
   function resetForm() {
-    if (scheduleAddForm) scheduleAddForm.reset();
-
+    if (scheduleAddForm) {
+        scheduleAddForm.reset();
+    }
     noteSearchQuery = '';
     showNoteDropdown = false;
     selectedNoteId = null;
     sharedEmails = [];
 
+    // Reset custom repeat state
     customRepeatInterval = 1;
     customRepeatUnit = 'week';
     selectedWeekDays = [];
     repeatEndType = 'never';
+    repeatEndDate = '';
+    repeatEndCount = 10;
 
     if (scheduleNoteDropdown) scheduleNoteDropdown.style.display = 'none';
     if (sharedEmailsDisplay) sharedEmailsDisplay.style.display = 'none';
@@ -260,6 +304,7 @@
     if (targetCalendarSelect) targetCalendarSelect.value = 'local';
   }
 
+  // Load notes
   async function loadNotes() {
     try {
       const response = await fetch('/api/notes/', {
@@ -283,12 +328,14 @@
     }
   }
 
+// Handle note search
   function handleNoteSearch(e) {
     noteSearchQuery = e.target.value.toLowerCase().trim();
-    showNoteDropdown = true;
+    showNoteDropdown = true; // Always show dropdown when typing
     renderNoteDropdown();
   }
 
+// Render note dropdown
   function renderNoteDropdown() {
     if (!scheduleNoteDropdown) return;
 
@@ -297,9 +344,12 @@
       return;
     }
 
+    // Filter notes based on search query
     const filteredNotes = noteSearchQuery
-      ? allNotes.filter(note => note.title && note.title.toLowerCase().includes(noteSearchQuery))
-      : allNotes.slice(0, 10);
+        ? allNotes.filter(note =>
+            note.title && note.title.toLowerCase().includes(noteSearchQuery)
+          )
+        : allNotes.slice(0, 10); // Show first 10 notes if no search query
 
     if (filteredNotes.length === 0) {
       scheduleNoteDropdown.innerHTML = '<div class="note-dropdown-empty">검색 결과가 없습니다</div>';
@@ -344,12 +394,14 @@
     }
   }
 
+  // Handle repeat type change
   function handleRepeatTypeChange(e) {
     const repeatType = e.target.value;
     const showCustom = repeatType === 'custom';
 
     if (scheduleCustomRepeatPanel) scheduleCustomRepeatPanel.style.display = showCustom ? 'block' : 'none';
 
+    // Change grid columns (2 -> 3 or 3 -> 2)
     if (scheduleAddGrid) {
       if (showCustom) {
         scheduleAddGrid.classList.remove('grid-cols-2');
@@ -360,6 +412,7 @@
       }
     }
 
+    // Change modal container size
     if (scheduleAddModalContainer) {
       if (showCustom) {
         scheduleAddModalContainer.classList.add('modal-large');
@@ -370,9 +423,13 @@
       }
     }
 
-    if (showCustom) updateCustomRepeatSummary();
+    // Update custom repeat summary when showing
+    if (showCustom) {
+        updateCustomRepeatSummary();
+    }
   }
 
+  // Handle custom repeat change
   function handleCustomRepeatChange() {
     if (customRepeatIntervalInput) customRepeatInterval = parseInt(customRepeatIntervalInput.value) || 1;
 
@@ -383,6 +440,7 @@
     updateCustomRepeatSummary();
   }
 
+  // Handle week day toggle
   function handleWeekDayToggle(e) {
     const day = parseInt(e.target.getAttribute('data-day'));
     const idx = selectedWeekDays.indexOf(day);
@@ -398,6 +456,7 @@
     updateCustomRepeatSummary();
   }
 
+  // Handle repeat end change
   function handleRepeatEndChange(e) {
     repeatEndType = e.target.value;
 
@@ -433,18 +492,28 @@
 
     summary += ' 반복';
 
-    if (repeatEndType === 'count') {
+    // End type
+    if (repeatEndType === 'date' && repeatEndDateInput?.value) {
+      repeatEndDate = repeatEndDateInput.value;
+      summary += `, ${repeatEndDate}까지`;
+    } else if (repeatEndType === 'count') {
       const count = repeatEndCountInput ? (parseInt(repeatEndCountInput.value) || 10) : 10;
+      repeatEndCount = count;
       summary += `, ${count}회 반복`;
     }
 
     customRepeatSummary.textContent = summary;
   }
 
+// Handle share click
   function handleShareClick() {
     if (window.ShareModal && window.ShareModal.open) {
+      console.log('[ScheduleAddModal] Opening ShareModal...');
+      // 공유 완료시 콜백
       window.ShareModal.onShare = (selectedMembers) => {
+        // 선택된 멤버 이메일을 공유 목록에 추가
         if (selectedMembers && selectedMembers.length > 0) {
+          // ShareModal에서 선택된 멤버의 이메일을 가져와서 추가
           const allMembers = window.ShareModal._getAllMembers ? window.ShareModal._getAllMembers() : [];
           selectedMembers.forEach(memberId => {
             const member = allMembers.find(m => m.id === memberId);
@@ -457,20 +526,41 @@
       };
       window.ShareModal.open(null, null, null, '일정 공유');
     } else {
-      if (window.notyf) window.notyf.error('공유 모달을 로드할 수 없습니다. 페이지를 새로고침해주세요.');
+      console.warn('ShareModal not loaded. Please refresh the page.');
+      if (window.notyf) {
+          window.notyf.error('공유 모달을 로드할 수 없습니다. 페이지를 새로고침해주세요.');
+      }
     }
   }
 
+  // Handle save click
   function handleSaveClick(e) {
     e.preventDefault();
     handleFormSubmit(e);
   }
 
+  // Handle form submit
   async function handleFormSubmit(e) {
     e.preventDefault();
+    
     if (!scheduleAddForm) return;
-
+    
+    // 스케줄 저장 시 추후 필요
+    const formData = new FormData(scheduleAddForm);
     const isAllDay = scheduleIsAllDay?.checked || false;
+    
+    // Build schedule data
+    const repeatType = scheduleRepeatSelect?.value || 'none';
+
+    // Build custom repeat data
+    const customRepeatData = repeatType === 'custom' ? {
+      custom_repeat_interval: customRepeatIntervalInput?.value || 1,
+      custom_repeat_unit: customRepeatUnitSelect?.value || 'week',
+      custom_repeat_week_days: selectedWeekDays,
+      custom_repeat_end_type: repeatEndType,
+      custom_repeat_end_date: repeatEndDateInput?.value || null,
+      custom_repeat_end_count: repeatEndCountInput ? (parseInt(repeatEndCountInput.value) || 10) : 10,
+    } : {};
 
     const scheduleData = {
       title: scheduleTitleInput?.value || '',
@@ -484,16 +574,27 @@
         : `${scheduleEndDate?.value || ''}T${scheduleEndTime?.value || '00:00'}:00`,
       type: scheduleTypeSelect?.value || 'experiment',
       status: scheduleStatusSelectAdd?.value || 'scheduled',
-      repeat: scheduleRepeatSelect?.value || 'none',
+      repeat: repeatType,
       notification: scheduleNotificationSelect?.value || 'none',
       linked_note_id: scheduleLinkedNoteId?.value || null,
       shared_emails: sharedEmails,
+      ...customRepeatData,
     };
 
+    // Validation
     if (!scheduleData.title.trim()) {
-      if (window.notyf) window.notyf.error('제목을 입력해주세요.');
+        if (window.notyf) {
+            window.notyf.error('제목을 입력해주세요.');
+        }
       return;
     }
+    
+    if (!scheduleData.start_datetime || !scheduleData.end_datetime) {
+      if (window.notyf) {
+          window.notyf.error('날짜를 입력해주세요.');
+      }
+      return;
+  }
 
     const target = targetCalendarSelect ? targetCalendarSelect.value : 'local';
 
@@ -509,24 +610,43 @@
       });
 
       if (response.ok) {
-        if (window.notyf) window.notyf.success('일정이 등록되었습니다.');
-        if (window.Modal) window.Modal.close(modalId);
-
+        // 용도: 서버 응답에서 생성된 일정의 상세 객체를 받아옴 (추후 활용 가능)
+        const data = await response.json();
+        
+        if (window.notyf) {
+            window.notyf.success('일정이 등록되었습니다.');
+        }
+        
+        // Close modal
+        if (window.Modal) {
+            window.Modal.close(modalId);
+        }
+            
+        // Refresh calendar and list
         if (window.SchedulePage) {
-          if (window.SchedulePage.loadSchedules) window.SchedulePage.loadSchedules();
-          if (window.SchedulePage.refreshCalendar) window.SchedulePage.refreshCalendar();
+          if (window.SchedulePage.loadSchedules) {
+              window.SchedulePage.loadSchedules();
+          }
+          if (window.SchedulePage.refreshCalendar) {
+              window.SchedulePage.refreshCalendar();
+          }
         }
       } else {
         const error = await response.json().catch(() => ({}));
         console.error('Failed to create schedule:', error);
-        if (window.notyf) window.notyf.error(error.detail || '일정 등록에 실패했습니다.');
+        if (window.notyf) {
+            window.notyf.error(error.detail || '일정 등록에 실패했습니다.');
+        }
       }
     } catch (error) {
       console.error('Error creating schedule:', error);
-      if (window.notyf) window.notyf.error('일정 등록 중 오류가 발생했습니다.');
+      if (window.notyf) {
+          window.notyf.error('일정 등록 중 오류가 발생했습니다.');
+      }
     }
   }
 
+  // Update shared emails display
   function updateSharedEmailsDisplay(emails) {
     sharedEmails = emails || [];
     if (sharedEmailsDisplay && sharedEmailsCount) {
@@ -544,17 +664,23 @@
     return date.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' });
   }
 
+// Get CSRF token
   function getCsrfToken() {
     const cookies = document.cookie.split(';');
     for (let cookie of cookies) {
       const [name, value] = cookie.trim().split('=');
-      if (name === 'csrftoken') return value;
+        if (name === 'csrftoken') {
+            return value;
+        }
     }
     const metaTag = document.querySelector('meta[name=csrf-token]');
-    if (metaTag) return metaTag.getAttribute('content');
+    if (metaTag) {
+        return metaTag.getAttribute('content');
+    }
     return '';
   }
 
+  // Escape HTML to prevent XSS
   function escapeHtml(text) {
     if (!text) return '';
     const div = document.createElement('div');
@@ -562,19 +688,22 @@
     return div.innerHTML;
   }
 
-  // init
+  // Initialize when DOM is ready
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initScheduleAddModal);
   } else {
     initScheduleAddModal();
   }
 
+  // Export for use in other modules
   if (typeof window !== 'undefined') {
     window.ScheduleAddModal = {
       open: (date = null) => {
         prefillDate = date;
         if (window.Modal) window.Modal.open(modalId);
       },
+      updateSharedEmails: updateSharedEmailsDisplay,
+      get sharedEmails() { return sharedEmails; },
       init: initScheduleAddModal,
     };
   }
