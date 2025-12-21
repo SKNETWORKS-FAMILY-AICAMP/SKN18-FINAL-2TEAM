@@ -416,3 +416,14 @@ INSERT INTO tc_common_item (common_item_code, common_code, common_item_name, des
 -- 사용 여부 (COM001)
 ('COU001', 'COM001', '사용', '사용 중인 항목', 'Y', 1, 'system', 'system', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
 ('COU002', 'COM001', '미사용', '사용하지 않는 항목', 'Y', 2, 'system', 'system', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+
+-- ============================================
+-- t_user_calendar 테이블 더미 데이터 삽입
+-- ============================================
+-- is_visible: 1(보임), 0(숨김)
+-- sort_order: 정렬 순서 (낮을수록 먼저 표시)
+
+INSERT INTO t_user_calendar (calendar_name, color, is_visible, sort_order, created_id, updated_id, created_at, updated_at) VALUES
+('실험 일정', '#3b82f6', 1, 1, 'user001', 'user001', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+('미팅 일정', '#8b5cf6', 1, 2, 'user001', 'user001', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+('개인 일정', '#10b981', 1, 3, 'user001', 'user001', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
