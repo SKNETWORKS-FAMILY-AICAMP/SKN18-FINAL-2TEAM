@@ -28,6 +28,7 @@ let attachedImages = [];
 let attachedTables = [];
 let attachedExperiments = [];
 let fileInputRef = null;
+let isComposing = false; // IME 조합 상태 (macOS 한글 입력 중복 전송 방지)
 
 let chatList = [];
 
@@ -111,11 +112,25 @@ function initChatAI() {
         chatInputField.addEventListener('input', handleInputChange);
         chatInputField.addEventListener('focus', handleInputFocus);
         chatInputField.addEventListener('keydown', handleInputKeydown);
+        // macOS 한글 IME 중복 전송 방지
+        chatInputField.addEventListener('compositionstart', () => {
+            isComposing = true;
+        });
+        chatInputField.addEventListener('compositionend', () => {
+            isComposing = false;
+        });
     }
 
     if (chatInputFieldBottom) {
         chatInputFieldBottom.addEventListener('input', handleInputChange);
         chatInputFieldBottom.addEventListener('keydown', handleInputKeydown);
+        // macOS 한글 IME 중복 전송 방지
+        chatInputFieldBottom.addEventListener('compositionstart', () => {
+            isComposing = true;
+        });
+        chatInputFieldBottom.addEventListener('compositionend', () => {
+            isComposing = false;
+        });
     }
 
     if (sendBtn) {
@@ -235,7 +250,8 @@ function handleInputFocus() {
 
 // Handle input keydown
 function handleInputKeydown(e) {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    // macOS 한글 입력 시 IME 조합 중에는 Enter를 무시 (중복 전송 방지)
+    if (e.key === 'Enter' && !e.shiftKey && !isComposing) {
         e.preventDefault();
         handleSend();
     } else if (e.key === 'Escape') {
