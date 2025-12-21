@@ -826,3 +826,71 @@
         flex: 1;
     }
 }
+
+/* ============================================================
+   Google Calendar Settings Page
+   ============================================================ */
+.gc-settings-wrap {
+    max-width: 900px;
+    margin: 40px auto;
+    padding: 24px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+}
+
+.gc-settings-title {
+    font-size: 20px;
+    font-weight: 800;
+    margin-bottom: 6px;
+}
+
+.gc-settings-desc {
+    color: #6b7280;
+    margin-bottom: 16px;
+}
+
+.gc-list {
+    border-top: 1px solid #e5e7eb;
+    margin-top: 16px;
+}
+
+.gc-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 6px;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.gc-item strong {
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.gc-item .gc-id {
+    color: #9ca3af;
+    font-size: 12px;
+    word-break: break-all;
+}
+
+.gc-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 18px;
+}
+
+.gc-btn {
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 1px solid #e5e7eb;
+    background: #111827;
+    color: #fff;
+    cursor: pointer;
+    font-weight: 700;
+}
+
+.gc-btn.secondary {
+    background: #fff;
+    color: #111827;
+}
