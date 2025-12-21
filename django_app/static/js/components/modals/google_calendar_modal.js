@@ -1,14 +1,15 @@
-// google_calendar_modal.js
-(function () {
-  "use strict";
+// Google Calendar Modal Component JavaScript Logic
+(function() {
+  'use strict';
 
   const API_BASE = "/schedule";
 
-  // State
+  // State variables
   let isGoogleConnected = false;
   let googleCalendars = [];
   let selectedGoogleCalendars = new Set();
   let calendarColors = {};
+  let myCalendars = [];
 
   // DOM
   const modalId = "googleCalendarModal";
@@ -17,6 +18,7 @@
   const googleCalendarConnectBtn = document.getElementById("googleCalendarConnectBtn");
   const googleCalendarDisconnectBtn = document.getElementById("googleCalendarDisconnectBtn"); // ✅ 추가
   const googleCalendarList = document.getElementById("googleCalendarList");
+  const myCalendarList = document.getElementById("myCalendarList");
   const googleCalendarSaveBtn = document.getElementById("googleCalendarSaveBtn");
 
   // ------------------------------------------------------------
@@ -161,6 +163,31 @@
     return json;
   }
 
+  // Load My Calendars
+  async function fetchMyCalendars() {
+    if (!myCalendarList) return;
+
+    try {
+      const res = await fetch('/api/calendars/', {
+        method: 'GET',
+        headers: {
+          'X-CSRFToken': getCsrfToken(),
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        myCalendars = data.results || data;
+        renderMyCalendars();
+      }
+    } catch (error) {
+      console.error('Error loading my calendars:', error);
+      myCalendars = [];
+      renderMyCalendars();
+    }
+  }
+
   // ------------------------------------------------------------
   // Render
   // ------------------------------------------------------------
@@ -300,6 +327,73 @@
     });
   }
 
+  // Render My Calendars
+  function renderMyCalendars() {
+    if (!myCalendarList) return;
+
+    if (myCalendars.length === 0) {
+      myCalendarList.innerHTML = '<p class="empty-text">캘린더가 없습니다.</p>';
+      return;
+    }
+
+    myCalendarList.innerHTML = myCalendars.map(calendar => `
+      <div class="my-calendar-item" style="
+        display:flex; align-items:center; justify-content:space-between;
+        gap:12px; padding:12px; border:1px solid #e5e7eb; border-radius:10px; margin-bottom:10px;
+      ">
+        <div style="display:flex; align-items:center; gap:12px; min-width:0;">
+          <div class="calendar-color-indicator" style="
+            width:14px; height:14px; border-radius:999px;
+            background-color: ${normalizeHex(calendar.color, '#3b82f6')};
+            flex:0 0 auto;
+          "></div>
+          <div style="min-width:0;">
+            <p class="calendar-name" style="font-weight:700; color:#111827; margin:0;">
+              ${escapeHtml(calendar.name || '')}
+            </p>
+          </div>
+        </div>
+        <input
+          type="checkbox"
+          class="my-calendar-checkbox"
+          data-calendar-id="${calendar.id}"
+          ${calendar.visible ? 'checked' : ''}
+          style="width:18px; height:18px; cursor:pointer;"
+        />
+      </div>
+    `).join('');
+
+    // Attach checkbox handlers
+    const checkboxes = myCalendarList.querySelectorAll('.my-calendar-checkbox');
+    checkboxes.forEach(checkbox => {
+      checkbox.addEventListener('change', async (e) => {
+        const calendarId = parseInt(e.target.getAttribute('data-calendar-id'));
+        const visible = e.target.checked;
+
+        try {
+          const response = await fetch(`/api/calendars/${calendarId}/`, {
+            method: 'PATCH',
+            headers: {
+              'X-CSRFToken': getCsrfToken(),
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ visible }),
+          });
+
+          if (response.ok) {
+            // Update local data
+            const calendar = myCalendars.find(c => c.id === calendarId);
+            if (calendar) {
+              calendar.visible = visible;
+            }
+          }
+        } catch (error) {
+          console.error('Error updating calendar visibility:', error);
+        }
+      });
+    });
+  }
+
   // ------------------------------------------------------------
   // Handlers
   // ------------------------------------------------------------
@@ -312,6 +406,7 @@
     } else {
       renderGoogleCalendars();
     }
+    await fetchMyCalendars();
   }
 
   async function handleConnectClick() {
@@ -377,6 +472,7 @@
     }
 
     fetchGoogleStatus();
+    fetchMyCalendars();
   }
 
   if (document.readyState === "loading") {
@@ -389,6 +485,7 @@
     window.GoogleCalendarModal = {
       init: initGoogleCalendarModal,
       reload: fetchGoogleCalendars,
+      reloadMyCalendars: fetchMyCalendars,
       get selected() {
         return Array.from(selectedGoogleCalendars);
       },
