@@ -214,7 +214,7 @@ def memory_read_node(state):
         print(f"\n[MemoryRead] 조회된 대화 개수: {len(conversations)}")
         for conv in conversations:
             summary_preview = (conv.summary or "")[:30] + "..." if conv.summary else "N/A"
-            print(f"[MemoryRead] chat_id={conv.chat_id}, case_type={conv.case_type}, created_at={conv.created_at}, summary={summary_preview}")
+            print(f"[MemoryRead] chat_sid={conv.chat_sid}, case_type={conv.case_type}, created_at={conv.created_at}, summary={summary_preview}")
         
         # 가장 최근 대화 정보
         last_case = None
@@ -261,10 +261,10 @@ def memory_read_node(state):
         # relevant_history 구성
         state["relevant_history"] = [
             {
-                "chat_id": conv.chat_id,
+                "chat_sid": conv.chat_sid,
                 "question": conv.original_question,
                 "summary": conv.summary,
-                "keywords": conv.latest_keywords or []
+                "keywords": []  # latest_keywords 컬럼 삭제로 빈 리스트 사용
             }
             for conv in relevant_conversations
         ]
@@ -285,10 +285,13 @@ def memory_read_node(state):
 # ---------------------------------------------
 # 🔹 2) Memory Write Node (마지막 단계)
 # ---------------------------------------------
+
+
 def memory_write_node(state):
     """
     각 질문마다 새로운 ConversationMemory row 생성.
     해당 케이스 컬럼에만 summary 저장.
+    topic 필드에 채팅방 제목용 1줄 요약 저장.
     """
     # 노드 진입 로그
     print(f"\n{'='*60}")
@@ -310,7 +313,10 @@ def memory_write_node(state):
 
             full_answer = state.get("final_answer", "")
             question = state.get("question", "")
-            
+
+            # chat_title은 Django에서 첫 메시지에서만 생성하므로 LangGraph에서는 제거
+            # state["chat_title"] = ""  # 제거됨
+
             # USER_INFO인 경우 요약은 사용자의 인적사항 1문장만
             if current_case_type == "USER_INFO":
                 # LLM을 사용하여 사용자 인적사항을 1문장으로 요약
@@ -322,7 +328,7 @@ def memory_write_node(state):
 요약 규칙:
 1. 반드시 1문장으로 작성 (마침표 포함)
 2. "사용자는 ~입니다." 또는 "사용자는 ~이다." 형식 사용
-3. 핵심 신분/직업 정보만 포함 (학생, 연구원, 교수 등)
+3. 이름과 핵심 신분/직업 정보만 포함 (이름 & 학생/연구원/교수/포닥/박사과정/석사과정/학부생 등)
 4. 50자 이내로 간결하게 작성
 
 요약만 출력하세요:"""
@@ -357,13 +363,16 @@ def memory_write_node(state):
                     referenced_count = 0  # USER_INFO는 이전 대화 참고 없음
                 
                 # 새 ConversationMemory row 생성
+                # topic은 Django Chat 모델의 title과는 별개로 메모리 DB에만 저장됨
+                question_text = state.get("question", "")
+                topic = question_text[:50] if question_text else ""  # 질문 앞 50자를 topic으로 사용
+
                 new_memory = ConversationMemory(
                     chat_room_id=chat_room_id,
                     user_id=user_id,
-                    original_question=state.get("question", ""),
-                    topic=" ".join(state.get("extracted_keywords", [])[:3]),
-                    entities=state.get("extracted_entities", []) or [],
-                    latest_keywords=state.get("extracted_keywords", []) or [],
+                    original_question=question_text,
+                    topic=topic,  # 질문 앞부분을 topic으로 사용
+                    entities=state.get("entities", []) or [],
                     referenced_memory_count=referenced_count,
                     case_type=current_case_type,
                     full_response=full_answer,
@@ -373,9 +382,10 @@ def memory_write_node(state):
                 db.add(new_memory)
                 db.commit()
 
-                print(f"[MemoryWrite] 새 row 생성: chat_id={new_memory.chat_id}, case_type={current_case_type}")
+                print(f"[MemoryWrite] 새 row 생성: chat_sid={new_memory.chat_sid}, case_type={current_case_type}")
                 print(f"[MemoryWrite] 저장 완료:")
                 print(f"  - case_type: {current_case_type}")
+                print(f"  - topic: {topic}")
                 print(f"  - referenced_memory_count: {referenced_count}개")
                 print(f"  - full_response: {len(full_answer)}자")
                 print(f"  - summary: {summary[:50]}...")

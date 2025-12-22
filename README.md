@@ -14,8 +14,8 @@
 ## [주제]
 
 ### **🧬 HelixOps**
-> Bio/Med R&D Agentic Platform 
-> 자체 sLLM 개발을 통한 기업 업무 활용 생성형 AI 플랫폼
+ > Bio/Med R&D Agentic Platform<br/>
+ > 자체 sLLM 개발을 통한 기업 업무 활용 생성형 AI 플랫폼
 
 ### 📌 서비스 개요
 바이오/제약 기업의 신약 개발 및 연구팀을 대상으로 **문헌 탐색 → AI 기반 후보물질 발굴/시뮬레이션 → 실험 설계 → 실험 결과 해석**의 R&D 전주기를 지원하는 플랫폼입니다. 
@@ -323,11 +323,17 @@ SKN18-FINAL-2TEAM/
    - 타겟–질병–약물 관계 분석
    - 실험 설계 및 후보 타겟 우선순위 도출
 
-## [화면 구성]
+## [화면 설계]
 
 - **도구** : Figma, HTML, CSS, Javascript
+<img width="1335" height="645" alt="스크린샷 2025-12-19 14 46 41" src="https://github.com/user-attachments/assets/8fe7b17d-6c47-4794-930b-a3ffbd99b3de" />
+<img width="1338" height="635" alt="스크린샷 2025-12-19 14 46 51" src="https://github.com/user-attachments/assets/48198b7c-0e48-4a3d-a176-2d56bab17a81" />
+<img width="1333" height="638" alt="스크린샷 2025-12-19 14 47 00" src="https://github.com/user-attachments/assets/ff308a8d-2563-4345-889e-10c2f45a6de4" />
+<img width="1335" height="636" alt="스크린샷 2025-12-19 14 47 14" src="https://github.com/user-attachments/assets/d91118c8-bf71-4ed6-ac37-82f70b8cc6d2" />
+<img width="1336" height="638" alt="스크린샷 2025-12-19 14 47 25" src="https://github.com/user-attachments/assets/fe07c8d1-6d9c-4c2c-85f7-8880ce105fe1" />
+<img width="1335" height="637" alt="스크린샷 2025-12-19 14 47 37" src="https://github.com/user-attachments/assets/aab05fa8-5214-4453-8981-eb2332b2045d" />
 
-{이미지}
+
 
 
 # [설계]
@@ -544,94 +550,152 @@ sequenceDiagram
 
 ## [구현]
 
-### 1. RAG
- - **목적**: 데이터 전처리~ 임베딩(ETL) 모듈화 및 진행 후 유저의 질문의 유사도가 높은 청킹데이터 추출  
- - **결과**: ETL 파이프라인 구축, 유사도 테스트를 통한 질문과 관련성 높은 청킹 추출  
- 
-#### 1) ETL  
+### 1. Hybrid RAG
+ - **목적**: Bio/Med 연구자의 질문을 논문·임상·프로토콜 근거로 답변하고, 관계 추론(KG)까지 한 번에 실행하는 하이브리드 검색/생성 파이프 구축
 
+ - **결과**: LangGraph 플로우에서 Neo4j(Graph + VectorDB)를 LLM이, Cross-Encoder 재순위화·LLM 필터링·웹 검색 백업까지 거친 근거 기반 답변을 Django UI에 제공한다.  
 
-#### 2) Database (Graph + VectorDB)  
-- 
+#### 1-1) ETL
+  - ingest → normalize → extract → chunk → embed → upsert 단계로 PubMed/NIH/Protocols.io를 정규화 한 뒤에 VectorDB에 적재한다.
+  - KG(knowledge Graph) 연계를 위해 엔티티/관계 추출 결과를 Neo4j 노드 & 엣지로 동기화하며, 시뮬레이션 결과도 반영한다.
 
-#### 3) retriver  
+#### 1-2) Database (Graph + VectorDB)  
+- **Graph DB**: Neo4j로 그래프를 구성하고 TextRetriever 인덱스와 Cypher 템플릿으로 관계 기반 검색을 수행한다.
+<img width="600" alt="Image" src="https://github.com/user-attachments/assets/be17406d-a0ec-4327-b082-b2d131ba2ea8" />
 
+- **Vector DB**: 문서·청크·임베딩을 저장하며 OpneAI text-embedding-3-Small 모델과 로컬 SentenceTransformer 임베딩으로 검색한다.  
+<img width="406" height="276" alt="Image" src="https://github.com/user-attachments/assets/4dcf6eca-e104-42f5-8003-112e62ae0c37" />  
 
-#### 4) evaluation  
+#### 1-3) retriver(검색)  
+- **역할**:
+- **검색방식**:
+
+#### 1-4) evaluation
+- **역할**:
 
 
 ## 2. LangGraph
 - **역할** : **전체 AI 파이프라인을 오케스트레이션(orchestration)** 하는 핵심 엔진 (운영, 실험, 안전, 재시도 등)
 - **목적**:  
-  `langgraph` 워크플로우로 의료 특화 Self-RAG 파이프라인을 구성해 질문 유형에 따라 사용자 정보·비의학·의학 질문을 자동 라우팅하고, 용어 질문은 WebSearch, 일반 의학 질문은 RAG 검색으로 보내도록 설계
-- **워크플로우 :** 메모리 → 질문 분류 → 용어 판별 → 검색/웹서치 → 검증 → 답변 → 메모리 기록  
+  `langgraph` 워크플로우로 생물학 특화 Self-RAG 파이프라인을 구성해 질문 유형에 따라 사용자 정보·비의학·의학 질문을 자동 라우팅하고, BIO_Q는 RAG 검색, PROTOCOL_Q는 보안을 고려한 로컬 임베딩 기반 RAG 검색, 관련성이 낮은 경우 WebSearch로 보내도록 설계
+- **워크플로우 :** 가드레일 → 질문 분류 → 메모리 읽기 → 쿼리 재작성 → 검색 → 재순위화 → 평가 → 웹 검색(필요시) → 답변 생성 → 메모리 기록
 - **노드 별 기능**  
-  - **memory_read** : sqlite3에 저장된 기존 대화내역 전달(user_info는 5개, medical은 1개)  
-  - **classifier** : 사용자의 질문을 medical, user_info, none_medical로 분류  
-  - **medical_check** : vectorDB / Websearch 대상(의학 용어)인지 판별  
-  - **retriver** : vectorDB에서 유사도 검색을 통해 유사도 높은 청크 5개 추출  
-    **evaluate_chunk** : 추출된 5개의 청크가 원본질문과 연관성이 있는지 llm이 판단하여 점수 부여.  
-  		       재작성 후 추출된 모든 청크가 질문과 관련이 없는 경우  최종 메세지와 함께 END  
-    **rewrite_query** : evaluate_chunk에서 낮은 점수가 나오면 llm이 질문을 재작성하여 retriver로 전달(최대 1번)  
-  - **WebSearch** : Tavily를 사용해 의학 용어 정의 검색  
-  - **Generate_answer** : 답변 형식 고정, llm 판단 점수출력, 출처 추출  
-  - **memory_write** : 질문과 Generate_answer에서 생성된 답변 원본과 summary, 채팅창 아이디(conversation_id)를 sqlite3에 저장
+  - **guardrail_input** : 입력 안전성 검사 (불법/위험 질문 차단)
+  - **classify_agent** : 사용자의 질문을 USER_INFO, NO_RELATION, BIO_Q, SIMULATION_Q, PROTOCOL_Q, INFERENCE_Q로 분류
+  - **memory_read** : PostgreSQL에 저장된 기존 대화내역 전달(케이스 타입별 최대 5개, 꼬리질문 감지 시 원본 질문 타입 기준으로 조회)
+  - **query_rewrite_agent** : 검색 성능 향상을 위해 LLM이 질문을 재작성
+  - **retriever_bio_node** : BIO_Q용 - OpenAI 임베딩(text-embedding-3-large) 사용
+  - **retriever_protocol_node** : PROTOCOL_Q용 - 로컬 임베딩(sentence-transformers/all-MiniLM-L6-v2) 사용, 보안 고려
+  - **rerank** : Cross-Encoder(ms-marco-MiniLM-L-6-v2)로 검색 결과 재순위화
+  - **bio_evaluate_chunk_node** : BIO_Q용 - 추출된 청크가 원본 질문과 연관성이 있는지 GPT-4o-mini가 판단하여 점수 부여, 관련성이 낮으면 웹 검색으로 이동
+  - **protocol_evaluate_chunk_node** : PROTOCOL_Q용 - 추출된 청크가 원본 질문과 연관성이 있는지 로컬 sllm이 판단하여 점수 부여
+  - **web_search** : Tavily를 사용해 의학 용어 정의 및 최신 정보 검색 (BIO_Q에서 RAG 검색 실패 시 fallback)
+  - **evaluate_web** : 웹 검색 결과의 관련성 평가
+  - **generate_answer** : 케이스 타입별 답변 생성 (USER_INFO는 친근한 응답, BIO_Q/PROTOCOL_Q는 RAG/웹 결과 기반, SIMULATION_Q는 시뮬레이션 경로 안내, INFERENCE_Q는 실험 결과 해석), 출처 추출
+  - **memory_write** : 질문과 Generate_answer에서 생성된 답변과 summary, 채팅방 아이디(conversation_id)를 PostgreSQL에 저장
 
-- **메모리 시스템**
-  - LLM 에이전트는 기본적으로 금붕어 뇌와 같아서, 그래프가 한 턴 실행될 때마다 바로 전 문장도 잊어버리는 특성
-  - MemorySaver는 이 에이전트에게 블랙박스(기억 장치)를 달아주는 역할
-  - 각 대화에서 중요한 순간만 캡처해 저장하고, 다음 턴에서 필요할 때만 적절히 불러와 사고 흐름에 삽입
-  - **결론** : 에이전트는 이전 대화를 전부 기억하지 않아도 안정적인 추론 흐름을 유지 가능
-    
-[ LangGraph 흐름도]  
+- **핵심 전략**
+  - **멀티턴 대화 전략 - 똑똑한 메모리 관리**
+    - 일반적인 챗봇과 달리, 질문 유형별로 대화를 분리해 기억
+    - 타입별 슬롯 메모리: BIO_Q, PROTOCOL_Q, USER_INFO 등 각 유형의 대화를 따로 저장
+    - 꼬리질문 자동 감지: Classify 노드에서 '이전 질문과 연결된 질문인가?'를 판단
+    - 선택적 히스토리 로드: 현재 질문과 같은 타입의 최근 5개 대화 요약만 불러옴
+    - LLM 기반 요약: 긴 대화를 '~질문에 대한 응답으로 ~다' 형식으로 500자 이내 3줄 요약 저장
+    - 왜 이렇게? → 전체 대화를 다 기억하면 속도도 느리고 맥락이 섞임. 질문 유형별로 나누면 정확하고 빠른 답변 가능
+
+  - **보안 전략 - 민감 정보 보호**
+    - 특히 실험 프로토콜은 기업의 핵심 보안 실험 자산과 밀접한 관련이 있어, 질문 유형에 따라 다른 보안 수준 적용
+    - 보안이 필요한 경우, 응답하는 LLM을 SLLM으로 사용할 뿐만 아니라 사용자 질문을 임베딩하는 모델도 로컬 모델 사용
+    - BIO_Q: OpenAI text-embedding-3-large 사용
+      - 일반적인 생물학 논문 및 임상실험 검색은 외부 API 활용
+    - PROTOCOL_Q: sentence-transformers/all-MiniLM-L6-v2 로컬 임베딩 모델 사용
+      - 민감한 실험 프로토콜은 질문 단계부터 외부로 전송하지 않음
+    - 사용자 질문 임베딩 단계부터 실험 관련 데이터가 외부로 나가지 않도록 설계
+
+  - **Self-RAG Fallback 전략 - 웹 검색으로 보완**
+    - RAG 시스템의 고질적 문제인 '내부 데이터에 답이 없으면?'을 다음과 같이 해결
+    - BIO_Q의 경우:
+      - EvaluateChunk bio에서 검색 결과 관련성 평가
+      - 관련성 있음 → 바로 답변 생성
+      - 관련성 없음/결과 없음 → Web search 자동 실행 (Tavily API, 최대 3개 결과)
+      - Evaluate web으로 웹 검색 결과까지 검증
+    - PROTOCOL_Q는 웹 검색 없음
+    - 왜 BIO_Q만?
+      - 사용자의 논문/임상 검색은 사내 보안이 필요 없지만, 프로토콜은 사내 보안이 필요한 실험과 밀접한 관련이 있으므로 내부 데이터만 사용
+
+  
+  [ LangGraph 흐름도]  
 
   - **구상** 
-    - {excalidraw 이미지 }
+    - <img width="600" alt="Image" src="https://github.com/user-attachments/assets/2f604cbe-d965-4bf6-8514-76d9f798acb1" />
   
   - **구현**
-   - {이미지 }  
+    - <img width="784" alt="Image" src="https://github.com/user-attachments/assets/f9a9c695-8787-48f8-a687-edf41de7a600" />
 
 
 
 ### 3. WEB
 
-- **목적** :   
+- **목적** : AI 기반 연구지원 플랫폼의 웹 인터페이스를 구현하여, 사용자 인증·대화 이력 관리·데이터 시각화 등을 통합적으로 제공한다.  
 - **도구** : Django Framework (SSR 기반 MVT 구조)  
   - Django의 MVT(Model–View–Template) 패턴을 사용  
   - 서버에서 HTML을 렌더링하는 **SSR(Server-Side Rendering)** 방식으로 화면을 제공  
 - **핵심 기능**:  
   - 인증 / 가입  
-    
-  - AI 대화 기능  
+    - 로그인, 회원가입, 프로필 관리 (django.contrib.auth)
+    - 사용자 활동 로그(audit) 및 접속 기록 추적
+  - 대시보드 (Dashboard)
+    - 전체 대화량, 정확도, RAG 활용 비율 등 주요 지표 시각화
+    - 사용자별 최근 활동 및 통계 제공
+  - AI 대화 기능 (Chat)
+    - LangGraph 기반 챗봇 인터페이스 및 히스토리 저장
+    - 참고 문헌(Reference) 및 근거 기반 답변 표시
+    - 메시지 피드백(좋아요/싫어요) 및 사유 수집
+    - AI 생성 컨셉 그래프(Mermaid) 시각화 및 후속 질문 추천
+  - 일정 및 알림 (Schedule & Notifications)
+    - 연구/실험 일정 관리 (FullCalendar 연동)
+    - 시스템 알림 및 메시지 수신
+  - 실험 시뮬레이션 (Experiments)
+    - AlphaFold3, ProteinMPNN, RFDiffusion 등 바이오 모델 기반 시뮬레이션 지원
+    - 실험 파라미터(YAML) 설정 및 Docker 컨테이너 실행 요청
+    - 실험 상태 모니터링 및 결과 데이터(PDB 구조 등) 조회/다운로드
+  - 연구 노트 및 실험 관리 (Notes & Experiments)
+    - AI 대화 내용 기반 연구 노트 작성 및 저장
+    - 실험 시뮬레이션(AlphaFold3 등) 설정 및 결과 관리
 
-  - 대시보드  
 
 - **주요 모델** :   
-  - **CustomUser** : 사용자 이름과 이메일을 기반으로 로그인하는 **커스텀 사용자 모델**  
-  
+  - **Account**: `User` (커스텀 사용자), `UserActivityLog` (활동 로그)
+  - **Chat**: `Chat` (대화 세션), `ChatMessage` (메시지), `ChatReference` (참고문헌), `ChatMessageFeedback` (피드백), `PaperGraph` (논문 그래프)
+  - **Note**: `Note` (연구 노트 본문/메타데이터)
+  - **Experiment**: `Experiment` (실험 설정 및 결과)
+  - **Schedule**: `Event` (일정 이벤트)
+
 - **주요 API**   
-  - **Accounts**:   
- 
-  - **Chat**  
+  - **Accounts**: `/accounts/login/`, `/accounts/register/`, `/accounts/profile/`
+  - **Chat**: 
+    - `/chat/api/conversations/` (대화 목록/생성)
+    - `/chat/api/messages/` (메시지 전송/조회)
+    - `/chat/api/feedback/` (피드백 등록)
+  - **Dashboard**: `/dashboard/` (통계 데이터 렌더링)
+  - **Note**: `/notes/` (노트 CRUD)
   
 - **향후 개선 방향**:  
-  - 
-  - 
-  - 
-  - 
+  - 2차 개발 예정
+    - 소셜 인증/가입/비밀번호 찾기
+    - 알림 시스템 (Notification 도입)
+    - 실험 데이터 시각화 도구(3D MolStar 등) 웹 통합 강화
+    - 관리자 페이지(Admin) 대시보드 고도화
 
 ## [평가/결과]
-
-{ 이미지 }
+- 최종 발표 예정
 
 ## [인사이트]
-
-
-
+- 최종 발표 예정
 
 ## [이슈]
 - Github Issues
-  - 
+  - https://github.com/SKNETWORKS-FAMILY-AICAMP/SKN18-FINAL-2TEAM/issues?q=is%3Aissue
 
 
 

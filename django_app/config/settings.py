@@ -14,6 +14,8 @@ from pathlib import Path
 
 from config.env import env
 
+import os
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -44,6 +46,7 @@ INSTALLED_APPS = [
     "apps.navigation.apps.NavigationConfig",
     "apps.organization.apps.OrganizationConfig",
     "apps.codes.apps.CodesConfig",
+    "apps.bookmark.apps.BookmarkConfig",
     
     "django.contrib.admin",
     "django.contrib.auth",
@@ -179,3 +182,14 @@ X_FRAME_OPTIONS = "SAMEORIGIN"
 # DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL")
 
 
+# ───────────────────────────────────
+# Google OAuth / Calendar
+# ───────────────────────────────────
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
+GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
+GOOGLE_REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI", "")
+
+GOOGLE_CALENDAR_SCOPE = os.getenv(
+    "GOOGLE_CALENDAR_SCOPE",
+    "https://www.googleapis.com/auth/calendar",
+)
