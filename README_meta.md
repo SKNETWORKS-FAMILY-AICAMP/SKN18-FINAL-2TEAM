@@ -328,3 +328,23 @@ Docker compose에서:
 ```ini
 server.logs.dir=/logs
 ```
+
+## 실행
+
+- ENV
+> .env.example 복사하여 .env 생성
+
+- Python
+```bash
+uv venv .venv --python=3.12
+source ./.venv/bin/activate
+uv pip install -r requirements.txt
+```
+
+- Docker
+```bash
+# Window
+docker-compoe up -d
+# Mac
+docker compoe up -d
+```

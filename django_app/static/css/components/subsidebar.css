@@ -182,15 +182,21 @@
     border-radius: 0.25rem;
     transition: background-color 0.2s;
     text-align: left;
+    outline: none; /* 포커스 시 브라우저 기본 아웃라인 제거 */   ## 토글 관련 코드 (아래 동일)
+}
+
+.section-item:focus {
+    outline: none; /* Remove focus outline */
 }
 
 .section-item:hover {
     background: var(--color-bg-gray-50);
 }
 
-.section-item.active {
-    background: #eff6ff; /* blue-50 - keep specific color for active state */
-    color: var(--color-primary);
+.section-item.active,
+.section-item[data-active="true"] {
+    background: #eff6ff !important; /* blue-50 - keep specific color for active state */
+    color: var(--color-primary) !important;
 }
 
 .section-item i {
@@ -201,8 +207,9 @@
     margin-right: 0.5rem;
 }
 
-.section-item.active i {
-    color: var(--color-primary);
+.section-item.active i,
+.section-item[data-active="true"] i {
+    color: var(--color-primary) !important;
 }
 
 .section-item span:first-of-type {
@@ -221,9 +228,10 @@
     font-weight: 500;
 }
 
-.section-item.active .section-count {
-    background: #dbeafe; /* blue-100 - keep specific color for active state */
-    color: var(--color-primary);
+.section-item.active .section-count,
+.section-item[data-active="true"] .section-count {
+    background: #dbeafe !important; /* blue-100 - keep specific color for active state */
+    color: var(--color-primary) !important;
 }
 
 .section-title {
@@ -285,8 +293,9 @@
     font-weight: 500;
     color: var(--color-text-secondary);
     margin: 0 0 0.25rem 0;
-    display: -webkit-box;
+    display: -webkit-box; 
     -webkit-line-clamp: 2;
+    line-clamp: 2; /* 표준 속성 (서브사이드바의 채팅 제목이 길어도 2줄로 제한되어 레이아웃이 깨지지 않도록) */
     -webkit-box-orient: vertical;
     overflow: hidden;
     line-height: 1.4;

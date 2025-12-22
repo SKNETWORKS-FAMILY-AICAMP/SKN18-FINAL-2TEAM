@@ -80,10 +80,10 @@ class Chat(models.Model):
         default='E',
         db_column='status'
     )
-    pinned = models.CharField(
+    favorite = models.CharField(   # pin기능이 곧 favorites 이므로 pin이름을 favorites로 통일
         max_length=1,
         default='N',
-        db_column='pinned'
+        db_column='favorite'
     )
     archived = models.CharField(
         max_length=1,
@@ -100,6 +100,10 @@ class Chat(models.Model):
         max_length=1,
         default='Y',
         db_column='auto_mode'
+    )
+    is_title_custom = models.BooleanField(
+        default=False,
+        db_column='is_title_custom'
     )
     created_at = models.DateTimeField(auto_now_add=True, db_column='created_at')
     created_id = models.CharField(max_length=60, db_column='created_id')
@@ -143,7 +147,7 @@ class ChatMessage(models.Model):
     sort_order = models.IntegerField(db_column='sort_order')
     created_at = models.DateTimeField(auto_now_add=True, db_column='created_at')
     created_id = models.CharField(max_length=60, db_column='created_id')
-    concept_graph = models.TextField(blank=True, db_column='concept_graph')
+    concept_graph = models.TextField(blank=True, null=True, db_column='concept_graph')  # blank=True, null=True 둘 다 있어야 DB에 NULL을 저장할 수 있음
     
     class Meta:
         db_table = 't_chat_message'
@@ -229,12 +233,12 @@ class ChatReference(models.Model):
         blank=True,
         db_column='ref_authors'
     )
-    sort_order = models.IntegerField(default=0, db_column='sort_order')
+    ref_id = models.IntegerField(default=0, db_column='ref_id')  # 참고문헌 번호 (UI 표시용)
     created_at = models.DateTimeField(auto_now_add=True, db_column='created_at')
-    
+
     class Meta:
         db_table = 't_chat_reference'
-        ordering = ['sort_order', 'created_at']
+        ordering = ['ref_id', 'created_at']
         verbose_name = '채팅 참고 문헌'
         verbose_name_plural = '채팅 참고 문헌들'
     

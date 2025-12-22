@@ -3,7 +3,7 @@ memory_db_stetting.py
 ---------------------
 PostgreSQL 연결 및 ORM 테이블 초기화
 - chat_room_id 기반 채팅창 관리
-- chat_id 자동증가 개별 대화 관리
+- chat_sid 자동증가 개별 대화 관리
 - LLM 응답 요약 저장
 """
 

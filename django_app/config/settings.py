@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     "apps.navigation.apps.NavigationConfig",
     "apps.organization.apps.OrganizationConfig",
     "apps.codes.apps.CodesConfig",
+    "apps.bookmark.apps.BookmarkConfig",
     
     "django.contrib.admin",
     "django.contrib.auth",

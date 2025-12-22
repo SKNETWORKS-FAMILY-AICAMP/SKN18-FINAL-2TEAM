@@ -31,25 +31,15 @@ class BioRAGState(TypedDict, total=False):
     # memory_read 노드에서 DB → State 로드
     # -----------------------------
     memory_slot: Dict[str, Any]         # DB Slot 통합 구조 (last_case, last_summary)
-    
     # 꼬리질문 판단 (classifier에서 설정)
     is_follow_up: bool                  # 이전 대화를 참조하는 꼬리질문 여부
     reference_case_type: NotRequired[str]  # 참조하는 이전 대화의 case_type
-    
     # 관련 대화 히스토리 (memory_read에서 설정, 최대 5개)
     relevant_history: NotRequired[List[Dict[str, Any]]]  # 현재 질문과 관련된 과거 대화
     history_source: NotRequired[str]    # "CURRENT_TYPE" | "FOLLOW_UP_TYPE"
 
-
     # -----------------------------
-    # 🔹 4. Keyword Extraction - 질문 + 메모리 기반으로 "검색용 토큰"을 뽑는다
-    # -----------------------------
-    extracted_keywords: List[str]       # 키워드 - 엔티티보다 의미적이고 추상적인것. pgvextor에 적합 (query_rewrite_agent에서 한 번만 설정)
-    extracted_entities: List[str]       # NER/Entity 추출 결과 - 엔티티는 고유 명사 혹은 객체 이름. neo4j에 적합 (query_rewrite_agent에서 한 번만 설정)
-
-
-    # -----------------------------
-    # 🔹 5. Classifier Result (Main Routing)
+    # 🔹 4. Classifier Result (Main Routing)
     # -----------------------------
     case_type: Literal[
         "NO_RELATION",
@@ -60,6 +50,10 @@ class BioRAGState(TypedDict, total=False):
         "USER_INFO"                     # 사용자 인적사항 (학생, 연구원, 대학원생, 교수 등)
     ]                                   # classifier가 반환하는 CASE
 
+    # -----------------------------
+    # 🔹 5. Entity Extraction - RAG 결과에서 추출된 엔티티
+    # -----------------------------
+    entities: List[str]       # NER/Entity 추출 결과 - 엔티티는 고유 명사 혹은 객체 이름. neo4j에 적합 (retriever 노드에서 RAG 결과로부터 추출)
 
     # -----------------------------
     # 🔹 6. Query Rewrite
@@ -87,6 +81,7 @@ class BioRAGState(TypedDict, total=False):
     used_web_search: bool                                                       # 검색 실패 시 fallback 여부
     web_results: NotRequired[Annotated[List[Dict[str, Any]], operator.add]]    # 웹 검색 결과 (optional)
     web_selected_chunks: NotRequired[Annotated[List[str], operator.add]]       # evaluate_web으로 선별된 chunk (optional)
+    should_skip_generation: NotRequired[bool]                                   # BIO_Q에서 웹서치 실패 시 조기 종료 플래그
 
 
     # -----------------------------
@@ -95,4 +90,5 @@ class BioRAGState(TypedDict, total=False):
     final_context: str                                  # generate_answer prompt에 들어갈 context 전체
     final_answer: str                                   # 최종 답변(평문)
     answer_sources: Annotated[List[str], operator.add] # 출처 리스트 - rag, web 모두 누적 입력
+    chat_title: NotRequired[str]                        # 채팅방 제목용 1줄 요약 (Django 전달용)
 
