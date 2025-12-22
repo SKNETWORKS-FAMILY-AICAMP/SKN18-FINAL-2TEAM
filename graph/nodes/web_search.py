@@ -8,9 +8,24 @@ BioRAGState 구조에 맞게 구현
 import os
 import requests
 from typing import Dict, Any, List, Tuple
-from dotenv import load_dotenv
+from pathlib import Path
 
-load_dotenv()
+# Django 환경 변수 로딩 지원
+try:
+    from django.conf import settings
+    # Django가 설정되어 있으면 Django의 환경 변수 로딩 방식 사용
+    DJANGO_AVAILABLE = True
+except ImportError:
+    # Django가 없으면 dotenv 사용
+    from dotenv import load_dotenv
+    # 프로젝트 루트에서 .env 파일 찾기
+    PROJECT_ROOT = Path(__file__).resolve().parents[2]  # graph/nodes/web_search.py -> graph -> PROJECT_ROOT
+    env_files = [PROJECT_ROOT / ".env", PROJECT_ROOT / ".env.local"]
+    for env_file in env_files:
+        if env_file.exists():
+            load_dotenv(env_file)
+            break
+    DJANGO_AVAILABLE = False
 
 
 def tavily_search(query: str, top_k: int = 5) -> Tuple[List[Dict[str, str]], str]:
@@ -32,83 +47,78 @@ def tavily_search(query: str, top_k: int = 5) -> Tuple[List[Dict[str, str]], str
         2. 검색 결과를 받아옵니다
         3. 결과를 정리해서 반환합니다
     """
-    # 환경변수에서 Tavily API 키를 가져옵니다
-    # Tavily는 AI 기반 웹 검색 서비스입니다
-    # API 키는 .env 파일에 저장되어 있어야 합니다
-    api_key = os.getenv("TAVILY_API_KEY")
-
-    # API 키가 없으면 검색을 수행할 수 없습니다
-    if not api_key:
-        print("[WebSearch Warning] TAVILY_API_KEY 환경변수가 없습니다.")
-        return [], "none"  # 빈 리스트를 반환합니다 (검색 결과 없음)
-
-    # Tavily API 엔드포인트
-    url = "https://api.tavily.com/search"
+    # 환경변수에서 Tavily API 키 가져오기
+    if DJANGO_AVAILABLE:
+        try:
+            from config.env import env
+            api_key = env("TAVILY_API_KEY", default=None)
+        except:
+            api_key = os.getenv("TAVILY_API_KEY")
+    else:
+        api_key = os.getenv("TAVILY_API_KEY")
     
-    # Tavily API에 보낼 요청 데이터를 만듭니다
+    if not api_key or not api_key.strip():
+        print("[WebSearch] TAVILY_API_KEY가 설정되지 않았습니다.")
+        return [], "none"
+    
+    api_key = api_key.strip()
+
+    url = "https://api.tavily.com/search"
     payload = {
-        "api_key": api_key,
         "query": query,
-        "search_depth": "basic",  # "basic" 또는 "advanced"
-        "max_results": top_k,     # 가져올 검색 결과 개수
+        "search_depth": "basic",
+        "max_results": top_k,
+    }
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
     }
 
     try:
-        # Tavily API 서버에 HTTP POST 요청을 보냅니다
-        # requests.post()은 인터넷에 POST 요청을 보내는 함수입니다
-        response = requests.post(url, json=payload, timeout=10)
+        response = requests.post(url, json=payload, headers=headers, timeout=10)
         
-        # HTTP 응답 상태 코드를 확인합니다
-        # 200은 성공을 의미합니다
+        # Authorization header 실패 시 JSON payload 방식으로 재시도
+        if response.status_code == 401:
+            payload["api_key"] = api_key
+            response = requests.post(url, json=payload, timeout=10)
+        
+        if response.status_code == 401:
+            print(f"[WebSearch Error] Tavily 인증 실패: {response.json().get('error', 'Invalid API key')}")
+            return [], "none"
+        
         response.raise_for_status()
-        
-        # 응답을 JSON 형식으로 변환합니다
         data = response.json()
         
     except requests.exceptions.Timeout:
-        # 타임아웃 오류
         print(f"[WebSearch Error] Tavily 요청 시간 초과")
         return [], "none"
     except requests.exceptions.HTTPError as e:
-        # HTTP 오류
-        print(f"[WebSearch Error] Tavily HTTP 오류 → {e}")
+        print(f"[WebSearch Error] Tavily HTTP 오류: {e}")
         return [], "none"
     except requests.exceptions.RequestException as e:
-        # 네트워크 오류나 HTTP 오류가 발생했을 때
-        print(f"[WebSearch Error] Tavily 요청 실패 → {e}")
+        print(f"[WebSearch Error] Tavily 요청 실패: {e}")
         return [], "none"
     except Exception as e:
-        # 기타 오류가 발생했을 때
-        print(f"[WebSearch Error] Tavily 예상치 못한 오류 → {e}")
+        print(f"[WebSearch Error] Tavily 오류: {e}")
         return [], "none"
 
-    # 검색 결과에서 "results"를 가져옵니다
-    # Tavily는 "results" 키에 검색 결과를 저장합니다
     results_data = data.get("results", [])
-    
-    # 검색 결과가 없으면 빈 리스트를 반환합니다
     if not results_data:
         return [], "none"
 
-    # 검색 결과를 정리해서 저장할 리스트를 만듭니다
     results = []
-    
-    # 검색 결과를 순회하면서 필요한 정보만 추출합니다
     for item in results_data[:top_k]:
-        # Tavily API의 응답 형식에 맞게 데이터 추출
         title = item.get("title", "")
-        content = item.get("content", "")  # Tavily는 "content"를 사용
+        content = item.get("content", "")
         url = item.get("url", "")
 
-        # 제목이나 내용이 있는 경우에만 결과에 추가합니다
         if title or content:
             results.append({
-                "title": title,           # 검색 결과의 제목
-                "snippet": content[:200] if content else "",  # 검색 결과의 요약 내용 (최대 200자)
-                "link": url              # 검색 결과의 웹페이지 링크
+                "title": title,
+                "snippet": content[:200] if content else "",
+                "link": url
             })
 
-    # 정리된 검색 결과 리스트를 반환합니다
     return results, "tavily"
 
 
@@ -127,44 +137,27 @@ def web_search_node(state: Dict[str, Any]) -> Dict[str, Any]:
         - state["answer_sources"]: 출처 정보 (누적)
     """
     
-    # 노드 진입 로그
-    print(f"\n{'='*60}")
-    print(f"[WEB_SEARCH NODE] 시작")
-    print(f"  question: {str(state.get('question', ''))[:30]}...")
-    print(f"  rewritten_query: {str(state.get('rewritten_query', ''))[:30]}...")
-    print(f"{'='*60}\n")
-    
     question = state.get("question", "").strip()
     rewritten_query = state.get("rewritten_query", "")
-    entities = state.get("entities", [])  # retriever에서 설정됨
+    entities = state.get("entities", [])
     
-    # 검색 쿼리 결정 (우선순위: rewritten_query > question)
     search_query = rewritten_query if rewritten_query else question
-    
-    # 엔티티티가 있으면 검색 쿼리에 추가
     if entities:
-        search_query += " " + " ".join(entities[:5])  # 최대 3개 엔티티만 추가
+        search_query += " " + " ".join(entities[:5])
     
-    print(f"[WebSearch] 시작 - 쿼리: \"{search_query[:50]}...\"")
-    
-    # 검색할 질문이 없는 경우
     if not search_query:
-        print("[WebSearch] 검색 쿼리가 없음")
         state["web_results"] = []
         state["used_web_search"] = False
         return state
     
-    # 웹 검색 실행 (Tavily 사용)
     try:
-        print(f"[WEB SEARCH] Tavily로 검색 시도: {search_query}")
-        results, engine_used = tavily_search(search_query, top_k=3)  # 최대 3개 결과
+        results, engine_used = tavily_search(search_query, top_k=3)
         
         if results:
-            # 검색 결과를 BioRAGState 형식으로 변환
             web_results = []
             sources = state.get("answer_sources", [])
             
-            for idx, result in enumerate(results, 1):
+            for result in results:
                 web_result = {
                     "content": f"{result.get('title', '')} - {result.get('snippet', '')}",
                     "url": result.get("link", ""),
@@ -173,38 +166,19 @@ def web_search_node(state: Dict[str, Any]) -> Dict[str, Any]:
                 }
                 web_results.append(web_result)
                 
-                # 검색 결과 내용 일부 출력 (앞 50글자)
-                snippet_preview = result.get("snippet", "")[:50]
-                print(f"  [{idx}] {result.get('title', 'No Title')[:40]}")
-                print(f"      내용: {snippet_preview}...")
-                print(f"      URL: {result.get('link', '')}")
-                
-                # 출처 정보 추가
                 if web_result["url"]:
                     sources.append(web_result["url"])
             
             state["web_results"] = web_results
             state["used_web_search"] = True
             state["answer_sources"] = sources
-            
-            print(f"\n[WebSearch] 완료 - {len(web_results)}개 결과 ({engine_used})")
-            
         else:
-            # 검색 결과가 없는 경우
             state["web_results"] = []
-            state["used_web_search"] = True  # 시도는 했지만 결과 없음
-            
-            print(f"[WebSearch] 완료 - 결과 없음 ({engine_used})")
+            state["used_web_search"] = True
 
     except Exception as e:
-        print(f"[WebSearch] 오류 발생: {e}")
+        print(f"[WebSearch] 오류: {e}")
         state["web_results"] = []
         state["used_web_search"] = False
-    
-    # 노드 종료 로그
-    print(f"\n[WEB_SEARCH NODE] 종료")
-    print(f"  web_results: {len(state.get('web_results', []))}개")
-    print(f"  used_web_search: {state.get('used_web_search', False)}")
-    print(f"{'='*60}\n")
 
     return state

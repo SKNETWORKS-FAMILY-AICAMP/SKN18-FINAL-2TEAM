@@ -1088,6 +1088,8 @@
     border-bottom: none;
 }
 
+/* 웹서치 참고문헌 스타일 - 지구본 아이콘만 강조 */
+
 .reference-bookmark-btn {
     position: absolute;
     top: 0.75rem;
@@ -1162,6 +1164,14 @@
     font-size: 0.75rem;
     color: #2563eb;
     font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.reference-source i.fa-globe {
+    color: #f59e0b;
+    font-size: 0.875rem;
 }
 
 .reference-badge {
