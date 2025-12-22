@@ -28,6 +28,7 @@ let attachedImages = [];
 let attachedTables = [];
 let attachedExperiments = [];
 let fileInputRef = null;
+let isComposing = false; // IME 조합 상태 (macOS 한글 입력 중복 전송 방지)
 
 let chatList = [];
 
@@ -111,11 +112,25 @@ function initChatAI() {
         chatInputField.addEventListener('input', handleInputChange);
         chatInputField.addEventListener('focus', handleInputFocus);
         chatInputField.addEventListener('keydown', handleInputKeydown);
+        // macOS 한글 IME 중복 전송 방지
+        chatInputField.addEventListener('compositionstart', () => {
+            isComposing = true;
+        });
+        chatInputField.addEventListener('compositionend', () => {
+            isComposing = false;
+        });
     }
 
     if (chatInputFieldBottom) {
         chatInputFieldBottom.addEventListener('input', handleInputChange);
         chatInputFieldBottom.addEventListener('keydown', handleInputKeydown);
+        // macOS 한글 IME 중복 전송 방지
+        chatInputFieldBottom.addEventListener('compositionstart', () => {
+            isComposing = true;
+        });
+        chatInputFieldBottom.addEventListener('compositionend', () => {
+            isComposing = false;
+        });
     }
 
     if (sendBtn) {
@@ -235,7 +250,8 @@ function handleInputFocus() {
 
 // Handle input keydown
 function handleInputKeydown(e) {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    // macOS 한글 입력 시 IME 조합 중에는 Enter를 무시 (중복 전송 방지)
+    if (e.key === 'Enter' && !e.shiftKey && !isComposing) {
         e.preventDefault();
         handleSend();
     } else if (e.key === 'Escape') {
@@ -1208,10 +1224,10 @@ function renderChatEdit(chatId) {
 }
 
 // Handle save chat title
-function handleSaveChatTitle(chatId) {
+async function handleSaveChatTitle(chatId) {
     const input = document.getElementById(`chatEditInput${chatId}`);
     if (!input) return;
-    
+
     const newTitle = input.value.trim();
     if (!newTitle) {
         if (window.notyf) {
@@ -1219,28 +1235,52 @@ function handleSaveChatTitle(chatId) {
         }
         return;
     }
-    
-    // Update chat list
-    const chat = chatList.find(c => c.id === chatId);
-    if (chat) {
-        chat.title = newTitle;
-    }
-    
-    // Reset edit state
-    editingChatId = null;
-    editingTitle = "";
-    openMenuId = null; // Close menu if open
-    
-    // Remove any open menus
-    document.querySelectorAll('.chat-menu-dropdown').forEach(menu => menu.remove());
-    
-    // Re-render chat list to restore original state
-    if (window.SubSidebarComponent && window.SubSidebarComponent.renderItems) {
-        window.SubSidebarComponent.renderItems(chatList);
-    }
-    
-    if (window.notyf) {
-        window.notyf.success('제목이 저장되었습니다.');
+
+    try {
+        // Send PATCH request to backend
+        const response = await fetch(`/chat/api/chats/${chatId}/title/`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({ title: newTitle })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || '제목 저장에 실패했습니다.');
+        }
+
+        const data = await response.json();
+
+        // Update chat list with response data
+        const chat = chatList.find(c => c.id === chatId);
+        if (chat) {
+            chat.title = data.title;
+        }
+
+        // Reset edit state
+        editingChatId = null;
+        editingTitle = "";
+        openMenuId = null; // Close menu if open
+
+        // Remove any open menus
+        document.querySelectorAll('.chat-menu-dropdown').forEach(menu => menu.remove());
+
+        // Re-render chat list to restore original state
+        if (window.SubSidebarComponent && window.SubSidebarComponent.renderItems) {
+            window.SubSidebarComponent.renderItems(chatList);
+        }
+
+        if (window.notyf) {
+            window.notyf.success('제목이 저장되었습니다.');
+        }
+    } catch (error) {
+        console.error('Error saving chat title:', error);
+        if (window.notyf) {
+            window.notyf.error(error.message || '제목 저장 중 오류가 발생했습니다.');
+        }
     }
 }
 
@@ -1340,6 +1380,10 @@ function renderReferences() {
     }
 
     referencesList.innerHTML = references.map((ref) => {
+        // 웹서치 참고문헌 여부 확인
+        const isWebSource = ref.source === 'Web';
+        const sourceIcon = isWebSource ? '<i class="fas fa-globe"></i> ' : '';
+
         return `
             <div class="reference-item" data-reference-id="${ref.id}">
                 <button class="reference-bookmark-btn" data-reference-id="${ref.id}" title="북마크에 저장">
@@ -1349,7 +1393,7 @@ function renderReferences() {
                     <div class="reference-number">${ref.ref_id || ref.id}</div>
                     <div class="reference-details">
                         <div class="reference-meta">
-                            <span class="reference-source">${escapeHtml(ref.source || 'Unknown')}</span>
+                            <span class="reference-source">${sourceIcon}${escapeHtml(ref.source || 'Unknown')}</span>
                             ${ref.badge ? `<span class="reference-badge">${escapeHtml(ref.badge)}</span>` : ''}
                         </div>
                         <h3 class="reference-title">${escapeHtml(ref.title)}</h3>
@@ -1358,7 +1402,7 @@ function renderReferences() {
                             ${ref.link ? `
                             <div class="reference-info-item">
                                 <i class="fas fa-link"></i>
-                                <a href="#" class="reference-link">${escapeHtml(ref.link)}</a>
+                                <a href="${escapeHtml(ref.link)}" target="_blank" rel="noopener noreferrer" class="reference-link">${escapeHtml(ref.link)}</a>
                             </div>
                             ` : ''}
                             ${ref.journal ? `

@@ -81,6 +81,7 @@ class BioRAGState(TypedDict, total=False):
     used_web_search: bool                                                       # 검색 실패 시 fallback 여부
     web_results: NotRequired[Annotated[List[Dict[str, Any]], operator.add]]    # 웹 검색 결과 (optional)
     web_selected_chunks: NotRequired[Annotated[List[str], operator.add]]       # evaluate_web으로 선별된 chunk (optional)
+    should_skip_generation: NotRequired[bool]                                   # BIO_Q에서 웹서치 실패 시 조기 종료 플래그
 
 
     # -----------------------------
