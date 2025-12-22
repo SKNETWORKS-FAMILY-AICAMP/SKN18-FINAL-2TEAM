@@ -14,7 +14,6 @@ import re
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 from graph.llm_config import (
-    rewrite_query_expander_tool_llm,
     rewrite_query_simplifier_tool_llm,
     rewrite_query_node_llm
 )

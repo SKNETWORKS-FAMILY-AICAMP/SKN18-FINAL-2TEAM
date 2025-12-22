@@ -335,7 +335,7 @@ Track:
 KG include if side-effect/toxicity/off-target + target/pathway OR PPI/binding/complex OR explicit KG/Neo4j/PrimeKG.
 
 Intent:
-protocol_search if steps/how-to/material/equipment/buffer/recipe.
+protocol_search if steps/how-to/material/equipment/buffer/recipe. -> 토큰수 한토큰 짧게, json말고 -> / 로 받고 코드처리 ->
 clinical_search if trial/NCT/phase/endpoint/HR/AE/recruitment.
 multi_domain if needs >=2 domains; else evidence_search.
 

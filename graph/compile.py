@@ -7,12 +7,12 @@ LangGraph의 StateGraph를 생성하고 노드 간 엣지 정의
 from langgraph.graph import END, StateGraph
 
 # 노드 함수 import
-from graph.state import BioRAGState
+from graph.state_origin import BioRAGState
 from graph.nodes.guardrail import guardrail_input_node
 from graph.nodes.memory import memory_read_node, memory_write_node
 from graph.nodes.classifier import classify_agent_node
 from graph.nodes.rewrite_query import query_rewrite_agent_node
-from graph.nodes.retrieval import retriever_protocol_node, retriever_bio_node
+from graph.nodes.retriver import retriever_protocol_node, retriever_bio_node
 from graph.nodes.rerank import rerank_node
 from graph.nodes.evaluate_chunk import bio_evaluate_chunk_node, protocol_evaluate_chunk_node
 from graph.nodes.web_search import web_search_node
