@@ -166,6 +166,30 @@ def process_csv_simple(csv_path: Path, keyword: str) -> None:
 
     print(f"[EMBED][Protocol.io][{keyword}] 🎉 모든 CSV 데이터 임베딩 및 삽입 완료!")
 
+def is_table_like_text(text: str, min_rows: int = 3, min_cols: int = 3) -> bool:
+    """
+    텍스트가 표(tabular) 형태인지 간단히 판별
+    - 여러 줄 존재
+    - 각 줄에 탭 또는 2칸 이상 공백으로 구분된 컬럼이 반복
+    """
+    lines = [line for line in text.splitlines() if line.strip()]
+    
+    if len(lines) < min_rows:
+        return False
+
+    col_counts = []
+    for line in lines:
+        # 탭 또는 2칸 이상 공백 기준 분리
+        if "\t" in line:
+            cols = line.split("\t")
+        else:
+            cols = [c for c in line.split("  ") if c.strip()]
+        col_counts.append(len(cols))
+
+    # 대부분의 줄이 일정 컬럼 수 이상이면 표로 간주
+    avg_cols = sum(col_counts) / len(col_counts)
+    return avg_cols >= min_cols
+
 
 def process_csv(csv_path: Path, keyword: str) -> None:
     """CSV 파일을 읽어서 임베딩 생성 및 DB 저장"""
@@ -194,9 +218,17 @@ def process_csv(csv_path: Path, keyword: str) -> None:
 
         # 섹션별로 분리하여 임베딩
         sections = split_sections(text)
-        
-        if not sections:
-            # 섹션 태그가 없으면 전체 텍스트를 임베딩
+
+        no_section_tags = (
+            sections["abstract"].strip() == "" and
+            sections["step_content"].strip() == "" and
+            sections["guidelines"].strip() == ""
+        )
+
+        table_like = is_table_like_text(text)
+
+        if no_section_tags or table_like:
+            # 섹션 태그가 없거나, 표 형태 데이터면 전체 텍스트 임베딩
             embedding = embed_text(text)
             insert_row(chunking_id, url, title, text, embedding)
             print(f"[EMBED][Protocol.io][{keyword}] ✓ {idx + 1}/{len(df)} 저장 완료 (전체 텍스트)")
