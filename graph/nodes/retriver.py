@@ -163,5 +163,4 @@ def retriever_protocol_node(state: Dict[str, Any]) -> Dict[str, Any]:
     print(f"  entities: {len(entities)}개")
     print(f"{'='*60}\n")
 
-    return state
     return state    

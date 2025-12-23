@@ -34,7 +34,7 @@ def _build_evaluation_prompt(question: str, context: str) -> str:
 {context}
 ---
 
-위 문서들이 질문에 답변하기에 충분한 정보를 포함하고 있는지 평가하세요.
+위 문서들이 질문에 적합한 답변을 제공할 수 있는 자료인지 평가하세요.
 
 다음 형식으로만 답변하세요:
 관련성: [높음/낮음]
@@ -43,15 +43,15 @@ def _build_evaluation_prompt(question: str, context: str) -> str:
 """
 
 
-def _parse_evaluation_result(result: str) -> tuple[bool, float]:
+def _parse_evaluation_result(result: str) -> tuple[bool, float, str]:
     """
     평가 결과 파싱
-    
+
     Args:
         result: LLM 응답
-        
+
     Returns:
-        (is_relevant, relevance_score)
+        (is_relevant, relevance_score, reason)
     """
     # 관련성 판단
     if "높음" in result or "high" in result.lower():
@@ -60,7 +60,7 @@ def _parse_evaluation_result(result: str) -> tuple[bool, float]:
     else:
         is_relevant = False
         relevance_score = 0.3  # 기본값
-    
+
     # 점수 추출 시도
     if "점수:" in result or "score:" in result.lower():
         try:
@@ -68,7 +68,7 @@ def _parse_evaluation_result(result: str) -> tuple[bool, float]:
                 score_part = result.split("점수:")[1].split("\n")[0].strip()
             else:
                 score_part = result.split("score:")[1].split("\n")[0].strip()
-            
+
             # 숫자 추출
             import re
             numbers = re.findall(r'\d+\.?\d*', score_part)
@@ -79,8 +79,21 @@ def _parse_evaluation_result(result: str) -> tuple[bool, float]:
                     relevance_score = relevance_score / 100.0
         except:
             pass
-    
-    return is_relevant, relevance_score
+
+    # 이유 추출
+    reason = ""
+    if "이유:" in result:
+        reason = result.split("이유:")[1].strip()
+    elif "reason:" in result.lower():
+        reason_lower = result.lower()
+        idx = reason_lower.find("reason:")
+        reason = result[idx + 7:].strip()
+
+    # 이유가 너무 길면 첫 200자만
+    if len(reason) > 200:
+        reason = reason[:200] + "..."
+
+    return is_relevant, relevance_score, reason
 
 
 # ============================================
@@ -103,12 +116,18 @@ def bio_evaluate_chunk_node(state: Dict[str, Any]) -> Dict[str, Any]:
         - state["selected_chunks"]: 선택된 청크들
     """
     
+    # 사용 중인 LLM 모델 확인
+    from graph.llm_config import evaluate_chunk_bio_node_llm
+    llm_model_name = evaluate_chunk_bio_node_llm.__name__  # gpt4_1_nano, gpt4o_mini 등
+
     # 노드 진입 로그
     print(f"\n{'='*60}")
-    print(f"[OPEN_EVALUATE_CHUNK NODE] 시작 (GPT-4o-mini)")
+    print(f"[BIO_EVALUATE_CHUNK NODE] 시작")
+    print(f"  LLM 모델: {llm_model_name}")
     print(f"  question: {str(state.get('question', ''))[:30]}...")
     print(f"  rewritten_query: {str(state.get('rewritten_query', ''))[:30]}...")
     print(f"  retrieval_results: {len(state.get('retrieval_results', []))}개")
+    print(f"  reranked_results: {len(state.get('reranked_results', []))}개")
     print(f"{'='*60}\n")
     
     # 실제 검색에 사용된 질문 사용 (rewritten_query 우선, 없으면 question)
@@ -140,13 +159,20 @@ def bio_evaluate_chunk_node(state: Dict[str, Any]) -> Dict[str, Any]:
     prompt = _build_evaluation_prompt(search_query, context)
 
     try:
-        # GPT-4o-mini를 사용하여 관련성 평가
-        print(f"[OpenEvaluate] GPT-4o-mini로 평가 중...")
+        # LLM을 사용하여 관련성 평가
+        print(f"[BioEvaluate] {llm_model_name} 모델로 평가 중...")
         result = evaluate_chunk_bio_node_llm(prompt)
-        
+
         # 결과 파싱
-        is_relevant, relevance_score = _parse_evaluation_result(result)
-        
+        is_relevant, relevance_score, reason = _parse_evaluation_result(result)
+
+        # LLM 판단 근거 로그 출력
+        print(f"\n[BioEvaluate] LLM 평가 결과:")
+        print(f"  모델: {llm_model_name}")
+        print(f"  관련성: {'높음 ✅' if is_relevant else '낮음 ❌'}")
+        print(f"  점수: {relevance_score}")
+        print(f"  이유: {reason}\n")
+
         # 선택된 청크 생성 (관련성이 높은 경우에만)
         selected_chunks = []
         if is_relevant:
@@ -156,13 +182,13 @@ def bio_evaluate_chunk_node(state: Dict[str, Any]) -> Dict[str, Any]:
                 else:
                     content = str(result_item)
                 selected_chunks.append(content)
-        
+
         # 결과를 state에 저장
         state["chunk_is_relevant"] = is_relevant
         state["chunk_relevance_score"] = relevance_score
         state["selected_chunks"] = selected_chunks
-        
-        print(f"[OpenEvaluate] 완료 - 관련성: {is_relevant}, 점수: {relevance_score}, 청크: {len(selected_chunks)}개")
+
+        print(f"[BioEvaluate] 완료 - 관련성: {is_relevant}, 점수: {relevance_score}, 청크: {len(selected_chunks)}개")
         
     except Exception as e:
         print(f"[OpenEvaluate] 오류 발생: {e}")
@@ -171,7 +197,7 @@ def bio_evaluate_chunk_node(state: Dict[str, Any]) -> Dict[str, Any]:
         state["selected_chunks"] = []
     
     # 노드 종료 로그
-    print(f"\n[OPEN_EVALUATE_CHUNK NODE] 종료")
+    print(f"\n[BIO_EVALUATE_CHUNK NODE] 종료")
     print(f"  chunk_is_relevant: {state.get('chunk_is_relevant', False)}")
     print(f"  chunk_relevance_score: {state.get('chunk_relevance_score', 0.0)}")
     print(f"  selected_chunks: {len(state.get('selected_chunks', []))}개")
@@ -200,12 +226,18 @@ def protocol_evaluate_chunk_node(state: Dict[str, Any]) -> Dict[str, Any]:
         - state["selected_chunks"]: 선택된 청크들
     """
     
+    # 사용 중인 LLM 모델 확인
+    from graph.llm_config import evaluate_chunk_protocol_node_llm
+    llm_model_name = evaluate_chunk_protocol_node_llm.__name__  # gpt4_1_nano, sllm 등
+
     # 노드 진입 로그
     print(f"\n{'='*60}")
-    print(f"[SLLM_EVALUATE_CHUNK NODE] 시작 (로컬 sllm)")
+    print(f"[PROTOCOL_EVALUATE_CHUNK NODE] 시작")
+    print(f"  LLM 모델: {llm_model_name}")
     print(f"  question: {str(state.get('question', ''))[:30]}...")
     print(f"  rewritten_query: {str(state.get('rewritten_query', ''))[:30]}...")
     print(f"  retrieval_results: {len(state.get('retrieval_results', []))}개")
+    print(f"  reranked_results: {len(state.get('reranked_results', []))}개")
     print(f"{'='*60}\n")
     
     # 실제 검색에 사용된 질문 사용 (rewritten_query 우선, 없으면 question)
@@ -237,13 +269,20 @@ def protocol_evaluate_chunk_node(state: Dict[str, Any]) -> Dict[str, Any]:
     prompt = _build_evaluation_prompt(search_query, context)
 
     try:
-        # sllm (로컬 모델)을 사용하여 관련성 평가
-        print(f"[SLLMEvaluate] 로컬 sllm으로 평가 중 (보안)...")
+        # LLM을 사용하여 관련성 평가
+        print(f"[ProtocolEvaluate] {llm_model_name} 모델로 평가 중...")
         result = evaluate_chunk_protocol_node_llm(prompt)
-        
+
         # 결과 파싱
-        is_relevant, relevance_score = _parse_evaluation_result(result)
-        
+        is_relevant, relevance_score, reason = _parse_evaluation_result(result)
+
+        # LLM 판단 근거 로그 출력
+        print(f"\n[ProtocolEvaluate] LLM 평가 결과:")
+        print(f"  모델: {llm_model_name}")
+        print(f"  관련성: {'높음 ✅' if is_relevant else '낮음 ❌'}")
+        print(f"  점수: {relevance_score}")
+        print(f"  이유: {reason}\n")
+
         # 선택된 청크 생성 (관련성이 높은 경우에만)
         selected_chunks = []
         if is_relevant:
@@ -253,13 +292,13 @@ def protocol_evaluate_chunk_node(state: Dict[str, Any]) -> Dict[str, Any]:
                 else:
                     content = str(result_item)
                 selected_chunks.append(content)
-        
+
         # 결과를 state에 저장
         state["chunk_is_relevant"] = is_relevant
         state["chunk_relevance_score"] = relevance_score
         state["selected_chunks"] = selected_chunks
-        
-        print(f"[SLLMEvaluate] 완료 - 관련성: {is_relevant}, 점수: {relevance_score}, 청크: {len(selected_chunks)}개")
+
+        print(f"[ProtocolEvaluate] 완료 - 관련성: {is_relevant}, 점수: {relevance_score}, 청크: {len(selected_chunks)}개")
         
     except Exception as e:
         print(f"[SLLMEvaluate] 오류 발생: {e}")
@@ -268,7 +307,7 @@ def protocol_evaluate_chunk_node(state: Dict[str, Any]) -> Dict[str, Any]:
         state["selected_chunks"] = []
     
     # 노드 종료 로그
-    print(f"\n[SLLM_EVALUATE_CHUNK NODE] 종료")
+    print(f"\n[PROTOCOL_EVALUATE_CHUNK NODE] 종료")
     print(f"  chunk_is_relevant: {state.get('chunk_is_relevant', False)}")
     print(f"  chunk_relevance_score: {state.get('chunk_relevance_score', 0.0)}")
     print(f"  selected_chunks: {len(state.get('selected_chunks', []))}개")

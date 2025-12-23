@@ -104,27 +104,40 @@ def memory_read_basic_tool(chat_room_id: str, user_id: str = "default") -> dict:
     """
     이전 대화 참조가 필요할 때 호출되는 도구
     chat_room_id 기준으로 가장 최근 대화 1개만 조회
-    
+
     Args:
-        chat_room_id (str): 채팅방 ID
+        chat_room_id (str): 채팅방 ID (문자열로 받아서 정수 변환)
         user_id (str): 사용자 ID (기본값: "default")
-        
+
     Returns:
         dict: 직전 대화 정보
         {
             "last_question": "이전 질문",
-            "last_summary": "질문과 답변 요약", 
+            "last_summary": "질문과 답변 요약",
             "last_case_type": "BIO_Q",
             "last_topic": "단백질 폴딩",
             "has_previous": True/False
         }
     """
+    # chat_room_id를 정수로 변환 (DB 스키마가 Integer)
+    try:
+        chat_room_id_int = int(chat_room_id) if chat_room_id else None
+    except (ValueError, TypeError):
+        print(f"[memory_read_basic_tool] Warning: chat_room_id 변환 실패: {chat_room_id}")
+        return {
+            "last_question": "",
+            "last_summary": "",
+            "last_case_type": "",
+            "last_topic": "",
+            "has_previous": False
+        }
+
     db = Connect_PostgreSQL()
     try:
         # 메모리 조회
         memory = (
             db.query(ConversationMemory)
-            .filter_by(chat_room_id=chat_room_id, user_id=user_id)
+            .filter_by(chat_room_id=chat_room_id_int, user_id=user_id)
             .first()
         )
         
@@ -198,6 +211,13 @@ def memory_read_node(state):
     print(f"{'='*60}\n")
 
     chat_room_id = state.get("conversation_id")
+    # chat_room_id를 정수로 변환 (DB 스키마가 Integer, Django Chat.chat_sid 참조)
+    try:
+        chat_room_id = int(chat_room_id) if chat_room_id else None
+    except (ValueError, TypeError):
+        print(f"[MemoryRead] Warning: chat_room_id 변환 실패: {chat_room_id}")
+        chat_room_id = None
+
     user_id = state.get("user_id", "default")
 
     db = Connect_PostgreSQL()
@@ -302,16 +322,23 @@ def memory_write_node(state):
     print(f"{'='*60}\n")
     
     chat_room_id = state.get("conversation_id")
+    # chat_room_id를 정수로 변환 (DB 스키마가 Integer, Django Chat.chat_sid 참조)
+    try:
+        chat_room_id = int(chat_room_id) if chat_room_id else None
+    except (ValueError, TypeError):
+        print(f"[MemoryWrite] Warning: chat_room_id 변환 실패: {chat_room_id}")
+        chat_room_id = None
+
     user_id = state.get("user_id", "default")
     current_case_type = state.get("case_type", "NO_RELATION")
 
     db = Connect_PostgreSQL()
     try:
         # NO_RELATION이 아닌 경우에만 저장
-        if (state.get("question") and state.get("final_answer") 
+        if (state.get("question") and state.get("final_answer")
             and current_case_type != "NO_RELATION"):
 
-            full_answer = state.get("final_answer", "")
+            full_answer = state.get("final_answer", "") or "답변을 생성하지 못했습니다."
             question = state.get("question", "")
 
             # chat_title은 Django에서 첫 메시지에서만 생성하므로 LangGraph에서는 제거
@@ -326,10 +353,13 @@ def memory_write_node(state):
 사용자 발화: {question}
 
 요약 규칙:
-1. 반드시 1문장으로 작성 (마침표 포함)
-2. "사용자는 ~입니다." 또는 "사용자는 ~이다." 형식 사용
-3. 이름과 핵심 신분/직업 정보만 포함 (이름 & 학생/연구원/교수/포닥/박사과정/석사과정/학부생 등)
-4. 50자 이내로 간결하게 작성
+1. 사용자가 직접 명시한 내용만 요약 (추측하거나 임의로 추가하지 말 것)
+2. 반드시 1문장으로 작성 (마침표 포함)
+3. "사용자는 ~입니다." 또는 "사용자는 ~이다." 형식 사용
+4. 사용자가 명시적으로 말한 이름과 신분/직업 정보만 포함
+5. 사용자가 "학생", "연구원", "교수" 등을 직접 말하지 않았다면 추가하지 말 것
+6. 50자 이내로 간결하게 작성
+7. 사용자가 정보를 제공하지 않고 질문만 했다면 빈 문자열 반환
 
 요약만 출력하세요:"""
                     summary = memory_summarize_tool_llm(prompt).strip()
