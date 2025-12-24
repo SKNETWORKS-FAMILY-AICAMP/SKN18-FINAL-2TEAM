@@ -418,3 +418,4 @@ infra/neo4j/plugins/**
 # 로컬모델 다운받는 폴더
 graph\models\*
 *__init__.py
+*graph\models\*

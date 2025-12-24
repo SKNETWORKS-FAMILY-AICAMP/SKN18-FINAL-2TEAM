@@ -303,6 +303,13 @@ async function handleSend() {
     // Close recommendations
     closeRecommendations();
 
+    // 새로운 질문을 보낼 때 이전 레퍼런스 모달 숨기기
+    references = [];
+    if (referencesSidebar) {
+        referencesSidebar.style.display = 'none';
+    }
+    renderReferences();
+
     // 목적: AI 응답 대기 중 사용자에게 로딩 상태 표시
     // AI 로딩 메시지 추가 (애니메이션 효과와 함께 표시됨)
     const loadingMessage = {
@@ -621,15 +628,16 @@ function renderMessages() {
                 `;
             }
             
-            // 타이핑 애니메이션 중: 커서 깜빡임 표시
+            // 타이핑 애니메이션 중: 마크다운 렌더링
             if (msg.is_typing) {
+                const renderedContent = window.MarkdownUtils ? window.MarkdownUtils.render(msg.content || '') : escapeHtml(msg.content);
                 return `
                     <div class="message-item" data-message-id="${msg.message_id || ''}">
                         <div class="message-assistant">
                             <div class="message-avatar assistant-avatar">AI</div>
                             <div class="message-content-assistant">
                                 <div class="markdown-content">
-                                    <p>${escapeHtml(msg.content)}<span class="typing-cursor">|</span></p>
+                                    ${renderedContent}
                                 </div>
                             </div>
                         </div>
