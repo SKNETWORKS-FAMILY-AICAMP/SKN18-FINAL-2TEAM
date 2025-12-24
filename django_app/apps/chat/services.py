@@ -115,32 +115,54 @@ def _format_citations(raw_result: Dict[str, Any]) -> tuple[List[Dict[str, Any]],
 
     # answer_sources (웹 검색 URL)도 추가 - web_selected_chunks가 있을 때만
     if web_selected_chunks and web_results:
-        for idx, web_result in enumerate(web_results[:len(web_selected_chunks)], len(formatted) + 1):
-            # 웹 검색 결과에서 제목과 URL 추출
-            result_title = web_result.get("title", "")
-            result_url = web_result.get("url", "")
+        print(f"[DEBUG _format_citations] web_selected_chunks 처리 중: {len(web_selected_chunks)}개")
 
-            # 제목이 없으면 URL에서 도메인 추출
-            if not result_title and result_url:
-                try:
-                    from urllib.parse import urlparse
-                    parsed = urlparse(result_url)
-                    result_title = parsed.netloc.replace("www.", "")
-                except:
-                    result_title = "웹 출처"
+        # "웹자료 N:" 형식에서 인덱스 추출
+        selected_indices = []
+        for chunk in web_selected_chunks:
+            try:
+                if chunk.startswith('웹자료') and ':' in chunk:
+                    idx_str = chunk.split(':')[0].replace('웹자료', '').strip()
+                    idx = int(idx_str) - 1  # 0-based index
+                    selected_indices.append(idx)
+                    print(f"[DEBUG] 웹자료 인덱스 추출: '{chunk[:30]}...' → idx: {idx}")
+            except Exception as e:
+                print(f"[DEBUG] 웹자료 인덱스 추출 실패: {chunk[:30]}, error: {e}")
+                pass
 
-            formatted.append({
-                "id": idx,
-                "title": result_title or f"웹 출처 {idx - len(formatted)}",
-                "journal": "",
-                "year": "",
-                "doi": "",
-                "pmid": "",
-                "authors": "",
-                "source_type": "web",
-                "url": result_url,
-                "score": 0.9,  # 웹서치는 evaluate_web에서 이미 관련성 평가 통과 → 높은 관련성
-            })
+        print(f"[DEBUG] selected_indices: {selected_indices}")
+
+        # 선택된 인덱스의 web_results만 references로 추가
+        for idx in selected_indices:
+            if 0 <= idx < len(web_results):
+                web_result = web_results[idx]
+                result_title = web_result.get("title", "")
+                result_url = web_result.get("url", "")
+                result_snippet = web_result.get("snippet", "")
+
+                # 제목이 없으면 URL에서 도메인 추출
+                if not result_title and result_url:
+                    try:
+                        from urllib.parse import urlparse
+                        parsed = urlparse(result_url)
+                        result_title = parsed.netloc.replace("www.", "")
+                    except:
+                        result_title = "웹 출처"
+
+                formatted.append({
+                    "id": len(formatted) + 1,
+                    "title": result_title or f"웹 자료 {idx + 1}",
+                    "journal": "",
+                    "year": "",
+                    "doi": "",
+                    "pmid": "",
+                    "authors": "",
+                    "source_type": "web",
+                    "url": result_url,
+                    "snippet": result_snippet[:200],  # 200자까지
+                    "score": 0.9,  # 웹서치는 evaluate_web에서 이미 관련성 평가 통과 → 높은 관련성
+                })
+                print(f"[DEBUG] 웹 reference 추가: idx={idx}, title={result_title[:50]}")
 
     return formatted, case_type
 
