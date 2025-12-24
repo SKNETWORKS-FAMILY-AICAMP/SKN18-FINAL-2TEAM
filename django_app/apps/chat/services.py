@@ -185,8 +185,8 @@ def generate_ai_response(conversation: Chat, prompt: str) -> tuple[str, list, di
     app = _get_graph_app() # workflow.compile() 결과
     payload = {
         "question": prompt,
-        "conversation_id": str(conversation.chat_sid),  # 수정: conversation.id → conversation.chat_sid (Chat 모델의 실제 PK)
-        "user_id": str(conversation.created_id),  # 수정: conversation.user.id → conversation.created_id (Chat 모델에는 user FK가 없음)
+        "conversation_id": str(conversation.chat_sid),  # Chat 모델의 PK (문자열로 전달, memory.py에서 정수 변환)
+        "user_id": str(conversation.created_id),  # User ID 문자열
     }
     result_state = app.invoke(payload) # ⭐ 워크플로우 시작!
     structured = result_state.get("structured_answer") or {}
