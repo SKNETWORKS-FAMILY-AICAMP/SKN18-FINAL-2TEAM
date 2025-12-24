@@ -1,8 +1,147 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
-테스트용 청킹 스텁.
+PubMed 섹션 CSV를 받아 청크 CSV를 만드는 실행 스크립트.
+
+- pipeline_runner 에서: run(processed_dir, chunks_dir)
+- 단독 실행: python rag/etl/step04_chunk/01_chunker_pubmed.py [옵션]
 """
+
+import argparse
+import logging
+import os
+from pathlib import Path
+
+from rag.etl.step04_chunk.pmc_chunk_common.chunk_generator_v2 import ChunkGenerator
+from rag.etl.step04_chunk.pmc_chunk_common.chunking import DEFAULT_CHUNK_SIZE, DEFAULT_OVERLAP
+
+logger = logging.getLogger(__name__)
+
+
+def _run_internal(
+    processed_dir: str,
+    chunks_dir: str,
+    chunk_size: int,
+    overlap: int,
+    batch_size: int,
+    resume: bool,
+) -> None:
+    processed_base = Path(processed_dir)
+    chunks_base = Path(chunks_dir)
+
+    input_csv = processed_base / "pubmed" / "pmc_csv" / "sections_for_chunk.csv"
+    chunk_csv = chunks_base / "pubmed" / "pmc_chunks.csv"
+
+    logger.info(
+        "[CHUNK:PubMed] input_csv=%s, chunk_csv=%s, chunk_size=%d, overlap=%d, "
+        "batch_size=%d, resume=%s",
+        input_csv,
+        chunk_csv,
+        chunk_size,
+        overlap,
+        batch_size,
+        resume,
+    )
+
+    if not input_csv.exists():
+        logger.error("[CHUNK:PubMed] sections_for_chunk.csv가 없습니다: %s", input_csv)
+        return
+
+    # 출력 디렉터리 생성
+    chunk_csv.parent.mkdir(parents=True, exist_ok=True)
+
+    gen = ChunkGenerator(
+        input_csv=str(input_csv),
+        chunk_csv=str(chunk_csv),
+        chunk_size=chunk_size,
+        overlap=overlap,
+        batch_size=batch_size,
+        meta_csv=None,      # 메타는 이미 분리되어 있다고 가정
+        split_meta=False,
+    )
+
+    gen.run(resume=resume)
+    logger.info("[CHUNK:PubMed] chunking 완료: %s", chunk_csv)
 
 
 def run(processed_dir: str, chunks_dir: str) -> None:
-    """청크 생성 대신 경로 정보만 출력한다."""
-    print(f"[CHUNK] processed_dir={processed_dir}, chunks_dir={chunks_dir}")
+    """pipeline_runner 에서 사용하는 엔트리포인트."""
+    logger.info(
+        "[CHUNK:PubMed] run() called with processed_dir=%s, chunks_dir=%s",
+        processed_dir,
+        chunks_dir,
+    )
+    _run_internal(
+        processed_dir=processed_dir,
+        chunks_dir=chunks_dir,
+        chunk_size=DEFAULT_CHUNK_SIZE,
+        overlap=DEFAULT_OVERLAP,
+        batch_size=100,
+        resume=True,
+    )
+
+
+def main(argv=None) -> None:
+    """직접 실행용 CLI 엔트리포인트."""
+    ap = argparse.ArgumentParser(
+        description="PubMed sections_for_chunk.csv 를 pmc_chunks.csv 로 청킹하는 스크립트"
+    )
+    ap.add_argument(
+        "--processed-dir",
+        default=os.getenv("ETL_PROCESSED_DIR", "data/processed"),
+        help="정규화된 데이터 루트 디렉터리 (기본: data/processed)",
+    )
+    ap.add_argument(
+        "--chunks-dir",
+        default=os.getenv("ETL_CHUNKS_DIR", "data/chunks"),
+        help="청크 결과 루트 디렉터리 (기본: data/chunks)",
+    )
+    ap.add_argument(
+        "--chunk-size",
+        type=int,
+        default=DEFAULT_CHUNK_SIZE,
+        help=f"청크 길이 (기본: {DEFAULT_CHUNK_SIZE})",
+    )
+    ap.add_argument(
+        "--overlap",
+        type=int,
+        default=DEFAULT_OVERLAP,
+        help=f"청크 오버랩 길이 (기본: {DEFAULT_OVERLAP})",
+    )
+    ap.add_argument(
+        "--batch-size",
+        type=int,
+        default=100,
+        help="진행률 출력용 배치 사이즈 (기본: 100)",
+    )
+    ap.add_argument(
+        "--no-resume",
+        action="store_true",
+        help="기존 pmc_chunks.csv를 무시하고 처음부터 다시 생성",
+    )
+
+    args = ap.parse_args(argv)
+
+    logger.info(
+        "[CHUNK:PubMed] CLI 실행: processed_dir=%s, chunks_dir=%s, chunk_size=%d, "
+        "overlap=%d, batch_size=%d, no_resume=%s",
+        args.processed_dir,
+        args.chunks_dir,
+        args.chunk_size,
+        args.overlap,
+        args.batch_size,
+        args.no_resume,
+    )
+
+    _run_internal(
+        processed_dir=args.processed_dir,
+        chunks_dir=args.chunks_dir,
+        chunk_size=args.chunk_size,
+        overlap=args.overlap,
+        batch_size=args.batch_size,
+        resume=not args.no_resume,
+    )
+
+
+if __name__ == "__main__":
+    main()
