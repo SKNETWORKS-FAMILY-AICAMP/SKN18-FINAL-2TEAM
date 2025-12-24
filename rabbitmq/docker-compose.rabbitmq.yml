@@ -1,0 +1,37 @@
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"       # RabbitMQ default port
+      - "15672:15672"     # RabbitMQ management UI port
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin123
+
+  api:
+    build: ./api
+    container_name: api
+    ports:
+      - "8000:8000"
+    environment:
+      RabbitMQ_HOST: rabbitmq
+      RABBITMQ_USER: admin
+      RABBITMQ_PASS: admin123
+      QUEUE_NAME: alphafold_jobs
+    depends_on:
+      - rabbitmq
+  
+  worker:
+    build: ./worker
+    container_name: worker
+    environment:
+      RabbitMQ_HOST: rabbitmq
+      RABBITMQ_USER: admin
+      RABBITMQ_PASS: admin123
+      QUEUE_NAME: alphafold_jobs
+      RESULTS_DIR: /shared/results
+    volumes:
+      - ./shared:/shared
+    depends_on:
+      - rabbitmq
