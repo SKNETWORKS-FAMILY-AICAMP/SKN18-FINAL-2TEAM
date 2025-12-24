@@ -7,6 +7,7 @@ import os
 import argparse
 import csv
 import time
+import json
 from typing import List, Dict, Tuple, Any, Optional
 
 import psycopg2
@@ -482,7 +483,12 @@ def save_to_csv(results: List[Dict[str, Any]], filename: str):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--query", "-q", required=True, help="질문 내용")
+    
+    # --query 또는 --query-file 중 하나는 필수
+    query_group = parser.add_mutually_exclusive_group(required=True)
+    query_group.add_argument("--query", "-q", help="단일 질문 내용")
+    query_group.add_argument("--query-file", "-f", help="질문이 담긴 파일 경로 (CSV 또는 TXT)")
+    
     parser.add_argument("--k", type=int, default=5, help="최종 반환 개수")
     parser.add_argument("--k-vec", type=int, default=50)
     parser.add_argument("--k-kw", type=int, default=50)
@@ -491,59 +497,176 @@ if __name__ == "__main__":
     parser.add_argument("--embedding-model", default=None)
     parser.add_argument("--with-metrics", action="store_true")
     
-    # [옵션] CSV 저장 파일명
-    parser.add_argument("--output", "-o", default=None, help="결과를 저장할 CSV 파일 경로 (예: result.csv)")
+    # [옵션] 결과 저장 파일명
+    parser.add_argument("--output", "-o", default=None, help="결과를 저장할 파일 경로")
     # [옵션] 답변 생성 여부
     parser.add_argument("--generate", "-g", action="store_true", help="LLM 답변 생성")
     
     args = parser.parse_args()
 
-    # 1. 검색 수행 (System B 함수 호출로 수정)
-    if args.with_metrics:
-        # [수정됨] run_system_a -> run_system_b
-        # [수정됨] ef_search 인자 추가
-        out = run_system_b_with_metrics(
-            query_text=args.query,
-            k_final=args.k,
-            k_vec=args.k_vec,
-            k_kw=args.k_kw,
-            rrf_k=args.rrf_k,
-            ef_search=args.ef_search, 
-            embedding_model=args.embedding_model,
-        )
-        results = out["results"]
-        # CSV 저장이 아닐 때만 콘솔에 JSON 출력
-        if not args.output and not args.generate:
-            print(json.dumps(out, ensure_ascii=False, indent=2))
-    else:
-        # [수정됨] run_system_a -> run_system_b
-        # [수정됨] ef_search 인자 추가
-        results = run_system_b(
-            query_text=args.query,
-            k_final=args.k,
-            k_vec=args.k_vec,
-            k_kw=args.k_kw,
-            rrf_k=args.rrf_k,
-            ef_search=args.ef_search,
-            embedding_model=args.embedding_model,
-        )
-        if not args.output and not args.generate:
-            print(json.dumps(results, ensure_ascii=False, indent=2))
-
-    # 2. CSV 저장 (옵션이 있을 경우)
-    if args.output:
-        save_to_csv(results, args.output)
-
-    # 3. 답변 생성 (옵션이 있을 경우)
-    if args.generate:
-        print(f"\n🚀 검색된 청크 개수: {len(results)}개")
-        print("-" * 50)
-        final_answer = generate_answer(args.query, results)
-        print(f"📄 질문: {args.query}")
-        print("=" * 50)
-        print(f"🤖 AI 답변:\n{final_answer}")
-        print("=" * 50)
+    # ========================================
+    # 배치 처리: 파일에서 여러 질문 읽기
+    # ========================================
+    if args.query_file:
+        import pandas as pd
+        from pathlib import Path
         
-        # 답변 파일 저장 필요시 주석 해제
-        # with open(f"answer_{args.output or 'output.txt'}.txt", "w", encoding="utf-8") as f:
-        #     f.write(final_answer)
+        file_path = Path(args.query_file)
+        
+        # 파일 확장자에 따라 다르게 처리
+        if file_path.suffix.lower() == '.csv':
+            df = pd.read_csv(file_path)
+            # user_input 컬럼이 있으면 사용, 없으면 첫 번째 컬럼 사용
+            if 'user_input' in df.columns:
+                queries = df['user_input'].dropna().tolist()
+            else:
+                queries = df.iloc[:, 0].dropna().tolist()
+        else:
+            # 텍스트 파일: 한 줄에 하나씩 질문
+            with open(file_path, 'r', encoding='utf-8') as f:
+                queries = [line.strip() for line in f if line.strip()]
+        
+        print(f"📁 파일에서 {len(queries)}개 질문 로드 완료\n")
+        
+        # 전체 결과 저장
+        batch_results = []
+        
+        for idx, query_text in enumerate(queries, 1):
+            print(f"\n{'='*70}")
+            print(f"📝 질문 {idx}/{len(queries)}")
+            print(f"{'='*70}")
+            print(f"Q: {query_text[:100]}..." if len(query_text) > 100 else f"Q: {query_text}")
+            
+            try:
+                # 검색 수행
+                if args.with_metrics:
+                    out = run_system_b_with_metrics(
+                        query_text=query_text,
+                        k_final=args.k,
+                        k_vec=args.k_vec,
+                        k_kw=args.k_kw,
+                        rrf_k=args.rrf_k,
+                        ef_search=args.ef_search,
+                        embedding_model=args.embedding_model,
+                    )
+                    results = out["results"]
+                    metrics = out["metrics"]
+                else:
+                    results = run_system_b(
+                        query_text=query_text,
+                        k_final=args.k,
+                        k_vec=args.k_vec,
+                        k_kw=args.k_kw,
+                        rrf_k=args.rrf_k,
+                        ef_search=args.ef_search,
+                        embedding_model=args.embedding_model,
+                    )
+                    metrics = {}
+                
+                print(f"✅ 검색 완료: {len(results)}개 결과")
+                if metrics:
+                    print(f"⏱️  소요 시간: {metrics.get('total_ms', 0):.1f}ms")
+                
+                # 결과 저장
+                batch_results.append({
+                    "question_id": idx,
+                    "question": query_text,
+                    "results_count": len(results),
+                    "results": results,
+                    "metrics": metrics if args.with_metrics else None
+                })
+                
+            except Exception as e:
+                print(f"❌ 에러: {e}")
+                batch_results.append({
+                    "question_id": idx,
+                    "question": query_text,
+                    "error": str(e)
+                })
+            
+            # 부하 방지
+            time.sleep(0.5)
+        
+        # 전체 결과 저장
+        if args.output:
+            output_file = args.output
+        else:
+            # 자동 번호 증가: batch_results_b_1.json, batch_results_b_2.json, ...
+            from pathlib import Path
+            import re
+            
+            # 현재 디렉토리에서 batch_results_b_*.json 파일 찾기
+            existing_files = list(Path('.').glob('batch_results_b_*.json'))
+            
+            # 기존 파일에서 번호 추출
+            max_num = 0
+            for f in existing_files:
+                match = re.search(r'batch_results_b_(\d+)\.json', f.name)
+                if match:
+                    num = int(match.group(1))
+                    max_num = max(max_num, num)
+            
+            # 다음 번호로 파일명 생성
+            output_file = f"batch_results_b_{max_num + 1}.json"
+        
+        with open(output_file, "w", encoding="utf-8") as f:
+            json.dump(batch_results, f, ensure_ascii=False, indent=2)
+        
+        print(f"\n{'='*70}")
+        print(f"🎉 배치 처리 완료!")
+        print(f"{'='*70}")
+        print(f"✅ 총 처리: {len(batch_results)}개")
+        print(f"📊 결과 있음: {sum(1 for r in batch_results if r.get('results_count', 0) > 0)}개")
+        print(f"⚠️  결과 없음: {sum(1 for r in batch_results if r.get('results_count', 0) == 0)}개")
+        print(f"📁 결과 저장: {output_file}")
+        print(f"{'='*70}")
+        
+    # ========================================
+    # 단일 질문 처리 (기존 로직)
+    # ========================================
+    else:
+        # 1. 검색 수행 (System B 함수 호출로 수정)
+        if args.with_metrics:
+            out = run_system_b_with_metrics(
+                query_text=args.query,
+                k_final=args.k,
+                k_vec=args.k_vec,
+                k_kw=args.k_kw,
+                rrf_k=args.rrf_k,
+                ef_search=args.ef_search, 
+                embedding_model=args.embedding_model,
+            )
+            results = out["results"]
+            # CSV 저장이 아닐 때만 콘솔에 JSON 출력
+            if not args.output and not args.generate:
+                print(json.dumps(out, ensure_ascii=False, indent=2))
+        else:
+            results = run_system_b(
+                query_text=args.query,
+                k_final=args.k,
+                k_vec=args.k_vec,
+                k_kw=args.k_kw,
+                rrf_k=args.rrf_k,
+                ef_search=args.ef_search,
+                embedding_model=args.embedding_model,
+            )
+            if not args.output and not args.generate:
+                print(json.dumps(results, ensure_ascii=False, indent=2))
+
+        # 2. CSV 저장 (옵션이 있을 경우)
+        if args.output:
+            save_to_csv(results, args.output)
+
+        # 3. 답변 생성 (옵션이 있을 경우)
+        if args.generate:
+            print(f"\n🚀 검색된 청크 개수: {len(results)}개")
+            print("-" * 50)
+            final_answer = generate_answer(args.query, results)
+            print(f"📄 질문: {args.query}")
+            print("=" * 50)
+            print(f"🤖 AI 답변:\n{final_answer}")
+            print("=" * 50)
+            
+            # 답변 파일 저장 필요시 주석 해제
+            # with open(f"answer_{args.output or 'output.txt'}.txt", "w", encoding="utf-8") as f:
+            #     f.write(final_answer)

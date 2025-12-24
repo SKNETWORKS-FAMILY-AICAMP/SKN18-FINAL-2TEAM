@@ -1,0 +1,947 @@
+[
+  {
+    "question_id": 1,
+    "question": "why supernatant incubated 1.5 h at 37°C with p-nitrophenyl-N-acetyl-β-D-glucosaminide in experiment?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC38974913_sec9_C02",
+        "text": "The supernatant(50 μL) was incubated for 1.5 h at 37°C with 50 μL of p-nitrophenyl-N-acetyl-β-D-glucosaminide. Afterward, the reaction was terminated by the addition of 200 μL of 0. M sodium carbonate buffer. The generation of p-nitrophenol in supernatant was utilized to quantify the activity of β-hexosaminidase(β-HEX) by absorbance at 405 nm. The released rate of β-HEX was calculated as(ODdrug − ODcontrol)/(ODmodel − ODcontrol)× 100%.",
+        "title": "Discovery of pharmacological effects and targets of Citri Grandis Exocarpium based on SYSTCM and virtual screening",
+        "section": "IgE-induced degranulation assay",
+        "similarity": 0.03278688524590164,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC38974913_sec9_C01",
+        "text": "RBL-2H3(1.5 × 10^{4} cells/well) were seeded and cultured into 96-well plates overnight, and the cell medium was replaced with medium supplemented with or without 400 ng/mL anti-dinitrophenyl-IgE for sensitization. After sensitizing for 24 h, the cells were pretreated with ECGE or naringin for 1 h at 37°C. After incubation, the cells were stimulated with or without 400 ng/mL DNP-bovine serum albumin for 30 min at 37°C and cooled to 0°C in an external ice bath for 10 min. The supernatant(50 μL) was incubated for 1.5 h at 37°C with 50 μL of p-nitrophenyl-N-acetyl-β-D-glucosaminide.",
+        "title": "Discovery of pharmacological effects and targets of Citri Grandis Exocarpium based on SYSTCM and virtual screening",
+        "section": "IgE-induced degranulation assay",
+        "similarity": 0.03225806451612903,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39507050_sec15_C01",
+        "text": "The galactofuranosyltransferase activity was measured as previously described. p-Nitrophenyl β- D- galactofuranoside was obtained from Toronto Research Chemicals. Standard assays used 1.5 mM pNP-β- D- Galf acceptor substrate, 20 mM UDP-α- D- galactopyranose, purified Glf protein(UDP-α- D- galactopyranose mutase from E. coli, 10.6 ug), 20 mM NADH, and purified GfsA(3.0 µg) proteins in a 20-µL total volume. The mixtures were incubated at 30°C for 3 h, and the reaction was stopped by heating at 99°C for 5 min.",
+        "title": "Substrate binding and catalytic mechanism of UDP-α-D-galactofuranose: β-galactofuranoside β-(1→5)-galactofuranosyltransferase GfsA",
+        "section": "Galactofuranosyltransferase assay",
+        "similarity": 0.03125763125763126,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39507050_sec15_C02",
+        "text": "The mixtures were incubated at 30°C for 3 h, and the reaction was stopped by heating at 99°C for 5 min. Supernatants were analyzed via high-performance liquid chromatography with an amino column Shodex Asahipak NH2P-50 4E(250 × 4.6 mm, Showa Denko, Tokyo, Japan). p-Nitrophenyl derivatives were detected by their absorbance at 300 nm, and the number of transferred β-galactofuranose residues computed from the peak area was defined as the activity value.",
+        "title": "Substrate binding and catalytic mechanism of UDP-α-D-galactofuranose: β-galactofuranoside β-(1→5)-galactofuranosyltransferase GfsA",
+        "section": "Galactofuranosyltransferase assay",
+        "similarity": 0.028006267136701922,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39449370_sec7_C02",
+        "text": "The resulting mixture was incubated for 24 h at 20 °C with shaking at 100 rpm and centrifuged for 15 min at 4400× g. The resulting supernatant, corresponding to the solubilized target protein, was analyzed by SDS-PAGE and tested for D-carbamoylase activity.",
+        "title": "Structural Analysis and Substrate Specificity of D-Carbamoylase from Pseudomonas",
+        "section": "Solving of Inclusion Bodies",
+        "similarity": 0.022730207929742993,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 811.9534999132156,
+      "neo4j_ms": 158.16500002983958,
+      "total_ms": 1351.3145000906661,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 36,
+        "total_tokens": 36
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 2,
+    "question": "What is the role of STZ in the expermental protocl for inducing DKD in rats?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC39739966_sec3_C02",
+        "text": "The experimental protocol was approved by the Ethical Committee of Southeast University. Six-week-old healthy male Sprague–Dawley rats weighing g were obtained from Shanghai Slac Laboratory Animal. After one week of acclimation, the rats were randomly divided into four groups: NC(normal control group, n = 6), DKD(DKD rats, n = 6). DKD was induced with a single intraperitoneal injection of STZ dissolved in 0. M citrate buffer at 58 mg/kg, and the control rats received only the 0. M citrate buffer solution.",
+        "title": "High glucose promotes macrophage switching to the M1 phenotype via the downregulation of STAT-3 mediated autophagy",
+        "section": "Animal experiments",
+        "similarity": 0.032018442622950824,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39739966_sec3_C03",
+        "text": "Six-week-old healthy male Sprague–Dawley rats weighing g were obtained from Shanghai Slac Laboratory Animal. After one week of acclimation, the rats were randomly divided into four groups: NC(normal control group, n = 6), DKD(DKD rats, n = 6). DKD was induced with a single intraperitoneal injection of STZ dissolved in 0. M citrate buffer at 58 mg/kg, and the control rats received only the 0. M citrate buffer solution. Three days later, the diabetic state was confirmed by measuring the tail blood glucose level.",
+        "title": "High glucose promotes macrophage switching to the M1 phenotype via the downregulation of STAT-3 mediated autophagy",
+        "section": "Animal experiments",
+        "similarity": 0.0315136476426799,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39739966_sec13_C01",
+        "text": "At the beginning of the study, there was no difference in blood glucose or body weight between the two groups. Compared with the NC rats, the DKD rats developed overt diabetes after STZ injection, with lower body weights and higher blood glucose levels(P<0.05, Fig 1A and 1B). As expected, the DKD rats presented increased proteinuria(P<0.05). Table 1 shows the baseline and final parameters of the DKD rats. Scr, BUN, and kidney-to-body weight ratios all increased significantly in DKD rats. The kidneys of DKD rats presented severe morphological lesions.",
+        "title": "High glucose promotes macrophage switching to the M1 phenotype via the downregulation of STAT-3 mediated autophagy",
+        "section": "Association of autophagy, STAT-3, and the macrophage phenotype in STZ-induced rat kidneys",
+        "similarity": 0.03149801587301587,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39739966_sec13_C02",
+        "text": "The kidneys of DKD rats presented severe morphological lesions. In DKD rats, the glomerular surface area increased, and the glomerular mesangial matrix extended. According to the immunohistochemistry results, the DKD group had significantly more CD68-positive and CD86-positive macrophages.(P<0.05, Fig 1E and 1F). Western blot analysis was used to determine the protein levels of CD68, M1 markers(iNOS and TNF-α), and M2 markers in the renal tissues of STZ-induced DKD rats. The DKD group presented higher levels of CD68 and M1 marker expression compared to the NC group.",
+        "title": "High glucose promotes macrophage switching to the M1 phenotype via the downregulation of STAT-3 mediated autophagy",
+        "section": "Association of autophagy, STAT-3, and the macrophage phenotype in STZ-induced rat kidneys",
+        "similarity": 0.03047794966520434,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39452068_sec12_C28",
+        "text": "The difference in Na,K-ATPase activity between STZ-induced diabetic models and ZDF rats might be due to the direct inhibitory effect of STZ on this enzyme in brain tissue. Additionally, insulin is known to stimulate Na,K-ATPase, and both groups of ZDF fa/fa rats in this study exhibited increased plasma insulin concentrations, which can at least partially cross the blood–brain barrier.",
+        "title": "Oxidative Stress Markers and Na,K-ATPase Enzyme Kinetics Are Altered in the Cerebellum of Zucker Diabetic Fatty fa/fa Rats: A Comparison with Lean fa/+ and Wistar Rats",
+        "section": "Discussion",
+        "similarity": 0.029386529386529386,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 424.51909999363124,
+      "neo4j_ms": 142.8150999126956,
+      "total_ms": 924.9601999763399,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 20,
+        "total_tokens": 20
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 3,
+    "question": "Why we use ChEMBL for improve ChooseLD prediction?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC39802744_sec2_C07",
+        "text": "Contemporary databases, such as ChEMBL, play a vital role in drug discovery research by providing mass-cleaned datasets. Docking simulation methodologies and the databases are progressing, although the predictive capabilities of molecular docking are not fully complete and the contributing factors are not fully understood. This study aimed to enhance the predictive capabilities of ChooseLD by tuning its prediction parameters using ChEMBL-provided data.",
+        "title": "Data-driven score tuning for ChooseLD: A structure-based drug design algorithm with empirical scoring and evaluation of ligand–protein docking predictability",
+        "section": "Introduction",
+        "similarity": 0.03252247488101534,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39802744_sec2_C09",
+        "text": "This study aimed to enhance the predictive capabilities of ChooseLD by tuning its prediction parameters using ChEMBL-provided data. Subsequently, the obtained calculated scores were compared to those of AutoDock Vina(subsequently denoted as “Vina”), leveraging a force field-based scoring methodology as the main algorithm in SBDD. This comparative analysis revealed that the learning model established using modified ChooseLD was efficacious in predicting bioactivity data associated with proteins with numerous experimentally analyzed ligands in homologous protein structures.",
+        "title": "Data-driven score tuning for ChooseLD: A structure-based drug design algorithm with empirical scoring and evaluation of ligand–protein docking predictability",
+        "section": "Introduction",
+        "similarity": 0.03252247488101534,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39802744_sec2_C05",
+        "text": "Among these methods, ChooseLD predominantly employs empirical scoring, characterized by knowledge-based scoring. The processing speed of the empirical-based method is fast owing to its utilization of a simple empirical term; however, its estimation performance depends on the quality of the knowledge database. Contemporary databases, such as ChEMBL, play a vital role in drug discovery research by providing mass-cleaned datasets.",
+        "title": "Data-driven score tuning for ChooseLD: A structure-based drug design algorithm with empirical scoring and evaluation of ligand–protein docking predictability",
+        "section": "Introduction",
+        "similarity": 0.031024531024531024,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39802744_sec10_C01",
+        "text": "ChooseLD, which employs empirical scoring, is recommended when a sufficient number of spatially ordered PDB ligands are available. Software leveraging force-field-based screening, such as Vina, holds an advantage in predicting proteins with limited available ligand information or ligands exhibiting poor spatial orderliness. The use of the learning model of ChooseLD that leverages empirical scoring is expected to be beneficial for targets extending beyond GPCRs and kinases, provided there is sufficient database information on proteins and ligands with proper selection.",
+        "title": "Data-driven score tuning for ChooseLD: A structure-based drug design algorithm with empirical scoring and evaluation of ligand–protein docking predictability",
+        "section": "Conclusion",
+        "similarity": 0.028991596638655463,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39802744_sec2_C08",
+        "text": "Docking simulation methodologies and the databases are progressing, although the predictive capabilities of molecular docking are not fully complete and the contributing factors are not fully understood. This study aimed to enhance the predictive capabilities of ChooseLD by tuning its prediction parameters using ChEMBL-provided data. Subsequently, the obtained calculated scores were compared to those of AutoDock Vina(subsequently denoted as “Vina”), leveraging a force field-based scoring methodology as the main algorithm in SBDD.",
+        "title": "Data-driven score tuning for ChooseLD: A structure-based drug design algorithm with empirical scoring and evaluation of ligand–protein docking predictability",
+        "section": "Introduction",
+        "similarity": 0.0273972602739726,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 316.52980006765574,
+      "neo4j_ms": 149.49590002652258,
+      "total_ms": 811.6874999832362,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 12,
+        "total_tokens": 12
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 4,
+    "question": "can you explain what GWAS is and how it was used in the study with blood-glucose biomarker HbA1c in the UK Biobank population?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC39767639_sec4_C18",
+        "text": "The blood-glucose biomarker HbA1c-associated GWAS was derived from the European ancestry population of the United Kingdom Biobank(n =). For the SGLT2 inhibitors, the genetic variants associated with the mRNA expression levels of the SLC5A2 gene and the potentially functional genes of the SGLT2 inhibitors were selected using data from Genotype-Tissue Expression and the eQTLGen Consortium. Then, estimate the association of each SLC5A2 variant with HbA1c level and validate whether SLC5A2 and HbA1c share the same causal variant through the genetic colocalization approach.",
+        "title": "Genetic Variation in Targets of Antidiabetic Drugs and Amyotrophic Lateral Sclerosis Risk",
+        "section": "Instrument Selection",
+        "similarity": 0.031754032258064516,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39767639_sec4_C05",
+        "text": "The IVs were extracted from blood glucose GWAS analysis in participants of European ancestry from the United Kingdom Biobank. The UKB is a large, multicenter cohort that is one of the largest population-based studies in the world to date, with more than participants aged 38 to 73 years. This GWAS sample was for the European-ancestry population and excluded individuals with diagnoses of diabetes mellitus in the inpatient registry or self-reported diabetes in the questionnaire.",
+        "title": "Genetic Variation in Targets of Antidiabetic Drugs and Amyotrophic Lateral Sclerosis Risk",
+        "section": "Instrument Selection",
+        "similarity": 0.03131881575727918,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39767639_sec4_C04",
+        "text": "The genetic variants are not strongly associated(R^{2} < 0.01). The IVs were extracted from blood glucose GWAS analysis in participants of European ancestry from the United Kingdom Biobank. The UKB is a large, multicenter cohort that is one of the largest population-based studies in the world to date, with more than participants aged 38 to 73 years. This GWAS sample was for the European-ancestry population and excluded individuals with diagnoses of diabetes mellitus in the inpatient registry or self-reported diabetes in the questionnaire.",
+        "title": "Genetic Variation in Targets of Antidiabetic Drugs and Amyotrophic Lateral Sclerosis Risk",
+        "section": "Instrument Selection",
+        "similarity": 0.030158730158730156,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39730838_sec3_C01",
+        "text": "We used data from the UK Biobank, an ethically approved population cohort of over individuals from the UK^{17}. The UK Biobank, an observational study, contains detailed genetic information, including WGS and array genotyping data and phenotypic information from self-reports, hospital records, and general practitioners^{17}. We focused on a subset of individuals matched for having both WGS and array genotyping data, to allow for direct comparison between these two genetic data sources.",
+        "title": "Type 1 diabetes genetic risk score variation across ancestries using whole genome sequencing and array-based approaches",
+        "section": "Study cohort",
+        "similarity": 0.02871794871794872,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39767639_sec4_C17",
+        "text": "The instrument variables for metformin and SGLT2 inhibition were identified through MR and genetic colocalization using HbA1c GWAS. The blood-glucose biomarker HbA1c-associated GWAS was derived from the European ancestry population of the United Kingdom Biobank(n =). For the SGLT2 inhibitors, the genetic variants associated with the mRNA expression levels of the SLC5A2 gene and the potentially functional genes of the SGLT2 inhibitors were selected using data from Genotype-Tissue Expression and the eQTLGen Consortium.",
+        "title": "Genetic Variation in Targets of Antidiabetic Drugs and Amyotrophic Lateral Sclerosis Risk",
+        "section": "Instrument Selection",
+        "similarity": 0.028629032258064516,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 483.57909999322146,
+      "neo4j_ms": 133.8280999334529,
+      "total_ms": 968.9475999912247,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 34,
+        "total_tokens": 34
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 5,
+    "question": "What role do geness play in apoptosis?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC39215799_sec1_C02",
+        "text": "This unique metabolic adaptation is found exclusively in the methanogenic archaea, obligate methane producers that do not grow using fermentation or via the use of alternative electron acceptors for respiration(Berghuis et al.). Methanogenic archaea are major contributors to the global carbon cycle and consequently play an important role in climate change(Reeburgh; Thauer et al. Conrad).",
+        "title": "Molecular basis of hyper-thermostability in the thermophilic archaeal aldolase MfnB",
+        "section": "Introduction",
+        "similarity": 0.01639344262295082,
+        "sources": [
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39719558_sec1_C14",
+        "text": "Apoptosis is essential for regulating cell proliferation by initiating programmed cell death and contributing to glioma invasiveness and therapeutic resistance(Gousias et al. Steinbach and Weller). Microtubule-associated proteins have been involved in various diseases including neurodegenerative disorders, and cancers, and are associated with critical cellular processes, notably apoptosis(Breuzard et al. Nakata et al.).",
+        "title": "Doublecortin regulates the mitochondrial-dependent apoptosis in glioma via Rho-A/Net-1/p38-MAPK signaling",
+        "section": "Introduction",
+        "similarity": 0.01639344262295082,
+        "sources": [
+          "vector"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC41031023_sec18_C26",
+        "text": "Many studies have shown that PEGylating NPs reduces cell uptake which can reduce efficacy of drug carriers. ^{ } However, traditional in vitro studies in a 2D setting do not account for the role that the ECM microenvironment may play in the ability of NPs to reach target cells. The role of tissue-specific ECM barrier properties on NP drug delivery is also difficult to directly assess in more complex in vivo animal models.",
+        "title": "The Extracellular Matrix Limits Nanoparticle Diffusion and Cellular Uptake in a Tissue-Specific Manner",
+        "section": "Discussion",
+        "similarity": 0.016129032258064516,
+        "sources": [
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC35067698_sec18_C26",
+        "text": "And in the cytosol, released proteins cytochrome c, which binds to the apoptotic peptidase activating factor 1 to form the apoptosome, enhance the initiator caspase-9 activation, and trigger the caspase series such as caspases-3, 6 and 7, which directly induce cell apoptosis. In line with prior studies on D-gal-induced aging model, our results suggested that the number of TUNEL-positive cells and the expression of cleaved caspase-3 protein were markedly increased in D-gal-treated primary ACNs and in a concentration-dependent approach.",
+        "title": "D-Galactose-Induced Accelerated Aging Model on Auditory Cortical Neurons by Regulating Oxidative Stress and Apoptosis in Vitro",
+        "section": "Discussion",
+        "similarity": 0.016129032258064516,
+        "sources": [
+          "vector"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC41078944_sec21_C16",
+        "text": "It plays a vital role in the pathophysiological mechanism of regulating the relative stability of body structure and function and the disorder of glucose and lipid metabolism. Mammalian cell apoptosis occurs through two pathways: the external caspase-8 route, which is involved in tumor necrosis factor receptor family members, and the endogenous caspase-9 pathway, which is involved in cytochrome. Mitochondria are the common targets of many pro-apoptotic pathways.",
+        "title": "Effective treatment for fatty liver of liraglutide via inhibiting endoplasmic reticulum stress, oxidative stress and apoptosis pathways",
+        "section": "Discussion",
+        "similarity": 0.015873015873015872,
+        "sources": [
+          "vector"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 761.8728999514133,
+      "neo4j_ms": 146.51180000510067,
+      "total_ms": 1267.0396999455988,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 9,
+        "total_tokens": 9
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 6,
+    "question": "How are total proteins extracted from VL tissue for analysis?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC39857351_sec9_C01",
+        "text": "An RIPA lysis buffer containing 1% phosphatase and a protease inhibitor cocktail(cat#P0001 and cat#P8340 respectively, Sigma-Aldrich, Madrid, Spain) was used to extract total proteins from VL tissue. The Bradford method was performed to quantify protein concentrations in samples. For Western blotting, µg of proteins underwent SDS-PAGE separation, and then, proteins were transferred to a nitrocellulose membrane.",
+        "title": "Melatonin Ameliorates Organellar Calcium Homeostasis, Improving Endoplasmic Reticulum Stress-Mediated Apoptosis in the Vastus Lateralis Muscle of Both Sexes of Obese Diabetic Rats",
+        "section": "Protein Isolation and Expression Analysis by Western Blot",
+        "similarity": 0.03278688524590164,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39857351_sec7_C01",
+        "text": "To quantify the Ca^{2+} amount, mg of whole VL tissue, mitochondrial, and ER fractions from VL muscle were weighed. These samples were digested and mineralized, and then, Ca^{2+} in this solution was measured using an inductively coupled plasma mass spectrometer(ICP-MS; Agilent 8900 Triple Quadrupole ICP-MS/MS, Agilent Technologies Inc. Santa Clara, CA, USA) equipped with a helium collision cell. Ca^{2+} concentrations obtained were expressed as mg/g of fresh weighed tissue. The detection limit was determined in 12 blanks, yielding a concentration of 0.45 mg/L.",
+        "title": "Melatonin Ameliorates Organellar Calcium Homeostasis, Improving Endoplasmic Reticulum Stress-Mediated Apoptosis in the Vastus Lateralis Muscle of Both Sexes of Obese Diabetic Rats",
+        "section": "VL Mineralization and Ca 2+ Amount Analysis",
+        "similarity": 0.030309988518943745,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39857351_sec6_C01",
+        "text": "Approximately mg of VL muscle tissue was dissected, and mitochondrial and ER fractions were isolated using a sequential centrifugation method which maintains organellar function. Protein concentration was determined using the Bradford method.",
+        "title": "Melatonin Ameliorates Organellar Calcium Homeostasis, Improving Endoplasmic Reticulum Stress-Mediated Apoptosis in the Vastus Lateralis Muscle of Both Sexes of Obese Diabetic Rats",
+        "section": "Mitochondrial and ER Fraction Isolation from VL",
+        "similarity": 0.02946236559139785,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC41078944_sec10_C01",
+        "text": "The liver tissue was removed and ground and the total protein of the liver tissue was extracted using the total protein extraction kit. The Bradford method was used to measure the protein concentration after extraction. The protein was added to the load buffer and boiled to denature it. The protein was then subjected to sodium dodecyl sulphate-polyacrylamide gel electrophoresis. After electrophoresis to the appropriate position, the electrophoresis was finished, and the film was transferred to the transfer tank.",
+        "title": "Effective treatment for fatty liver of liraglutide via inhibiting endoplasmic reticulum stress, oxidative stress and apoptosis pathways",
+        "section": "Western blotting",
+        "similarity": 0.025914384123339348,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39735666_sec7_C01",
+        "text": "Total protein was extracted from LUAD cells using lysis buffer, and protein concentration was determined by BCA assays. The proteins were loaded onto a 12% SDS-PAGE gel and subsequently transferred to polyvinylidene difluoride membranes for 2 h.",
+        "title": "Long noncoding RNA LINC01106 promotes lung adenocarcinoma progression via upregulation of autophagy",
+        "section": "Western blot",
+        "similarity": 0.023809523809523808,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 485.93670001719147,
+      "neo4j_ms": 153.74810004141182,
+      "total_ms": 985.1145000429824,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 11,
+        "total_tokens": 11
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 7,
+    "question": "why TF-RE-TG important for include TFs missing motif data in GRN inference and how your method use it with PPIs for better results?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC40260118_sec12_C04",
+        "text": "Our adaptation addresses limitations of GRN-inference tools that rely solely on accessible motif matches, potentially missing causal TFs for TGs; as ≈10% of the ≈1.6k human TFs lack motif data and are traditionally excluded, using PPIs during GRN inference is recommended to help incorporate these missing TFs. Augmented TFs may bind to TFBSs directly or indirectly([Gordân et al. 2009],). Our final prior, reference, candidate GRNs comprise these initial TF-RE-TG links.",
+        "title": "NetREm: Network Regression Embeddings reveal cell-type transcription factor coordination for gene regulation",
+        "section": "Prior GRN reference information on TG regulation",
+        "similarity": 0.03252247488101534,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC40260118_sec12_C03",
+        "text": "To capture overlooked TFs, we augment our pruned TF list by adding TFs with not only known PPIs but also predictions of TF-TF colocalization, protein complexes, and/or Gene Ontology Molecular Function similarity. Our adaptation addresses limitations of GRN-inference tools that rely solely on accessible motif matches, potentially missing causal TFs for TGs; as ≈10% of the ≈1.6k human TFs lack motif data and are traditionally excluded, using PPIs during GRN inference is recommended to help incorporate these missing TFs.",
+        "title": "NetREm: Network Regression Embeddings reveal cell-type transcription factor coordination for gene regulation",
+        "section": "Prior GRN reference information on TG regulation",
+        "similarity": 0.03252247488101534,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC40260118_sec26_C04",
+        "text": "Sole reliance on expression data for GRN inference is therefore woefully inadequate, and perhaps even futile, often leading to unstable and inaccurate results. Explicitly modeling direct and indirect TF-TF interactions can enhance GRN inference, enabling the discovery of novel TF-TG links and key cell-type TFs. Functionally related TF predictors, like neighbors in scale-free feature networks, can coordinate synergistically or antagonistically in biological processes like TG regulation. Nonetheless, traditional methods oft miss such complex dynamics of TF-TF PPIs involved in GRNs.",
+        "title": "NetREm: Network Regression Embeddings reveal cell-type transcription factor coordination for gene regulation",
+        "section": "Discussion",
+        "similarity": 0.03125763125763126,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC40260118_sec26_C03",
+        "text": "Gene expression data, often nascent, sparse and noisy, fails to capture crucial GRN mechanisms such as TF binding to DNA, coordination among TFs/cofactors, and DNA accessibility, and it typically provides weak signals for distinguishing TP from FP TF-TG links. Sole reliance on expression data for GRN inference is therefore woefully inadequate, and perhaps even futile, often leading to unstable and inaccurate results. Explicitly modeling direct and indirect TF-TF interactions can enhance GRN inference, enabling the discovery of novel TF-TG links and key cell-type TFs.",
+        "title": "NetREm: Network Regression Embeddings reveal cell-type transcription factor coordination for gene regulation",
+        "section": "Discussion",
+        "similarity": 0.029709507042253523,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC40260118_sec1_C17",
+        "text": "Coordinating TFs are often co-expressed and amplify noise in expression profiles. Unfortunately, without additional context, these tools might remove truly causal correlated TFs that co-regulate TGs, excluding fundamental aspects of GRN mechanisms. Thus, GRN inference tools ought to incorporate various levels of expression regulation, like PPIs for TFs, as they can help reveal these dynamics of TF-TF coordination. Tools like BGRMI identify relevant TF complexes using PPIs, but ignore inherent PPIN structures and indirect PPIs.",
+        "title": "NetREm: Network Regression Embeddings reveal cell-type transcription factor coordination for gene regulation",
+        "section": "Introduction",
+        "similarity": 0.028484848484848488,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 419.59960001986474,
+      "neo4j_ms": 135.42800000868738,
+      "total_ms": 909.1488000703976,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 32,
+        "total_tokens": 32
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 8,
+    "question": "In the context of drug discovery, how do high-throughput screens demonstrate the relationship between affinity and hit rate when testing large numbers of molecules, and how was this relationship modeled for the top-ranking molecules in the study?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC39026784_sec6_C08",
+        "text": "To quantify how many molecules should be tested to report stable hit rates and affinity ranges, we drew on the observation that when large numbers of molecules are experimentally tested for AmpC, and for the s2 and the dopamine D4 receptors, there is an exponential relationship between affinity and hit rate, something also seen in high-throughput screens^{28}. For the top-ranking 1% of docked molecules from each campaign, we modeled hit rates and hit affinities with an exponential function y = b(1 – e^{−cx}) for each of AmpC, σ 2 and D4. This functional form fit the distribution of affinities for the 1,296 molecules tested for AmpC, 327 for σ 2 and 371 for D4(all top 1% ranking molecules) with R^{2} values of 0.998, 0.998, and 0.985, respectively.",
+        "title": "The impact of Library Size and Scale of Testing on Virtual Screening",
+        "section": "Hit rate variability and ligand affinity ranges.",
+        "similarity": 0.03278688524590164,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39026784_sec6_C07",
+        "text": "These results suggest that both hit rates and affinities in docking screens may be unreliable when only dozens of molecules are tested, as is common in the field. To quantify how many molecules should be tested to report stable hit rates and affinity ranges, we drew on the observation that when large numbers of molecules are experimentally tested for AmpC, and for the s2 and the dopamine D4 receptors, there is an exponential relationship between affinity and hit rate, something also seen in high-throughput screens^{28}.",
+        "title": "The impact of Library Size and Scale of Testing on Virtual Screening",
+        "section": "Hit rate variability and ligand affinity ranges.",
+        "similarity": 0.03200204813108039,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39026784_sec6_C01",
+        "text": "While hit rate is a fair way to compare the two screens, naturally, the raw number of hits was far greater from the larger library, where 29-fold more high-ranking molecules were tested. Qualitatively this explains why all half-log affinity bins were well-populated from the larger library, whereas this was more hit-and-miss when we only tested 44 molecules. To quantify how hit rate varies with the number experimentally tested, we randomly pulled sets of and 439 molecules from the 1,296, each 30 times, and asked how this affected hit rate.",
+        "title": "The impact of Library Size and Scale of Testing on Virtual Screening",
+        "section": "Hit rate variability and ligand affinity ranges.",
+        "similarity": 0.03200204813108039,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39026784_sec6_C19",
+        "text": "This again suggests over 100 molecules may be a sensible minimum for experimental testing in large library virtual screens, even for campaigns from which one expects relatively high hit rates. Encouragingly, while both the affinity ranges and the hit rates for the screens against AmpC, s2 and D4 differ substantially, the functional form relating hit affinity and hit number was the same and led to similar predictions for the minimum number of molecules to test for all three targets.",
+        "title": "The impact of Library Size and Scale of Testing on Virtual Screening",
+        "section": "Hit rate variability and ligand affinity ranges.",
+        "similarity": 0.03055037313432836,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39026784_sec6_C17",
+        "text": "The solid curves reflect the 95% likelihood that the hit rate will be at a certain level or higher. While the average hit rate over all simulations remains unchanged, the variability increases as the number of molecules tested drops, and so does one’s confidence that the observed hit rate reflects the true hit rate based on the overall docking rankings. This again suggests over 100 molecules may be a sensible minimum for experimental testing in large library virtual screens, even for campaigns from which one expects relatively high hit rates.",
+        "title": "The impact of Library Size and Scale of Testing on Virtual Screening",
+        "section": "Hit rate variability and ligand affinity ranges.",
+        "similarity": 0.029273504273504274,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 308.89669992029667,
+      "neo4j_ms": 157.99460001289845,
+      "total_ms": 845.6950000254437,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 43,
+        "total_tokens": 43
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 9,
+    "question": "Can you explain what non-PGCCs are and how they different from PGCCs in the context of this screening tool and cell counting?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC39386568_sec13_C06",
+        "text": "Based on the size threshold established in our prior work, we quantify the numbers of PGCCs and non-PGCCs for each image. ^{38} This high-throughput screening tool can process up to cells per condition within one second, enabling detailed monitoring of cell development and the identification of compounds affecting PGCC populations.",
+        "title": "High-Throughput Empirical and Virtual Screening to Discover Novel Inhibitors of Polyploid Giant Cancer Cells in Breast Cancer",
+        "section": "Comprehensive compound efficacy analysis by quantifying PGCCs and non-PGCCs",
+        "similarity": 0.03278688524590164,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39386568_sec13_C05",
+        "text": "As anticipated, the plot of Paclitaxel-treated cells shifts significantly towards red, indicating an increase in PGCCs, while the untreated cell population predominantly remains blue. Based on the size threshold established in our prior work, we quantify the numbers of PGCCs and non-PGCCs for each image. ^{38} This high-throughput screening tool can process up to cells per condition within one second, enabling detailed monitoring of cell development and the identification of compounds affecting PGCC populations.",
+        "title": "High-Throughput Empirical and Virtual Screening to Discover Novel Inhibitors of Polyploid Giant Cancer Cells in Breast Cancer",
+        "section": "Comprehensive compound efficacy analysis by quantifying PGCCs and non-PGCCs",
+        "similarity": 0.030834914611005692,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39386568_sec13_C01",
+        "text": "We developed a single-cell morphological analysis pipeline to rapidly quantify PGCCs and non-PGCCs by identifying cell nuclei with Hoechst staining, excluding dead cells using Live/Dead staining, and distinguishing PGCCs and non-PGCCs based on nuclear size. ^{38} This pipeline was validated with multiple breast cancer cell lines and confirmed through flow cytometry and visual inspection. As a demonstration, we treated MDA-MB-231 cells with Paclitaxel, a common and widely used drug for triple-negative breast cancer.",
+        "title": "High-Throughput Empirical and Virtual Screening to Discover Novel Inhibitors of Polyploid Giant Cancer Cells in Breast Cancer",
+        "section": "Comprehensive compound efficacy analysis by quantifying PGCCs and non-PGCCs",
+        "similarity": 0.029850746268656716,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39386568_sec0_C03",
+        "text": "Despite their critical role in resistance, strategies to effectively target PGCCs are limited, largely due to the lack of high-throughput methods for assessing their viability. Traditional assays lack the sensitivity needed to detect PGCC-specific elimination, prompting the development of novel approaches. To address this challenge, we developed a high-throughput single-cell morphological analysis workflow designed to differentiate compounds that selectively inhibit non-PGCCs, PGCCs, or both.",
+        "title": "High-Throughput Empirical and Virtual Screening to Discover Novel Inhibitors of Polyploid Giant Cancer Cells in Breast Cancer",
+        "section": "Abstract",
+        "similarity": 0.029236022193768675,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39386568_sec1_C13",
+        "text": "PGCCs can be characterized by the excessive DNA content and large cell and nuclear size. Currently, the gold standard for identifying and isolating PGCCs involves fluorescence-activated cell sorting combined with visual confirmation. ^{20} While flow cytometry can quantify the number and percentage of PGCCs, it is impractical for screening thousands of compounds or for monitoring the dynamic processes of PGCC induction and death. The limitations of existing approaches underscore the need for a high-throughput and precise analytical method specifically tailored for PGCC research.",
+        "title": "High-Throughput Empirical and Virtual Screening to Discover Novel Inhibitors of Polyploid Giant Cancer Cells in Breast Cancer",
+        "section": "Introduction",
+        "similarity": 0.028949545078577336,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 415.43860000092536,
+      "neo4j_ms": 139.01619997341186,
+      "total_ms": 902.445700019598,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 28,
+        "total_tokens": 28
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 10,
+    "question": "What is the role of numerical representations in deep learning for protein engineering?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC39744096_sec4_C01",
+        "text": "Before training deep learning models for protein understanding, the numerical representation of proteins has to be characterized first, such as the sequence and structural composition of proteins, as well as the explicitly defined molecular properties. The different ways of describing a protein reflect the preferred inductive bias and determine the choices of deep learning techniques in the later stage.",
+        "title": "Protein engineering in the deep learning era",
+        "section": "Numerical characterization of proteins",
+        "similarity": 0.03252247488101534,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39744096_sec2_C01",
+        "text": "In the context of deep learning, numerical representations of proteins are required. The different choices of input data modalities reflect the preferred inductive bias, which is closely related to the selection of deep learning techniques. As deep learning‐assisted protein engineering can be a highly interdisciplinary research area, both communities need to align the fundamental concepts before developing solutions to scientific problems. To this end, we start by framing the typical representations of proteins following the inference tasks associated with protein engineering.",
+        "title": "Protein engineering in the deep learning era",
+        "section": "KNOWLEDGE ALIGNMENT: PROTEIN ENGINEERING AND DEEP LEARNING",
+        "similarity": 0.032266458495966696,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39744096_sec4_C02",
+        "text": "The different ways of describing a protein reflect the preferred inductive bias and determine the choices of deep learning techniques in the later stage. For instance, protein sequences are typically processed with language models to extract contextual representations along one‐dimensional chains, allowing long‐range relationships between different atoms or amino acids along the same chain to be captured. Alternatively, grid‐like representations are handled by convolutional networks, where atoms or amino acids within smaller receptive fields are more influential to the central instance.",
+        "title": "Protein engineering in the deep learning era",
+        "section": "Numerical characterization of proteins",
+        "similarity": 0.027623285131627734,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39744096_sec3_C15",
+        "text": "These problems have led to the development of self‐supervised learning schemes in recent years, in which a pre‐trained deep learning model,, only needs to learn from self‐labeled input data to obtain suitable hidden representations for subsequent downstream task predictions or fine‐tuning. To translate between protein sequence, structure, and function, a standard deep learning solution for protein engineering consists of three steps, as illustrated in Figure 1B.",
+        "title": "Protein engineering in the deep learning era",
+        "section": "The central dogma of protein engineering",
+        "similarity": 0.026862026862026864,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39744096_sec2_C02",
+        "text": "The different choices of input data modalities reflect the preferred inductive bias, which is closely related to the selection of deep learning techniques. As deep learning‐assisted protein engineering can be a highly interdisciplinary research area, both communities need to align the fundamental concepts before developing solutions to scientific problems. To this end, we start by framing the typical representations of proteins following the inference tasks associated with protein engineering. Subsequently, we summarize the conventional choices for protein characterization.",
+        "title": "Protein engineering in the deep learning era",
+        "section": "KNOWLEDGE ALIGNMENT: PROTEIN ENGINEERING AND DEEP LEARNING",
+        "similarity": 0.026779422128259338,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 484.03559997677803,
+      "neo4j_ms": 125.73220010381192,
+      "total_ms": 945.7966000773013,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 14,
+        "total_tokens": 14
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  }
+]

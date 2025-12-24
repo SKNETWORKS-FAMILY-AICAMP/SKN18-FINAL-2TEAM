@@ -1,0 +1,52 @@
+[
+  {
+    "question_id": 1,
+    "question": "How does H3K4me3 modification influence TRIM72 expression according to the context?",
+    "error": "relation \"article_section_embedding\" does not exist\nLINE 4:         FROM article_section_embedding\n                     ^\n"
+  },
+  {
+    "question_id": 2,
+    "question": "what 10X Genomics Chromium Controller do in single-cell study?",
+    "error": "relation \"article_section_embedding\" does not exist\nLINE 4:         FROM article_section_embedding\n                     ^\n"
+  },
+  {
+    "question_id": 3,
+    "question": "What happen to mRNAs in Patl2 mutated oocytes?",
+    "error": "relation \"article_section_embedding\" does not exist\nLINE 4:         FROM article_section_embedding\n                     ^\n"
+  },
+  {
+    "question_id": 4,
+    "question": "Can you tell me how Hoechst was used for imaging and analysis in the study with Fiji software and what steps were done for counting Hoechst positive cells?",
+    "error": "relation \"article_section_embedding\" does not exist\nLINE 4:         FROM article_section_embedding\n                     ^\n"
+  },
+  {
+    "question_id": 5,
+    "question": "What is the role of Lipinski rules in selecting drug candidates?",
+    "error": "relation \"article_section_embedding\" does not exist\nLINE 4:         FROM article_section_embedding\n                     ^\n"
+  },
+  {
+    "question_id": 6,
+    "question": "What is the significance of famoxadone binding to the protein IZUMO1 in terms of energy values?",
+    "error": "relation \"article_section_embedding\" does not exist\nLINE 4:         FROM article_section_embedding\n                     ^\n"
+  },
+  {
+    "question_id": 7,
+    "question": "How do MSC-exos affect HUVEC viability, proliferation, and angiogenesis under high glucose conditions?",
+    "error": "relation \"article_section_embedding\" does not exist\nLINE 4:         FROM article_section_embedding\n                     ^\n"
+  },
+  {
+    "question_id": 8,
+    "question": "Could you please provide a detailed definition of DNA repair and explain its significance in cellular processes?",
+    "error": "relation \"article_section_embedding\" does not exist\nLINE 4:         FROM article_section_embedding\n                     ^\n"
+  },
+  {
+    "question_id": 9,
+    "question": "What SNPs show difference between populations?",
+    "error": "relation \"article_section_embedding\" does not exist\nLINE 4:         FROM article_section_embedding\n                     ^\n"
+  },
+  {
+    "question_id": 10,
+    "question": "Why we measure absorbance at 570 nm after adding MTT solvent?",
+    "error": "relation \"article_section_embedding\" does not exist\nLINE 4:         FROM article_section_embedding\n                     ^\n"
+  }
+]

@@ -1,0 +1,854 @@
+[
+  {
+    "question_id": 1,
+    "question": "Can you explane what the chest x-ray results were in the patient case described?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC40729177_sec2_C02",
+        "text": "Chest X-ray and blood tests came out ordinary. A cervical tumor measuring 1.89/1.78 cm was seen on an MRI without lymph node involvement or parametrial invasion. In the right ovary, a 1.03/1.12 cm mass was visible but uninterpretable. The patient was staged as T1B1N0M0 and a type C2 radical hysterectomy according to Querleu–Morrow Classification with total pelvic lymph node dissection was performed.",
+        "title": "Squamotransitional Cell Carcinoma of the Uterine Cervix with Ovarian Metastasis and Benign Brenner Tumor: A Case Report",
+        "section": "Detailed Case Description",
+        "similarity": 0.03149801587301587,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39816462_sec2_C03",
+        "text": "Physical examination in the emergency department was unremarkable. Imaging studies were conducted to rule out rib fractures or abdominal injuries. However, a chest X-ray revealed a large mass in the right lower lung field, suspicious for malignancy. A chest CT scan further identified a large heterogeneous mass extending from the right lower lobe into the middle lobe, adjacent to the diaphragmatic surface, measuring approximately 95 × 65 × 90 mm. These findings were highly suspicious for metastatic disease to the lungs, leading to further imaging studies.",
+        "title": "From skin to heart: The rare journey of pleomorphic dermal sarcoma metastasis",
+        "section": "Case report",
+        "similarity": 0.031024531024531024,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC40351545_sec2_C01",
+        "text": "A 44-year-old patient with a history of ES located in left tibiofemoral articulation(operated, treated by radiation treatment and chemotherapy according to the patient’s words) at the age of 17 presented a breathing difficulties. On questioning, the patient confirmed a regular follow-up for his sarcoma and a notion of recurrent left femur fractures during the last year. At admission, he was conscious and polypneic. On clinical examination, he presented a reduction in vesicular murmurs and vocal vibrations. A chest X-ray showed a right basilobar opacity associated to a pleural effusion.",
+        "title": "A Rare Case of Tibiofemoral Ewing’s Sarcoma Recurrence with Lung Metastasis 27 Years after Initial Diagnosis",
+        "section": "Case Presentation",
+        "similarity": 0.0293236301369863,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC40729177_sec2_C01",
+        "text": "A 64-year-old female patient with histologically verified CC because of menopausal bleeding was admitted to the clinic. The patient has been amenorrhoeic for 20 years, reports arterial hypertension, glaucoma, appendectomy, and two normal births. The cervix was clearly intact, and there were no abnormalities found during the gynecological examination. On the ultrasound exam, a 2/2 cm formation with unclear borders in the cervical canal was found. Chest X-ray and blood tests came out ordinary.",
+        "title": "Squamotransitional Cell Carcinoma of the Uterine Cervix with Ovarian Metastasis and Benign Brenner Tumor: A Case Report",
+        "section": "Detailed Case Description",
+        "similarity": 0.028629032258064516,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC40703948_sec2_C04",
+        "text": "Electrocardiography results were normal. Contrast-enhanced chest CT revealed asymmetric wall thickening with heterogeneous enhancement and a non-enhanced area in the lower esophagus, suggestive of malignant lesions. Because the patient experienced symptoms, including chest discomfort, and EUS and CT findings were highly suspicious for malignant neoplasms, thoracoscopic resection was performed. Macroscopic examination revealed a well-defined, solid white ovoid mass with cystic changes, measuring 3.2 cm×2.2 cm, in the muscularis propria of the esophagus.",
+        "title": "An Esophageal Leiomyoma with Cystic Degeneration Mimicking a Malignant Neoplasm",
+        "section": "Case",
+        "similarity": 0.027650648360030512,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 573.6643000273034,
+      "neo4j_ms": 123.02269996143878,
+      "total_ms": 978.4488000441343,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 17,
+        "total_tokens": 17
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 2,
+    "question": "What does the current study reveal about tumor development and mutation accumulation in Pold1 mutant mice?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC39786467_sec22_C08",
+        "text": "The survival analyses and tumor incidence data in the current study showed appearance of multiple tumors in Pole and Pold1 mutant mice, suggesting accumulation of mutations, leading to high TMB and possible acquisition of new driver and passenger mutations. Six-substitution analysis of the tumors from all four of our models indicated that the mutation signatures in mouse tumors were comparable with those in Pold1 and Pole mutant human cancers.",
+        "title": "Immune Checkpoint Blockade Delays Cancer Development and Extends Survival in DNA Polymerase Mutator Syndromes",
+        "section": "Discussion",
+        "similarity": 0.032266458495966696,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39786467_sec18_C08",
+        "text": "Similar results were observed in normal aging tissues of Pold1 and Pole mutation carriers in humans. These results are consistent with the role of Pold1 in lagging strand DNA synthesis and generation of mutant Okazaki fragments that may be incorrectly processed and lead to an increased percentage of indels. Next, the six-substitution signature analysis of TCGA and AACR GENIE cohorts confirmed similarities between the mouse and human tumor mutation signatures.",
+        "title": "Immune Checkpoint Blockade Delays Cancer Development and Extends Survival in DNA Polymerase Mutator Syndromes",
+        "section": "The mutational landscapes of Pold1 and Pole mutant tumors in mice and humans are similar",
+        "similarity": 0.030309988518943745,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39786467_sec18_C07",
+        "text": "The types of mutations in the mutator mouse tumors were examined further and compared with those in humans. The relative number of indels to SNVs is higher for tumors with Pold1 mutations than Pole mutations in both mouse and human tumors from TCGA and AACR GENIE(17 Pold1 mutant and 427 Pole mutant tumor samples; Fig. 2B). Similar results were observed in normal aging tissues of Pold1 and Pole mutation carriers in humans.",
+        "title": "Immune Checkpoint Blockade Delays Cancer Development and Extends Survival in DNA Polymerase Mutator Syndromes",
+        "section": "The mutational landscapes of Pold1 and Pole mutant tumors in mice and humans are similar",
+        "similarity": 0.029236022193768675,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39786467_sec22_C09",
+        "text": "Six-substitution analysis of the tumors from all four of our models indicated that the mutation signatures in mouse tumors were comparable with those in Pold1 and Pole mutant human cancers. In addition, in the Pold1 D400A mouse model, tail skin tumors showed increased numbers of mutations compared with lymphomas and intestinal tumors, suggesting tissue-specific differences in the rates of mutation accumulation or clonality.",
+        "title": "Immune Checkpoint Blockade Delays Cancer Development and Extends Survival in DNA Polymerase Mutator Syndromes",
+        "section": "Discussion",
+        "similarity": 0.029138513513513514,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39786467_sec1_C19",
+        "text": "In the current study, we created mice models with germline Pold1 D400A, Pole D272A E274A, Pole L424V, and conditional Pole V411L point mutations. These mice developed a spectrum of spontaneous tumors, mainly thymic and splenic lymphomas and lung and intestinal tumors, consistent with previously published Pold1 and Pole mutant models. Exome sequencing of these tumors from these mouse models revealed a highly variable but elevated TMB with mutational signatures similar to that seen in POLD1 and POLE mutant human cancers.",
+        "title": "Immune Checkpoint Blockade Delays Cancer Development and Extends Survival in DNA Polymerase Mutator Syndromes",
+        "section": "Introduction",
+        "similarity": 0.028985507246376812,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 428.11750003602356,
+      "neo4j_ms": 90.6354000326246,
+      "total_ms": 765.2251999825239,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 19,
+        "total_tokens": 19
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 3,
+    "question": "Can you explane how Shukla’s Stability Variance is used to assess seed protein content stability across different environments and what the reported range and average values indicate?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC39013958_sec11_C16",
+        "text": "In this study, the across-environment stability of seed protein content was calculated using Shukla’s Stability Variance(σi^{2})^{48} and ranged from 0.12 to 17.16, with an average of 2.70. It indicates that, although environmental parameters and management practices impact seed protein content, genotypes may express different sensitivities to these stimuli. In summary, Shukla’s Stability Variance is a univariate parametric method that estimates the variance(σ _{i} ^{2}) of the genotype by environment interaction(G×E) plus an error term associated with the genotype in multiple environments.",
+        "title": "Across-environment seed protein stability and genetic architecture of seed components in soybean",
+        "section": "Discussion",
+        "similarity": 0.03278688524590164,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39013958_sec9_C01",
+        "text": "Across genotypes, Shukla’s Stability Variance ranged from 0.12 to 17.16, with an average of 2.70. The 10 genotypes with the lowest Shukla’s Stability Variance and highest across-environment seed protein stability were PI 398351, PI 424535A, PI 594567B, PI 398417, PI 507068, PI 507343, PI 398399, PI 398900, PI 548586, and PI 567791. The 10 genotypes with the highest Shukla’s Stability Variance and lowest seed protein stability across environments were PI 574483, PI 417070, PI 181559, PI 559370, PI 408339, PI 408337, PI 221973, PI 606749, PI 548546, and FC 33243. The complete list of tested entries and respective Shukla’s Stability Variance is available in Supplementary Table 1. To understand the influence of seed components on the variation of seed protein stability across environments, the variable importance of each seed component was calculated based on the “Gini Importance” obtained from a Random Forest model. The importance ranged from 17.68 to 59.24, with an average of 28.94. Overall, the EAAs valine, phenylalanine, and threonine were the variables with the highest importance, whereas lysine, isoleucine, seed oil content, leucine, seed protein content, and tryptophan were the variables with the lowest importance in seed protein stability.",
+        "title": "Across-environment seed protein stability and genetic architecture of seed components in soybean",
+        "section": "Seed protein stability across environments",
+        "similarity": 0.03225806451612903,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39013958_sec11_C15",
+        "text": "To date, however, there are limited reports on the impact of different genetic backgrounds and various seed components on the across-environment stability of seed protein content. In this study, the across-environment stability of seed protein content was calculated using Shukla’s Stability Variance(σi^{2})^{48} and ranged from 0.12 to 17.16, with an average of 2.70. It indicates that, although environmental parameters and management practices impact seed protein content, genotypes may express different sensitivities to these stimuli.",
+        "title": "Across-environment seed protein stability and genetic architecture of seed components in soybean",
+        "section": "Discussion",
+        "similarity": 0.03149801587301587,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39013958_sec4_C01",
+        "text": "To obtain the across-environment seed protein stability, Shukla’s Stability Variance(σi^{2})^{48} was calculated using the R package ‘ statgenG × E ’ ^{49}. Shukla’s stability refers to the variance around the genotype’s phenotypic mean across all environments. It partitions the total G×E term into unbiased estimates of the G×E variance attributable to each genotype which provides a measure of stability without accounting for the performance of the genotype^{50}.",
+        "title": "Across-environment seed protein stability and genetic architecture of seed components in soybean",
+        "section": "Seed components effect on across-environment seed protein stability",
+        "similarity": 0.031009615384615385,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39013958_sec4_C02",
+        "text": "Shukla’s stability refers to the variance around the genotype’s phenotypic mean across all environments. It partitions the total G×E term into unbiased estimates of the G×E variance attributable to each genotype which provides a measure of stability without accounting for the performance of the genotype^{50}. Shukla’s Stability Variance considers a genotype stable if its response to multiple environments is parallel to the mean response of all genotypes in the test^{51}.",
+        "title": "Across-environment seed protein stability and genetic architecture of seed components in soybean",
+        "section": "Seed components effect on across-environment seed protein stability",
+        "similarity": 0.030798389007344232,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 481.5874000778422,
+      "neo4j_ms": 165.26939999312162,
+      "total_ms": 924.198399996385,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 33,
+        "total_tokens": 33
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 4,
+    "question": "What changes occur in the distance involving DHU N1 during the transitions between poses?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC39596352_sec4_C15",
+        "text": "The graphs of dynamics of the distances also present the dynamics of distances between atoms DHU N1 and Asn236 C. It is evident from the graphs that the rather sharp jumps of average distances between the atoms took place during transitions between the poses. During the transition from the initial positioning to the second one(1 → 2), the distance between atoms DHU N1 and dG N9 increased first, but at the same time, the DHU N1.Asn236 C distance diminished too. During the second transition, the distance between DHU N1 and Asn236 C underwent a large spike.",
+        "title": "The Trajectory of Damaged-Base Eversion into the Active Site of Apurinic/Apyrimidinic Endonuclease APE1 Regulates This Enzyme’s Substrate Specificity",
+        "section": "Dihydrouridine Eversion",
+        "similarity": 0.03278688524590164,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39596352_sec4_C16",
+        "text": "During the second transition, the distance between DHU N1 and Asn236 C underwent a large spike. During the transition to the final positioning, no additional forces acted in any of the complexes, and the damaged base spontaneously rotated into the active center with the concurrent rearrangement of the recognition loop and severance of the Gly255 O···Ala238 N bond. Furthermore, in mutant enzyme Glu260Ala at the end, some reduction in the DHU N1.Asn236 C distance was registered, which did not occur in the WT enzyme.",
+        "title": "The Trajectory of Damaged-Base Eversion into the Active Site of Apurinic/Apyrimidinic Endonuclease APE1 Regulates This Enzyme’s Substrate Specificity",
+        "section": "Dihydrouridine Eversion",
+        "similarity": 0.03225806451612903,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39596352_sec4_C11",
+        "text": "In complexes with either protein, during the eversion of DHU, a one-time action of one additional force proved to be sufficient: at the beginning of the trajectory, a repulsive force between atoms of the opposite bases exerted its action, and then an attractive force between atoms DHU N1 and Asn236 C was active. The trajectory of DHU eversion contained, aside from the initial and final poses, two quasi-stable intermediates, which were also identical between the two enzymes.",
+        "title": "The Trajectory of Damaged-Base Eversion into the Active Site of Apurinic/Apyrimidinic Endonuclease APE1 Regulates This Enzyme’s Substrate Specificity",
+        "section": "Dihydrouridine Eversion",
+        "similarity": 0.03076923076923077,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39596352_sec4_C14",
+        "text": "In the second positioning, the DHU O1P···Tyr195 OH bond emerged, and in the third, the DHU O5′···Asn236 N^{δ2} bond was observed as well. Additionally, other hydrogen bonds—specific to the intermediate poses—temporarily appeared, which are also depicted in Figure 2. Aside from the gradual formation of bonds with the enzyme, distances between atoms of the damaged nucleotide and of amino acid residues of the active center decreased too, in an orderly manner. The graphs of dynamics of the distances also present the dynamics of distances between atoms DHU N1 and Asn236 C.",
+        "title": "The Trajectory of Damaged-Base Eversion into the Active Site of Apurinic/Apyrimidinic Endonuclease APE1 Regulates This Enzyme’s Substrate Specificity",
+        "section": "Dihydrouridine Eversion",
+        "similarity": 0.03055037313432836,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39596352_sec4_C12",
+        "text": "The trajectory of DHU eversion contained, aside from the initial and final poses, two quasi-stable intermediates, which were also identical between the two enzymes. In the first positioning, DHU did not have hydrogen bonds with the enzyme, but during eversion, it gradually formed them. In the second positioning, the DHU O1P···Tyr195 OH bond emerged, and in the third, the DHU O5′···Asn236 N^{δ2} bond was observed as well.",
+        "title": "The Trajectory of Damaged-Base Eversion into the Active Site of Apurinic/Apyrimidinic Endonuclease APE1 Regulates This Enzyme’s Substrate Specificity",
+        "section": "Dihydrouridine Eversion",
+        "similarity": 0.03036576949620428,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 920.3528999350965,
+      "neo4j_ms": 113.26479993294924,
+      "total_ms": 1259.0895000612363,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 17,
+        "total_tokens": 17
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 5,
+    "question": "what mean kcal/mol in docking result?",
+    "error": "{code: Neo.ClientError.Procedure.ProcedureCallFailed} {message: Failed to invoke procedure `db.index.fulltext.queryNodes`: Caused by: org.apache.lucene.queryparser.classic.TokenMgrError: Lexical error at line 1, column 38.  Encountered: <EOF> after prefix \"/mol in docking result?\" (in lexical state 2)}"
+  },
+  {
+    "question_id": 6,
+    "question": "What role does ASP690 play in the binding interactions within the active pocket of receptor proteins according to the study involving 1HWK and its ligands?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC39811675_sec23_C06",
+        "text": "The amino acid residues LYS691 and ASP690 of 1HWK and ALA751 formed hydrogen bonds with the ligand DYPRPW, while GLU665 and ASP690 formed electrostatic interactions; the binding energy of the complex was −8.2 kcal/mol. Taken together, the binding energies of the complexes formed by 1HWK and the four ligands were good, and the amino acid residues near the active pocket of the receptor proteins, such as GLU559, GLY560, ARG590, and ASP690, played a major role. Hydrogen bonding plays a major role in forming the binding forces, followed by electrostatic and hydrophobic interactions.",
+        "title": "Virtual screening and evaluation of bioactive peptides from Haliotis discus hannai as potential HMGCR inhibitors for hyperlipidemia treatment",
+        "section": "Molecular docking force between abalone active peptides and HMGCR",
+        "similarity": 0.03278688524590164,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39811675_sec25_C31",
+        "text": "By analyzing the binding force of the four abalone active peptides with 1HWK, we illustrated the role of hydrogen bonding in protein–ligand interactions. Amino acid residues around the active pocket of the receptor protein, such as GLU559, GLY560, ARG590, and ASP690, are more likely to bind to lipid-lowering peptides. Jamuna et al. found that the amino acid residues interacting with procyanidins were CYS561, ARG568, HIS861, HIS722, ASN567, HIS568, HIS568, HIS861, and HIS861, using HMGCR(PDB:1DQ9) as the receptor protein.",
+        "title": "Virtual screening and evaluation of bioactive peptides from Haliotis discus hannai as potential HMGCR inhibitors for hyperlipidemia treatment",
+        "section": "Discussion",
+        "similarity": 0.031754032258064516,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39811675_sec23_C07",
+        "text": "Taken together, the binding energies of the complexes formed by 1HWK and the four ligands were good, and the amino acid residues near the active pocket of the receptor proteins, such as GLU559, GLY560, ARG590, and ASP690, played a major role. Hydrogen bonding plays a major role in forming the binding forces, followed by electrostatic and hydrophobic interactions. Hydrogen bonds are more stable, and the higher the number of hydrogen bonds, the more stable the complex structure.",
+        "title": "Virtual screening and evaluation of bioactive peptides from Haliotis discus hannai as potential HMGCR inhibitors for hyperlipidemia treatment",
+        "section": "Molecular docking force between abalone active peptides and HMGCR",
+        "similarity": 0.031054405392392875,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39811675_sec23_C05",
+        "text": "The amino acid residues THR558 and GLU559 of 1HWK formed hydrogen bonds with the LPAYPMP ligand, and ARG590 formed hydrophobic interactions with the ligand; the binding energy of the complex was −8.2 kcal/mol. The amino acid residues LYS691 and ASP690 of 1HWK and ALA751 formed hydrogen bonds with the ligand DYPRPW, while GLU665 and ASP690 formed electrostatic interactions; the binding energy of the complex was −8.2 kcal/mol.",
+        "title": "Virtual screening and evaluation of bioactive peptides from Haliotis discus hannai as potential HMGCR inhibitors for hyperlipidemia treatment",
+        "section": "Molecular docking force between abalone active peptides and HMGCR",
+        "similarity": 0.03076923076923077,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39811675_sec23_C04",
+        "text": "The binding energy of the protein-small molecule complex was −8.1 kcal/mol. The amino acid residues THR558 and GLU559 of 1HWK formed hydrogen bonds with the LPAYPMP ligand, and ARG590 formed hydrophobic interactions with the ligand; the binding energy of the complex was −8.2 kcal/mol. The amino acid residues LYS691 and ASP690 of 1HWK and ALA751 formed hydrogen bonds with the ligand DYPRPW, while GLU665 and ASP690 formed electrostatic interactions; the binding energy of the complex was −8.2 kcal/mol.",
+        "title": "Virtual screening and evaluation of bioactive peptides from Haliotis discus hannai as potential HMGCR inhibitors for hyperlipidemia treatment",
+        "section": "Molecular docking force between abalone active peptides and HMGCR",
+        "similarity": 0.02813852813852814,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 444.00859996676445,
+      "neo4j_ms": 117.5035999622196,
+      "total_ms": 792.4638000549749,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 31,
+        "total_tokens": 31
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 7,
+    "question": "What does in vitro verification involve in this study?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC39341947_sec13_C01",
+        "text": "To deeply understand the learning mechanism of PepNet in the detection of antibacterial and anti-inflammatory activities, we explore what it learns in different ways. For instance, what are the contributions of the pre-trained features to the classification? What does the residual dilated convolution block learn? What does the residual Transformer block learn?",
+        "title": "PepNet: an interpretable neural network for anti-inflammatory and antimicrobial peptides prediction using a pre-trained protein language model",
+        "section": "Interpretability of the PepNet model",
+        "similarity": 0.01639344262295082,
+        "sources": [
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39758938_sec26_C74",
+        "text": "It is thought that larger multicentre clinical studies will provide more comprehensive conclusions. Secondly, the environment of in vitro experiments is unable to fully replicate the complex environment present in animals or humans. Consequently, in vitro experiments can only provide initial validation of bioinformatics findings. Further, in vivo experiments and studies with human samples can provide a higher level of evidence for the study, which is the key to further clarifying and translating our findings in the future.",
+        "title": "Novel Insights from Comprehensive Bioinformatics Analysis Utilizing Large-Scale Human Transcriptomes and Experimental Validation: The Role of Autophagy in Periodontitis",
+        "section": "Discussion",
+        "similarity": 0.01639344262295082,
+        "sources": [
+          "vector"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39341947_sec13_C02",
+        "text": "What does the residual dilated convolution block learn? What does the residual Transformer block learn? In this study, we apply the t-SNE, a machine learning algorithm commonly used for dimensionality reduction and visualization of high-dimensional data in a lower-dimensional space, to perform a detailed visualization of the high-dimensional feature representations learned by PepNet.",
+        "title": "PepNet: an interpretable neural network for anti-inflammatory and antimicrobial peptides prediction using a pre-trained protein language model",
+        "section": "Interpretability of the PepNet model",
+        "similarity": 0.016129032258064516,
+        "sources": [
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39684640_sec20_C01",
+        "text": "All in vitro and in vivo experiments were performed in triplicate, and data are presented as mean ± standard error of the mean using GraphPad Prism 10. Statistical significance was determined using Student’s t -test for comparisons between two groups and one-way analysis of variance followed by Tukey’s post-hoc test for multiple comparisons. A p -value < 0.05 was considered statistically significant.",
+        "title": "Integrated Analysis of Single-Cell and Bulk RNA Sequencing Reveals HSD3B7 as a Prognostic Biomarker and Potential Therapeutic Target in ccRCC",
+        "section": "Statistical Analysis",
+        "similarity": 0.016129032258064516,
+        "sources": [
+          "vector"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39758938_sec26_C75",
+        "text": "Secondly, the environment of in vitro experiments is unable to fully replicate the complex environment present in animals or humans. Consequently, in vitro experiments can only provide initial validation of bioinformatics findings. Further, in vivo experiments and studies with human samples can provide a higher level of evidence for the study, which is the key to further clarifying and translating our findings in the future. It is also important to acknowledge that the various algorithms employed in the bioinformatics analyses of this study may exhibit certain systematic biases.",
+        "title": "Novel Insights from Comprehensive Bioinformatics Analysis Utilizing Large-Scale Human Transcriptomes and Experimental Validation: The Role of Autophagy in Periodontitis",
+        "section": "Discussion",
+        "similarity": 0.015873015873015872,
+        "sources": [
+          "vector"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 313.58359998557717,
+      "neo4j_ms": 122.78390000574291,
+      "total_ms": 683.3798999432474,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 10,
+        "total_tokens": 10
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 8,
+    "question": "Can you explane how qRT-PCR was performed and what kits were used in the process for result analysis?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC39857255_sec8_C02",
+        "text": "qRT-PCR was conducted with ChamQTM Universal SYBR^{®} qPCR Master mix(Q; Vazyme) on an ABI 7500 Real-Time PCR System. The primer specificities for genes were verified using Sanger sequencing, the electrophoresis of PCR products, and BLAST alignments. The details of each primer sequence used are given in Table 3 and Table 4. The R^{2} values for all qRT-PCR standard curves were 0.992 to 0.999, with the PCR efficiency ranging from 95% to 105%. Each PCR run incorporated 3 negative controls, specifically no template controls.",
+        "title": "miR-134-3p Regulates Cell Proliferation and Apoptosis by Targeting INHBA via Inhibiting the TGF-β/PI3K/AKT Pathway in Sheep Granulosa Cells",
+        "section": "Gene Expression Analysis Using qRT-PCR",
+        "similarity": 0.028373015873015873,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39796030_sec23_C01",
+        "text": "For qRT-PCR assay, all reactions were performed in triplicate. The primers were adopted from a study by Kim et al. and purchased from Bioneer. To determine relative gene expression levels, the 2^{−ΔΔCt} method was used. To identify protein expression levels, Western blot analysis was performed. After separating the proteins via SDS-PAGE, they were transferred to PVDF membranes, which were blocked with 5% skim milk and incubated with primary antibodies.",
+        "title": "Anti-Inflammatory 8-Shogaol Mediates Apoptosis by Inducing Oxidative Stress and Sensitizes Radioresistance in Gastric Cancer",
+        "section": "Quantitative Reverse Transcription Polymerase Chain Reaction(qRT PCR) and Western Blot Analyses",
+        "similarity": 0.02803379416282642,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39730825_sec26_C01",
+        "text": "Total RNA isolation from cells was performed using TRIzol. Reverse transcription was performed with a High-Capacity RNA-to-cDNA Kit. qRT–PCR was performed on a Step-One Plus real-time system according to the manufacturer’s protocol. qPCRs were made on cDNAs obtained using Fast Start Universal SYBR Green. Data were analyzed according to the Pfaffl method after calculation of primer efficiency. RPL0 or 36B4 was used as an endogenous control. All reactions were performed in triplicate, and at least three independent experiments were performed to generate each dataset.",
+        "title": "A ganglioside-based immune checkpoint enables senescent cells to evade immunosurveillance during aging",
+        "section": "qRT–PCR",
+        "similarity": 0.02637768817204301,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39758938_sec11_C02",
+        "text": "Subsequently, the RNA concentration was accurately determined, and reverse transcription into cDNA was performed employing the AidMM reverse transcription kit. qRT-PCR analysis was executed utilizing SYBR Premix EX Taq on the StepOnePlus PCR System. Normalization of the mRNA expression levels was conducted using ACTB as a reference, with calculations performed according to the 2^{−ΔΔCT} method. The sequences of the primers used for the detection of the expression patterns of the genes are detailed in Table S2.",
+        "title": "Novel Insights from Comprehensive Bioinformatics Analysis Utilizing Large-Scale Human Transcriptomes and Experimental Validation: The Role of Autophagy in Periodontitis",
+        "section": "Quantitative Real-Time PCR(qRT-PCR)",
+        "similarity": 0.023558758314855877,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39319846_sec12_C01",
+        "text": "TRIzol reagent was used to extract total RNA from the cells, following the manufacturer’s instructions. A PrimeScript RT kit was employed to create complementary DNA from the extracted RNA. SYBR Green PCR Master Mix was utilized to conduct quantitative real-time PCR using an ABI 7500 Real-Time PCR System. As an internal control, gene expression levels were normalized to GAPDH. Target gene relative expression was assessed by the 2^{-ΔΔCT} method. The primer sequences used for qRT-PCR are listed in Table 1.",
+        "title": "F13B regulates angiogenesis and tumor progression in hepatocellular carcinoma via the HIF-1α/VEGF pathway",
+        "section": "Quantitative real-time PCR(qRT-PCR)",
+        "similarity": 0.022695750851090657,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 400.6005999399349,
+      "neo4j_ms": 124.22200001310557,
+      "total_ms": 753.2258999999613,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 23,
+        "total_tokens": 23
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 9,
+    "question": "Can you explain what Met374 role in our structural based model and how it interact with other amino acid in the assay method?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC39593184_sec19_C14",
+        "text": "Ourt structural based model established based on the aforementioned criteria has shown interactions with amino acid residues like Met374, Phe134, Val373, Thr310, and Leu477. The model, however, showed low specificity producing 5 false positives despite its high sensitivity. The combination of structure- and ligand-based methods in drug discovery is a growing approach in CADD. Employing an integrated strategy can enhance the strengths and mitigate the limitations of each method.",
+        "title": "Pharmacophore-based virtual screening, molecular docking, and molecular dynamics investigation for the identification of novel, marine aromatase inhibitors",
+        "section": "Discussion",
+        "similarity": 0.03278688524590164,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39593184_sec13_C03",
+        "text": "ROC analysis showed AUC of 0.54, EF of 21.4, and pAUC values of 1.00, 1.00, and 0.88 at 1%, 5%, and 10% of the screened database. Supplemental material contains docking-assisted structural-based pharmacophore model cluster analysis data. The structure-based pharmacophore model found seven features, including an iron-binding site, aromatic ring, and hydrogen bond acceptor at Compound 6's azaheterocyclic ring.The model showcased possible hydrogen bonding at the Met374 position. Hydrophobic interactions were observed with Phe134, Val370, and other binding site residues.",
+        "title": "Pharmacophore-based virtual screening, molecular docking, and molecular dynamics investigation for the identification of novel, marine aromatase inhibitors",
+        "section": "Ligand-based, structural-based, and merged pharmacophore modeling",
+        "similarity": 0.021167557932263815,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39593184_sec19_C25",
+        "text": "It also showed six hydrophobic interactions with amino acids Arg115(97.3%), Ile133(93.4%), Ala306(92.3%), Val370(95.3%), Val373(96.1%), and Met374(98.1%), three of which were confirmed by molecular docking. We found that formestane, another steroidal inhibitor with a C6 hydroxy group, hydrogen bonds with amino acid residues Arg115, Met374, and Asp309. Suvannang et al. suggested that formestane can form hydrogen bonds with Met374's backbone amine and Asp309's carboxylic acid, resulting in tighter and stronger van der Waals contacts with surrounding amino acids and a high aromatase binding affinity.",
+        "title": "Pharmacophore-based virtual screening, molecular docking, and molecular dynamics investigation for the identification of novel, marine aromatase inhibitors",
+        "section": "Discussion",
+        "similarity": 0.016129032258064516,
+        "sources": [
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39593184_sec19_C19",
+        "text": "The model produced 22 true positives, representing 55% of total actives. The aromatase-androstenedione complex showed hydrogen bonding with Met374 and Arg115. The ligand additionally interacts via van der Waals forces with residues Phe221, Leu477, Phe134, Leu372, Val373, Val370, Ile133, Thr310, Ile305, and Asp309. This confirms previous findings. According to Ghosh et al. the steroidal substrate's mechanism involves catalytic residues Thr310, Ala306, and Asp309. Thr310 and Ala306 attack H2β carbon, while protonated Asp309 promotes 2,3-enolization by electrophilic attack on 3-keto oxygen.",
+        "title": "Pharmacophore-based virtual screening, molecular docking, and molecular dynamics investigation for the identification of novel, marine aromatase inhibitors",
+        "section": "Discussion",
+        "similarity": 0.016129032258064516,
+        "sources": [
+          "vector"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39695007_sec12_C29",
+        "text": "This was mainly due to changes in the R side chain group of the amino acid. By analysing the spatial structure of the amino acids at Site 349, we found that the glutamate at this site in Amp0279 generated hydrogen-bonding forces with T376 and R131. While T376 connected to H377 as the active centre site, E349 connected to Y351 as the active centre via A350. Thus, E349 had an effect on the sites of the two active centre in terms of the spatial structure.",
+        "title": "Characterization and structural analysis of a leucine aminopeptidase using site-directed mutagenesis",
+        "section": "Discussion",
+        "similarity": 0.015873015873015872,
+        "sources": [
+          "vector"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 327.07699993625283,
+      "neo4j_ms": 131.4595000585541,
+      "total_ms": 692.6747000543401,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 25,
+        "total_tokens": 25
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 10,
+    "question": "What is PCA used for in this study and how much changes PC1 and PC2 explain?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC40027235_sec2_C80",
+        "text": "Fig. E shows a scatter plot that provides a visual representation of PCA results, suggesting a clear delineation between ctDNA and tDNA. The fact that the ctDNA data is largely concentrated in the PC1 positive and PC2 negative quadrants suggests that PC1 is the main driver of variation in the ctDNA dataset. The fact that the ctDNA samples are mainly separated from the tissue samples along PC2 may suggest a distinct source of variation specific to the ctDNA but not tDNA.",
+        "title": "ctDNA-based liquid biopsy reveals wider mutational profile with therapy resistance and metastasis susceptibility signatures in early-stage breast cancer patients",
+        "section": "Results",
+        "similarity": 0.02854251012145749,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39720074_sec8_C02",
+        "text": "PCA results indicated that the first principal component explained 16.9 % of the variability, while PC2 explained 12.8 % of the variability in the peaks from all LUAD samples. The LUAD samples did not form distinct patterns within the two dimensions generated by PCA analysis, interestingly however, it seemed that samples with less smoking exposure were closer to each other on the PC2 axis rather than PC1. The x or y values of each sample in Fig. A were generated automatically in PCA and only represented the level of variety towards PC1 or 2-axis, which are not true peaks values.",
+        "title": "Chromatin accessibility reveals potential prognostic value of the peak set associated with smoking history in patients with lung adenocarcinoma",
+        "section": "Identification of the smoking associated peak set in LUAD patients",
+        "similarity": 0.02797067901234568,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39737967_sec43_C04",
+        "text": "For example, PC1 explains only 5% of the variance in our data. Another consequence is that the clustering of peaks may depend on whether they share some allelic states. To illustrate the differential clustering of peaks, we show projections on the first five components of the PCA.",
+        "title": "The highly rugged yet navigable regulatory landscape of the bacterial transcription factor TetR",
+        "section": "Principal component analysis",
+        "similarity": 0.026881720430107527,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC40027235_sec2_C81",
+        "text": "The fact that the ctDNA data is largely concentrated in the PC1 positive and PC2 negative quadrants suggests that PC1 is the main driver of variation in the ctDNA dataset. The fact that the ctDNA samples are mainly separated from the tissue samples along PC2 may suggest a distinct source of variation specific to the ctDNA but not tDNA. The tDNA parameters were largely distributed over the PC1 and PC2 positive quadrants, suggesting more complex variations in the tDNA that cannot be explained by a single principal component.",
+        "title": "ctDNA-based liquid biopsy reveals wider mutational profile with therapy resistance and metastasis susceptibility signatures in early-stage breast cancer patients",
+        "section": "Results",
+        "similarity": 0.025278219395866455,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39173004_sec23_C02",
+        "text": "The variability was shown by PCs 2 and 3, which were 9.65% and 7.73%, respectively. Similarly, the PC1 in PubChem-25230613 showed a variation of 26.69%, CHEMBL-263035 complex showed a variation of 31.35% in PC1. The PC1 in PubChem-74936833 and PubChem-44208924 complexes showed variations of 31.22% and 26%, respectively. The PCA analysis, using basic clustering in PC subspace, revealed conformational changes in all clusters; the most significant movement was shown by blue regions, intermediate movement by white regions, and less flexibility by red regions.",
+        "title": "Insilico exploration C. koseri ATP synthase inhibitors by pharmacophore-based virtual screening, molecular docking and MD simulation",
+        "section": "PCA",
+        "similarity": 0.025195618153364633,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 266.49409998208284,
+      "neo4j_ms": 110.0132999708876,
+      "total_ms": 595.0508000096306,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 19,
+        "total_tokens": 19
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  }
+]

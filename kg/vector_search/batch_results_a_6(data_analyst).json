@@ -1,0 +1,942 @@
+[
+  {
+    "question_id": 1,
+    "question": "Can you explane how cytotoxicity lymphocytes infiltrations are related to the module gene and moleculer traits in the analysis?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC39593098_sec13_C04",
+        "text": "Furthermore, we explored the relationships between the module gene and molecular traits, including CD8+ T cell infiltrations, cytotoxicity lymphocytes infiltrations, and CD274 expression. The heatmap of module trait correlations showed that the green-yellow module was highly positively correlated with CD8+ T cells and CD274 levels in LUAD BrMs, which meant that the green-yellow module may play an essential role in estimating the tumor immune microenvironment classification and the clinical response of ICIs. The scatter plots in Fig. C, D showed similar results.",
+        "title": "An immune scoring system predicts prognosis and immune characteristics in lung adenocarcinoma brain metastases by RNA sequencing",
+        "section": "Identification of the green-yellow module involved in CD8 + T cells and CD274 expression in LUAD BrMs via WGCNA",
+        "similarity": 0.03252247488101534,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39593098_sec13_C03",
+        "text": "The analysis indicated that 13 co-expression modules were identified by applying the dynamic tree cut method. Furthermore, we explored the relationships between the module gene and molecular traits, including CD8+ T cell infiltrations, cytotoxicity lymphocytes infiltrations, and CD274 expression.",
+        "title": "An immune scoring system predicts prognosis and immune characteristics in lung adenocarcinoma brain metastases by RNA sequencing",
+        "section": "Identification of the green-yellow module involved in CD8 + T cells and CD274 expression in LUAD BrMs via WGCNA",
+        "similarity": 0.03009207275993712,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39632251_sec16_C05",
+        "text": "Lastly, we conducted a correlation analysis between module eigengenes and sample traits, revealing strong relationships between the green module and necroptosis, NETosis, PANoptosis, pyroptosis, senescence, and group differences(Figure 3; Supplementary Figure 2). Enrichment analysis by GO and KEGG analysis showed that module hub genes are enriched in leukocyte cell–cell adhesion, leukocyte-mediated immunity, virus infection, and allograft rejection(Figure 3), emphasizing potential interactions among RCD pathways, immune pathways, pathways related to virus infection, and post-transplant renal fibrosis.",
+        "title": "Diverse regulated cell death patterns and immune traits in kidney allograft with fibrosis: a prediction of renal allograft failure based on machine learning, single-nucleus RNA sequencing and molecular docking",
+        "section": "Identification of hub RCD-related genes that drive fibrosis",
+        "similarity": 0.028577260665441927,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39593098_sec13_C07",
+        "text": "Furthermore, the GO and KEGG analysis demonstrated that the genes of the green-yellow module were enriched in various immune processes and pathways. GO analysis indicated that lymphocyte activation, regulation of T cell activation, T cell activation and positive regulation of leukocyte activation were enriched in the green-yellow gene set. KEGG analysis showed that hematopoietic cell lineage, natural killer cell mediated cytotoxicity, cytokine-cytokine receptor interaction, T cell receptor signaling pathway were enriched in green-yellow module.",
+        "title": "An immune scoring system predicts prognosis and immune characteristics in lung adenocarcinoma brain metastases by RNA sequencing",
+        "section": "Identification of the green-yellow module involved in CD8 + T cells and CD274 expression in LUAD BrMs via WGCNA",
+        "similarity": 0.024509803921568627,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39632251_sec21_C08",
+        "text": "Immune infiltration analysis revealed an overall increased activation of cytotoxic T cells and B lineage cells, which corresponds to a previous computational analysis using machine learning to identify core immune infiltrating cells in the fibrotic niche. Considering that necroptosis, NETosis, pyroptosis, PANoptosis, and senescence had significant correlations with all the differentially expressed immune infiltrating cells, we focused on these RCD forms. Necroptosis was predominantly observed in CDP, whereas NETosis and pyroptosis demonstrated enriched scores in leukocytes.",
+        "title": "Diverse regulated cell death patterns and immune traits in kidney allograft with fibrosis: a prediction of renal allograft failure based on machine learning, single-nucleus RNA sequencing and molecular docking",
+        "section": "Discussion",
+        "similarity": 0.016129032258064516,
+        "sources": [
+          "vector"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 712.4607999576256,
+      "neo4j_ms": 80.13160002883524,
+      "total_ms": 1057.7294999966398,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 27,
+        "total_tokens": 27
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 2,
+    "question": "How was the cell migration assay conducted according to Justus et al. 2014?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC39845516_sec10_C01",
+        "text": "The cell migration assay was performed as previously described([Justus et al. 2014]). The fully grown cell monolayer was scrapped by a fine micropipette tip and then further incubated in the DMEM containing 10% FBS. Photographs were taken at 0 and 48 h, and the distance between the two edges was indicated.",
+        "title": "Fatty Acid Synthase(FASN)Inhibitors Suppress Metformin-Induced Fat Accumulation and Apoptosis in H4IIE Hepatocellular Carcinoma Cells",
+        "section": "Cell migration assay",
+        "similarity": 0.03278688524590164,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39732710_sec15_C02",
+        "text": "Subsequently, observations were performed, and photographs were taken using an inverted microscope. Each sample was randomly selected for cell counting in five microscopic fields(× 200). The experiments were conducted in triplicate. For the invasion assay, the upper membrane of the chamber was pre-coated with Matrix-Gel™ Basement Membrane Matrix. The remaining steps followed the same protocol as used in the migration assay.",
+        "title": "Prognostic value and immune infiltration of a tumor microenvironment-related PTPN6 in metastatic melanoma",
+        "section": "Transwell migration and invasion assay",
+        "similarity": 0.027443609022556388,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39722007_sec10_C01",
+        "text": "Cell migration and invasive ability was determined by Transwell assays. The invasion chambers are covered by Matrigel gel whereas the migration chambers are not. In brief, chambers with 800 µl culture medium containing 10% FBS in the lower chamber were placed onto 24-well plates. 200 µl cell suspensions(5 × 10^{4} cells/well for invasion assay and 5 × 10^{3} cells/well for migration assay) were placed into the upper chamber.",
+        "title": "USP44 regulates HEXIM1 stability to inhibit tumorigenesis and metastasis of oral squamous cell carcinoma",
+        "section": "Transwell assays for cell migration and invasion",
+        "similarity": 0.022574508560558024,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39741338_sec5_C01",
+        "text": "Cellular migration assay was performed in the trans-well culture using Boyden chamber system(Neuro Probe, Inc. Gaithersburg, MD, USA). Briefly, the lower chamber was fulfilled the conditioned media prior to covering with a polycarbonate membrane(8 μm pore size, Neuro Probe, Inc.) pre-coated with 10 µg of human fibronectin on the immersed site. Cells(1.5 × 10^{4}) were seeded into the top chamber containing 50 µL of serum-free medium.",
+        "title": "GRK6 palmitoylation dictates triple-negative breast cancer metastasis via recruiting the β-Arrestin 2/MAPKs/NF-κB signaling axis",
+        "section": "Migration assay",
+        "similarity": 0.016129032258064516,
+        "sources": [
+          "vector"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39346049_sec24_C11",
+        "text": "According to a recent study, an examination was conducted to examine the inhibitory effects of the antimicrobial peptide TH2-3, obtained from tilapia skin mucus, on the growth of human fibrosarcoma cells. This inquiry showed a noteworthy suppression of cell growth([Wlodkowic, Skommer & Darzynkiewicz, 2009]; [Kuo et al. 2018]; [Rakers et al. 2013]; [Gaspar et al. 2015]). [Kuo et al.] conducted a study showing that an antimicrobial peptide called MSP-4 induces apoptosis in osteosarcoma MG63 cells via intrinsic and extrinsic pathways.",
+        "title": "In silico directed evolution of Anabas testudineus AtMP1 antimicrobial peptide to improve in vitro anticancer activity",
+        "section": "Apoptosis induction by annexin V-FTIC assay",
+        "similarity": 0.016129032258064516,
+        "sources": [
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 431.60999997053295,
+      "neo4j_ms": 105.54570006206632,
+      "total_ms": 762.7074000192806,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 18,
+        "total_tokens": 18
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 3,
+    "question": "What are the thermal stability characteristics of the N331P variant compared to TMO-WT?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC39363964_sec6_C11",
+        "text": "From the last round of the screening, five variants which were N331P/S33E, N331P/S33R, N331P/Q85G, N331P/C204S, N331P/A307N, and N331P/A473W were identified. The mutations S33E and Q85G were excluded from the further characterizations since the TMO-PE and TMO-PG variants showed less improvement in T _{m} as compared to the S33R mutation, and the Q85G mutation showed lower enzyme activities than that of the wild-type enzyme. Based on T _{m} values, S33R, C204S, A307N, and A473W were identified as beneficial mutations to increase TMO stability.",
+        "title": "Enhancement of tryptophan 2-monooxygenase thermostability by semi-rational enzyme engineering: a strategic design to minimize experimental investigation†",
+        "section": "Identification of thermostable variants from high-throughput screening",
+        "similarity": 0.031544957774465976,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39363964_sec6_C08",
+        "text": "The T496F and N331P variants were identified from the screening results as promising candidates. These variants were purified and investigated by thermal shift assays for T _{m} values in comparison to the T _{m} of TMO-WT of 48 °C. The TMO-F variant showed a slight improvement in the T _{m} with a one-degree Celsius increase; however, the T _{m} of TMO-P was increased by approximately 7 °C. Therefore, the TMO-P variant was used as a template for the second round of evolution at other positions.",
+        "title": "Enhancement of tryptophan 2-monooxygenase thermostability by semi-rational enzyme engineering: a strategic design to minimize experimental investigation†",
+        "section": "Identification of thermostable variants from high-throughput screening",
+        "similarity": 0.03149801587301587,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39363964_sec6_C10",
+        "text": "Some examples of screening data are shown in Fig. S3(ESI †). From the last round of the screening, five variants which were N331P/S33E, N331P/S33R, N331P/Q85G, N331P/C204S, N331P/A307N, and N331P/A473W were identified. The mutations S33E and Q85G were excluded from the further characterizations since the TMO-PE and TMO-PG variants showed less improvement in T _{m} as compared to the S33R mutation, and the Q85G mutation showed lower enzyme activities than that of the wild-type enzyme.",
+        "title": "Enhancement of tryptophan 2-monooxygenase thermostability by semi-rational enzyme engineering: a strategic design to minimize experimental investigation†",
+        "section": "Identification of thermostable variants from high-throughput screening",
+        "similarity": 0.027118043247075507,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39764114_sec12_C08",
+        "text": "Given the irreversible nature of thermal unfolding, we analyzed the fluorescence data by fitting it to a two-state unfolding model to determine the apparent melting temperature [EQ:EQ110]. We then compared these values to the WT [EQ:EQ111] to assess stability differences. The extracted [EQ:EQ112] varied among the mutants, with WT displaying the highest thermal stability at [EQ:EQ113] of 333±1 K, indicating that all mutations are destabilizing. The R1020S, K1034Q, and G1063V mutants exhibited the lowest stabilities, with average [EQ:EQ114] values decreasing by 10 K.",
+        "title": "Impact of Frequent ARID1A Mutations on Protein Stability: Insights into Cancer Pathogenesis",
+        "section": "Thermal stability showed irreversible process with R1020S impactful mutation",
+        "similarity": 0.026470588235294117,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39319129_sec20_C02",
+        "text": "As shown in Fig. 3 a, E40S/V181A variant exhibited a notable increase in T _{m} at pH 3.0, reaching 65.21 °C, which is 8.66 °C higher than the WT. Melting curves for these mutants are available in Fig. S4. Its thermal stability, assessed via heat inactivation at 55 °C, showed a remarkable 29-fold improvement over the WT, with a half-life of 553 min. The specific activity at 25 °C was slightly higher than that of the WT, and a slight decrease in catalytic efficiency(k _{cat} / K _{M}) was observed compared to the WT.",
+        "title": "Enhancing the thermostability of lignin peroxidase: Heme as a keystone cofactor driving stability changes in heme enzymes",
+        "section": "Thermodynamic stability and kinetic property of PcLiP01 WT, single and double mutants",
+        "similarity": 0.02571241401899771,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 325.97320002969354,
+      "neo4j_ms": 104.769799974747,
+      "total_ms": 676.024500047788,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 19,
+        "total_tokens": 19
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 4,
+    "question": "what happen to thermoAMY‐B Tm value?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC39308285_sec3_C17",
+        "text": "The resulting chimeric enzymes, thermoAMY‐B and mesoAMY‐B, were subjected to evaluation for their thermostability using the T _{m} value as a key parameter. As expected, mesoAMY‐B exhibited a significant increase in T _{m} value(Δ T _{m} = 12 °C); however, the T _{m} of thermoAMY‐B decreased to 51 °C, which was even lower than that of mesoAMY. Our theoretical framework suggests that the “short board” plays a determinative role in establishing the upper threshold of enzymatic stability.",
+        "title": "Novel Insights into Enzymatic Thermostability: The “Short Board” Theory and Zero‐Shot Hamiltonian Model",
+        "section": "Identifying the “Short Board” in α‐Amylase",
+        "similarity": 0.03131881575727918,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39308285_sec3_C16",
+        "text": "To validate our hypothesis regarding the pivotal role of the B domain in protein structure and its contribution to differences in thermostability between thermophilic and mesophilic enzymes, specifically thermoAMY and mesoAMY, we conducted a swap of the B domains between thermoAMY and mesoAMY. The resulting chimeric enzymes, thermoAMY‐B and mesoAMY‐B, were subjected to evaluation for their thermostability using the T _{m} value as a key parameter.",
+        "title": "Novel Insights into Enzymatic Thermostability: The “Short Board” Theory and Zero‐Shot Hamiltonian Model",
+        "section": "Identifying the “Short Board” in α‐Amylase",
+        "similarity": 0.029571646010002173,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39308285_sec3_C10",
+        "text": "ThermoAMY and mesoAMY displayed optimal temperatures of 90 and 45 °C, respectively. The melting temperature(T _{m}) values for thermoAMY and mesoAMY were determined to be 102 and 54 °C, respectively, classifying them as representative thermophilic and mesophilic enzymes. Based on our theory of structural limitations, the determining factor for a structure's maximum capacity lies in its shortest constituent rather than the longest, especially when there are variations in their lengths.",
+        "title": "Novel Insights into Enzymatic Thermostability: The “Short Board” Theory and Zero‐Shot Hamiltonian Model",
+        "section": "Identifying the “Short Board” in α‐Amylase",
+        "similarity": 0.029211087420042643,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39308285_sec3_C18",
+        "text": "As expected, mesoAMY‐B exhibited a significant increase in T _{m} value(Δ T _{m} = 12 °C); however, the T _{m} of thermoAMY‐B decreased to 51 °C, which was even lower than that of mesoAMY. Our theoretical framework suggests that the “short board” plays a determinative role in establishing the upper threshold of enzymatic stability. It is important to note that enzymatic stability is a multifaceted attribute involving various inter‐domain interactions. Consequently, disrupting certain delicate inter‐domain bonds could potentially reduce stability.",
+        "title": "Novel Insights into Enzymatic Thermostability: The “Short Board” Theory and Zero‐Shot Hamiltonian Model",
+        "section": "Identifying the “Short Board” in α‐Amylase",
+        "similarity": 0.029116045245077504,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39308285_sec3_C19",
+        "text": "Consequently, disrupting certain delicate inter‐domain bonds could potentially reduce stability. Our findings indicate that mesoAMY exhibits slightly higher stability compared to thermoAMY‐B, which supports our proposed hypothesis. Additionally, the incorporation a stable B domain in mesoAMY‐B leads to a significant enhancement of its stability by ≈12 °C. This improvement can be attributed to the critical role of the B domain; however, inter‐domain interactions do not significantly contribute to stabilization. Both mesoAMY and mesoAMY‐B displayed an optimal temperature at 45 °C.",
+        "title": "Novel Insights into Enzymatic Thermostability: The “Short Board” Theory and Zero‐Shot Hamiltonian Model",
+        "section": "Identifying the “Short Board” in α‐Amylase",
+        "similarity": 0.02782608695652174,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 1269.7673999937251,
+      "neo4j_ms": 78.48290004767478,
+      "total_ms": 1565.8014999935403,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 11,
+        "total_tokens": 11
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 5,
+    "question": "Can you explane how the 3D clustering algorithim in NetFlow3D works and why it is better than other methods in terms of precision and power?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC36945530_sec4_C10",
+        "text": "The advantage of our end-to-end integration over the methods relying solely on PPI network topology is the significant improvement in statistical power. This improvement is demonstrated by the outcomes of systematically removing the two key strategies that NetFlow3D used to incorporate 3D structural information via nodes and edges. Initially, the edge weight in NetFlow3D, determined by 3D clustering signals on PPI interfaces, was removed, leading to uniform propagation from each node to all its neighbors.",
+        "title": "A multiscale functional map of somatic mutations in cancer integrating protein structure and network topology",
+        "section": "Importance of our end-to-end integration of 3D structural information and PPI network topology",
+        "similarity": 0.030679156908665108,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC36945530_sec3_C17",
+        "text": "This was further validated using an independent pan-cancer dataset from the Catalogue of Somatic Mutations in Cancer^{50}, where NetFlow3D maintained its leading performance(Supplementary Fig. 4; Methods). Beyond 3D clustering algorithms, we benchmarked NetFlow3D against other methods for identifying cancer driver mutations, including single-residue-based(“hotspot”) and whole-gene-based methods. The test unit size of 3D clustering algorithms falls between these two extremes. Notably, NetFlow3D outperforms these methods, demonstrating the highest precision and recall.",
+        "title": "A multiscale functional map of somatic mutations in cancer integrating protein structure and network topology",
+        "section": "Significant intra- and inter-protein 3D clusters throughout the Human Protein Structurome",
+        "similarity": 0.03021353930031804,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC36945530_sec8_C02",
+        "text": "This integration provides unique insights that can not be gained from each component in isolation. NetFlow3D applied 3D clustering analysis across the entire Human Protein Structurome, which not only identified >100-fold more potentially functional residues than using the single-residue-based hotspot method, but also discovered over twice as many significant 3D clusters compared to traditional 3D clustering analysis using only experimentally-resolved structures.",
+        "title": "A multiscale functional map of somatic mutations in cancer integrating protein structure and network topology",
+        "section": "Discussion:",
+        "similarity": 0.029411764705882353,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC36945530_sec3_C18",
+        "text": "Notably, NetFlow3D outperforms these methods, demonstrating the highest precision and recall. While the hotspot method is highly precise, it lacks power when background mutation rates are low or sample sizes are small. The whole-gene-based method, which considers the entire gene as the test unit, can dilute statistical power and lacks precision when only specific regions within the gene are responsible for driving cancer. In contrast, our 3D clustering algorithm in NetFlow3D provides flexible test unit sizes at submolecular resolution, achieving a balance of higher precision and better power.",
+        "title": "A multiscale functional map of somatic mutations in cancer integrating protein structure and network topology",
+        "section": "Significant intra- and inter-protein 3D clusters throughout the Human Protein Structurome",
+        "similarity": 0.02921395544346364,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC36945530_sec2_C11",
+        "text": "The second part of NetFlow3D employs a heat diffusion model adapted from HotNet2^{16} to propagate 3D clustering signals(“heat”) through the PPI network(“diffusion”). Importantly, our method goes beyond traditional PPI network analyses by incorporating 3D structural information in two crucial aspects: NetFlow3D assigns an initial heat score to each node based on the 3D clustering signals on that protein, unlike traditional PPI network analyses that rely on gene mutation frequency or other gene-level statistics, thereby significantly boosting the signal-to-noise ratio.",
+        "title": "A multiscale functional map of somatic mutations in cancer integrating protein structure and network topology",
+        "section": "NetFlow3D maps the functional effects of somatic mutations across multiple scales",
+        "similarity": 0.028083267871170464,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 474.6824000030756,
+      "neo4j_ms": 116.52809998486191,
+      "total_ms": 813.2659000111744,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 34,
+        "total_tokens": 34
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 6,
+    "question": "What are ligands in dockng?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC39327890_sec1_C01",
+        "text": "One major pillar of rational drug design has always been the use of virtual screening through docking in what is commonly known as structure-based drug design. In docking, molecular ligands are typically conformationally explored in a protein pocket either through the use of biophysically defined constraints or machine learning methods, and a best pose with its corresponding computed binding affinity reported.",
+        "title": "Protein language models are performant in structure-free virtual screening",
+        "section": "Introduction",
+        "similarity": 0.01639344262295082,
+        "sources": [
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC38911172_sec13_C05",
+        "text": "The ligands, which are smaller molecules that bind to proteins, were retrieved from Protein Data Bank files using the Biopython package. These ligands were then processed using the rdkit module, a process that involved removing any salts and neutralizing charges in the ligands. The idea behind the following workflow is that compounds with similar 3D structures would perturb the binding pocket in the same way. To identify a reference compound that closely resembles the ligands, the PheSA program was used.",
+        "title": "Identification of SARS-CoV-2 Mpro inhibitors through deep reinforcement learning for de novo drug design and computational chemistry approaches†",
+        "section": "Docking with GOLD",
+        "similarity": 0.01639344262295082,
+        "sources": [
+          "vector"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39341947_sec13_C01",
+        "text": "To deeply understand the learning mechanism of PepNet in the detection of antibacterial and anti-inflammatory activities, we explore what it learns in different ways. For instance, what are the contributions of the pre-trained features to the classification? What does the residual dilated convolution block learn? What does the residual Transformer block learn?",
+        "title": "PepNet: an interpretable neural network for anti-inflammatory and antimicrobial peptides prediction using a pre-trained protein language model",
+        "section": "Interpretability of the PepNet model",
+        "similarity": 0.016129032258064516,
+        "sources": [
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39327890_sec1_C02",
+        "text": "In docking, molecular ligands are typically conformationally explored in a protein pocket either through the use of biophysically defined constraints or machine learning methods, and a best pose with its corresponding computed binding affinity reported. A quintessential VS pipeline will iteratively perform docking through a library, usually consisting of millions to billions of unique chemical compounds, and rank the ligands based on the derived affinity - the top scored ligands will then proceed onto the next phase of drug development, either through computational means such as molecular dynamics simulations or through experimental validation.",
+        "title": "Protein language models are performant in structure-free virtual screening",
+        "section": "Introduction",
+        "similarity": 0.016129032258064516,
+        "sources": [
+          "vector"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39021828_sec4_C01",
+        "text": "The ligands used as input for the docking investigation were obtained from the virtual screening hits of the natural databases. Subsequently, ligands were integrated into the workstation, and energy was minimized by utilizing the OPLS3e force field in the LigPrep module of the program. This minimization aids in assigning bond order, adding hydrogens to ligands, and converting 2D structures to 3D structures for performing docking studies. The generated output file, including the best conformations of the ligands, was then used for docking studies([Schrödinger Release, 2017]).",
+        "title": "Virtual screening, molecular docking, MD simulation studies, DFT calculations, ADMET, and drug likeness of Diaza-adamantane as potential MAPKERK inhibitors",
+        "section": "Ligand preparation",
+        "similarity": 0.015873015873015872,
+        "sources": [
+          "vector"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 420.97049998119473,
+      "neo4j_ms": 103.82469999603927,
+      "total_ms": 757.9000999685377,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 8,
+        "total_tokens": 8
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 7,
+    "question": "What is the main focus of the intrduction to moleculer graphics session?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC39230433_sec4_C03",
+        "text": "For example, one of the students reported “The molecular graphics class could be more structured it was easy to feel lost, especially at the beginning,” while another student suggested “Change the exercises so that they bring something else than just look at a protein in 3D The purpose of those sessions was not clear”, and another student offered “The molecular graphics part could be improved, sometimes it was really confusing what we had to do.” With this in mind, we decided to structure our tutorials in five sessions spread throughout the course and linked to the rest of the curriculum. The sessions also included recently developed computational tools that are now routinely used in structural biology., The first four sessions were scheduled for 2 h each, and the last session was scheduled for 4 h.",
+        "title": "Teaching protein structure and function through molecular visualization",
+        "section": "Designing the molecular graphics moments",
+        "similarity": 0.031009615384615385,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39230433_sec4_C02",
+        "text": "That version had received some criticism from the students during the course evaluations. For example, one of the students reported “The molecular graphics class could be more structured it was easy to feel lost, especially at the beginning,” while another student suggested “Change the exercises so that they bring something else than just look at a protein in 3D The purpose of those sessions was not clear”, and another student offered “The molecular graphics part could be improved, sometimes it was really confusing what we had to do.” With this in mind, we decided to structure our tutorials in five sessions spread throughout the course and linked to the rest of the curriculum.",
+        "title": "Teaching protein structure and function through molecular visualization",
+        "section": "Designing the molecular graphics moments",
+        "similarity": 0.030834914611005692,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39230433_sec6_C11",
+        "text": "Encouragingly, the other students stated that this was a “Great intro to molecular graphics! Maybe more “real‐life” examples, what this tool is used for in research”(“Very good”), “I think the way the molecular graphics sessions were made, made it easy to understand the lecture and helped to have a visual representation”(“Good”), “I really liked it, it was fun to identify and know more about the protein using different tools”(“Very good”), and “It was nice to experiment on the computer for the future”(“Good”).",
+        "title": "Teaching protein structure and function through molecular visualization",
+        "section": "RESULTS",
+        "similarity": 0.02921395544346364,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39230433_sec1_C05",
+        "text": "For that reason, as part of an advanced course in protein chemistry, we have developed a series of five teaching moments focused on molecular graphics. These consist of structured step‐by‐step tutorials that introduce students to molecular graphics software, and lead them to explore the physicochemical characteristics of proteins, the interactions between their atoms, motifs and domains, and how they can use other computational tools to get hints on protein function.",
+        "title": "Teaching protein structure and function through molecular visualization",
+        "section": "INTRODUCTION",
+        "similarity": 0.027777777777777776,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39230433_sec7_C05",
+        "text": "Based on the student feedback, it is possible to shorten some of the sessions by reducing some steps that appear redundant. Alternatively, it is possible to include extra assignments for students that grasp concepts faster and want to further explore the capabilities of the molecular graphics software. One option is to make it clearer that students can explore the tutorials created by the developers of the software —although this is already explicitly written in the instructions.",
+        "title": "Teaching protein structure and function through molecular visualization",
+        "section": "DISCUSSION",
+        "similarity": 0.02694394213381555,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 397.4681000690907,
+      "neo4j_ms": 92.92119997553527,
+      "total_ms": 707.8785999910906,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 16,
+        "total_tokens": 16
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 8,
+    "question": "What is Tmod2 role in SOD1 G93A mice microglia cluster 6?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC39664295_sec4_C11",
+        "text": "To validate the expansion of cluster 6 microglia, we performed reverse transcription quantitative polymerase chain reaction on spinal cords from SOD1^{G93A} and WT littermates. Tmod2 expression was significantly increased in SOD1^{G93A} mice at both postnatal days 110 and 130, while Trappc9 showed increased expression at day 130. Both genes were among the top 10 up-regulated DEGs in cluster 6, thus supporting the expansion of cluster 6 microglia in SOD1^{G93A} mice.",
+        "title": "Single-Nucleus RNA Sequencing Reveals the Spatiotemporal Dynamics of Disease-Associated Microglia in Amyotrophic Lateral Sclerosis",
+        "section": "Microglia subsets: DAM and cluster 6 microglia show a dramatic increase in SOD1 G93A mice",
+        "similarity": 0.03278688524590164,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39664295_sec4_C12",
+        "text": "Tmod2 expression was significantly increased in SOD1^{G93A} mice at both postnatal days 110 and 130, while Trappc9 showed increased expression at day 130. Both genes were among the top 10 up-regulated DEGs in cluster 6, thus supporting the expansion of cluster 6 microglia in SOD1^{G93A} mice. In the progression of neurodegenerative diseases, HOM and DAM have received more attention; besides that, the inflammatory response has also been described. We asked whether cluster 6 microglia belong to this inflammatory state.",
+        "title": "Single-Nucleus RNA Sequencing Reveals the Spatiotemporal Dynamics of Disease-Associated Microglia in Amyotrophic Lateral Sclerosis",
+        "section": "Microglia subsets: DAM and cluster 6 microglia show a dramatic increase in SOD1 G93A mice",
+        "similarity": 0.03225806451612903,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39664295_sec4_C14",
+        "text": "Cluster 6 microglia exhibited an expression pattern inconsistent with the cell cycle. Collectively, there was a significant increase in both DAM and cluster 6 microglia numbers in SOD1^{G93A} mice compared to WT mice, which indicated that these 2 particular types of microglia are essential in disease progression in SOD1^{G93A} mice.",
+        "title": "Single-Nucleus RNA Sequencing Reveals the Spatiotemporal Dynamics of Disease-Associated Microglia in Amyotrophic Lateral Sclerosis",
+        "section": "Microglia subsets: DAM and cluster 6 microglia show a dramatic increase in SOD1 G93A mice",
+        "similarity": 0.031746031746031744,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39664295_sec4_C01",
+        "text": "To explore the heterogeneity of microglia, unsupervised clustering analysis was performed on microglia characterized by high expressions of P2ry12, Cx3cr1, and C1qa containing 2,753 cells. In the microglia of both WT and SOD1^{G93A} mice, 9 distinct subclusters of microglia were identified. Consistent with previous findings, cluster 5 was identified as DAM based on significantly high UCell scores and expression levels of Apoe, Cd9, Trem2, Ctsd, Csf1, and Ctsb. DAM showed a robust increase from nearly absent in WT mice to 10.01% in SOD1^{G93A} mice.",
+        "title": "Single-Nucleus RNA Sequencing Reveals the Spatiotemporal Dynamics of Disease-Associated Microglia in Amyotrophic Lateral Sclerosis",
+        "section": "Microglia subsets: DAM and cluster 6 microglia show a dramatic increase in SOD1 G93A mice",
+        "similarity": 0.031009615384615385,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39664295_sec4_C10",
+        "text": "In addition, the DEGs in cluster 6 microglia between SOD1^{G93A} and WT mice further confirmed that the top 10 GO pathways mentioned above were mainly evoked. To validate the expansion of cluster 6 microglia, we performed reverse transcription quantitative polymerase chain reaction on spinal cords from SOD1^{G93A} and WT littermates.",
+        "title": "Single-Nucleus RNA Sequencing Reveals the Spatiotemporal Dynamics of Disease-Associated Microglia in Amyotrophic Lateral Sclerosis",
+        "section": "Microglia subsets: DAM and cluster 6 microglia show a dramatic increase in SOD1 G93A mice",
+        "similarity": 0.03055037313432836,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 312.553699943237,
+      "neo4j_ms": 86.37269993778318,
+      "total_ms": 617.6545999478549,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 21,
+        "total_tokens": 21
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 9,
+    "question": "Could you please explain the role of E3 ubiquitin ligases, specifically focusing on the function of the SOCS box domain within the ASB family proteins?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC39162488_sec1_C07",
+        "text": "One class of E3 ubiquitin ligases is called SOCS family proteins because of the SOCS box domain. Ankyrin repeat and SOCS box containing protein 3 is a member of the ASB family. This family has 18 members, and the protein structure includes the N-terminal ankyrin repeat and the C-terminal SOCS cassette. The N-terminal domain of the ASB3 protein is responsible for substrate recognition, and the C-terminal SOCS box performs E3 enzyme function.",
+        "title": "ASB3 expression aggravates inflammatory bowel disease by targeting TRAF6 protein stability and affecting the intestinal microbiota",
+        "section": "INTRODUCTION",
+        "similarity": 0.03252247488101534,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39162488_sec1_C06",
+        "text": "E3 ubiquitin ligases promote protein degradation through the ubiquitin-proteasome system. One class of E3 ubiquitin ligases is called SOCS family proteins because of the SOCS box domain. Ankyrin repeat and SOCS box containing protein 3 is a member of the ASB family. This family has 18 members, and the protein structure includes the N-terminal ankyrin repeat and the C-terminal SOCS cassette. The N-terminal domain of the ASB3 protein is responsible for substrate recognition, and the C-terminal SOCS box performs E3 enzyme function.",
+        "title": "ASB3 expression aggravates inflammatory bowel disease by targeting TRAF6 protein stability and affecting the intestinal microbiota",
+        "section": "INTRODUCTION",
+        "similarity": 0.03252247488101534,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39162488_sec1_C08",
+        "text": "Ankyrin repeat and SOCS box containing protein 3 is a member of the ASB family. This family has 18 members, and the protein structure includes the N-terminal ankyrin repeat and the C-terminal SOCS cassette. The N-terminal domain of the ASB3 protein is responsible for substrate recognition, and the C-terminal SOCS box performs E3 enzyme function. Ubiquitination modification is a crucial posttranslational modification in the inflammatory response, affecting the function of essential proteins of the signaling pathway.",
+        "title": "ASB3 expression aggravates inflammatory bowel disease by targeting TRAF6 protein stability and affecting the intestinal microbiota",
+        "section": "INTRODUCTION",
+        "similarity": 0.031746031746031744,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39162488_sec1_C09",
+        "text": "This family has 18 members, and the protein structure includes the N-terminal ankyrin repeat and the C-terminal SOCS cassette. The N-terminal domain of the ASB3 protein is responsible for substrate recognition, and the C-terminal SOCS box performs E3 enzyme function. Ubiquitination modification is a crucial posttranslational modification in the inflammatory response, affecting the function of essential proteins of the signaling pathway. Dysregulation of E3 ubiquitin ligase-related response processes has been reported in IBD and numerous immune-related diseases.",
+        "title": "ASB3 expression aggravates inflammatory bowel disease by targeting TRAF6 protein stability and affecting the intestinal microbiota",
+        "section": "INTRODUCTION",
+        "similarity": 0.031009615384615385,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39162488_sec1_C10",
+        "text": "The N-terminal domain of the ASB3 protein is responsible for substrate recognition, and the C-terminal SOCS box performs E3 enzyme function. Ubiquitination modification is a crucial posttranslational modification in the inflammatory response, affecting the function of essential proteins of the signaling pathway. Dysregulation of E3 ubiquitin ligase-related response processes has been reported in IBD and numerous immune-related diseases. For instance, ASB1 promotes TAB2 stability by inhibiting K48-linked polyubiquitination, which leads to enhanced NF-κB and MAPK activation.",
+        "title": "ASB3 expression aggravates inflammatory bowel disease by targeting TRAF6 protein stability and affecting the intestinal microbiota",
+        "section": "INTRODUCTION",
+        "similarity": 0.031009615384615385,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 458.01140007097274,
+      "neo4j_ms": 86.15190000273287,
+      "total_ms": 763.6533000040799,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 32,
+        "total_tokens": 32
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 10,
+    "question": "In the context of clinical assays, how does the presence of glucosidases such as beta-galactosidase affect the stability of acetals and the subsequent formation of aldehyde substrates?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC39886570_sec4_C05",
+        "text": "We subsequently examined potential off-target activation by glucosidases(e.g. beta-galactosidase(β-Gal)) owing to their ability to hydrolyze acetals to hemiacetals, which in the case of 9 would further decompose to yield an aldehyde substrate. Even in the presence of 1 unit of β-Gal(1 unit = 1 μmol substrate converted per min at pH 7.3 at 37 °C) which was confirmed for activity, the acetal remained completely stable. Additionally, we treated 9 with rat liver microsomes at various concentrations to account for possible CYP450 activity(e.g. CYP3A4) that has been reported to cleave acetals.",
+        "title": "Activity-Based Bioluminescent Logic-Gate Probe Reveals Crosstalk Between the Inflammatory Tumor Microenvironment and ALDH1A1 in Cancer Cells",
+        "section": "In Vitro Evaluation of Acetal Trigger Stability",
+        "similarity": 0.03278688524590164,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39886570_sec4_C04",
+        "text": "Similarly, incubation in neutral PBS or serum-containing media yielded identical results. We subsequently examined potential off-target activation by glucosidases(e.g. beta-galactosidase(β-Gal)) owing to their ability to hydrolyze acetals to hemiacetals, which in the case of 9 would further decompose to yield an aldehyde substrate. Even in the presence of 1 unit of β-Gal(1 unit = 1 μmol substrate converted per min at pH 7.3 at 37 °C) which was confirmed for activity, the acetal remained completely stable.",
+        "title": "Activity-Based Bioluminescent Logic-Gate Probe Reveals Crosstalk Between the Inflammatory Tumor Microenvironment and ALDH1A1 in Cancer Cells",
+        "section": "In Vitro Evaluation of Acetal Trigger Stability",
+        "similarity": 0.03225806451612903,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39886570_sec4_C06",
+        "text": "Even in the presence of 1 unit of β-Gal(1 unit = 1 μmol substrate converted per min at pH 7.3 at 37 °C) which was confirmed for activity, the acetal remained completely stable. Additionally, we treated 9 with rat liver microsomes at various concentrations to account for possible CYP450 activity(e.g. CYP3A4) that has been reported to cleave acetals. ^{32} Across a range of concentrations from 0.25 to as high as 5.0 ng/mL, negligible bioluminescence was observed.",
+        "title": "Activity-Based Bioluminescent Logic-Gate Probe Reveals Crosstalk Between the Inflammatory Tumor Microenvironment and ALDH1A1 in Cancer Cells",
+        "section": "In Vitro Evaluation of Acetal Trigger Stability",
+        "similarity": 0.025396825396825397,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39519200_sec7_C33",
+        "text": "Understanding how single-missense mutations affect protein stability is crucial for clinical decision-making. In essence, our work bridges the gap between genetic mutations and their impact on protein stability, offering valuable tools for assessing the clinical significance of single-missense mutations, especially those with unknown impacts. Our models are particularly beneficial in the context of rare or novel mutations where experimental data is limited or unavailable.",
+        "title": "Linking Protein Stability to Pathogenicity: Predicting Clinical Significance of Single-Missense Mutations in Ocular Proteins Using Machine Learning",
+        "section": "Discussion",
+        "similarity": 0.015873015873015872,
+        "sources": [
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39886570_sec4_C02",
+        "text": "The aldehyde intermediate exists in an equilibrium with its hydrate form, complicating detection and quantification using HPLC-MS. As such, we utilized bioluminescence to investigate hydrolytic stability. Each molecule was incubated in 1 M HCl for one hour, neutralized and sequentially treated with ALDH1A1 and luciferase prior to imaging(λ _{em} = 605 nm at pH 7.4 and temp. = 37 °C). Compound 9 was deemed the most acid resistant as treatment yielded the lowest bioluminescence. This finding is consistent with reported acetal stability trends.",
+        "title": "Activity-Based Bioluminescent Logic-Gate Probe Reveals Crosstalk Between the Inflammatory Tumor Microenvironment and ALDH1A1 in Cancer Cells",
+        "section": "In Vitro Evaluation of Acetal Trigger Stability",
+        "similarity": 0.015625,
+        "sources": [
+          "vector"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 283.533800044097,
+      "neo4j_ms": 97.70629997365177,
+      "total_ms": 616.5952000301331,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 41,
+        "total_tokens": 41
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  }
+]

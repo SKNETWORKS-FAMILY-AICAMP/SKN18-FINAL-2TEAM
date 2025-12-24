@@ -1,0 +1,948 @@
+[
+  {
+    "question_id": 1,
+    "question": "What is the role of non-alcoholic fatty liver disease in chronic liver disease worldwide?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC39732921_sec1_C01",
+        "text": "Non-alcoholic fatty liver disease is a clinicopathological syndrome characterized by excessive hepatocellular lipid accumulation, excluding alcohol and other specific hepatic injury factors^{1}. Given the global prevalence of obesity and its associated metabolic syndrome, NAFLD has emerged as a significant etiology of chronic liver disease worldwide^{2}. The adult prevalence of NAFLD ranges from 10 to 30%, with non-alcoholic steatohepatitis accounting for %, and an alarming incidence of cirrhosis within ten years reaching up to 25% ^{3}.",
+        "title": "Omentin-1 mitigates non-alcoholic fatty liver disease by preserving autophagy through AMPKα/mTOR signaling pathway",
+        "section": "Introduction",
+        "similarity": 0.03252247488101534,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39380655_sec1_C01",
+        "text": "Non-Alcoholic Fatty Liver Disease is a liver spectrum disease with a broad canvas of conditions, from simple lipid build-up in hepatocytes to liver injury and fibrosis. Some individuals eventually develop lewis cirrhosis and liver cancer in advanced stages, which is predicted to become the leading indication for liver transplantation within the next five years. ^{1} The global prevalence of the disease is around % of the total population.",
+        "title": "Lipogenic stearoyl-CoA desaturase-1(SCD1) targeted virtual screening for chemical inhibitors: molecular docking / dynamics simulation and in vitro assessment of anti-NAFLD efficacy",
+        "section": "Introduction",
+        "similarity": 0.032266458495966696,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39736705_sec1_C01",
+        "text": "The most prevalent chronic liver disease is non-alcoholic fatty liver disease. Its incidence is expected to upsurge in tandem with the epidemics of type 2 diabetes and obesity. NAFLD begins with hepatic steatosis, considered the disease’s initial stage. Consequently, it can advance to nonalcoholic steatohepatitis. If left untreated, NASH will develop into cirrhosis, liver failure, or hepatocellular carcinoma. Even so, no drugs are now approved to treat NASH, and the development of innovative therapeutics has remained a major challenge in the era of NASH research.",
+        "title": "L-carnitine attenuates autophagic flux, apoptosis, and necroptosis in rats with dexamethasone-induced non-alcoholic steatohepatitis",
+        "section": "Background",
+        "similarity": 0.030330882352941176,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39732921_sec9_C01",
+        "text": "Non-alcoholic fatty liver disease is a hepatic disorder resulting from dysregulation of lipid metabolism, often concomitant with obesity, diabetes, and hypertension^{16}. Despite the increasing attention is given to NAFLD prevention and treatment in recent years, the lack of effective therapeutic strategies remains a significant challenge^{17}.",
+        "title": "Omentin-1 mitigates non-alcoholic fatty liver disease by preserving autophagy through AMPKα/mTOR signaling pathway",
+        "section": "Discussion",
+        "similarity": 0.030158730158730156,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39380655_sec0_C01",
+        "text": "Amidst rising global prevalence of metabolic syndrome, the associated risk of non-alcoholic fatty liver disease is also rapidly increasing. The pathogenesis of NAFLD starts with fat accumulation and progresses through inflammation and fibrotic sequel, often involving complex molecular mechanisms involving de novo lipogenesis. Stearoyl-CoA desaturase 1 enzyme, expressed in liver and adipose tissue, converts saturated fatty acids to monounsaturated fatty acids, contributing to triglyceride and cholesterol ester formation.",
+        "title": "Lipogenic stearoyl-CoA desaturase-1(SCD1) targeted virtual screening for chemical inhibitors: molecular docking / dynamics simulation and in vitro assessment of anti-NAFLD efficacy",
+        "section": "Abstract",
+        "similarity": 0.029850746268656716,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 1139.9608999490738,
+      "neo4j_ms": 168.72129996772856,
+      "total_ms": 2199.239599984139,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 17,
+        "total_tokens": 17
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 2,
+    "question": "Can you explain how Bacillus subtilis spore surface protein B interacts with peptide-based coacervates, particularly regarding its phosphorylated form?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC39477955_sec1_C22",
+        "text": "Furthermore, we show that these peptide-based coacervates effectively sequester a variety of guest molecules via charge and hydrophobic interactions, and can selectively sequester ordered entities, such as Bovine Serum Albumin, human microtubule-associated Tau protein, and Bacillus subtilis spore surface protein B, to a significantly greater extent in their phosphorylated form compared to the non-phosphorylated form. Finally, we demonstrate that these coacervate-based microreactors substantially enhance peptide catalysis, resulting in a -fold increase in catalytic efficiency of P7 for standard phosphatase substrates compared to the soluble peptide in solution.",
+        "title": "Catalytic peptide-based coacervates for enhanced function through structural organization and substrate specificity",
+        "section": "Introduction",
+        "similarity": 0.03200204813108039,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39477955_sec1_C21",
+        "text": "Then, we demonstrate that coacervation reduces the conformational flexibility of the peptide, stabilizing a fully folded β-hairpin structure. Furthermore, we show that these peptide-based coacervates effectively sequester a variety of guest molecules via charge and hydrophobic interactions, and can selectively sequester ordered entities, such as Bovine Serum Albumin, human microtubule-associated Tau protein, and Bacillus subtilis spore surface protein B, to a significantly greater extent in their phosphorylated form compared to the non-phosphorylated form.",
+        "title": "Catalytic peptide-based coacervates for enhanced function through structural organization and substrate specificity",
+        "section": "Introduction",
+        "similarity": 0.031754032258064516,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39477955_sec5_C03",
+        "text": "Leveraging this property, we incubated the P7 coacervates with different fluorophore-labeled phosphorylated proteins and their non-phosphorylated counterparts to explore the applicability of the P7 coacervates. Three distinct proteins were evaluated: phosphorylated bovine serum albumin, its non-phosphorylated counterpart, phosphorylated human microtubule-associated Tau protein along with its non-phosphorylated form, and Bacillus subtilis spore surface protein B and its phosphorylated variant^{37}. BSA is a versatile model protein to study, suitable for a broad range of applications.",
+        "title": "Catalytic peptide-based coacervates for enhanced function through structural organization and substrate specificity",
+        "section": "P7 coacervates selectively recruit phosphorylated molecules",
+        "similarity": 0.030886196246139225,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39339301_sec1_C16",
+        "text": "Recently, the Bacillus substilis spore surface display system has gained interest in enzyme immobilization. The surface display of Bacillus subtilis spores reduces the impact of other proteins on the displayed enzyme proteins and makes them stable and recyclable. This merit of the spore display system could make the industrial application of chitinase a reality.",
+        "title": "Display of Bacterial Exochitanase on Bacillus subtilis Spores Improved Enzyme Stability and Recyclability",
+        "section": "Introduction",
+        "similarity": 0.028404512489927477,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39339301_sec10_C04",
+        "text": "Prior studies have utilized this particular coat protein as a means of displaying different enzymes. The current research on the Bacillus subtilis spore coat-displayed exochitinase system can be of immense importance and perhaps has its potential application as a biopesticide in the agricultural industry. Chitinase inhibits the growth of many pathogenic fungi, which is considered a serious concern to worldwide agriculture. Rostami et al. expressed chitinase on the surface of B. subtilis spores as a biological control agent.",
+        "title": "Display of Bacterial Exochitanase on Bacillus subtilis Spores Improved Enzyme Stability and Recyclability",
+        "section": "Discussion",
+        "similarity": 0.027984344422700584,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 429.1718000313267,
+      "neo4j_ms": 163.9027000637725,
+      "total_ms": 947.0153999282047,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 30,
+        "total_tokens": 30
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 3,
+    "question": "What is the role of B cells in the fibroblast communication channels observed in pancreatitis samples?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC39485038_sec21_C04",
+        "text": "These signals seemed to be directed with higher frequency to normal ductal cells, in support of the presence of a mesenchymal–epithelial axis regulating organ homeostasis. Channels of communication between fibroblasts and immune cells were also found, in line with the notion that mesenchymal cells possess immunomodulatory potential throughout tissues and conditions. A similar scenario dominated by fibroblast-emanated signals was observed in pancreatitis samples, with interesting de novo activity toward B cells and nerves.",
+        "title": "Dynamic Evolution of Fibroblasts Revealed by Single-Cell RNA Sequencing of Human Pancreatic Cancer",
+        "section": "Mapping the pancreas interactome across pathologic states",
+        "similarity": 0.03278688524590164,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39485038_sec21_C05",
+        "text": "Channels of communication between fibroblasts and immune cells were also found, in line with the notion that mesenchymal cells possess immunomodulatory potential throughout tissues and conditions. A similar scenario dominated by fibroblast-emanated signals was observed in pancreatitis samples, with interesting de novo activity toward B cells and nerves. The complexity of the interactome was remarkably augmented in PDAC, as displayed by both the number of overall interactions between different cell types, and by their strength.",
+        "title": "Dynamic Evolution of Fibroblasts Revealed by Single-Cell RNA Sequencing of Human Pancreatic Cancer",
+        "section": "Mapping the pancreas interactome across pathologic states",
+        "similarity": 0.03225806451612903,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39485038_sec22_C16",
+        "text": "This concept is substantiated by the finding that fibroblasts constitute the fulcrum of the pancreas interactome across different disease states, as demonstrated by their prominent role in establishing interactions with other cellular components of the tissue microenvironment in both normal pancreatitis and PDAC samples. Notably, this fibroblast-centric cellular framework is amplified in the context of PDAC, with significant increases in both the numbers and the magnitude of interactions driven by fibroblast-originated signals.",
+        "title": "Dynamic Evolution of Fibroblasts Revealed by Single-Cell RNA Sequencing of Human Pancreatic Cancer",
+        "section": "Discussion",
+        "similarity": 0.031009615384615385,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39485038_sec21_C03",
+        "text": "As shown in Fig. 6A and B, prominent signals emanating from fibroblasts were already notable in normal pancreas samples, underscoring the broad role of mesenchymal cells as obligate structural components of the pancreas. These signals seemed to be directed with higher frequency to normal ductal cells, in support of the presence of a mesenchymal–epithelial axis regulating organ homeostasis. Channels of communication between fibroblasts and immune cells were also found, in line with the notion that mesenchymal cells possess immunomodulatory potential throughout tissues and conditions.",
+        "title": "Dynamic Evolution of Fibroblasts Revealed by Single-Cell RNA Sequencing of Human Pancreatic Cancer",
+        "section": "Mapping the pancreas interactome across pathologic states",
+        "similarity": 0.030798389007344232,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39485038_sec21_C06",
+        "text": "A similar scenario dominated by fibroblast-emanated signals was observed in pancreatitis samples, with interesting de novo activity toward B cells and nerves. The complexity of the interactome was remarkably augmented in PDAC, as displayed by both the number of overall interactions between different cell types, and by their strength.",
+        "title": "Dynamic Evolution of Fibroblasts Revealed by Single-Cell RNA Sequencing of Human Pancreatic Cancer",
+        "section": "Mapping the pancreas interactome across pathologic states",
+        "similarity": 0.030798389007344232,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 502.71729996893555,
+      "neo4j_ms": 108.48429996985942,
+      "total_ms": 943.3886000188068,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 20,
+        "total_tokens": 20
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 4,
+    "question": "What are the marketed DPP-4 inhibitors worldwide and what are their main benefits and potential side effects?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC38792165_sec1_C05",
+        "text": "At present, a variety of DPP-4 inhibitors, such as sitagliptin, vildagliptin, saxagliptin, alogliptin, linagliptin, gemigliptin, trelagliptin, and anagliptin, are marketed worldwide. These DPP-4 inhibitors have the advantages of definite hypoglycemic effects, a low risk of hypoglycemia, no weight gain, good cardiovascular safety, and once-daily administration. However, some potential side effects are also associated with them, such as nasopharyngitis, headache, upper respiratory tract infection, and mild gastrointestinal discomfort.",
+        "title": "Discovery of Nine Dipeptidyl Peptidase-4 Inhibitors from Coptis chinensis Using Virtual Screening, Bioactivity Evaluation, and Binding Studies",
+        "section": "Introduction",
+        "similarity": 0.03278688524590164,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC38792165_sec1_C04",
+        "text": "Therefore, inhibitors targeting DPP-4 have broad therapeutic potential for a variety of diseases. At present, a variety of DPP-4 inhibitors, such as sitagliptin, vildagliptin, saxagliptin, alogliptin, linagliptin, gemigliptin, trelagliptin, and anagliptin, are marketed worldwide. These DPP-4 inhibitors have the advantages of definite hypoglycemic effects, a low risk of hypoglycemia, no weight gain, good cardiovascular safety, and once-daily administration.",
+        "title": "Discovery of Nine Dipeptidyl Peptidase-4 Inhibitors from Coptis chinensis Using Virtual Screening, Bioactivity Evaluation, and Binding Studies",
+        "section": "Introduction",
+        "similarity": 0.03200204813108039,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC38792165_sec1_C03",
+        "text": "By inhibiting DPP-4, these drugs can enhance the action of GLP-1 and GIP, resulting in better blood sugar control. DPP-4 inhibitors are generally well tolerated and have a low risk of hypoglycemia compared to other antidiabetic drugs. Overall, the clinical importance of DPP-4 as a target lies in its involvement in glucose homeostasis and the potential therapeutic applications of DPP-4 inhibitors in diabetes and other related diseases. Therefore, inhibitors targeting DPP-4 have broad therapeutic potential for a variety of diseases.",
+        "title": "Discovery of Nine Dipeptidyl Peptidase-4 Inhibitors from Coptis chinensis Using Virtual Screening, Bioactivity Evaluation, and Binding Studies",
+        "section": "Introduction",
+        "similarity": 0.03125763125763126,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC38792165_sec1_C06",
+        "text": "These DPP-4 inhibitors have the advantages of definite hypoglycemic effects, a low risk of hypoglycemia, no weight gain, good cardiovascular safety, and once-daily administration. However, some potential side effects are also associated with them, such as nasopharyngitis, headache, upper respiratory tract infection, and mild gastrointestinal discomfort. Some rare adverse reactions include acute pancreatitis, arthralgia, heart failure, angioneurotic edema, hypersensitivity, elevated liver enzymes, diarrhea, cough, and a decreased absolute lymphocyte count.",
+        "title": "Discovery of Nine Dipeptidyl Peptidase-4 Inhibitors from Coptis chinensis Using Virtual Screening, Bioactivity Evaluation, and Binding Studies",
+        "section": "Introduction",
+        "similarity": 0.03021353930031804,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC38792165_sec1_C09",
+        "text": "In addition, the dosage of some DPP-4 inhibitors needs to be adjusted according to renal function; the exception is linagliptin, which is mainly excreted through the intestine while the others are mainly excreted through the kidney. Compared with chemically synthesized drugs, natural herbal medicines are considered to have higher effectiveness and fewer side effects. Therefore, an urgent need for novel DPP-4 inhibitors with good efficacy and safety in natural herbal medicines is recognized.",
+        "title": "Discovery of Nine Dipeptidyl Peptidase-4 Inhibitors from Coptis chinensis Using Virtual Screening, Bioactivity Evaluation, and Binding Studies",
+        "section": "Introduction",
+        "similarity": 0.02946912242686891,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 472.54160000011325,
+      "neo4j_ms": 149.24290007911623,
+      "total_ms": 980.1971999695525,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 21,
+        "total_tokens": 21
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 5,
+    "question": "What gene sets have been collected to evaluate adipogenesis and other differentiation processes in different MSC subtypes according to the literature?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC39428975_sec15_C02",
+        "text": "To evaluate the differences in osteogenesis, chondrogenesis, adipogenesis, neurogenesis, angiogenesis, and immune regulation among different MSC subtypes, we collected and curated 6 gene sets from the literature: chondrogenic, osteogenic, adipogenic, angiogenesis and neurogenesis. ^{9} The genes in these sets have been shown in previous studies to reflect the multidirectional differentiation of MSCs.",
+        "title": "Advantages of cell proliferation and immune regulation in CD146+NESTIN+ HUMSCs: insights from single-cell RNA sequencing",
+        "section": "Custom gene set scoring",
+        "similarity": 0.03278688524590164,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39428975_sec15_C01",
+        "text": "The multidirectional differentiation, stemness, and immunoregulatory abilities of MSCs have been a focus of basic research. To evaluate the differences in osteogenesis, chondrogenesis, adipogenesis, neurogenesis, angiogenesis, and immune regulation among different MSC subtypes, we collected and curated 6 gene sets from the literature: chondrogenic, osteogenic, adipogenic, angiogenesis and neurogenesis. ^{9} The genes in these sets have been shown in previous studies to reflect the multidirectional differentiation of MSCs.",
+        "title": "Advantages of cell proliferation and immune regulation in CD146+NESTIN+ HUMSCs: insights from single-cell RNA sequencing",
+        "section": "Custom gene set scoring",
+        "similarity": 0.03225806451612903,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39852886_sec31_C15",
+        "text": "Low concentrations of horse serum in the culture medium have been shown to induce the differentiation of SMSCs into myocytes, while the medium used for induction of adipogenic differentiation promoted their differentiation into adipocytes. The genes encoding MyoD1 and MHC are used as markers for myogenic differentiation, while PPAR γ and lipoprotein lipase are the primary transcription factors regulating adipogenesis. Measurement of these indicators enables evaluation of the impact of long-term serum starvation on SMSCs’ differentiation at the molecular level.",
+        "title": "Effects of Long-Term Serum Starvation on Autophagy, Metabolism, and Differentiation of Porcine Skeletal Muscle Satellite Cells",
+        "section": "Discussion",
+        "similarity": 0.030309988518943745,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39428975_sec15_C03",
+        "text": "^{9} The genes in these sets have been shown in previous studies to reflect the multidirectional differentiation of MSCs. Therefore, we used the AddModuleScore function in the R package “Seurat” based on these 4 custom gene sets to score different cell subtypes, and visualized their score distribution using a violin plot.",
+        "title": "Advantages of cell proliferation and immune regulation in CD146+NESTIN+ HUMSCs: insights from single-cell RNA sequencing",
+        "section": "Custom gene set scoring",
+        "similarity": 0.029957522915269395,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39428975_sec31_C01",
+        "text": "We assessed the functional attributes of cellular subsets by examining their potential for differentiation into osteoblasts, adipocytes, and chondrogenic cells, and their capacity to promote angiogenesis and neurogenesis. We observed that the CD146^{+} NES^{+} MSCs subpopulation exhibited a strong adipogenic potential, whereas the CD146^{+} NES^{−} MSCs subpopulation displayed robust osteogenic and chondrogenic capabilities. Conversely, fibroblasts exhibited comparatively lower abilities in osteogenesis, angiogenesis, and neurogenesis.",
+        "title": "Advantages of cell proliferation and immune regulation in CD146+NESTIN+ HUMSCs: insights from single-cell RNA sequencing",
+        "section": "Evaluation of differentiation capacity and differentiation degree",
+        "similarity": 0.015873015873015872,
+        "sources": [
+          "vector"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 614.0503999777138,
+      "neo4j_ms": 161.70159995090216,
+      "total_ms": 1141.6380000300705,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 24,
+        "total_tokens": 24
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 6,
+    "question": "What is SEC and how it used in final step for monomeric TF purification?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC38987455_sec14_C09",
+        "text": "For monomeric TF, a HiPrep 26/60 Sephacryl S-300 HR column was used for the final SEC step. Fractions containing pure protein were pooled, concentrated using centrifugal filters, flash-frozen in liquid nitrogen and stored at −80 °C. The concentration of the protein was estimated using Bradford’s assay^{78}.",
+        "title": "Resolving chaperone-assisted protein folding on the ribosome at the peptide level",
+        "section": "Expression and purification of TF",
+        "similarity": 0.03278688524590164,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC38987455_sec14_C08",
+        "text": "Fractions containing pure protein were pooled, supplemented with 1:100 TEV protease to cleave the His-tag and dialyzed in a buffer containing 20 mM Tris-HCl, pH 7.5, 250 mM NaCl and 2 mM DTT at 4 °C. The protein was passed through a HisTrap column and the flow-through containing the cleaved protein was concentrated using centrifugal filters and injected into a Superdex 200i 10/300 GL column that was equilibrated with 20 mM Tris-HCl, pH 7.5, 150 mM NaCl, 5%(v/v) glycerol and 1 mM DTT. For monomeric TF, a HiPrep 26/60 Sephacryl S-300 HR column was used for the final SEC step.",
+        "title": "Resolving chaperone-assisted protein folding on the ribosome at the peptide level",
+        "section": "Expression and purification of TF",
+        "similarity": 0.03225806451612903,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC38987455_sec14_C01",
+        "text": "TF was expressed with a cleavable N-terminal 6×His-tag from a pPROEX-HTa vector^{58}. TF ΔRBS(F44A/R45A/K46A)^{52} and monomeric TF^{60} were generated using Q5 site-directed mutagenesis. E. coli BL21 cells were transformed with the TF plasmids and selected on LB agar plates supplemented with 100 µg ml^{−1} ampicillin. A single colony was used to inoculate 1 l of ZYM 5052 autoinduction media containing 100 µg ml^{−1} ampicillin, which was grown overnight at 37 °C.",
+        "title": "Resolving chaperone-assisted protein folding on the ribosome at the peptide level",
+        "section": "Expression and purification of TF",
+        "similarity": 0.022875816993464054,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39510188_sec15_C09",
+        "text": "Protein fractions were analyzed by SDS–PAGE and concentrated by centrifugal filtration. Final protein concentration was determined by BioPhotometer D30. Purified proteins were used immediately or flash-frozen in liquid nitrogen and stored at −80 °C. For the assembly between A. aeolicus TsaDB dimer and TsaE, analytical SEC experiments were performed on a calibrated Superdex 75 10/300 GL column.",
+        "title": "Structure–function analysis of tRNA t6A-catalysis, assembly, and thermostability of Aquifex aeolicus TsaD2B2 tetramer in complex with TsaE",
+        "section": "Cloning, mutagenesis, expression, and purification",
+        "similarity": 0.02181050656660413,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC38987455_sec14_C06",
+        "text": "The resuspended cells were supplemented with 1 mM PMSF and a tablet of EDTA-free protease inhibitor cocktail and then lysed by sonication. The lysate was centrifuged at g for 45 min at 4 °C and the supernatant was loaded onto a 5 ml HisTrap HP column connected to an ÄKTA Pure Protein Purification System. The bound protein was eluted by washing the column with a linear gradient of 0–500 mM imidazole in lysis buffer.",
+        "title": "Resolving chaperone-assisted protein folding on the ribosome at the peptide level",
+        "section": "Expression and purification of TF",
+        "similarity": 0.015873015873015872,
+        "sources": [
+          "vector"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 537.2038000496104,
+      "neo4j_ms": 119.31139999069273,
+      "total_ms": 997.9643999831751,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 17,
+        "total_tokens": 17
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 7,
+    "question": "Can you explane what is known about the role of Plasmodium Pf MORC based on recent studies and genome editing techniques?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC39636094_sec10_C06",
+        "text": "In Plasmodium, the role of Pf MORC was still poorly understood. Conflicting results on the essentiality of Pf MORC using either KD or KO strategies remained unresolved([Singh et al. 2021a]; [Zhang et al. 2018]). Using the CRISPR/Cas9 genome editing tool, we have determined the nuclear localization, genome-wide distribution, and regulatory impacts of Pf MORC on the parasite chromatin, transcriptome, and cell cycle development.",
+        "title": "PfMORC protein regulates chromatin accessibility and transcriptional repression in the human malaria parasite, Plasmodium falciparum",
+        "section": "Discussion",
+        "similarity": 0.03278688524590164,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39636094_sec10_C08",
+        "text": "Using the CRISPR/Cas9 genome editing tool, we have determined the nuclear localization, genome-wide distribution, and regulatory impacts of Pf MORC on the parasite chromatin, transcriptome, and cell cycle development. We now have powerful evidence demonstrating that Pf MORC is not only critical for parasite cell cycle progression and its survival but also has a direct role in heterochromatin formation and gene silencing, including regulating immune evasion through antigenic variation.",
+        "title": "PfMORC protein regulates chromatin accessibility and transcriptional repression in the human malaria parasite, Plasmodium falciparum",
+        "section": "Discussion",
+        "similarity": 0.031746031746031744,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39636094_sec1_C23",
+        "text": "However, the genome-wide distribution and exact function of this protein throughout the parasite life cycle remained elusive. In this study, we apply CRISPR/Cas9 genomic editing technologies to determine the function, genome distribution, and indispensability of Pf MORC throughout the parasite’s IDC. Immunoprecipitation of an HA-tagged parasite line validates the role of Pf MORC in heterochromatin structure maintenance.",
+        "title": "PfMORC protein regulates chromatin accessibility and transcriptional repression in the human malaria parasite, Plasmodium falciparum",
+        "section": "Introduction",
+        "similarity": 0.03125,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39636094_sec1_C22",
+        "text": "Immunoprecipitation experiments demonstrated that Pf MORC seems to interact with AP2-G2([Singh et al. 2021a]), a TF that plays a critical role in the maturation of gametocytes. However, the genome-wide distribution and exact function of this protein throughout the parasite life cycle remained elusive. In this study, we apply CRISPR/Cas9 genomic editing technologies to determine the function, genome distribution, and indispensability of Pf MORC throughout the parasite’s IDC.",
+        "title": "PfMORC protein regulates chromatin accessibility and transcriptional repression in the human malaria parasite, Plasmodium falciparum",
+        "section": "Introduction",
+        "similarity": 0.030303030303030304,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39636094_sec1_C24",
+        "text": "In this study, we apply CRISPR/Cas9 genomic editing technologies to determine the function, genome distribution, and indispensability of Pf MORC throughout the parasite’s IDC. Immunoprecipitation of an HA-tagged parasite line validates the role of Pf MORC in heterochromatin structure maintenance. Using the downregulation of Pf MORC induced through the TetR-DOZI system, we demonstrate the functional significance of Pf MORC in heterochromatin stability and gene repression.",
+        "title": "PfMORC protein regulates chromatin accessibility and transcriptional repression in the human malaria parasite, Plasmodium falciparum",
+        "section": "Introduction",
+        "similarity": 0.03021353930031804,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 350.7402000250295,
+      "neo4j_ms": 122.31939996127039,
+      "total_ms": 828.8533000741154,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 27,
+        "total_tokens": 27
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 8,
+    "question": "What is narrow-sense heritability and how it different from broad-sense heritability in traits?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC39768317_sec18_C04",
+        "text": "Broad-sense heritability was moderately high for most traits, indicating a substantial genetic contribution to phenotypic variance. Meanwhile, narrow-sense heritability was consistently lower than broad-sense heritability, reflecting the limited contribution of additive genetic effects to total genetic variation for most traits. Narrow-sense heritability values for ear height, days to silking, and number of rows/ear were relatively high, suggesting a significant additive genetic component for these traits.",
+        "title": "Unraveling Genetic Variation and Inheritance Patterns in Newly Developed Maize Hybrids for Improving Late Wilt Disease Resistance and Agronomic Performance Under Artificial Inoculation Conditions",
+        "section": "Genetic Parameter Estimates",
+        "similarity": 0.032018442622950824,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39768317_sec20_C33",
+        "text": "Broad-sense heritability, encompassing additive, dominance, and epistatic genetic variances, was moderately high for most traits. This indicates a substantial genetic contribution to the observed phenotypic variance and underscores the potential for genetic improvement through selection. However, the consistently lower narrow-sense heritability values highlight the limited contribution of additive genetic effects to the total genetic variation for many traits.",
+        "title": "Unraveling Genetic Variation and Inheritance Patterns in Newly Developed Maize Hybrids for Improving Late Wilt Disease Resistance and Agronomic Performance Under Artificial Inoculation Conditions",
+        "section": "Discussion",
+        "similarity": 0.03177805800756621,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39768317_sec20_C32",
+        "text": "The heritability estimates provided valuable insights into the genetic architecture of the evaluated traits. Broad-sense heritability, encompassing additive, dominance, and epistatic genetic variances, was moderately high for most traits. This indicates a substantial genetic contribution to the observed phenotypic variance and underscores the potential for genetic improvement through selection. However, the consistently lower narrow-sense heritability values highlight the limited contribution of additive genetic effects to the total genetic variation for many traits.",
+        "title": "Unraveling Genetic Variation and Inheritance Patterns in Newly Developed Maize Hybrids for Improving Late Wilt Disease Resistance and Agronomic Performance Under Artificial Inoculation Conditions",
+        "section": "Discussion",
+        "similarity": 0.031754032258064516,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39768317_sec18_C05",
+        "text": "Meanwhile, narrow-sense heritability was consistently lower than broad-sense heritability, reflecting the limited contribution of additive genetic effects to total genetic variation for most traits. Narrow-sense heritability values for ear height, days to silking, and number of rows/ear were relatively high, suggesting a significant additive genetic component for these traits. However, narrow-sense heritability was minimal for other characters, indicating that environmental factors or non-additive genetic influences play a more prominent role in their expression.",
+        "title": "Unraveling Genetic Variation and Inheritance Patterns in Newly Developed Maize Hybrids for Improving Late Wilt Disease Resistance and Agronomic Performance Under Artificial Inoculation Conditions",
+        "section": "Genetic Parameter Estimates",
+        "similarity": 0.0315136476426799,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39768317_sec20_C35",
+        "text": "However, the consistently lower narrow-sense heritability values highlight the limited contribution of additive genetic effects to the total genetic variation for many traits. Traits such as ear height, days to silking, and number of rows per ear exhibited relatively high narrow-sense heritability, suggesting a significant additive genetic component. These traits have the potential to respond well to selection, particularly under breeding strategies that focus on additive genetic improvement.",
+        "title": "Unraveling Genetic Variation and Inheritance Patterns in Newly Developed Maize Hybrids for Improving Late Wilt Disease Resistance and Agronomic Performance Under Artificial Inoculation Conditions",
+        "section": "Discussion",
+        "similarity": 0.030798389007344232,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 565.8985000336543,
+      "neo4j_ms": 102.77440003119409,
+      "total_ms": 1004.7532999888062,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 22,
+        "total_tokens": 22
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 9,
+    "question": "what is Box‐Cox in this context for protein abundances?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC39665261_sec18_C05",
+        "text": "From this space, a relatively simple feed‐forward network(2 weight‐normalized linear layers) is used for predicting values on the real line(Box‐Cox‐transformed protein abundances). The fundamental assumption of our construction is that training induces a structure on the embedded encoder space that reflects the total order of abundance values(i.e. all scalar values are comparable and arranged in a strict succession).",
+        "title": "Amino acid sequence encodes protein abundance shaped by protein stability at reduced synthesis cost",
+        "section": "Embedded ordering",
+        "similarity": 0.03252247488101534,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39665261_sec11_C07",
+        "text": "Protein sequences(X's/independent variable) and their corresponding target raw abundances(Y's/dependent variable) were loaded as‐is to model as input lists without masking. To make the abundance distribution mass‐centered, the preprocessing was configured to Box‐Cox transform the raw abundances with λ = −0.05155 using the expectation–maximization procedure as implemented in SciPy, on data based on medians of the initial dataset.",
+        "title": "Amino acid sequence encodes protein abundance shaped by protein stability at reduced synthesis cost",
+        "section": "Neural network training",
+        "similarity": 0.03128054740957967,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39665261_sec11_C08",
+        "text": "To make the abundance distribution mass‐centered, the preprocessing was configured to Box‐Cox transform the raw abundances with λ = −0.05155 using the expectation–maximization procedure as implemented in SciPy, on data based on medians of the initial dataset. The training task's preprocessing routine tokenized the sequences with the TAPE IUPAC(Rao et al.) tokenizer, each amino acid being assigned a unique integer value and the sequence flanked with special start and stop integer tokens.",
+        "title": "Amino acid sequence encodes protein abundance shaped by protein stability at reduced synthesis cost",
+        "section": "Neural network training",
+        "similarity": 0.023430301434776885,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39665261_sec18_C04",
+        "text": "And because the Transformer uses a learned positional encoding, each residue in the sequence may be assigned a different value depending on position(i.e. regardless of the type of amino acid). From this space, a relatively simple feed‐forward network(2 weight‐normalized linear layers) is used for predicting values on the real line(Box‐Cox‐transformed protein abundances).",
+        "title": "Amino acid sequence encodes protein abundance shaped by protein stability at reduced synthesis cost",
+        "section": "Embedded ordering",
+        "similarity": 0.01639344262295082,
+        "sources": [
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39665261_sec7_C13",
+        "text": "It is naturally intriguing to make more explicit how positional and compositional features differ towards the prediction of protein abundance. Here, one is frustrated by the significant overlap in “information” and the remaining unknowns regarding the physical dependencies between all relevant variables, which are likely to be complex and nonlinear(as is the case between amino acid composition and codon usage bias for instance, as selection at the amino acid level influences codon usage(Błażej et al. Morton)).",
+        "title": "Amino acid sequence encodes protein abundance shaped by protein stability at reduced synthesis cost",
+        "section": "DISCUSSION",
+        "similarity": 0.015873015873015872,
+        "sources": [
+          "vector"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 405.8532000053674,
+      "neo4j_ms": 150.26040002703667,
+      "total_ms": 896.4917999692261,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 14,
+        "total_tokens": 14
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 10,
+    "question": "How does TNPO3mut expression affect climbing capacity in flies?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC34547132_sec15_C03",
+        "text": "This indicates that TNPO3mut expression in Drosophila muscles reduces locomotor activity of flies over time. TNPO3mut expression in motor neurons also decreased climbing capacity in 7‐ and 15‐day‐old flies compared to control flies(85% and 86%, respectively; yw; D42‐Gal4). TNPO3wt expression in motor neurons also significantly reduced climbing velocity at 7‐ and 15‐day‐old, but comparing the effect of TNPO3mut vs. TNPO3wt there was a further reduction in climbing velocity at 7‐ and 15‐day‐old(44% and 54%, respectively).",
+        "title": "Inhibition of autophagy rescues muscle atrophy in a LGMDD2 Drosophila model",
+        "section": "LGMDD2 model flies show reduced locomotor activity",
+        "similarity": 0.032018442622950824,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC34547132_sec16_C09",
+        "text": "In terms of adult eclosion capacity, TNPO3mut expression in fly muscle did not significantly reduce the percentage of adult flies compared to sTNPO3wt and control flies(MHC‐Gal4>UAS‐GFP). However, from day 7 onwards, a proportion of flies expressing TNPO3mut in the muscle developed a characteristic upheld wing phenotype. TNPO3mut expression in motor neurons, in contrast, did cause a significant decrease eclosion of 57% and 58% compared to sTNPO3wt and control flies(D42‐Gal4>UAS‐GFP), respectively.",
+        "title": "Inhibition of autophagy rescues muscle atrophy in a LGMDD2 Drosophila model",
+        "section": "TNPO3mut reduces median survival and fly’ eclosion capacity in Drosophila",
+        "similarity": 0.031024531024531024,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC34547132_sec15_C05",
+        "text": "TNPO3wt expression in motor neurons also significantly reduced climbing velocity at 7‐ and 15‐day‐old, but comparing the effect of TNPO3mut vs. TNPO3wt there was a further reduction in climbing velocity at 7‐ and 15‐day‐old(44% and 54%, respectively). Regarding the flight capacity, TNPO3mut expression in fly motor neurons significantly reduced average landing height compared to the control flies(18% reduction; D42‐Gal4>UAS‐GFP), like the effect of TNPO3wt overexpression. Ergo, TNPO3mut expression in Drosophila motor neurons also reduces locomotor activity of flies over time.",
+        "title": "Inhibition of autophagy rescues muscle atrophy in a LGMDD2 Drosophila model",
+        "section": "LGMDD2 model flies show reduced locomotor activity",
+        "similarity": 0.031024531024531024,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC34547132_sec16_C08",
+        "text": "Generally, flies expressing either construct in both muscle and motor neurons reached pupation normally, without significant differences. In terms of adult eclosion capacity, TNPO3mut expression in fly muscle did not significantly reduce the percentage of adult flies compared to sTNPO3wt and control flies(MHC‐Gal4>UAS‐GFP). However, from day 7 onwards, a proportion of flies expressing TNPO3mut in the muscle developed a characteristic upheld wing phenotype.",
+        "title": "Inhibition of autophagy rescues muscle atrophy in a LGMDD2 Drosophila model",
+        "section": "TNPO3mut reduces median survival and fly’ eclosion capacity in Drosophila",
+        "similarity": 0.030886196246139225,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC34547132_sec16_C07",
+        "text": "We also studied whether TNPO3mut or TNPO3wt expression affected fly development, by quantifying the percentage of individuals reaching pupa and adult stage. Generally, flies expressing either construct in both muscle and motor neurons reached pupation normally, without significant differences. In terms of adult eclosion capacity, TNPO3mut expression in fly muscle did not significantly reduce the percentage of adult flies compared to sTNPO3wt and control flies(MHC‐Gal4>UAS‐GFP).",
+        "title": "Inhibition of autophagy rescues muscle atrophy in a LGMDD2 Drosophila model",
+        "section": "TNPO3mut reduces median survival and fly’ eclosion capacity in Drosophila",
+        "similarity": 0.030834914611005692,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 318.3482000604272,
+      "neo4j_ms": 130.548799992539,
+      "total_ms": 796.0763999726623,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 13,
+        "total_tokens": 13
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  }
+]

@@ -1,0 +1,420 @@
+{
+  "metadata": {
+    "timestamp": "2025-12-19T17:49:02.272283",
+    "question_original": "tme가 뭐야"
+  },
+  "process": {
+    "1_rewrite": {
+      "track": "T1",
+      "intent": "evidence_search",
+      "domains": null,
+      "confidence": 0.7,
+      "reason_short": "정의 요청",
+      "normalized_question": "What is TME?",
+      "entities": [
+        {
+          "name": "TME",
+          "type": "concept",
+          "id": null
+        }
+      ],
+      "must": [
+        "tumor microenvironment"
+      ],
+      "should": [
+        "immune cells",
+        "extracellular matrix",
+        "tumor-associated fibroblasts",
+        "cytokines",
+        "tumor progression"
+      ],
+      "must_not": [],
+      "filters": {
+        "year_from": null,
+        "year_to": null,
+        "journal": null,
+        "study_type": null,
+        "domain": null
+      },
+      "retrieval": {
+        "k_seed": 300,
+        "k_final": 40,
+        "hop_limit": 2,
+        "fanout_limit": 200
+      },
+      "track_debug": {
+        "llm_track": "T1",
+        "rule_track": "T1",
+        "rule_conf": 0.5,
+        "llm_conf": 0.7,
+        "why": "agree"
+      },
+      "intent_debug": {
+        "domain_strength": {
+          "paper": 0.0,
+          "clinical": 0.0,
+          "protocol": 0.0,
+          "kg": 0.0
+        },
+        "strong_domains": [],
+        "any_domains": [],
+        "explicit_multi": false,
+        "rule_wants_multi": false,
+        "llm_conf": 0.7,
+        "why_intent": "agree",
+        "rule_intent": "evidence_search"
+      },
+      "must_terms_expanded": [
+        "tumor microenvironment"
+      ],
+      "must_not_terms_expanded": []
+    },
+    "2_route": {
+      "track": "T1",
+      "intent": "evidence_search",
+      "domains": [],
+      "confidence": 0.7,
+      "reason_short": "정의 요청",
+      "track_why": "agree",
+      "intent_why": "agree"
+    },
+    "3_plan": [
+      {
+        "domain": "entity",
+        "mode": "ENTITY",
+        "embedder": null,
+        "priority": 10,
+        "why": "T1: entity/term grounding first"
+      },
+      {
+        "domain": "paper",
+        "mode": "FT",
+        "embedder": null,
+        "priority": 20,
+        "why": "T1: fulltext for definitions"
+      },
+      {
+        "domain": "paper",
+        "mode": "HY",
+        "embedder": "main_1536",
+        "priority": 40,
+        "why": "T1: fallback hybrid if sparse"
+      }
+    ]
+  },
+  "results": {
+    "count": 10,
+    "contexts": [
+      {
+        "article": {
+          "title": "Detecting cell types and densities in the tumor microenvironment improves prognostic risk assessment for breast cancer",
+          "year": 2025,
+          "doi": "10.17305/bb.2024.10974"
+        },
+        "vec_score": 0.01639344262295082,
+        "journal_title": null,
+        "evidence_chunks": [
+          {
+            "text": "All regions of interest were manually marked by two experienced pathologists using QuPath(version: 0.4.0). Subsequently, the ROIs were cropped into patches of 256 × 256 pixels at a magnification of 40× to match the input scale of CNNs and avoid overfitting. Each patch was labeled as one of the following categories: adipose, immune cells, necrosis, normal breast cells, stromal cells, and tumor cells. In constructing the training and validation datasets for the deep CNNs, oversampling was performed for immune cells, necrosis, and normal breast cells.",
+            "chunk_id": "SEC39151110_sec4_C01"
+          },
+          {
+            "text": "Each patch was labeled as one of the following categories: adipose, immune cells, necrosis, normal breast cells, stromal cells, and tumor cells. In constructing the training and validation datasets for the deep CNNs, oversampling was performed for immune cells, necrosis, and normal breast cells. This involved randomly applying one of the following operations to all patches and including them in the dataset along with the original image: rotation by 90∘ around the center, rotation by 180∘, and rotation by 270∘.",
+            "chunk_id": "SEC39151110_sec4_C03"
+          },
+          {
+            "text": "This involved randomly applying one of the following operations to all patches and including them in the dataset along with the original image: rotation by 90∘ around the center, rotation by 180∘, and rotation by 270∘. Undersampling was applied to adipose, stromal cells, and tumor cells, involving the random selection of 3000 patches to be included in the dataset. The dataset used for training and testing the deep CNNs has been uploaded to Kaggle: https://www.kaggle.com/datasets/pupupu233/breast.",
+            "chunk_id": "SEC39151110_sec4_C05"
+          },
+          {
+            "text": "Subsequently, the ROIs were cropped into patches of 256 × 256 pixels at a magnification of 40× to match the input scale of CNNs and avoid overfitting. Each patch was labeled as one of the following categories: adipose, immune cells, necrosis, normal breast cells, stromal cells, and tumor cells. In constructing the training and validation datasets for the deep CNNs, oversampling was performed for immune cells, necrosis, and normal breast cells.",
+            "chunk_id": "SEC39151110_sec4_C02"
+          },
+          {
+            "text": "In constructing the training and validation datasets for the deep CNNs, oversampling was performed for immune cells, necrosis, and normal breast cells. This involved randomly applying one of the following operations to all patches and including them in the dataset along with the original image: rotation by 90∘ around the center, rotation by 180∘, and rotation by 270∘. Undersampling was applied to adipose, stromal cells, and tumor cells, involving the random selection of 3000 patches to be included in the dataset.",
+            "chunk_id": "SEC39151110_sec4_C04"
+          }
+        ]
+      },
+      {
+        "article": {
+          "title": "Prognostic value and immune infiltration of a tumor microenvironment-related PTPN6 in metastatic melanoma",
+          "year": 2024,
+          "doi": "10.1186/s12935-024-03625-6"
+        },
+        "vec_score": 0.016129032258064516,
+        "journal_title": null,
+        "evidence_chunks": [
+          {
+            "text": "All DEGs were imported into the STRING online database(https://version-11-5.string-db.org/), a platform designed for identifying interacting genes. We set the interaction’s comprehensive score threshold to greater than 0.900 to build a PPI network. This network was then visualized using cytoscape software. Subsequently, core genes within the PPI network, each connected to 15 or more nodes, were continued with univariate Cox regression analysis. Through this process, using a significance threshold of p < 0.005, we identified DEGs significantly correlated with the prognosis of MM.",
+            "chunk_id": "SEC39732710_sec5_C01"
+          },
+          {
+            "text": "According to the survival curves, there was an increased overall survival(p < 0.001, Fig. B) as well as a greater progression-free survival(p = 0.008, Fig. C) in the high-expression group. The results suggested that a poor prognosis in patients with MM was correlated with a low-expression of PTPN6. To further confirm the above findings of bioinformatics analyses, we used RT-qPCR and Western blotting assays to detect the expression levels of PTPN6 in the human normal skin keratinocyte line and two human metastatic melanoma cell lines.",
+            "chunk_id": "SEC39732710_sec22_C04"
+          },
+          {
+            "text": "Furthermore, according to the median expression of PTPN6, the samples of MM were divided into high and low-expression groups to evaluate the prognostic value of PTPN6. Subsequently, a survival analysis was conducted. According to the survival curves, there was an increased overall survival(p < 0.001, Fig. B) as well as a greater progression-free survival(p = 0.008, Fig. C) in the high-expression group.",
+            "chunk_id": "SEC39732710_sec22_C03"
+          },
+          {
+            "text": "We analyzed the RNA sequencing data from TCGA and GTEx databases. The results showed that normal skin tissue expressed significantly higher levels of PTPN6 than MM(p < 0.001, Fig. A). Furthermore, according to the median expression of PTPN6, the samples of MM were divided into high and low-expression groups to evaluate the prognostic value of PTPN6. Subsequently, a survival analysis was conducted. According to the survival curves, there was an increased overall survival(p < 0.001, Fig. B) as well as a greater progression-free survival(p = 0.008, Fig. C) in the high-expression group.",
+            "chunk_id": "SEC39732710_sec22_C01"
+          },
+          {
+            "text": "The results showed that normal skin tissue expressed significantly higher levels of PTPN6 than MM(p < 0.001, Fig. A). Furthermore, according to the median expression of PTPN6, the samples of MM were divided into high and low-expression groups to evaluate the prognostic value of PTPN6. Subsequently, a survival analysis was conducted. According to the survival curves, there was an increased overall survival(p < 0.001, Fig. B) as well as a greater progression-free survival(p = 0.008, Fig. C) in the high-expression group.",
+            "chunk_id": "SEC39732710_sec22_C02"
+          }
+        ]
+      },
+      {
+        "article": {
+          "title": "Tumor microenvironment and immunotherapy for triple-negative breast cancer",
+          "year": 2024,
+          "doi": "10.1186/s40364-024-00714-6"
+        },
+        "vec_score": 0.015873015873015872,
+        "journal_title": null,
+        "evidence_chunks": [
+          {
+            "text": "Cancer vaccines are designed based on tumor-specific antigens and can boost anti-tumor effects by transferring other biological elements, such as antigens in cancer cells or TMEs, to the host, triggering specific immune responses in patients. Typically, tumor whole cell vaccines contain a wide range of tumor-associated antigens, epitopes rich in CD8 T cells, CD4 helper T cells, and can present MHC class I and II restricted antigens simultaneously, promoting a comprehensive and effective anti-tumor response and generating long-lasting memory T cells.",
+            "chunk_id": "SEC39741315_sec3_C17"
+          },
+          {
+            "text": "And CTLA-4 blocks T cell activation by competitively inhibiting T cell binding to B7 molecules on APC. Immune checkpoint inhibitors restore the anti-tumor function of T cells by blocking these inhibitory signals. APC, antigen-presenting cells; CTLA-4, cytotoxic T-lymphocyte-associated protein 4; PD-1, programmed cell death protein 1; PD-L1, programmed death-ligand 1; TNBC, triple-negative breast cancer.",
+            "chunk_id": "SEC39741315_sec3_C11"
+          },
+          {
+            "text": "Adoptive cell therapy is a treatment that amplifies enough amounts of immune cells with anti-tumor activity by engineering immune cells in the TME and enhancing cellular immune function in patients to improve anti-tumor effects. In the TME, tumor killer cells such as T cells and NK cells are often inhibited or depleted due to the presence of immunosuppressive mechanisms and environmental factors like hyperoxia and hypoxia. Adoptive cell therapy can alter the number and status of immune cells in the TME.",
+            "chunk_id": "SEC39741315_sec3_C14"
+          },
+          {
+            "text": "ICIs are the cornerstone of current immunotherapy, primarily targeting PD-1, PD-L1, and CTLA-4. Immune checkpoints regulate the immune system, maintaining immune homeostasis and preventing excessive immune responses by inhibiting T cell activation and function. However, tumor cells can exploit these checkpoints to evade the immune system. Immune checkpoint inhibitors have shown significant efficacy in various cancers by blocking these inhibitory signals and restoring the anti-tumor activity of T cells.",
+            "chunk_id": "SEC39741315_sec3_C02"
+          },
+          {
+            "text": "It interacts with B7 molecules(including CD80/CD86) on kinds of cells such as T cells and antigen-presenting cells, competitively inhibiting the binding of CD28 on T cells to CD80/CD86, thereby suppressing T cell activation. These mechanisms enable CTLA-4 to hinder T-cell growth, differentiation, and the production of cytokines like IL-2, ultimately reducing anticancer immunity in the tumor microenvironment. CTLA-4 inhibitors boost T-cell activation and antitumor responses by disrupting this pathway. This figure shows the mechanism by which ICIs play a role in the process of tumor immunity.",
+            "chunk_id": "SEC39741315_sec3_C08"
+          }
+        ]
+      },
+      {
+        "article": {
+          "title": "Immunometabolic Targets in CD8+ T Cells within the Tumor Microenvironment of Hepatocellular Carcinoma",
+          "year": 2024,
+          "doi": "10.1159/000542578"
+        },
+        "vec_score": 0.015151515151515152,
+        "journal_title": null,
+        "evidence_chunks": [
+          {
+            "text": "Y.L. and R.R. conceived the review, performed the majority of the work, and wrote the manuscript. Y.L. R.Z. T.T. and M.W. were responsible for preparing all the figures. D.Z. A.T. and Z.Y. assisted in checking the format and content of the manuscript. T.J. contributed to enhancing the quality of the language. T.A. and Y.S. are responsible for the guidance and quality check. Additionally R.R. provided financial support for the work. All authors read and approved the final manuscript.",
+            "chunk_id": "SEC40831886_sec16_C01"
+          },
+          {
+            "text": "However, the exploration of combination therapies remains crucial due to the currently limited efficacy of monotherapies. Although various targets have been proposed to enhance the effectiveness of these combination approaches, the concept of immunometabolic therapy focusing on CD8^{+} T cells has not received the attention it deserves. T cells operate as an integrated system where functional characteristics and metabolic pathways involving glucose, lipids, and amino acids are interrelated.",
+            "chunk_id": "SEC40831886_sec13_C03"
+          },
+          {
+            "text": "Exploring combination therapies to maximize the efficacy of existing immunotherapies is crucial for improving CD8^{+} T-cell responses. Additionally, metabolism-targeting therapies represent a potential clinical strategy that could either complement existing treatments or serve as standalone options. Given the unique TME of HCC, further investigation into the metabolic profiles of HCC-infiltrating CD8^{+} T cells is essential to refine and optimize therapeutic strategies for this challenging disease.",
+            "chunk_id": "SEC40831886_sec13_C17"
+          },
+          {
+            "text": "Notably, the functionality of PD-1^{hi} CD8^{+} T cells has been linked to fatty acid and amino acid metabolism, highlighting the need to further explore these metabolic pathways. Mitochondrial redox reactions, as well as the TCA cycle and OXPHOS pathways, play critical roles in providing the energy and metabolites required for T-cell function. Unlike tumor cells, which may tolerate ROS, T cells often suffer from exhaustion, which can be intensified by ROS-induced mitochondrial dysfunction.",
+            "chunk_id": "SEC40831886_sec13_C10"
+          },
+          {
+            "text": "From a signaling perspective, the mechanisms involving mTOR and downstream pathways – such as AKT and c-Myc – in CD8^{+} T cells have been elucidated; however, the potential of mTOR signaling in CD8^{+} T cells as a target for combination therapies has yet to be fully explored. In conclusion, leveraging the immune surveillance system and the robust antitumor capabilities of tumor-infiltrating CD8^{+} T cells holds great promise for enhancing HCC treatment outcomes.",
+            "chunk_id": "SEC40831886_sec13_C14"
+          }
+        ]
+      },
+      {
+        "article": {
+          "title": "Spatially resolved gene expression profiling of tumor microenvironment reveals key steps of lung adenocarcinoma development",
+          "year": 2024,
+          "doi": "10.1038/s41467-024-54671-7"
+        },
+        "vec_score": 0.014492753623188406,
+        "journal_title": null,
+        "evidence_chunks": [
+          {
+            "text": "Further information on research design is available in the Nature Portfolio Reporting Summary linked to this article.",
+            "chunk_id": "SEC39639005_sec27_C01"
+          },
+          {
+            "text": "In fact, we found that this motif is frequently observed at various stages of the tumor in a large number of cases. More precise control over the interaction of tumor cells and immune cells may be the key to better-treating cancer patients at various cancer stages. It should also be noted that, particularly in IAs, even within a single small specimen, tumor cells and TMEs vary significantly. Therefore, the current approach to cancer classification, which relies solely on biomarkers or genomic mutations, may not always accurately reflect the biology of cancer tissues.",
+            "chunk_id": "SEC39639005_sec11_C04"
+          },
+          {
+            "text": "Therefore, the current approach to cancer classification, which relies solely on biomarkers or genomic mutations, may not always accurately reflect the biology of cancer tissues. One obvious limitation of this study is that it is an observation study, so it was impossible to determine whether the observed phenomenon should be interpreted on a “cause-consequence” or a “simple associated” axis. Strictly, for such an analysis, a validation analysis using an in vitro perturbation analysis should be required.",
+            "chunk_id": "SEC39639005_sec11_C07"
+          },
+          {
+            "text": "Strictly, for such an analysis, a validation analysis using an in vitro perturbation analysis should be required. However, analyzing a larger number of clinical specimens may provide additional information. If enriched information on even subtle changes occurring in a small region could be further associated with the overall pathological appearance and clinical outcomes of the patients, it could provide an important clue in identifying truly “causative” events and vice versa. This cycle should lead to more accurate pathological diagnoses.",
+            "chunk_id": "SEC39639005_sec11_C08"
+          },
+          {
+            "text": "It should also be noted that, particularly in IAs, even within a single small specimen, tumor cells and TMEs vary significantly. Therefore, the current approach to cancer classification, which relies solely on biomarkers or genomic mutations, may not always accurately reflect the biology of cancer tissues. One obvious limitation of this study is that it is an observation study, so it was impossible to determine whether the observed phenomenon should be interpreted on a “cause-consequence” or a “simple associated” axis.",
+            "chunk_id": "SEC39639005_sec11_C06"
+          }
+        ]
+      },
+      {
+        "article": {
+          "title": "Investigating intra‐tumoural heterogeneity and microenvironment diversity in primary cardiac angiosarcoma through single‐cell RNA sequencing",
+          "year": 2024,
+          "doi": "10.1002/ctm2.70113"
+        },
+        "vec_score": 0.012345679012345678,
+        "journal_title": null,
+        "evidence_chunks": [
+          {
+            "text": "Our findings revealed that the immune microenvironment of PCAS is comparable to that of other solid tumours, characterized by a high prevalence of exhausted T cells and immunosuppressive myeloid cells. Notably, we observed significant downregulation of MTRNR2L12 expression in immune cells within the PCAS environment, suggesting a distinct impairment in mitochondrial function. This mitochondrial dysfunction may be a unique feature of the cardiac sarcoma microenvironment, underscoring the potential therapeutic targets specific to this malignancy.",
+            "chunk_id": "SEC39658531_sec21_C02"
+          },
+          {
+            "text": "5 To our knowledge, this is the first study to document the transcriptomic characteristics of PCAS using single‐cell RNA sequencing. Our findings revealed that the immune microenvironment of PCAS is comparable to that of other solid tumours, characterized by a high prevalence of exhausted T cells and immunosuppressive myeloid cells. Notably, we observed significant downregulation of MTRNR2L12 expression in immune cells within the PCAS environment, suggesting a distinct impairment in mitochondrial function.",
+            "chunk_id": "SEC39658531_sec21_C01"
+          },
+          {
+            "text": "Pesudotime analysis of differential genes suggested that interferon‐stimulated genes such as ISG15 and IFI6 and inflammation genes such as S100A10, S100A11, S100A16 and ILF2 were activated in an early differentiation state. However, extracellular matrix COL11A1, COL16A1 and NOTCH pathways such as NOTCH2, NOTCH2NLC and E3 ubiquitin‐protein ligases such as FBXO42(which specifically recognizes p53/TP53, promoting its ubiquitination OTUD7B and UBE4B were highly activated in later differentiation, indicating highly active protein update regulation and malignant potential. Notably, SCENIC analysis revealed that there were mainly three kinds of TF expression with clusters 4 and 10 specifically expressing CEBPB and HOXA9; clusters 6 and 21 specifically expressing WDR5, EZH2 and MYC; cluster 9 specifically expressing TAL1 and RELA; and cluster 14 specifically expressing E2F4 and FOXM1, suggesting that combined inhibitor usage may contribute to sarcoma therapy. Finally, mIHC staining was performed to confirm these results.",
+            "chunk_id": "SEC39658531_sec16_C07"
+          },
+          {
+            "text": "As expected, clusters 4, 6, 9, and 21 with high CNV scores from the mesothelial and sarcoma cell clusters were recognized as tumour cells. Differential gene analysis of the subsets indicated that cluster 14 was a proliferating subset with high expression CENPF, HMGB2 and TOP2A; clusters 4 and 10 were inflammation and urea metabolism pathway‐activated subsets with high expression IL1RAPL1, C7, SLC14A1, PDE7B and PDE3A; and clusters 6, 9, 20 and 21 were translation‐active subsets with high expression RPS7, RPS8, PRL39, PRS13 and RPL6. The KEGG pathway enrichment analysis also showed consistent results.",
+            "chunk_id": "SEC39658531_sec16_C02"
+          },
+          {
+            "text": "3. To explore the characteristics of the sarcomas, we first calculated the CNV scores using InferCNV. As expected, clusters 4, 6, 9, and 21 with high CNV scores from the mesothelial and sarcoma cell clusters were recognized as tumour cells.",
+            "chunk_id": "SEC39658531_sec16_C01"
+          }
+        ]
+      },
+      {
+        "article": {
+          "title": "Genomic and the tumor microenvironment heterogeneity in multifocal hepatocellular carcinoma",
+          "year": 2025,
+          "doi": "10.1097/HEP.0000000000001191"
+        },
+        "vec_score": 0.011904761904761904,
+        "journal_title": null,
+        "evidence_chunks": [
+          {
+            "text": "Then, cellular fractions and transcriptional functions between IM and MO were compared. We found that T cells related to proliferation and exhaustion were abundant in IM, where B cells, plasma cells, and conventional type II DCs were absent relatively when compared with MO, as validated in the additional cohort. Immunohistochemistry staining based on the additional cohort confirmed that both CD20 and CD1C correlated with better survival in multifocal HCC. MMP9+ tumor-associated macrophages were enriched in IM/MO and interacted with T cells above closely.",
+            "chunk_id": "SEC40833995_sec1_C10"
+          },
+          {
+            "text": "Emerging technologies including single-cell RNA-sequencing have facilitated better understanding of the heterogeneity of diverse cell states in solid tumors, ^{8,9} providing a silver lining for probing personalized therapies for multifocal HCC. In the current study, we performed whole-exome sequencing and scRNA-seq on 23 samples from 7 patients with multifocal HCC, aiming to unveil the TMEs across IM and MO clearly. WES supported to distinguish IM from MO while scRNA-seq illustrated the landscape of TMEs in IM and MO.",
+            "chunk_id": "SEC40833995_sec1_C08"
+          },
+          {
+            "text": "HCC is the fourth most lethal cancer worldwide, of which >50% are initially diagnosed as multifocal HCC with effective limited therapy. ^{1} When surgical resection is potentially curative for early HCC and improvements in systemic and immune therapies are available, multifocal tumors are still stubborn and cause poor outcomes with high recurrence rates. ^{2} The multifocal lesions of HCC can be simultaneously or separately attributed to either intrahepatic metastasis developing from the primary tumor or multicentric occurrence, always sharing different clonal origins.",
+            "chunk_id": "SEC40833995_sec1_C01"
+          },
+          {
+            "text": "MMP9+ tumor-associated macrophages were enriched in IM/MO and interacted with T cells above closely. Intratumoral cellular niches, including proliferative and exhausted T cells, MMP9+ TAMs, and regulatory T clusters, were also identified by multicolor immunofluorescence. This evidence recognized different TMEs and defined a detailed regulatory network across IM and MO, enabling the exploration of effective therapies for patients with IM or MO.",
+            "chunk_id": "SEC40833995_sec1_C11"
+          },
+          {
+            "text": "^{3} MO can be detected in early stages while metastasis has usually occurred before diagnosis for IM. ^{4} Overwhelming evidence has revealed tumor heterogeneity across multiple lesions of multifocal HCC recently. IM and MO could carry distinct clonal architecture, genetic susceptibility, and tumor evolutionary trajectory. ^{5,6} DNA damage repair alterations could be involved in the tumor evolution of multifocal HCC, resulting in higher tumor mutational burden and tumor neoantigen burden.",
+            "chunk_id": "SEC40833995_sec1_C03"
+          }
+        ]
+      },
+      {
+        "article": {
+          "title": "The extracellular matrix integrates mitochondrial homeostasis",
+          "year": 2024,
+          "doi": "10.1016/j.cell.2024.05.057"
+        },
+        "vec_score": 0.011363636363636364,
+        "journal_title": null,
+        "evidence_chunks": [
+          {
+            "text": "Supplementary Fig 1 Supplementary Fig 2 Supplementary Fig 3 Supplementary Fig 4 Supplementary Fig 5 Supplementary Fig 6 Supplementary Table 1 Supplementary Table 3 Supplementary Table 2 Supplementary Video 1 Supplementary Video 2 Supplementary Video 3",
+            "chunk_id": "SEC38942015_sec10_C01"
+          },
+          {
+            "text": "Activation of mitochondrial stress responses enhance organismal resistance to environmental stress and aging. ^{14} The concept of leveraging mild mitochondrial stress, known as mitohormesis, to trigger protective responses for improved resilience has garnered extensive attention. ^{15} Alongside mitochondrial toxins, physiological inducers of mitochondrial stress include redox status changes, mitochondrial gene mutations, and altered interactions with other organelles.",
+            "chunk_id": "SEC38942015_sec1_C21"
+          },
+          {
+            "text": "^{3} The size of HA fibers is a balance between hyaluronan synthases and hyaluronidases. The transmembrane protein TMEM2 is a major cell-surface hyaluronidase that degrades HMW HA into low-molecular weight~5 kDa fragments. ^{4–6} Notably, TMEM2’s cleavage activity is specific to non-sulfated HA and does not cleave other sulfated GAGs.",
+            "chunk_id": "SEC38942015_sec1_C11"
+          },
+          {
+            "text": "Degradation products from large ECM molecules, such as endostatin, derived from the cleavage of collagen XVIII, regulates immune responses, fibrosis, and cell proliferation. ^{8,9} Although HA has a relatively simple structure, a variety of HA-binding proteins have been identified, such as CD44 and TLR4, whose activities may be affected upon binding to HA. ^{10} Specifically, LMW HA fragments are pro-inflammatory and trigger cell migration and proliferation, whereas HMW HA promotes anti-inflammatory and antiproliferative effects.",
+            "chunk_id": "SEC38942015_sec1_C15"
+          },
+          {
+            "text": "^{8,9} Although HA has a relatively simple structure, a variety of HA-binding proteins have been identified, such as CD44 and TLR4, whose activities may be affected upon binding to HA. ^{10} Specifically, LMW HA fragments are pro-inflammatory and trigger cell migration and proliferation, whereas HMW HA promotes anti-inflammatory and antiproliferative effects. ^{3} Besides molecules directly derived from cleavage of large ECM polymers, small secreted signaling molecules, such as growth factors and cytokines, are found – and sometimes even enriched – in the ECM.",
+            "chunk_id": "SEC38942015_sec1_C16"
+          }
+        ]
+      },
+      {
+        "article": {
+          "title": "TemBERTure: advancing protein thermostability prediction with deep learning and attention mechanisms",
+          "year": 2024,
+          "doi": "10.1093/bioadv/vbae103"
+        },
+        "vec_score": 0.010638297872340425,
+        "journal_title": null,
+        "evidence_chunks": [
+          {
+            "text": "To explore TemBERTure _{CLS} ability to perform on sequences from novel organisms, we created a new test set with sequences from organisms in the BacDive database. Although non-thermophilic sequence precision remained high, precision for thermophilic sequences dropped, suggesting limitations in generalizing to completely new organisms.",
+            "chunk_id": "SEC39040220_sec17_C10"
+          },
+          {
+            "text": "Although non-thermophilic sequence precision remained high, precision for thermophilic sequences dropped, suggesting limitations in generalizing to completely new organisms. To further investigate this observation, we trained separate models, with the same architecture as TemBERTure _{CLS}, with two distinct datasets: one derived from BacDive, focusing solely on bacterial and archaeal organisms, and another one from the Meltome Atlas, augmented solely with thermophilic sequences. Each model performed well on the dataset derived from the same source as its training data.",
+            "chunk_id": "SEC39040220_sec17_C11"
+          },
+          {
+            "text": "We, therefore, chose to retain the initially trained model as the final TemBERTure _{CLS} model. When comparing the performance of TemBERTure _{CLS} to state-of-the-art models, we observed that many of the latter tend to overpredict the non-thermophilic class. Despite achieving a competitive average precision of 0.79 for thermophilic sequences, their recall fell below 0.7, resulting in numerous misclassifications of non-thermophilic proteins. This highlights the limitations in the generalizability of current methods.",
+            "chunk_id": "SEC39040220_sec17_C05"
+          },
+          {
+            "text": "Low standard deviation across multiple trained models confirms robust training. We, therefore, chose to retain the initially trained model as the final TemBERTure _{CLS} model. When comparing the performance of TemBERTure _{CLS} to state-of-the-art models, we observed that many of the latter tend to overpredict the non-thermophilic class. Despite achieving a competitive average precision of 0.79 for thermophilic sequences, their recall fell below 0.7, resulting in numerous misclassifications of non-thermophilic proteins.",
+            "chunk_id": "SEC39040220_sec17_C04"
+          },
+          {
+            "text": "This substantial reduction in dataset size resulted in highly imbalanced non-overlapping sets. Consequently, we evaluated TemBERTure _{CLS} performance using the macro-averaged F 1-score, recall, and precision. TemBERTure _{CLS} maintained high accuracy, achieving 86% on iThermo and 83% on TemStaPro. To explore TemBERTure _{CLS} ability to perform on sequences from novel organisms, we created a new test set with sequences from organisms in the BacDive database.",
+            "chunk_id": "SEC39040220_sec17_C07"
+          }
+        ]
+      },
+      {
+        "article": {
+          "title": "Single‐cell RNA sequencing in pediatric research: Focusing on differentiation trajectories and immune microenvironment of neuroblastoma",
+          "year": 2024,
+          "doi": "10.1002/pdi3.61"
+        },
+        "vec_score": 0.010526315789473684,
+        "journal_title": null,
+        "evidence_chunks": [
+          {
+            "text": "5 The models utilized for single‐cell sequencing technology were derived from different species, lacking uniformity. Furthermore, this review provides only a basic summary of the prenatal differentiation trajectory, with a notable absence of observation and research on the postnatal differentiation trajectory. Additionally, the summary of heterogeneity and the immune microenvironment is insufficiently comprehensive, limited to a summary of the article's conclusions, and lacks innovative insights.",
+            "chunk_id": "SEC40625458_sec11_C01"
+          },
+          {
+            "text": "The immune microenvironment in the MYCN‐amplified NB mouse model contained a small number of T cells, macrophages with diverse phenotypes, and cell populations with MDSC phenotypes. Notably, the molecular characteristics of these populations differed from those of various macrophage subpopulations. This suggests a significant overlap and specificity between mouse and human MDSC populations, elucidating the heterogeneity and complexity of the NB macrophage subpopulation.",
+            "chunk_id": "SEC40625458_sec9_C03"
+          },
+          {
+            "text": "This suggests a significant overlap and specificity between mouse and human MDSC populations, elucidating the heterogeneity and complexity of the NB macrophage subpopulation. Subsequent studies have demonstrated an elevation in the heterogeneity of receptor proteins on T cells in the microenvironment of mouse tumors.",
+            "chunk_id": "SEC40625458_sec9_C05"
+          },
+          {
+            "text": "Subsequent studies have demonstrated an elevation in the heterogeneity of receptor proteins on T cells in the microenvironment of mouse tumors. Conversely, the microenvironment of human tumors exhibits malignant depletion of T cells associated with increased expression of inhibitory receptors and decreased expression of effector cytokines, providing functional evidence of the immunosuppressive properties of MDSCs in NB and their detrimental effects on T lymphocytes. Extensive investigation of T cells revealed distinct T cell subtypes associated with different NB prognoses.",
+            "chunk_id": "SEC40625458_sec9_C06"
+          },
+          {
+            "text": "4. In the TH‐MYCN NB model, immunosuppressive myeloid suppressor cells display a myeloid immunosuppressive effect, inhibiting T cell proliferation and causing malignant depletion of T lymphocytes in vitro. Similarly, immunosuppressive functions have been observed in human NB tumors, where macrophages are also involved. The immune microenvironment in the MYCN‐amplified NB mouse model contained a small number of T cells, macrophages with diverse phenotypes, and cell populations with MDSC phenotypes.",
+            "chunk_id": "SEC40625458_sec9_C01"
+          }
+        ]
+      }
+    ]
+  }
+}

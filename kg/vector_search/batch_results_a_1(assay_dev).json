@@ -1,0 +1,952 @@
+[
+  {
+    "question_id": 1,
+    "question": "How does H3K4me3 modification influence TRIM72 expression according to the context?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC39709463_sec24_C08",
+        "text": "Corresponding to the mRNA stability of TRIM72, the expression of TRIM72 was declined in PE but elevated after inhibition of MLL1(P < 0.01, Fig. B-C). The above results show hat MLL1 promotes the expression of RBM15 by increasing H3K4me3 modification and then increases m6A modification to promote YTHDF2 binding to TRIM72 mRNA and facilitate its degradation, thereby repressing the expression of TRIM72.",
+        "title": "MLL1 promotes placental trophoblast ferroptosis and aggravates preeclampsia symptoms through epigenetic regulation of RBM15/TRIM72/ADAM9 axis",
+        "section": "MLL1 promotes RBM15 expression by increasing H3K4me3 modification; RBM15 enhances m6A modification to promote YTHDF2 binding to TRIM72 mRNA and degrade TRIM72, thereby repressing TRIM72 expression",
+        "similarity": 0.030158730158730156,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39709463_sec30_C20",
+        "text": "Inhibition of MLL1 reduced YTHDF2 enrichment and improved mRNA stability and expression of TRIM72. Further, inhibition of YTHDF2 in HTR-8/SVneo cells resulted in decreased YTHDF2 enrichment on TRIM72 mRNA, enhanced TRIM72 mRNA stability, and increased TRIM72 protein expression. These results suggested that MLL1 promoted RBM15 expression by increasing H3K4me3 modification and then enhanced m6A modification to facilitate YTHDF2 binding to TRIM72 mRNA, thus degrading TRIM72 mRNA and repressing TRIM72 expression.",
+        "title": "MLL1 promotes placental trophoblast ferroptosis and aggravates preeclampsia symptoms through epigenetic regulation of RBM15/TRIM72/ADAM9 axis",
+        "section": "Discussion",
+        "similarity": 0.02964254577157803,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39709463_sec30_C18",
+        "text": "Particularly, the E3 ubiquitin ligase property of TRIM72 impacts the pathogenesis of certain diseases under the conditions of inflammation, hypoxia, and oxidative stress. m6A modification and YTHDF2 enrichment were observed on TRIM72 mRNA, and the mRNA stability and expression of TRIM72 in Erastin-treated HTR-8/SVneo cells were decreased.",
+        "title": "MLL1 promotes placental trophoblast ferroptosis and aggravates preeclampsia symptoms through epigenetic regulation of RBM15/TRIM72/ADAM9 axis",
+        "section": "Discussion",
+        "similarity": 0.02946236559139785,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39709463_sec30_C17",
+        "text": "TRIM72, a member of the tripartite motif protein family, possesses diverse functionalities including membrane repair, anti-inflammation, and E3 ubiquitin ligase property. Particularly, the E3 ubiquitin ligase property of TRIM72 impacts the pathogenesis of certain diseases under the conditions of inflammation, hypoxia, and oxidative stress. m6A modification and YTHDF2 enrichment were observed on TRIM72 mRNA, and the mRNA stability and expression of TRIM72 in Erastin-treated HTR-8/SVneo cells were decreased.",
+        "title": "MLL1 promotes placental trophoblast ferroptosis and aggravates preeclampsia symptoms through epigenetic regulation of RBM15/TRIM72/ADAM9 axis",
+        "section": "Discussion",
+        "similarity": 0.02938045560996381,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39709463_sec24_C05",
+        "text": "We observed m6A modification and YTHDF2 enrichment on TRIM72 mRNA, and the enrichment was weakened after inhibition of MLL1(P < 0.01, Fig. E). Also, the TRIM72 mRNA stability was decreased in HTR-8/SVneo cells treated with Erastin, but increased after inhibition of MLL1(P < 0.01, Fig. F). Further, we inhibited YTHDF2 expression in HTR-8/SVneo cells(P < 0.01, Fig. G-H), which led to a decrease in the enrichment of YTHDF2 on TRIM72 mRNA(P < 0.01, Fig. E), an enhancement in TRIM72 mRNA stability(P < 0.01, Fig. F), and an increase in TRIM72 protein expression(P < 0.01, Fig. C).",
+        "title": "MLL1 promotes placental trophoblast ferroptosis and aggravates preeclampsia symptoms through epigenetic regulation of RBM15/TRIM72/ADAM9 axis",
+        "section": "MLL1 promotes RBM15 expression by increasing H3K4me3 modification; RBM15 enhances m6A modification to promote YTHDF2 binding to TRIM72 mRNA and degrade TRIM72, thereby repressing TRIM72 expression",
+        "similarity": 0.028309409888357256,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 1320.439500035718,
+      "neo4j_ms": 123.37939999997616,
+      "total_ms": 1718.1191999698058,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 19,
+        "total_tokens": 19
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 2,
+    "question": "what 10X Genomics Chromium Controller do in single-cell study?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC39737932_sec18_C03",
+        "text": "Single-cell capture and downstream library construction were conducted using the Chromium Single Cell 5′ v2 library preparation kit, based on the manufacturer’s protocol. Chips were loaded into the 10X Genomics Chromium Controller for the single-cell partitioning. All steps, including emulsions, cDNA isolation, and library preparation, were completed according to the manufacturer’s protocol.",
+        "title": "Immune checkpoint inhibitor-induced severe epidermal necrolysis mediated by macrophage-derived CXCL10 and abated by TNF blockade",
+        "section": "10X Genomics scRNA-seq",
+        "similarity": 0.031754032258064516,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39737932_sec18_C02",
+        "text": "Cell numbers for each sample were counted by using an automated cell counter. Single-cell capture and downstream library construction were conducted using the Chromium Single Cell 5′ v2 library preparation kit, based on the manufacturer’s protocol. Chips were loaded into the 10X Genomics Chromium Controller for the single-cell partitioning. All steps, including emulsions, cDNA isolation, and library preparation, were completed according to the manufacturer’s protocol.",
+        "title": "Immune checkpoint inhibitor-induced severe epidermal necrolysis mediated by macrophage-derived CXCL10 and abated by TNF blockade",
+        "section": "10X Genomics scRNA-seq",
+        "similarity": 0.031544957774465976,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39895896_sec7_C01",
+        "text": "2. According to the 10x Chromium Single Cell 5′ v2 protocol(10x Genomics, document no. CG000331_ChromiumNextGEMSingleCell5-v2_UserGuide_RevE), single cell RNA-seq library was prepared using the 10x Chromium controller and Next Gem Single cell 5′ Reagent v2 kits. The detailed information on the library construction and sequencing were provided in supplementary Data 3.",
+        "title": "Molecular characterization of ovarian mesonephric-like adenocarcinoma: Insights from single-cell RNA sequencing and mitochondrial metabolism",
+        "section": "Single cell 5′ gene expression library construction and sequencing",
+        "similarity": 0.030886196246139225,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39737932_sec18_C04",
+        "text": "Chips were loaded into the 10X Genomics Chromium Controller for the single-cell partitioning. All steps, including emulsions, cDNA isolation, and library preparation, were completed according to the manufacturer’s protocol. After that, cDNA was amplified for 14 cycles and allocated for T-cell receptor enrichment/library preparation with the Chromium Single Cell VJ TCR kit or for the preparation of the mRNA expression library. The library quality was determined using a 2200 TapeStation system and libraries were sequenced on the Illumina NovaSeq 6000 platform with a 150-bp.",
+        "title": "Immune checkpoint inhibitor-induced severe epidermal necrolysis mediated by macrophage-derived CXCL10 and abated by TNF blockade",
+        "section": "10X Genomics scRNA-seq",
+        "similarity": 0.03036576949620428,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39737932_sec18_C01",
+        "text": "Sorted live cells were centrifuged and washed with PBS containing 0.04% bovine serum albumin. Cell numbers for each sample were counted by using an automated cell counter. Single-cell capture and downstream library construction were conducted using the Chromium Single Cell 5′ v2 library preparation kit, based on the manufacturer’s protocol. Chips were loaded into the 10X Genomics Chromium Controller for the single-cell partitioning. All steps, including emulsions, cDNA isolation, and library preparation, were completed according to the manufacturer’s protocol.",
+        "title": "Immune checkpoint inhibitor-induced severe epidermal necrolysis mediated by macrophage-derived CXCL10 and abated by TNF blockade",
+        "section": "10X Genomics scRNA-seq",
+        "similarity": 0.030330882352941176,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 448.6171000171453,
+      "neo4j_ms": 95.66210000775754,
+      "total_ms": 765.2128000045195,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 14,
+        "total_tokens": 14
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 3,
+    "question": "What happen to mRNAs in Patl2 mutated oocytes?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC39741299_sec33_C32",
+        "text": "This result is consistent with the RNA-seq results using Patl2 -null mouse oocytes, in which comparable mRNA amounts are probably due to 80% mRNAs degradation from wild-type GV to MII oocytes and the mRNA decay defect with Patl2 -mutated MII oocytes. Consistently, our RNA-seq results of MII oocytes that PATL2 mutations led to upregulation of mRNAs that should be degraded in MII stage oocytes and day 3 embryos. This revealed the key role of PATL2 on mRNA decay. Since previous studies demonstrated PATL2 mutation affected MOS mRNA translation, leading to large polar body in some patients.",
+        "title": "PATL2 mutations affect human oocyte maternal mRNA homeostasis and protein interactions in cell cycle regulation",
+        "section": "Discussion",
+        "similarity": 0.03278688524590164,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39741299_sec33_C33",
+        "text": "Consistently, our RNA-seq results of MII oocytes that PATL2 mutations led to upregulation of mRNAs that should be degraded in MII stage oocytes and day 3 embryos. This revealed the key role of PATL2 on mRNA decay. Since previous studies demonstrated PATL2 mutation affected MOS mRNA translation, leading to large polar body in some patients. Our group previously demonstrated that MOS mutation caused mRNA decay defect in MII oocytes, large polar body extrusion and early embryonic arrest.",
+        "title": "PATL2 mutations affect human oocyte maternal mRNA homeostasis and protein interactions in cell cycle regulation",
+        "section": "Discussion",
+        "similarity": 0.03036576949620428,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39741299_sec33_C31",
+        "text": "The human PATL2 showed colocalization and interaction with CPEB1, indicating the conserved role of PATL2 as a mRNA translation regulator with CPEB1. Interestingly, the mRNA amounts of MII oocytes and day 3 embryos were comparable. This result is consistent with the RNA-seq results using Patl2 -null mouse oocytes, in which comparable mRNA amounts are probably due to 80% mRNAs degradation from wild-type GV to MII oocytes and the mRNA decay defect with Patl2 -mutated MII oocytes.",
+        "title": "PATL2 mutations affect human oocyte maternal mRNA homeostasis and protein interactions in cell cycle regulation",
+        "section": "Discussion",
+        "similarity": 0.03021353930031804,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39741299_sec30_C01",
+        "text": "To investigate the impact of PATL2 mutations on maternal mRNA degradation in human oocytes and embryos, we analyzed the mRNA dynamics in GV oocytes, MII oocytes, and day 3 embryos using our RNA-seq data. Maternal mRNAs with reliable sequence annotations and a TPM > 2 in the control group at any stage were selected for analysis. Genes were classified into nine categories based on changes in their mRNA levels, defined as a significant 2-fold or greater downregulation or upregulation between stages.",
+        "title": "PATL2 mutations affect human oocyte maternal mRNA homeostasis and protein interactions in cell cycle regulation",
+        "section": "PATL2 mutation impeded mRNA decay in human oocytes and embryos",
+        "similarity": 0.028205128205128206,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39741299_sec30_C04",
+        "text": "Three clusters of degraded maternal mRNAs were identified: Cluster I, which degraded from GV to MII and remained stable post-fertilization; Cluster II, which remained stable from GV to MII but degraded in day 3 embryos; and Cluster III, which exhibited continuous degradation from GV to day 3 embryos. In oocytes and embryos with PATL2 mutations, mRNA decay was impaired across all three clusters, suggesting a defect in maternal mRNA degradation.",
+        "title": "PATL2 mutations affect human oocyte maternal mRNA homeostasis and protein interactions in cell cycle regulation",
+        "section": "PATL2 mutation impeded mRNA decay in human oocytes and embryos",
+        "similarity": 0.02761904761904762,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 1034.2847999418154,
+      "neo4j_ms": 82.97290001064539,
+      "total_ms": 1356.7277999827638,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 14,
+        "total_tokens": 14
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 4,
+    "question": "Can you tell me how Hoechst was used for imaging and analysis in the study with Fiji software and what steps were done for counting Hoechst positive cells?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC39709491_sec15_C03",
+        "text": "Sytox green and Hoechst fluorescence were measured and analyzed using the Fiji software. Number of Sytox green and Hoechst positive cells were evaluated by using a semiautomatic plug-in designed on Fiji. For every image, the channels were separated, and a particle analysis was performed on both channels. Manual threshold was set with “RenyiEntropy dark” and used to create a mask identifying objects, followed by counting of particles. The numbers of sytox green positive cells per image were normalized over the number of Hoechst positive cells per image.",
+        "title": "TGFβ signaling sensitizes MEKi-resistant human melanoma to targeted therapy-induced apoptosis",
+        "section": "Live cell counting using the GE INCell Analyzer 2500 HS system",
+        "similarity": 0.03252247488101534,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39709491_sec15_C02",
+        "text": "Imaging was performed with equipment maintained by the Center for Microscopy and Image Analysis, University of Zurich. Sytox green and Hoechst fluorescence were measured and analyzed using the Fiji software. Number of Sytox green and Hoechst positive cells were evaluated by using a semiautomatic plug-in designed on Fiji. For every image, the channels were separated, and a particle analysis was performed on both channels. Manual threshold was set with “RenyiEntropy dark” and used to create a mask identifying objects, followed by counting of particles.",
+        "title": "TGFβ signaling sensitizes MEKi-resistant human melanoma to targeted therapy-induced apoptosis",
+        "section": "Live cell counting using the GE INCell Analyzer 2500 HS system",
+        "similarity": 0.03252247488101534,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39714137_sec21_C01",
+        "text": "The quantification of nuclei per EEF was performed using ImageJ Fiji software. TRAP/FlpL and Atg7 cKO 64 hpi EEFs stained with UIS4 and Hoechst 33342 were used for quantification. Hsp70 staining was used to visualize the parasite, and the DNA centers were counted using the “multipoint” feature. The images were deconvoluted for segmentation and then analyzed using ImageJ’s thresholding and watershed segmentation features.",
+        "title": "Autophagy protein Atg7 is essential for maintaining malaria parasite cellular homeostasis and organelle biogenesis",
+        "section": "Nuclei count",
+        "similarity": 0.029513888888888888,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC40060768_sec20_C02",
+        "text": "Hoechst dye(1:1000, Thermofisher Scientific) was used to stain the cell nucleus. For in vitro study, fluorescence and bright field images were acquired using a wide‐field Olympus live‐EZ microscope equipped with a photometric CoolSNAP K4 camera and W1 live‐SR spinning disk microscope equipped with a photometric Prime 95B sCMOS camera. For in vivo tumor imaging, a wide‐field Zeiss stereomicroscope was used.",
+        "title": "Ultrasound‐mediated mechanical forces activate selective tumor cell apoptosis",
+        "section": "Immunocytochemistry and fluorescence microscopy",
+        "similarity": 0.02857142857142857,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39861690_sec9_C06",
+        "text": "At specified time points, the MCF7-GFPLC3 cells were stained in situ with Hoechst and ethidium homodimer-I, and SKBR3 cells were stained with DRAQ5, ethidium homodimer-I and monodansylcadaverine. The plates were then imaged with an IN Cell Analyzer 1000, and the imaging data were analyzed with high-content analysis Investigator^{TM} software v 1.0, permitting a quantitative analysis of viability, along with the GFP- or MDC-positive cellular organelle content expressed as the total organelle area/cell.",
+        "title": "Liposomal Formulation of Hydroxychloroquine Can Inhibit Autophagy In Vivo",
+        "section": "High-Content Analysis of Viability and Autophagy",
+        "similarity": 0.028006267136701922,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 337.12679997552186,
+      "neo4j_ms": 86.57479996327311,
+      "total_ms": 659.803600050509,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 33,
+        "total_tokens": 33
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 5,
+    "question": "What is the role of Lipinski rules in selecting drug candidates?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC39340487_sec12_C04",
+        "text": "The significance of the Lipinski Rule lies in its ability to quickly determine whether a compound is likely to possess favourable pharmacokinetic properties or not. This technique plays essential rule in prioritizing and selecting promising drug candidates that have a higher probability of success in subsequent stages of drug development, saving time and resources during clinical and pre‐clinical trials., According to the Lipinski rule, pharmacokinetics, and drug‐likeness: the molecular weight must be less than 500 g/mol, the calculated octanol/water partition coefficient must be less than 5, the number of hydrogen bond donors must be just under 5, and the number of hydrogen bond acceptors must not exceed 10. The molecules ought to have taken oral medication into account if they followed this rule.",
+        "title": "Modified oxymatrine as novel therapeutic inhibitors against Monkeypox and Marburg virus through computational drug design approaches",
+        "section": "Lipinski rule and drug‐likeness",
+        "similarity": 0.030886196246139225,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39179328_sec6_C04",
+        "text": "Identifying compounds suitable for drug use involves adhering to specific rules such as Lipinski's, Veber's, and Egan's. Compounds that demonstrate multiple violations of the Lipinski, Veber, and Egan rules may potentially encounter pitfalls related to their pharmacokinetic properties pertaining to ADMET. Only a small percentage of drugs(<10 %) that advance to the clinical trial phase fail to meet these criteria set by Lipinski, Veber, and Egan. In addition, we also evaluated two more factors including the topological polar surface area and number of rotatable bonds.",
+        "title": "Unveiling promising phytocompounds from Moringa oleifera as dual inhibitors of EGFR(T790M/C797S) and VEGFR-2 in non-small cell lung cancer through in silico screening, ADMET, dynamics simulation, and DFT analysis",
+        "section": "Prediction of drug-like properties",
+        "similarity": 0.030798389007344232,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39340487_sec12_C03",
+        "text": "The Lipinski rule is employed to address these presumptions of drug‐likeness. The significance of the Lipinski Rule lies in its ability to quickly determine whether a compound is likely to possess favourable pharmacokinetic properties or not.",
+        "title": "Modified oxymatrine as novel therapeutic inhibitors against Monkeypox and Marburg virus through computational drug design approaches",
+        "section": "Lipinski rule and drug‐likeness",
+        "similarity": 0.029571646010002173,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39179328_sec6_C05",
+        "text": "Compounds that demonstrate multiple violations of the Lipinski, Veber, and Egan rules may potentially encounter pitfalls related to their pharmacokinetic properties pertaining to ADMET. Only a small percentage of drugs(<10 %) that advance to the clinical trial phase fail to meet these criteria set by Lipinski, Veber, and Egan. In addition, we also evaluated two more factors including the topological polar surface area and number of rotatable bonds. These criteria can be used to determine if the drug molecule exhibits a flexible or inflexible interaction with the receptor.",
+        "title": "Unveiling promising phytocompounds from Moringa oleifera as dual inhibitors of EGFR(T790M/C797S) and VEGFR-2 in non-small cell lung cancer through in silico screening, ADMET, dynamics simulation, and DFT analysis",
+        "section": "Prediction of drug-like properties",
+        "similarity": 0.02919863597612958,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39179328_sec14_C01",
+        "text": "3. The evaluation results of the drug-like properties of the selected compounds are depicted in Table 1. According to Lipinski's rule of thumb, compounds that fail to meet multiple guidelines have inadequate oral bioavailability. In our analysis, three out of 17 candidate drugs meet all Lipinski rules, which include criteria like MW≤500, HBA≤10, HBD≤5, Log P(octanol/water)≤ 5, and 40 ≤ MR≤130. The remaining 14 compounds adhere to the Lipinski rule with only 1 violation, which is also acceptable. Furthermore, these compounds were reviewed based on the Veber and Egan rules.",
+        "title": "Unveiling promising phytocompounds from Moringa oleifera as dual inhibitors of EGFR(T790M/C797S) and VEGFR-2 in non-small cell lung cancer through in silico screening, ADMET, dynamics simulation, and DFT analysis",
+        "section": "Analysis of drug-like properties",
+        "similarity": 0.02832415420928403,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 1227.1528000710532,
+      "neo4j_ms": 91.36810002382845,
+      "total_ms": 1548.8070000428706,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 13,
+        "total_tokens": 13
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 6,
+    "question": "What is the significance of famoxadone binding to the protein IZUMO1 in terms of energy values?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC38891976_sec7_C01",
+        "text": "Unlike the interaction with CRBP-III, in which famoxadone enters the retinol-binding site and a competitive effect can be hypothesized, the interaction between IZUMO1 and famoxadone was predicted to occur on the surface of the protein. In particular, famoxadone binds between the 4HB and Ig-like domains of IZUMO1, interacting with a network of polar and non-polar amino acid residues in the cavity between the two domains.",
+        "title": "Prediction of Pesticide Interactions with Proteins Involved in Human Reproduction by Using a Virtual Screening Approach: A Case Study of Famoxadone Binding CRBP-III and Izumo",
+        "section": "IZUMO–Famoxadone Interaction Model",
+        "similarity": 0.03252247488101534,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC38891976_sec7_C02",
+        "text": "In particular, famoxadone binds between the 4HB and Ig-like domains of IZUMO1, interacting with a network of polar and non-polar amino acid residues in the cavity between the two domains. The binding in this pose is also more stabilized by a predicted hydrogen bond of the oxygen atom between the two phenolic rings of famoxadone and the N185 residue of IZUMO1. Regarding a possible steric hindrance, it could be assumed that this binding has no significant impact on the JUNO recognition function of IZUMO1, because the binding occurs in an area opposite to the binding interface between IZUMO1 and JUNO.",
+        "title": "Prediction of Pesticide Interactions with Proteins Involved in Human Reproduction by Using a Virtual Screening Approach: A Case Study of Famoxadone Binding CRBP-III and Izumo",
+        "section": "IZUMO–Famoxadone Interaction Model",
+        "similarity": 0.03252247488101534,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC38891976_sec7_C08",
+        "text": "Moreover, the predicted pose involved a different network of amino acid residues; in particular, fewer new residues are involved in the binding, and only residues A133, P136, Q144, N185, and W186 are maintained, even if the hydrogen bond with N185 is absent. Therefore, the predicted high affinity, the presence of a hydrogen bond, and the larger number of amino acid residues around famoxadone in the pose of IZUMO1 structure without JUNO support the idea that the famoxadone molecule could stabilize this IZUMO1 structural conformation, interfering through a far steric hindrance with the IZUMO1-JUNO binding.",
+        "title": "Prediction of Pesticide Interactions with Proteins Involved in Human Reproduction by Using a Virtual Screening Approach: A Case Study of Famoxadone Binding CRBP-III and Izumo",
+        "section": "IZUMO–Famoxadone Interaction Model",
+        "similarity": 0.03125763125763126,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC38891976_sec6_C01",
+        "text": "The protein IZUMO1, which has an important role in the sperm–oocyte fusion and is essential for male fertility, also appears to bind famoxadone with a good minimum energy value(in the range from −8.3 to −8. Kcal/mol). IZUMO1 is a monomeric type 1 transmembrane protein of 377 amino acids, with a broad mixed α/β secondary structural character. The overall 3D structures available in the online database consists of two domains: a rod-shaped N-terminal with a 4-helical bundle and a C-terminal bundled domain similar to that of immunoglobulin, connected by a β-hairpin.",
+        "title": "Prediction of Pesticide Interactions with Proteins Involved in Human Reproduction by Using a Virtual Screening Approach: A Case Study of Famoxadone Binding CRBP-III and Izumo",
+        "section": "IZUMO1 Structure, Sequence, and Functional Role",
+        "similarity": 0.03007688828584351,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC38891976_sec7_C03",
+        "text": "The binding in this pose is also more stabilized by a predicted hydrogen bond of the oxygen atom between the two phenolic rings of famoxadone and the N185 residue of IZUMO1. Regarding a possible steric hindrance, it could be assumed that this binding has no significant impact on the JUNO recognition function of IZUMO1, because the binding occurs in an area opposite to the binding interface between IZUMO1 and JUNO. This result suggests that there is no type of interference of the fungicide molecule in the interaction between the two proteins.",
+        "title": "Prediction of Pesticide Interactions with Proteins Involved in Human Reproduction by Using a Virtual Screening Approach: A Case Study of Famoxadone Binding CRBP-III and Izumo",
+        "section": "IZUMO–Famoxadone Interaction Model",
+        "similarity": 0.029877369007803793,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 447.3042000317946,
+      "neo4j_ms": 119.61149994749576,
+      "total_ms": 794.0102000720799,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 24,
+        "total_tokens": 24
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 7,
+    "question": "How do MSC-exos affect HUVEC viability, proliferation, and angiogenesis under high glucose conditions?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC39725699_sec4_C01",
+        "text": "To investigate the biological activity of MSC-derived exosomes in diabetic wound healing, HUVECs were co-cultured with BMSC-derived exosomes and treated with normal glucose or high glucose. As shown in Fig. 1a, high glucose severely impaired HUVEC viability with increased treatment time compared to NG treatment, and moderate decrease of cell viability was also observed after HG treatment. Decreased HUVEC viability was largely rescued by BMSC-derived exosomes.",
+        "title": "MSC-derived exosomal circMYO9B accelerates diabetic wound healing by promoting angiogenesis through the hnRNPU/CBL/KDM1A/VEGFA axis",
+        "section": "MSC-derived exosomes affect the viability, proliferation, apoptosis, migration and angiogenesis of HG-induced endothelial cells",
+        "similarity": 0.032266458495966696,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39725699_sec4_C02",
+        "text": "Decreased HUVEC viability was largely rescued by BMSC-derived exosomes. Moreover, HUVECs exhibited reduced proliferation and enhanced apoptosis after HG treatment, but these effects were abrogated by exosomes. Transwell assays showed that HG suppressed the migratory capacity of HUVECs, but MSC-exos promoted the motility of HUVECs. More tubes were formed in HG-induced HUVECs co-cultured with MSC-derived exosomes, suggesting that MSC-exos promoted the angiogenesis of HUVECs.",
+        "title": "MSC-derived exosomal circMYO9B accelerates diabetic wound healing by promoting angiogenesis through the hnRNPU/CBL/KDM1A/VEGFA axis",
+        "section": "MSC-derived exosomes affect the viability, proliferation, apoptosis, migration and angiogenesis of HG-induced endothelial cells",
+        "similarity": 0.032018442622950824,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39725699_sec4_C03",
+        "text": "Moreover, HUVECs exhibited reduced proliferation and enhanced apoptosis after HG treatment, but these effects were abrogated by exosomes. Transwell assays showed that HG suppressed the migratory capacity of HUVECs, but MSC-exos promoted the motility of HUVECs. More tubes were formed in HG-induced HUVECs co-cultured with MSC-derived exosomes, suggesting that MSC-exos promoted the angiogenesis of HUVECs. As VEGFA is a master regulator in angiogenesis^{18}, we found that HG inhibited VEGFA secretion of HUVECs, but MSC-exos enhanced VEGFA secretion.",
+        "title": "MSC-derived exosomal circMYO9B accelerates diabetic wound healing by promoting angiogenesis through the hnRNPU/CBL/KDM1A/VEGFA axis",
+        "section": "MSC-derived exosomes affect the viability, proliferation, apoptosis, migration and angiogenesis of HG-induced endothelial cells",
+        "similarity": 0.031754032258064516,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39725699_sec4_C05",
+        "text": "More tubes were formed in HG-induced HUVECs co-cultured with MSC-derived exosomes, suggesting that MSC-exos promoted the angiogenesis of HUVECs. As VEGFA is a master regulator in angiogenesis^{18}, we found that HG inhibited VEGFA secretion of HUVECs, but MSC-exos enhanced VEGFA secretion. HG-mediated suppression of VEGFA and other angiogenesis-related markers including VEGFR2^{19}, PDGF^{20} and EGF^{21} were largely reversed by MSC-exos. These data indicated that MSC-derived exosomes regulated the viability, proliferation, apoptosis, migration and angiogenesis of HG-treated HUVECs.",
+        "title": "MSC-derived exosomal circMYO9B accelerates diabetic wound healing by promoting angiogenesis through the hnRNPU/CBL/KDM1A/VEGFA axis",
+        "section": "MSC-derived exosomes affect the viability, proliferation, apoptosis, migration and angiogenesis of HG-induced endothelial cells",
+        "similarity": 0.0315136476426799,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39725699_sec4_C04",
+        "text": "Transwell assays showed that HG suppressed the migratory capacity of HUVECs, but MSC-exos promoted the motility of HUVECs. More tubes were formed in HG-induced HUVECs co-cultured with MSC-derived exosomes, suggesting that MSC-exos promoted the angiogenesis of HUVECs. As VEGFA is a master regulator in angiogenesis^{18}, we found that HG inhibited VEGFA secretion of HUVECs, but MSC-exos enhanced VEGFA secretion. HG-mediated suppression of VEGFA and other angiogenesis-related markers including VEGFR2^{19}, PDGF^{20} and EGF^{21} were largely reversed by MSC-exos.",
+        "title": "MSC-derived exosomal circMYO9B accelerates diabetic wound healing by promoting angiogenesis through the hnRNPU/CBL/KDM1A/VEGFA axis",
+        "section": "MSC-derived exosomes affect the viability, proliferation, apoptosis, migration and angiogenesis of HG-induced endothelial cells",
+        "similarity": 0.03125763125763126,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 373.3296999707818,
+      "neo4j_ms": 108.02799998782575,
+      "total_ms": 711.2703000893816,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 21,
+        "total_tokens": 21
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 8,
+    "question": "Could you please provide a detailed definition of DNA repair and explain its significance in cellular processes?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC39739897_sec1_C07",
+        "text": "Enhancement of DNA damage repair represents the fact that chemotherapeutic drugs can directly or indirectly lead to cellular DNA damage and changes in cell-cycle distribution. When the cellular damage repair ability is enhanced, it does not signal to the apoptosis mechanism, thus enhancing the cellular resistance to chemotherapeutic drugs. At present, research is focused on developing reversal agents to counter these mechanisms. While these efforts have shown promise in reducing tumor cell chemoresistance, significant progress in this area is still needed.",
+        "title": "miR-1247-3p regulation of CCND1 affects chemoresistance in colorectal cancer",
+        "section": "Introduction",
+        "similarity": 0.030679156908665108,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39739897_sec1_C06",
+        "text": "When the expression of pro-apoptotic and apoptosis-inhibiting genes is abnormal in cells, they can resist cell death induced by chemotherapeutic drugs by destroying apoptotic pathways, which leads to the occurrence of drug resistance in tumors. Enhancement of DNA damage repair represents the fact that chemotherapeutic drugs can directly or indirectly lead to cellular DNA damage and changes in cell-cycle distribution. When the cellular damage repair ability is enhanced, it does not signal to the apoptosis mechanism, thus enhancing the cellular resistance to chemotherapeutic drugs.",
+        "title": "miR-1247-3p regulation of CCND1 affects chemoresistance in colorectal cancer",
+        "section": "Introduction",
+        "similarity": 0.029709507042253523,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39063224_sec7_C16",
+        "text": "This phosphorylation facilitates a subsequent DNA repair process. In short, the screened small molecules could competitively bind to ATPγS-binding site, thereby inhibiting the phosphorylation of DNA-PKcs as well as a following DNA repair process via the NHEJ pathway. Cancer is a significant global health challenge, with increasing incidence and mortality rates worldwide. However, current cancer treatment approaches remain limited, highlighting the urgent need for novel therapies, including discovering new drugs.",
+        "title": "Identification and Validation of New DNA-PKcs Inhibitors through High-Throughput Virtual Screening and Experimental Verification",
+        "section": "Discussion",
+        "similarity": 0.02684684684684685,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39063224_sec0_C01",
+        "text": "DNA-PKcs is a crucial protein target involved in DNA repair and response pathways, with its abnormal activity closely associated with the occurrence and progression of various cancers. In this study, we employed a deep learning-based screening and molecular dynamics simulation-based pipeline, identifying eight candidates for DNA-PKcs targets. Subsequent experiments revealed the effective inhibition of DNA-PKcs-mediated cell proliferation by three small molecules.",
+        "title": "Identification and Validation of New DNA-PKcs Inhibitors through High-Throughput Virtual Screening and Experimental Verification",
+        "section": "Abstract",
+        "similarity": 0.022366965712178936,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39795863_sec3_C13",
+        "text": "Both reviews highlighted the fact that DNA damage and repairs both respond to sirtuin 1, sirtuin 6, and sirtuin 7. Nonetheless, the recruitment of sirtuin towards the DNA damage sites provided an important clue with regard to sirtuin 1, 6 and 7. Sirtuin 1 and 6 responded in a fast kinetic manner towards the DNA damage sites to initiate the damage response, while sirtuin 7 was recruited with much slower kinetics, providing insight into its distal role in the DNA damage repair process. Sirtuin 7 is recruited for DNA damage repair by deacetylating histone H3 at lysine 18, which has an exact role in facilitating the recruitment of protein 53BP1 to the DNA damage sites.",
+        "title": "The Potential of Naturally Derived Compounds for Treating Chronic Kidney Disease: A Review of Autophagy and Cellular Senescence",
+        "section": "The Role of SASP in Aging, Autophagy, and Podocyte",
+        "similarity": 0.021674311926605506,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 409.3880000291392,
+      "neo4j_ms": 106.89479997381568,
+      "total_ms": 747.370500001125,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 18,
+        "total_tokens": 18
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 9,
+    "question": "What SNPs show difference between populations?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC39742389_sec17_C19",
+        "text": "Most of the highly differentiated SNPs are diverged between the GOA and other populations, but there are a number of SNPs that differentiate specific population pairs. For example, there are SNPs that differentiate the AIs from SEAK and Nor/Chu and SNPs that differentiate EBS from GOA. These patterns hint at complex signatures of selection. Taken together, our results suggest that the putative adaptive divergence on chr 100 likely arose through a soft selective sweep.",
+        "title": "Whole Genome Sequencing Reveals Substantial Genetic Structure and Evidence of Local Adaptation in Alaskan Red King Crab",
+        "section": "Evidence of Local Adaptation",
+        "similarity": 0.027205882352941177,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39742389_sec17_C18",
+        "text": "Further examination of genotype frequencies at SNPs in the region revealed complex patterns of divergence. Most of the highly differentiated SNPs are diverged between the GOA and other populations, but there are a number of SNPs that differentiate specific population pairs. For example, there are SNPs that differentiate the AIs from SEAK and Nor/Chu and SNPs that differentiate EBS from GOA. These patterns hint at complex signatures of selection. Taken together, our results suggest that the putative adaptive divergence on chr 100 likely arose through a soft selective sweep.",
+        "title": "Whole Genome Sequencing Reveals Substantial Genetic Structure and Evidence of Local Adaptation in Alaskan Red King Crab",
+        "section": "Evidence of Local Adaptation",
+        "similarity": 0.0264301860545992,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39591962_sec6_C08",
+        "text": "Singletons, non-variant sites, and missing sites were removed. Thus, our filtering resulted in SNPs. For the analyses between the Armenian and comparative populations, a pooled Armenian population was combined with the HO dataset. After removing two Iranian samples that had a significant number of missing sites, a total of SNPs was included in the allele-sharing analysis.",
+        "title": "Demographic history and genetic variation of the Armenian population",
+        "section": "Population genomic analyses",
+        "similarity": 0.021222504697689843,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39591962_sec6_C09",
+        "text": "Thus, our filtering resulted in SNPs. For the analyses between the Armenian and comparative populations, a pooled Armenian population was combined with the HO dataset. After removing two Iranian samples that had a significant number of missing sites, a total of SNPs was included in the allele-sharing analysis.",
+        "title": "Demographic history and genetic variation of the Armenian population",
+        "section": "Population genomic analyses",
+        "similarity": 0.02105496453900709,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39738025_sec12_C06",
+        "text": "Using core genome SNPs identified within 157 high quality genome sequences, we demonstrate genetic segregation between African and Asian isolates, with South American isolates aligning with those from Africa, supportive of an introduction of P. malariae into South America from an African origin as previously suggested^{61}. SNPs driving differences between populations were present in genes encoding parasite surface proteins and mosquito stages, consistent with other studies^{13}.",
+        "title": "Genome sequencing of Plasmodium malariae identifies continental segregation and mutations associated with reduced pyrimethamine susceptibility",
+        "section": "Discussion",
+        "similarity": 0.02089000108802089,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 567.2653999645263,
+      "neo4j_ms": 81.29549992736429,
+      "total_ms": 876.2191999703646,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 8,
+        "total_tokens": 8
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 10,
+    "question": "Why we measure absorbance at 570 nm after adding MTT solvent?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC39204176_sec19_C05",
+        "text": "Medium containing unconverted MTT was removed, and 100 μL of MTT solvent(4 mM HCl, 0.1% NP40, in isopropyl alcohol) was added to the wells in order to solubilize MTT crystals. After 15 min of incubation at room temperature, the absorbance values at 570 nm were obtained with a Multiskan FC Microplate Photometer. PrestoBlue reagent(#A13261, Thermo Fisher Scientific, Waltham, MA, USA) was added to the medium(1:10 v / v) and incubated for 1 h at 37 °C.",
+        "title": "Searching for Novel HDAC6/Hsp90 Dual Inhibitors with Anti-Prostate Cancer Activity: In Silico Screening and In Vitro Evaluation",
+        "section": "Cell Viability Assays",
+        "similarity": 0.03200204813108039,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39204176_sec19_C04",
+        "text": "A total of 0.5 mg/mL of thiazolyl blue tetrazolium bromide in Ham’s F12 medium was added to the wells, and the plate was incubated at 37 °C for 2 h. Medium containing unconverted MTT was removed, and 100 μL of MTT solvent(4 mM HCl, 0.1% NP40, in isopropyl alcohol) was added to the wells in order to solubilize MTT crystals. After 15 min of incubation at room temperature, the absorbance values at 570 nm were obtained with a Multiskan FC Microplate Photometer.",
+        "title": "Searching for Novel HDAC6/Hsp90 Dual Inhibitors with Anti-Prostate Cancer Activity: In Silico Screening and In Vitro Evaluation",
+        "section": "Cell Viability Assays",
+        "similarity": 0.03055037313432836,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39521858_sec21_C01",
+        "text": "Two hundred microliters of medium were suspended in 3000 BLCA cells, which were seeded in 96-well plates for the indicated times. After 20 μL of 5 mg/mL MTT was added to each well and incubated for 4 h at 37 °C, 150 μL of DMSO was added to each well. The absorbance of each well at 570 nm was measured using a microplate reader to assess cell viability.",
+        "title": "Mevalonate pathway inhibition reduces bladder cancer metastasis by modulating RhoB protein stability and integrin β1 localization",
+        "section": "MTT assay",
+        "similarity": 0.028991596638655463,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39619613_sec8_C03",
+        "text": "The absorbance at 570 nm was determined with a Synergy 4 microplate reader. Each experiment was performed three times under the same conditions.",
+        "title": "Discovery of novel and highly potent dual-targeting PKMYT1/HDAC2 inhibitors for hepatocellular carcinoma through structure-based virtual screening and biological evaluation",
+        "section": "MTT assay",
+        "similarity": 0.02889344262295082,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC40386102_sec6_C03",
+        "text": "This procedure relies on mitochondrial enzymes converting MTT to MTT-formazan. The absorbance was then measured at 545 nm using a Stat Fax 2100 Microplate photometer(Stat Fax 2100, SKU:).",
+        "title": "Impact of carboxymethyl dextran-asparaginase in NALM-6 cell apoptosis and autophagy",
+        "section": "MTT assay",
+        "similarity": 0.02832415420928403,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 440.11930003762245,
+      "neo4j_ms": 80.38790000136942,
+      "total_ms": 742.9841000121087,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 15,
+        "total_tokens": 15
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  }
+]

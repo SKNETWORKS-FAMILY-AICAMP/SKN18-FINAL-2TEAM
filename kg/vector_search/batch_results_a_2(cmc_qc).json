@@ -1,0 +1,680 @@
+[
+  {
+    "question_id": 1,
+    "question": "What does the context say about guanidine in relation to experimental and computational transfer free energies?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC39131493_sec6_C06",
+        "text": "One can easily understand that there will be redundancy, for example, 21^{st}(−11−1) and 25^{th}(−1−11) will give same transfer free energies as the 9^{th} one(1−1−1), because there are no other parameters to distinguish them. This whole exercise gives a pretty good test for identifying the arrangement that gives transfer free energies close to experimental values. Conformational energies shown in red circles in Fig. 4 vary over a wider range in the case of sugars and polyols, and guanidine, than in methylamines, proline, and urea.",
+        "title": "Solvent accessible surface area-assessed molecular basis of osmolyte-induced protein stability†",
+        "section": "Transfer free energies of the N + O − O − model",
+        "similarity": 0.032266458495966696,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39131493_sec7_C06",
+        "text": "Experimental transfer free energies along with the results from the present model are plotted in Fig. 6. Sarcosine, urea and guanidine are considered for this test as experimental data for these osmolytes are available. ^{ } We can find a certain degree of similarities between experimental and computational results—this implies that our model is flexible enough to compute Δ G _{tr} beyond 1 M concentration.",
+        "title": "Solvent accessible surface area-assessed molecular basis of osmolyte-induced protein stability†",
+        "section": "Preferential osmolyte interactions with the N + O − O − model",
+        "similarity": 0.031544957774465976,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39131493_sec6_C07",
+        "text": "This whole exercise gives a pretty good test for identifying the arrangement that gives transfer free energies close to experimental values. Conformational energies shown in red circles in Fig. 4 vary over a wider range in the case of sugars and polyols, and guanidine, than in methylamines, proline, and urea. Those conformations describe poorly the real scenario, for example, where all three charge sites have the same charges; this is especially apparent in case of sorbitol, sucrose and trehalose. Essentially these three osmolytes have larger surface areas than other osmolytes too.",
+        "title": "Solvent accessible surface area-assessed molecular basis of osmolyte-induced protein stability†",
+        "section": "Transfer free energies of the N + O − O − model",
+        "similarity": 0.03128054740957967,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39131493_sec7_C05",
+        "text": "^{46} Additionally, the Δ G _{tr} values were computed beyond 1 M osmolyte solution. Experimental transfer free energies along with the results from the present model are plotted in Fig. 6. Sarcosine, urea and guanidine are considered for this test as experimental data for these osmolytes are available. ^{ } We can find a certain degree of similarities between experimental and computational results—this implies that our model is flexible enough to compute Δ G _{tr} beyond 1 M concentration.",
+        "title": "Solvent accessible surface area-assessed molecular basis of osmolyte-induced protein stability†",
+        "section": "Preferential osmolyte interactions with the N + O − O − model",
+        "similarity": 0.016129032258064516,
+        "sources": [
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39598660_sec2_C19",
+        "text": "Despite this, guanidines play a vital role in the development of drugs that target the central nervous system. Numerous guanidine-based ligands have been determined to effectively penetrate the BBB despite the potential limitations. To assess N -[ω- alkyl]guanidine derivatives as thoroughly as possible at an early stage of the research, we used the SwissADME service to determine their physicochemical properties(http://www.swissadme.ch/, accessed on 29 October 2024).",
+        "title": "Virtual Screening Approaches to Identify Promising Multitarget-Directed Ligands for the Treatment of Autism Spectrum Disorder",
+        "section": "Results and Discussion",
+        "similarity": 0.015873015873015872,
+        "sources": [
+          "vector"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 590.68310004659,
+      "neo4j_ms": 179.55999996047467,
+      "total_ms": 1032.9049999127164,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 19,
+        "total_tokens": 19
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 2,
+    "question": "Could you please explain the role of the autophagy-mTOR signaling pathway in podocyte injury and its connection to aging-related proteinuria?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC39795863_sec2_C02",
+        "text": "Signaling pathways reviewed by Teh et al. provided insight into aging-related autophagy-mTOR in podocyte injury, which is highly associated with foot process effacement, which causes proteinuria. It is believed that delaying aging is much more effective than treating a particular age-related disease.",
+        "title": "The Potential of Naturally Derived Compounds for Treating Chronic Kidney Disease: A Review of Autophagy and Cellular Senescence",
+        "section": "Aging and Cellular Senescence",
+        "similarity": 0.03278688524590164,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39795863_sec2_C01",
+        "text": "Aging has been recently recognized as a disease and also a significant contributor to increase acute kidney disease and chronic kidney disease; kidney aging pathogenesis includes the activation of various injury pathways, a decrease in podocyte autophagy, the release of cytokines and growth factors, and an increase in reactive oxygen species and advanced glycation end products. Signaling pathways reviewed by Teh et al. provided insight into aging-related autophagy-mTOR in podocyte injury, which is highly associated with foot process effacement, which causes proteinuria.",
+        "title": "The Potential of Naturally Derived Compounds for Treating Chronic Kidney Disease: A Review of Autophagy and Cellular Senescence",
+        "section": "Aging and Cellular Senescence",
+        "similarity": 0.03225806451612903,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39795863_sec3_C15",
+        "text": "Investigating natural products from the perspectives of sirtuin could provide a deeper understanding of their mechanisms in CKD treatment. Autophagy is an essential catabolic process for cellular self-cleansing, responsible for degrading damaged and unhealthy intracellular materials. Across various model organisms, autophagy’s beneficial role in the age-association processes and lifespan determination has been indicated. Recent studies revealed concrete evidence to establish the role of autophagy in aging, particularly a crucial factor involved in podocyte injury.",
+        "title": "The Potential of Naturally Derived Compounds for Treating Chronic Kidney Disease: A Review of Autophagy and Cellular Senescence",
+        "section": "The Role of SASP in Aging, Autophagy, and Podocyte",
+        "similarity": 0.026838432635534086,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39795863_sec3_C38",
+        "text": "It is possible that GSK3β primarily impacts β-catenin, which is essential for podocyte homeostasis. The Wnt/β-catenin signaling pathway has been found to contribute to kidney aging, and studies suggest that klotho may inhibit this pathway to prevent cellular senescence. Interestingly, the role of lithium in cellular senescence and its potential longevity effects underscore the need for further research into the relationships among lithium, GSK3β, and aging, which could offer promising therapeutic strategies for age-related diseases.",
+        "title": "The Potential of Naturally Derived Compounds for Treating Chronic Kidney Disease: A Review of Autophagy and Cellular Senescence",
+        "section": "The Role of SASP in Aging, Autophagy, and Podocyte",
+        "similarity": 0.026742581090407176,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39795863_sec3_C32",
+        "text": "The loss of podocyte increases the burden on the remaining podocytes, which must endure greater stress. This compensatory workload is sustained over time, and as kidney aging progresses, the kidney’s capacity to recover from injuries is further compromised. The signaling pathways of senescent cells vary across different cell types, yet little is known about renal SASP signaling. Investigating the signaling pathways linking senescent podocyte with autophagy is crucial for developing improved therapeutic strategies for the future.",
+        "title": "The Potential of Naturally Derived Compounds for Treating Chronic Kidney Disease: A Review of Autophagy and Cellular Senescence",
+        "section": "The Role of SASP in Aging, Autophagy, and Podocyte",
+        "similarity": 0.026736111111111113,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 423.8797000143677,
+      "neo4j_ms": 148.0516999727115,
+      "total_ms": 841.5067000314593,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 28,
+        "total_tokens": 28
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 3,
+    "question": "How students use tutorials and what teachers do when students stuck?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC39230433_sec6_C04",
+        "text": "The students followed the tutorials individually, but were encouraged to ask their classmates how certain tasks were performed. To activate the students, the instructions omitted how certain tasks should be performed and instead pushed the students to look for solutions on their own, either by trial‐and‐error or by using a search engine or a large language model. The role of the teachers was to support students when they could not complete one of the assignments and to summarize the key concepts learned in each session.",
+        "title": "Teaching protein structure and function through molecular visualization",
+        "section": "RESULTS",
+        "similarity": 0.03252247488101534,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39230433_sec6_C03",
+        "text": "The sessions were attended by all 17 students registered for the course. The students followed the tutorials individually, but were encouraged to ask their classmates how certain tasks were performed. To activate the students, the instructions omitted how certain tasks should be performed and instead pushed the students to look for solutions on their own, either by trial‐and‐error or by using a search engine or a large language model. The role of the teachers was to support students when they could not complete one of the assignments and to summarize the key concepts learned in each session.",
+        "title": "Teaching protein structure and function through molecular visualization",
+        "section": "RESULTS",
+        "similarity": 0.031746031746031744,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39230433_sec7_C02",
+        "text": "We share these tutorials to inspire other teachers to build on them. Despite providing step‐by‐step instructions on how to perform specific tests, we included some steps in which the students are stimulated to look on their own how to perform certain tasks, either by using a search engine or a large language model, such as chatGPT. This not only ensures that the tutorial stays relevant as novel computational structural biology tools become available and the students can find their way to such tools on their own, but it also promotes student engagement.",
+        "title": "Teaching protein structure and function through molecular visualization",
+        "section": "DISCUSSION",
+        "similarity": 0.030834914611005692,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39230433_sec6_C07",
+        "text": "The teachers noticed engagement from most students during the tutorials. The students generally communicated how visualizing aspects of protein structure in 3D helped them in understanding concepts they had learned during the lectures. The last session also provided an opportunity for students to experience the role of a researcher in structural biology. Although challenging, since for most proteins the students could not obtain much information, the students appreciated this moment. During the course evaluation, 11 students(65%) answered the question on what they thought of the sessions.",
+        "title": "Teaching protein structure and function through molecular visualization",
+        "section": "RESULTS",
+        "similarity": 0.03009207275993712,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39230433_sec6_C01",
+        "text": "3 We designed a series of tutorials to introduce students to molecular graphics software and to give them the opportunity to use it to explore aspects of protein chemistry. Further, the tutorials introduced students to recently developed computational tools that are now used routinely by structural biologists to understand protein function from structure. The sessions were attended by all 17 students registered for the course. The students followed the tutorials individually, but were encouraged to ask their classmates how certain tasks were performed.",
+        "title": "Teaching protein structure and function through molecular visualization",
+        "section": "RESULTS",
+        "similarity": 0.02946912242686891,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 403.2010999508202,
+      "neo4j_ms": 161.10009991098195,
+      "total_ms": 790.567500051111,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 12,
+        "total_tokens": 12
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 4,
+    "question": "How does melatonin influence intracellular calcium levels in muscle cells according to recent research?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC39857351_sec0_C02",
+        "text": "The ER and mitochondria together regulate intracellular calcium levels, and melatonin, a natural compound with antioxidant properties, may alleviate these challenges. Our previous research showed that melatonin raises intracellular calcium and preserves muscle structure by enhancing mitochondrial function in obese diabetic rats. This study further explores melatonin’s potential to reduce ER stress in the vastus lateralis muscle by modulating the unfolded protein response and restoring calcium levels disrupted by diabesity.",
+        "title": "Melatonin Ameliorates Organellar Calcium Homeostasis, Improving Endoplasmic Reticulum Stress-Mediated Apoptosis in the Vastus Lateralis Muscle of Both Sexes of Obese Diabetic Rats",
+        "section": "Abstract",
+        "similarity": 0.03278688524590164,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39857351_sec1_C25",
+        "text": "Third, it binds to nuclear proteins and intracellular proteins such as calmodulin, regulating intracellular Ca^{2+} signaling pathways because CaM is an essential mediator of Ca^{2+} signaling within cells. Furthermore, melatonin, through membrane melatonin receptor 1 and/or 2 activation, is proposed to play a pivotal role in calcium signaling, modulating intracellular levels by regulating calcium transport, and in ER stress under diverse pathophysiological conditions.",
+        "title": "Melatonin Ameliorates Organellar Calcium Homeostasis, Improving Endoplasmic Reticulum Stress-Mediated Apoptosis in the Vastus Lateralis Muscle of Both Sexes of Obese Diabetic Rats",
+        "section": "Introduction",
+        "similarity": 0.03125,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39857351_sec17_C01",
+        "text": "Taking together our current and previous experimental results, they suggest that melatonin could emerge as a potential novel therapeutic agent for preventing muscle mass loss and atrophy and improving muscle function in diabetic and obese individuals by reducing cellular oxidative stress, which restores organellar function and therefore organellar calcium homeostasis, reducing ER stress-mediated apoptosis activation. Further studies on intracellular calcium dynamic and homeostasis regulation; calcium transport; and communication between organelles through specific cellular structures such as mitochondria-associated membranes, which are essential in ER–mitochondria interactions, as well as mechanistic studies on the melatonin receptor involved in these processes with knockdown or knockout models, are needed for a better understanding of melatonin’s effects on calcium homeostasis and organellar stress.",
+        "title": "Melatonin Ameliorates Organellar Calcium Homeostasis, Improving Endoplasmic Reticulum Stress-Mediated Apoptosis in the Vastus Lateralis Muscle of Both Sexes of Obese Diabetic Rats",
+        "section": "Conclusions",
+        "similarity": 0.03021353930031804,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39857351_sec1_C26",
+        "text": "Furthermore, melatonin, through membrane melatonin receptor 1 and/or 2 activation, is proposed to play a pivotal role in calcium signaling, modulating intracellular levels by regulating calcium transport, and in ER stress under diverse pathophysiological conditions. As calcium signaling is crucial in ER stress-induced pro-apoptotic processes under pathological conditions, the present study aims to further investigate the SKM protective role of melatonin in modulating intraorganellar calcium levels and inhibiting ER stress-mediated apoptosis in the VL of both sexes of obese diabetic rats.",
+        "title": "Melatonin Ameliorates Organellar Calcium Homeostasis, Improving Endoplasmic Reticulum Stress-Mediated Apoptosis in the Vastus Lateralis Muscle of Both Sexes of Obese Diabetic Rats",
+        "section": "Introduction",
+        "similarity": 0.029437229437229435,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39857351_sec16_C18",
+        "text": "Further studies in intraorganellar melatonin levels and the influence of this indolamine on cellular calcium dynamic and transporter activity will help in the understanding of the organellar modulatory effects of melatonin in SKM under obese diabetic conditions. Elevated mitochondrial calcium levels promote ATP synthesis and oxidative phosphorylation, aligning with our earlier results showing the beneficial effects of melatonin in mitochondrial functionality in the VL from obese diabetic ZDF rats.",
+        "title": "Melatonin Ameliorates Organellar Calcium Homeostasis, Improving Endoplasmic Reticulum Stress-Mediated Apoptosis in the Vastus Lateralis Muscle of Both Sexes of Obese Diabetic Rats",
+        "section": "Discussion",
+        "similarity": 0.029411764705882353,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 1567.6949999760836,
+      "neo4j_ms": 122.7578999241814,
+      "total_ms": 1912.6698999898508,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 17,
+        "total_tokens": 17
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 5,
+    "question": "What role do macrophages play in the ligand-receptor interactions observed in ICI-SJS/TEN patients?",
+    "error": "{code: Neo.ClientError.Procedure.ProcedureCallFailed} {message: Failed to invoke procedure `db.index.fulltext.queryNodes`: Caused by: org.apache.lucene.queryparser.classic.TokenMgrError: Lexical error at line 1, column 100.  Encountered: <EOF> after prefix \"/TEN patients?\" (in lexical state 2)}"
+  },
+  {
+    "question_id": 6,
+    "question": "Can you confirm if the supernatant was loaded onto the HisTrap HP column correctly during the purification process?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC38615009_sec23_C06",
+        "text": "Supernatant was loaded onto a 50 mL Superloop of ÄKTA pure system FPLC and purified by Affinity Chromatography using HisTrap 5 mL FF column. Proteins were washed with Washing Buffer(50 mM NaH _{2} PO _{4} pH 7.4, 100 mM KCl, 10% glycerol, 500 mM sucrose, 20 mM MgCl _{2}, 5 mM ATP, 1 mM DTT) to rid of GroEL which would otherwise be found in the elutions; eluted with AC Elution Buffer(20 mM NaH _{2} PO _{4} pH 7.6, 150 mM NaCl, 500 mM imidazole).",
+        "title": "One substrate many enzymes virtual screening uncovers missing genes of carnitine biosynthesis in human and mouse",
+        "section": "Protein expression and purification",
+        "similarity": 0.03047794966520434,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39271288_sec5_C04",
+        "text": "The supernatant was loaded on a HisTrap column and eluted using an FPLC instrument with protein elution buffer(20 mM Tris–HCl, 0. M NaCl, 10% glycerol, 1 M imidazole, pH 7.5). The elution fractions were collected, concentrated, and loaded for SEC purification using protein storage buffer(20 mM HEPES, 500 mM KCl, 10% glycerol, pH 7.5). The elution fractions corresponding to the molecular mass of the desired protein were collected and concentrated to 0.5 mM. The concentration was determined on a NanoDrop based on the 280 nm absorption using the extinction coefficient predicted by Expasy.",
+        "title": "Substrate Specificity of a Methyltransferase Involved in the Biosynthesis of the Lantibiotic Cacaoidin",
+        "section": "Expression and Purification",
+        "similarity": 0.03036576949620428,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39793047_sec10_C04",
+        "text": "The supernatant was loaded onto 1 mL HisTrap HP column on an AKTA fast protein liquid chromatography. Proteins were then eluted with a gradient of imidazole from 100 mM to 1 M in the buffer of 20 mM NaPi pH 7.4, and 500 mM NaCl. The C-terminal 6xHis-tag was then removed by treatment with TEV protease at a protease-to-target molar ratio of 1:100 and products were passed through Ni-NTA to remove uncleaved protein.",
+        "title": "Structural basis of nearest-neighbor cooperativity in the ring-shaped gene regulatory protein TRAP from protein engineering and cryo-EM",
+        "section": "Preparation of Linked Aha TRAP Variants(dTRAP).",
+        "similarity": 0.030330882352941176,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39145938_sec14_C04",
+        "text": "Thawed pellets were sonicated on ice to lyse cells, and clarified supernatant was filtered and loaded onto a 5 mL HiTrap Q HP column. Protein was eluted off the column with a high salt gradient from 50 mM Tris-HCl pH 7.5 to 50 mM Tris-HCl pH 7.5, 1 M NaCl. Fractions containing HaloTag were pooled and run over a HiLoad 16/600 Superdex 75 size-exclusion chromatography column, buffer-exchanging into HKMT buffer. Purity of all proteins was assessed via SDS-PAGE. Protein was immediately used for experiments, or stored short-term at 4 °C.",
+        "title": "The importance of the location of the N-terminus in successful protein folding in vivo and in vitro",
+        "section": "Protein Expression and Purification.",
+        "similarity": 0.029211087420042643,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39271288_sec5_C03",
+        "text": "For protein expression and purification, the cell pellet was resuspended in protein lysis buffer(20 mM Tris–HCl, 0. M NaCl, 10% glycerol, pH 7.5), lysed by sonication(35% amplitude, 5 min, 2.0 s pulse on, 5.0 s pulse off), and then centrifuged at g for 30 min at 4 °C. The supernatant was loaded on a HisTrap column and eluted using an FPLC instrument with protein elution buffer(20 mM Tris–HCl, 0. M NaCl, 10% glycerol, 1 M imidazole, pH 7.5).",
+        "title": "Substrate Specificity of a Methyltransferase Involved in the Biosynthesis of the Lantibiotic Cacaoidin",
+        "section": "Expression and Purification",
+        "similarity": 0.028991596638655463,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 448.3559000073001,
+      "neo4j_ms": 148.33929995074868,
+      "total_ms": 831.8619999336079,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 22,
+        "total_tokens": 22
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 7,
+    "question": "What is the role of the endoplasmic reticulum in the AMPK/Nrf2 pathway?",
+    "error": "{code: Neo.ClientError.Procedure.ProcedureCallFailed} {message: Failed to invoke procedure `db.index.fulltext.queryNodes`: Caused by: org.apache.lucene.queryparser.classic.TokenMgrError: Lexical error at line 1, column 72.  Encountered: <EOF> after prefix \"/Nrf2 pathway?\" (in lexical state 2)}"
+  },
+  {
+    "question_id": 8,
+    "question": "What is the role of CRL4^{Cdt2} in degrading SET8 during S phase or DNA damge?",
+    "error": "{code: Neo.ClientError.Procedure.ProcedureCallFailed} {message: Failed to invoke procedure `db.index.fulltext.queryNodes`: Caused by: org.apache.lucene.queryparser.classic.TokenMgrError: Lexical error at line 1, column 26.  Encountered: '123' (123),}"
+  },
+  {
+    "question_id": 9,
+    "question": "What role does PgpB play in acting on soluble phosphate metabolites according to the study?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC39510191_sec3_C05",
+        "text": "We tested PgpA, PgpB, and PgpC with these compounds. Our results showed that neither PgpB nor PgpC acted on these soluble phosphate metabolites, despite PgpB’s broad lipid substrate selectivity. In contrast, PgpA exhibited strong Mg^{2+} -dependent dephosphorylation activity with G3P. The PgpA activity was also strongly dependent on the conformation of these 3-carbon sugars, that is, it was significantly reduced with GAP and was nearly absent with 3PG.",
+        "title": "Mechanistic diversity and functional roles define the substrate specificity and ligand binding of bacterial PGP phosphatases",
+        "section": "Unique catalysis of PgpA with soluble metabolites",
+        "similarity": 0.03252247488101534,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39510191_sec6_C10",
+        "text": "Testing with soluble metabolites indicates that substrate binding and/or catalysis depend critically on the presence of acyl chains, as the absence of an acyl chain, as seen with G3P, completely abolished catalytic activity. Additionally, structural analysis reveals that charged residues, Lys153 and Glu154, function as gatekeepers, positioning the phosphate headgroup in a large cavity for dephosphorylation. PgpB is part of the lipid phosphate phosphatase family and shares a conserved catalytic triad with other members.",
+        "title": "Mechanistic diversity and functional roles define the substrate specificity and ligand binding of bacterial PGP phosphatases",
+        "section": "Discussion",
+        "similarity": 0.031009615384615385,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39510191_sec3_C03",
+        "text": "This surface localization may enable these PGP phosphatases to act on other soluble phosphate metabolites. To test this hypothesis, we focused on four 3-carbon sugar phosphate metabolites, including G3P, glyceraldehyde-3-phosphate, dihydroxyacetone phosphate, and 3-phosphoglyceric acid—which are structurally analogous to the PG head group of LPA. These metabolites are crucial building blocks for cellular metabolism.",
+        "title": "Mechanistic diversity and functional roles define the substrate specificity and ligand binding of bacterial PGP phosphatases",
+        "section": "Unique catalysis of PgpA with soluble metabolites",
+        "similarity": 0.030798389007344232,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39510191_sec3_C02",
+        "text": "The structure of PgpB suggests that the lipid dephosphorylation reaction occurs on the membrane surface, with the active site exposed to the periplasmic space and primarily assembled by several charged residues. Although the structures of PgpA and PgpC are not yet available, the AlphaFold-predicted models suggest that their active sites may also be located on the cytoplasmic membrane surface. This surface localization may enable these PGP phosphatases to act on other soluble phosphate metabolites.",
+        "title": "Mechanistic diversity and functional roles define the substrate specificity and ligand binding of bacterial PGP phosphatases",
+        "section": "Unique catalysis of PgpA with soluble metabolites",
+        "similarity": 0.030776515151515152,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39510191_sec3_C06",
+        "text": "Our results showed that neither PgpB nor PgpC acted on these soluble phosphate metabolites, despite PgpB’s broad lipid substrate selectivity. In contrast, PgpA exhibited strong Mg^{2+} -dependent dephosphorylation activity with G3P. The PgpA activity was also strongly dependent on the conformation of these 3-carbon sugars, that is, it was significantly reduced with GAP and was nearly absent with 3PG. Notably, the only difference between these molecules is at the sn-2 position, where GAP or 3PG has a carbonyl oxygen or carboxylate group instead of a hydroxyl group present in G3P.",
+        "title": "Mechanistic diversity and functional roles define the substrate specificity and ligand binding of bacterial PGP phosphatases",
+        "section": "Unique catalysis of PgpA with soluble metabolites",
+        "similarity": 0.03047794966520434,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 288.84769999422133,
+      "neo4j_ms": 117.16479994356632,
+      "total_ms": 630.0078999483958,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 19,
+        "total_tokens": 19
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 10,
+    "question": "What did Castellano et al. 2017 find about cholesterol and mTORC1?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC39602284_sec1_C25",
+        "text": "However, the recent discovery of a lysosomal amino acid transporter, SLC38A9, that can bind cholesterol and directly stimulate mTORC1 demonstrates that cholesterol is also an essential mTORC1 activator([Castellano et al. 2017]). [Lim et al.] further demonstrated that endoplasmic reticulum-lysosome contacts mediated by Vesicle-associated membrane protein Associated Protein and oxysterol binding protein 1 allow cholesterol transfer from the ER to the cytosolic face of the lysosome to directly activate mTORC1 and suppress autophagy. These developments have major implications for diseases driven by mTORC1 hyperactivation; however, this connection has not yet been applied to the study of intracellular pathogens.",
+        "title": "Salmonella-induced cholesterol accumulation in infected macrophages suppresses autophagy via mTORC1 activation",
+        "section": "INTRODUCTION",
+        "similarity": 0.03252247488101534,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39602284_sec1_C24",
+        "text": "At the lysosome, the small GTPase Rheb activates mTORC1, stimulating its downstream activities promoting protein synthesis through phosphorylation of p70 S6 kinase, and inhibiting autophagy by phosphorylation of ULK1(; [Long et al. 2005]; [Kim et al. 2011]). However, the recent discovery of a lysosomal amino acid transporter, SLC38A9, that can bind cholesterol and directly stimulate mTORC1 demonstrates that cholesterol is also an essential mTORC1 activator([Castellano et al. 2017]). [Lim et al.] further demonstrated that endoplasmic reticulum-lysosome contacts mediated by Vesicle-associated membrane protein Associated Protein and oxysterol binding protein 1 allow cholesterol transfer from the ER to the cytosolic face of the lysosome to directly activate mTORC1 and suppress autophagy.",
+        "title": "Salmonella-induced cholesterol accumulation in infected macrophages suppresses autophagy via mTORC1 activation",
+        "section": "INTRODUCTION",
+        "similarity": 0.032266458495966696,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39602284_sec9_C08",
+        "text": "We now demonstrate that SseJ-induced cholesterol accumulation is necessary for the localization of mTOR to the SCV and activation of mTORC1. These results parallel a similar process in uninfected cells, where high levels of cholesterol in the cytosolic leaflet of lysosome membranes can recruit and activate mTORC1([Lim et al. 2019]). What remains unknown is how this localization to SCVs impacts lysosomal recruitment of mTOR.",
+        "title": "Salmonella-induced cholesterol accumulation in infected macrophages suppresses autophagy via mTORC1 activation",
+        "section": "Role of mTORC1 during infection",
+        "similarity": 0.02804284323271665,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39602284_sec1_C28",
+        "text": "Concurrently, the formation of autophagosomes is increased when cholesterol accumulation is blocked. Finally, we find that the cholesterol transporter OSBP, previously reported to interact with SseJ([Kolodziejek et al. 2019]), is important for both activation of mTORC1 and St survival. We show that inhibition of OSBP lipid transfer activity, even in the presence of SseJ, reduces mTORC1 activation, leading to increased autophagosome formation and decreased bacterial survival.",
+        "title": "Salmonella-induced cholesterol accumulation in infected macrophages suppresses autophagy via mTORC1 activation",
+        "section": "INTRODUCTION",
+        "similarity": 0.026838432635534086,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39602284_sec7_C20",
+        "text": "As shown in Figure 6, C and D, 25-HC treatment reduced bacterial survival by ∼ 50% in all strains, which concurs with previous findings that OSW1 is nearly 1000 times more potent than 25-HC([Mesmin et al. 2017]). In summary, these results demonstrate that the ability of OSBP to bind and deliver cholesterol is essential to St survival during macrophage infection. While OSBP recruitment to the SCV has been established([Kolodziejek et al. 2019]), we sought to confirm the presence of cholesterol along with OSBP at the SCV surface.",
+        "title": "Salmonella-induced cholesterol accumulation in infected macrophages suppresses autophagy via mTORC1 activation",
+        "section": "Cholesterol transfer activity by OSBP is important for mTOR activation and autophagy suppression during Salmonella infection",
+        "similarity": 0.024444444444444446,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 316.479199915193,
+      "neo4j_ms": 125.35009998828173,
+      "total_ms": 672.1105000469834,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 20,
+        "total_tokens": 20
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  }
+]

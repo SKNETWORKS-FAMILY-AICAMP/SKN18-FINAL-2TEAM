@@ -1,0 +1,945 @@
+[
+  {
+    "question_id": 1,
+    "question": "How does CI treatment affect the interfacial tension of modified EWP according to the study?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC39413471_sec31_C02",
+        "text": "Fig. B displays the interfacial tension under different modification conditions. Compared with NEWP, the interfacial tension of modified EWP declined, among which UCEWP had the lowest interfacial tension(10.83 mN/m). On the one hand, ultrasound synergized CI treatment weakened the aggregation of proteins, which facilitated rapid adsorption of proteins to the oil–water interface, forming a denser interfacial film and thereby reducing interfacial tension.",
+        "title": "Mechanism study on the improvement of egg white emulsifying characteristic by ultrasound synergized citral: Physicochemical properties, molecular flexibility, protein structure",
+        "section": "Interfacial tension",
+        "similarity": 0.03278688524590164,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39413471_sec31_C01",
+        "text": "3.4. The interfacial tension reflectes that amphiphilicity of polymers and their ability to stabilize the oil/water interfaces. Fig. B displays the interfacial tension under different modification conditions. Compared with NEWP, the interfacial tension of modified EWP declined, among which UCEWP had the lowest interfacial tension(10.83 mN/m). On the one hand, ultrasound synergized CI treatment weakened the aggregation of proteins, which facilitated rapid adsorption of proteins to the oil–water interface, forming a denser interfacial film and thereby reducing interfacial tension.",
+        "title": "Mechanism study on the improvement of egg white emulsifying characteristic by ultrasound synergized citral: Physicochemical properties, molecular flexibility, protein structure",
+        "section": "Interfacial tension",
+        "similarity": 0.03200204813108039,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39413471_sec31_C03",
+        "text": "Compared with NEWP, the interfacial tension of modified EWP declined, among which UCEWP had the lowest interfacial tension(10.83 mN/m). On the one hand, ultrasound synergized CI treatment weakened the aggregation of proteins, which facilitated rapid adsorption of proteins to the oil–water interface, forming a denser interfacial film and thereby reducing interfacial tension. On the other hand, the increased protein molecular flexibility in UCEWP enhanced the structural unfolding and rearrangement of protein molecules at the interface, further lowering the interfacial tension.",
+        "title": "Mechanism study on the improvement of egg white emulsifying characteristic by ultrasound synergized citral: Physicochemical properties, molecular flexibility, protein structure",
+        "section": "Interfacial tension",
+        "similarity": 0.03200204813108039,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39413471_sec40_C04",
+        "text": "Additionally, UCEWP had a lower interfacial tension, further demonstrating that ultrasound synergized CI treatment rised the molecular flexibility of EWP. Correlation analysis suggested a positive relationship between molecular flexibility and emulsifying property, and the more flexible proteins were more readily adsorbed on the interface, thereby effectively enhancing the emulsifying property of EWP.",
+        "title": "Mechanism study on the improvement of egg white emulsifying characteristic by ultrasound synergized citral: Physicochemical properties, molecular flexibility, protein structure",
+        "section": "Conclusion",
+        "similarity": 0.030776515151515152,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39413471_sec1_C22",
+        "text": "Liao et al. argued that cinnamaldehyde and CI could reduce the interfacial tension of sodium caseinate and enhance its interfacial properties. Zhao et al. declared that the heating reduced the interfacial tension of the whey protein-cinnamaldehyde conjugate, resulting in better emulsifying ability and effectively stabilized emulsions. These studies suggested that CI could improve the emulsifying property of proteins by altering the protein interface properties. Therefore, CI was selected to modify EWP to improve its emulsifying characteristic in this study.",
+        "title": "Mechanism study on the improvement of egg white emulsifying characteristic by ultrasound synergized citral: Physicochemical properties, molecular flexibility, protein structure",
+        "section": "Introduction",
+        "similarity": 0.030309988518943745,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 812.0383000932634,
+      "neo4j_ms": 87.37419999670237,
+      "total_ms": 1142.2666000435129,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 19,
+        "total_tokens": 19
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 2,
+    "question": "Could you explain how UniProt was used in the analysis of chaperones related to nervous system disease genes?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC39660719_sec15_C07",
+        "text": "We ordered the proteins according to the median to perform the Gene Ontology enrichment analysis of the most abundant proteins. We used the FDR method to correct p-values and we took into account only terms with a q -value <0.05. To test if there is a significant enrichment of chaperones among nervous system disease genes, we retrieved the chaperone classification from UniProt and nervous system disease-related genes from Disease Ontology([Schriml et al. 2019]) database using the DOSE R package([Yu et al. 2015]).",
+        "title": "Emergence of power law distributions in protein-protein interaction networks through study bias",
+        "section": "Functional and disease properties of proteins",
+        "similarity": 0.03252247488101534,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39660719_sec15_C08",
+        "text": "We used the FDR method to correct p-values and we took into account only terms with a q -value <0.05. To test if there is a significant enrichment of chaperones among nervous system disease genes, we retrieved the chaperone classification from UniProt and nervous system disease-related genes from Disease Ontology([Schriml et al. 2019]) database using the DOSE R package([Yu et al. 2015]). To study the link between degree and protein properties, we used GTEx expression data and protein mass information from UniProt(by querying the web service provided at https://www.uniprot.org/id-mapping with the UniProt IDs of all proteins within our aggregated network).",
+        "title": "Emergence of power law distributions in protein-protein interaction networks through study bias",
+        "section": "Functional and disease properties of proteins",
+        "similarity": 0.03252247488101534,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39660719_sec7_C13",
+        "text": "Many of the prey hubs related to nervous system diseases were in fact chaperones. To test if the enrichment of nervous system diseases were caused by the chaperones, we retrieved the proteins of the most strongly enriched disease classes and tested if chaperones were enriched among those proteins. Indeed, we found a significant enrichment([EQ:EQ426], one-sided Fisher test) in both cases, suggesting that chaperones might cause the observed disease enrichment among true hubs toward the nervous system diseases.",
+        "title": "Emergence of power law distributions in protein-protein interaction networks through study bias",
+        "section": "Accounting for study bias reveals functionally meaningful hub proteins",
+        "similarity": 0.031746031746031744,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39660719_sec7_C14",
+        "text": "To test if the enrichment of nervous system diseases were caused by the chaperones, we retrieved the proteins of the most strongly enriched disease classes and tested if chaperones were enriched among those proteins. Indeed, we found a significant enrichment([EQ:EQ426], one-sided Fisher test) in both cases, suggesting that chaperones might cause the observed disease enrichment among true hubs toward the nervous system diseases.",
+        "title": "Emergence of power law distributions in protein-protein interaction networks through study bias",
+        "section": "Accounting for study bias reveals functionally meaningful hub proteins",
+        "similarity": 0.031009615384615385,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39660719_sec7_C12",
+        "text": "The disease gene enrichment analysis confirms the previous observation that uncorrected hubs are associated with many different types of diseases, in particular with cancer. Prey hubs exhibit an enrichment of diseases related to the nervous system. In contrast, normalized and Y2H hubs do not show any significant enrichment in diseases, challenging the idea that disease genes per se have a higher connectivity in PPI networks. We were surprised to find several nervous system diseases enriched among the prey hubs. Many of the prey hubs related to nervous system diseases were in fact chaperones.",
+        "title": "Emergence of power law distributions in protein-protein interaction networks through study bias",
+        "section": "Accounting for study bias reveals functionally meaningful hub proteins",
+        "similarity": 0.030776515151515152,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 400.23919998202473,
+      "neo4j_ms": 100.21120007149875,
+      "total_ms": 723.6150000244379,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 22,
+        "total_tokens": 22
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 3,
+    "question": "What does AN mean in the context of thalamus analysis?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC40677753_sec9_C01",
+        "text": "3. While the male and female populations in our study had similar mean DVR values in the AN of the thalamus, women on average had a higher value(1.83 ± 0.72) compared to men(1.80 ± 0.45) in our statistical model(p = 0.02). While the thalamus and its component nuclei were chosen a priori, the p-values for sex-related differences in any of the regions analyzed were not significant after FDR multi-comparison correction with an α = 0.005. The AN of the thalamus also revealed age-dependent differences in [ ^{18} F]nifene binding with an interaction term between age and sex(p = 0.01), but similarly did not reach the threshold for significance.",
+        "title": "Age- and sex-related differences in human α4β2* nicotinic acetylcholine receptor binding evaluated with [ 18 F]nifene PET",
+        "section": "Sex differences",
+        "similarity": 0.031754032258064516,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC40677753_sec11_C07",
+        "text": "The primary area of difference observed, both in age and sex comparison, was in the AN of the thalamus, which is known to have a high density of nAChRs and is functionally associated with cognition, including spatial and episodic memory([Child & Benarroch, 2013]). Within the thalamus the AN is a relatively small structure(200 mm^{3})([Möttönen et al. 2015]) that is near the resolution of our PET scanners. No partial volume correction was applied to any of our scans in order to limit the variance of our measured PET signal.",
+        "title": "Age- and sex-related differences in human α4β2* nicotinic acetylcholine receptor binding evaluated with [ 18 F]nifene PET",
+        "section": "Discussion",
+        "similarity": 0.03028233151183971,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC40677753_sec9_C02",
+        "text": "While the thalamus and its component nuclei were chosen a priori, the p-values for sex-related differences in any of the regions analyzed were not significant after FDR multi-comparison correction with an α = 0.005. The AN of the thalamus also revealed age-dependent differences in [ ^{18} F]nifene binding with an interaction term between age and sex(p = 0.01), but similarly did not reach the threshold for significance. The linear regression derived for this region was [EQ:EQ11] [EQ:EQ12] with a standard error of 0.27, 0.01/year, 0.40 and 0.01/year for the intercept, age, sex, and interaction components respectively.",
+        "title": "Age- and sex-related differences in human α4β2* nicotinic acetylcholine receptor binding evaluated with [ 18 F]nifene PET",
+        "section": "Sex differences",
+        "similarity": 0.02758751902587519,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC40677753_sec8_C01",
+        "text": "3. Comparing the younger and older cohorts, a higher average DVR is found in the full thalamus of the younger cohort(2.38 ± 0.26) compared to the older cohort(2.05 ± 0.26). Partitioning the thalamus into its component nuclei, higher [ ^{18} F]nifene binding is observed in the younger cohort throughout most of the thalamic nuclei, including the AN, MN, and PN.",
+        "title": "Age- and sex-related differences in human α4β2* nicotinic acetylcholine receptor binding evaluated with [ 18 F]nifene PET",
+        "section": "Age-related differences",
+        "similarity": 0.026838432635534086,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC40677753_sec11_C03",
+        "text": "The regions of highest nifene binding were observed in the thalamus, specifically the MN, which had an average DVR of 2.71 ± 0.44 across our imaging cohort. This finding replicates previous studies examining nAChR binding using PET imaging that also found the highest density of nicotinic receptors in the thalamic regions projecting to the prefrontal cortex, including the mediodorsal nucleus([Garibotto et al. 2020]).",
+        "title": "Age- and sex-related differences in human α4β2* nicotinic acetylcholine receptor binding evaluated with [ 18 F]nifene PET",
+        "section": "Discussion",
+        "similarity": 0.021164021164021163,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 385.18989994190633,
+      "neo4j_ms": 117.70389997400343,
+      "total_ms": 732.9291000496596,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 13,
+        "total_tokens": 13
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 4,
+    "question": "InNs how RORA and FOSL2-BACH1 behave in AD?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC40260118_sec25_C17",
+        "text": "FOSL2-BACH1 is antagonistic in Mic but cooperative in InNs. Indeed, RORA activity increases in InNs and Mic in AD. AD-annotated links in AD InNs/Mic include ELK1-SPI1 and ELK1-STAT3. Figure 6C presents a multifaceted network weaving together TF-TG links, coordination, phenotypes, SNPs. TF-TF coordination is discernibly stronger and positive in Control Mic(1-sided t -test), pointing to potentially disrupted cooperativity during AD. Our attention is drawn to the regulation of ANXA11, a critical player in diverse functions and signaling pathways.",
+        "title": "NetREm: Network Regression Embeddings reveal cell-type transcription factor coordination for gene regulation",
+        "section": "Prediction and comparative analysis of cell-type coordination among TFs for gene regulation across neuronal and glial cell types in AD",
+        "similarity": 0.032266458495966696,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC40260118_sec25_C15",
+        "text": "AD link STAT3-STAT4 is antagonistic in Controls for TMPRSS15 in Mic and in Control Mic overall. RORA-ELK1 is cooperative in all three networks but is antagonistic in Control Mic. FOSL2-BACH1 is antagonistic in Mic but cooperative in InNs. Indeed, RORA activity increases in InNs and Mic in AD. AD-annotated links in AD InNs/Mic include ELK1-SPI1 and ELK1-STAT3. Figure 6C presents a multifaceted network weaving together TF-TG links, coordination, phenotypes, SNPs.",
+        "title": "NetREm: Network Regression Embeddings reveal cell-type transcription factor coordination for gene regulation",
+        "section": "Prediction and comparative analysis of cell-type coordination among TFs for gene regulation across neuronal and glial cell types in AD",
+        "similarity": 0.032266458495966696,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC40260118_sec25_C16",
+        "text": "RORA-ELK1 is cooperative in all three networks but is antagonistic in Control Mic. FOSL2-BACH1 is antagonistic in Mic but cooperative in InNs. Indeed, RORA activity increases in InNs and Mic in AD. AD-annotated links in AD InNs/Mic include ELK1-SPI1 and ELK1-STAT3. Figure 6C presents a multifaceted network weaving together TF-TG links, coordination, phenotypes, SNPs. TF-TF coordination is discernibly stronger and positive in Control Mic(1-sided t -test), pointing to potentially disrupted cooperativity during AD.",
+        "title": "NetREm: Network Regression Embeddings reveal cell-type transcription factor coordination for gene regulation",
+        "section": "Prediction and comparative analysis of cell-type coordination among TFs for gene regulation across neuronal and glial cell types in AD",
+        "similarity": 0.03225806451612903,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC40260118_sec25_C14",
+        "text": "Some TF-TF pairs strongly cooperate(i.e. 50 [EQ:EQ1282] 100) exclusively in AD, such as: ZBTB14-ZNF281, FLI1-TAL1 for TMPRSS15; ZNF331-ZNF354A, MYEF2-SOX2 for ABCB5. Known AD-annotated links IRF7-STAT3 and STAT3-STAT5B have strong antagonism(i.e. −100 [EQ:EQ1283] 50) in Controls but cooperate in AD to co-regulate TMPRSS15. Figure 6B compares strong [EQ:EQ1284] among select TFs between conditions for Mic and InNs. IRF7-STAT3 is in Mic, MYEF2-SOX2 is in InNs only. AD link STAT3-STAT4 is antagonistic in Controls for TMPRSS15 in Mic and in Control Mic overall.",
+        "title": "NetREm: Network Regression Embeddings reveal cell-type transcription factor coordination for gene regulation",
+        "section": "Prediction and comparative analysis of cell-type coordination among TFs for gene regulation across neuronal and glial cell types in AD",
+        "similarity": 0.027222222222222224,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC40260118_sec25_C29",
+        "text": "We evaluate performance via stratified 5-fold Cross Validation noting that all 8 of the RF cell-type models have an average area under Receiver-Operator Characteristic curve≥ 0.81. Across our models, the top 500 RF TGs are enriched for neurodegeneration, cell-type functions, immunity, intellectual disabilities, tauopathy. OPCs and InNs have the highest overlap; disrupted InN signaling to OPCs may diminish myelination and CNS interneuron activity, and severely impair prefrontal cortical network functions and social cognitive behavior.",
+        "title": "NetREm: Network Regression Embeddings reveal cell-type transcription factor coordination for gene regulation",
+        "section": "Prediction and comparative analysis of cell-type coordination among TFs for gene regulation across neuronal and glial cell types in AD",
+        "similarity": 0.024285714285714285,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 309.46579994633794,
+      "neo4j_ms": 84.9764000158757,
+      "total_ms": 625.6742000114173,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 17,
+        "total_tokens": 17
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 5,
+    "question": "Can you explain how Trp149 interacts with ZINC8926303 in the system and what role it plays according to the simulation data?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC38731447_sec10_C09",
+        "text": "As exhibited in Figure 12 B, based on the most energetically favorable binding mode, residues of Asp165 and Cys193 formed two hydrogen bonds with ZINC257459695, while residues of Tyr198 and Trp57 were observed to form hydrophobic interactions. For the ZINC8926303 system, as shown in Figure 12 C, ZINC8926303 formed hydrophobic interactions with residues of Trp149, Tyr151, and Cys193. Notably, the hydrogen bond between the terminal quaternary ammonium group and residue Asp165 disappeared, which could be the reason for the decreased stability after the simulation.",
+        "title": "Ensemble-Based Virtual Screening Led to the Discovery of Novel Lead Molecules as Potential NMBAs",
+        "section": "The Binding Modes Refined through the MD Simulations",
+        "similarity": 0.03225806451612903,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC38731447_sec10_C10",
+        "text": "For the ZINC8926303 system, as shown in Figure 12 C, ZINC8926303 formed hydrophobic interactions with residues of Trp149, Tyr151, and Cys193. Notably, the hydrogen bond between the terminal quaternary ammonium group and residue Asp165 disappeared, which could be the reason for the decreased stability after the simulation. For the d -tubocurarine system, as displayed in Figure 12 D, the quaternized NH group acted as a hydrogen bond donor with residue Asp165, and Tyr190 interacted with d -tubocurarine as a hydrophobic interaction.",
+        "title": "Ensemble-Based Virtual Screening Led to the Discovery of Novel Lead Molecules as Potential NMBAs",
+        "section": "The Binding Modes Refined through the MD Simulations",
+        "similarity": 0.029551337359792925,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC38731447_sec10_C08",
+        "text": "ZINC257357801 and Trp57 formed a Pi-H interaction, and residue Trp149 formed a hydrogen bond with the hydroxyl group at the right end. As exhibited in Figure 12 B, based on the most energetically favorable binding mode, residues of Asp165 and Cys193 formed two hydrogen bonds with ZINC257459695, while residues of Tyr198 and Trp57 were observed to form hydrophobic interactions.",
+        "title": "Ensemble-Based Virtual Screening Led to the Discovery of Novel Lead Molecules as Potential NMBAs",
+        "section": "The Binding Modes Refined through the MD Simulations",
+        "similarity": 0.01639344262295082,
+        "sources": [
+          "vector"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC38731447_sec9_C03",
+        "text": "This phenomenon suggested that the binding of ZINC257459695 may have resulted in conformational changes in the protein. The ZINC257357801 complex has maximum residues in a positive correlation, while ZINC8926303 complex residues have a slightly weaker but still positive correlation. From the results, it is concluded that the presence of ZINC257357801 and ZINC8926303 induced significant correlated motions in protein, whereas slightly anti-correlated motions are observed.",
+        "title": "Ensemble-Based Virtual Screening Led to the Discovery of Novel Lead Molecules as Potential NMBAs",
+        "section": "Dynamic Cross-Correlation Map Analysis",
+        "similarity": 0.015873015873015872,
+        "sources": [
+          "vector"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39791656_sec28_C04",
+        "text": "But all in all, … maybe yes… I would like, for example, ‘Hi, what are you doing? How are you feeling?’; as I told you before, it is not that I care about these things; however, if they asked me that, it would make me happy”.",
+        "title": "Patient–Nurse Communication in an Oncology Hospital Setting: A Qualitative Study",
+        "section": "Lack of Welcoming, Attentiveness, Understanding; Lack of Privacy",
+        "similarity": 0.015873015873015872,
+        "sources": [
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 701.4195999363437,
+      "neo4j_ms": 157.70069998688996,
+      "total_ms": 1088.4571000933647,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 28,
+        "total_tokens": 28
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 6,
+    "question": "What are the potential limitations of using ChatGPT in clinical settings, particularly regarding cancer treatment recommendations?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC39851923_sec7_C15",
+        "text": "This pilot study encountered several limitations, such as a small sample size and issues with the misidentification of worsened ePRO side effects. The diversity of the data input into ChatGPT, including a range of cancer types, stages, treatments, and patient demographics, added complexity but also presented unique opportunities. This heterogeneity allowed us to test the model’s ability to generalize across varied clinical scenarios, which is crucial for its applicability in real-world settings.",
+        "title": "AI-Enhanced Healthcare: Integrating ChatGPT-4 in ePROs for Improved Oncology Care and Decision-Making: A Pilot Evaluation",
+        "section": "Discussion",
+        "similarity": 0.03047794966520434,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39851923_sec1_C22",
+        "text": "We conducted a pilot study utilizing ChatGPT-4 to analyze ePRO data on patient-reported side effects. ChatGPT-4 was employed to simulate various roles within the medical team, aiming to analyze side effect data across different cancer types, patient age groups, and treatment modalities, while providing recommendations for improvement. The medical team subsequently evaluated the feasibility of incorporating ChatGPT-4’s analytical responses into clinical decision-making processes.",
+        "title": "AI-Enhanced Healthcare: Integrating ChatGPT-4 in ePROs for Improved Oncology Care and Decision-Making: A Pilot Evaluation",
+        "section": "Introduction",
+        "similarity": 0.029631255487269532,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39851923_sec7_C11",
+        "text": "These results support further research to explore and integrate ChatGPT-4 and other AI technologies into clinical ePRO applications for cancer care, aiming to foster patient-centered care and improve treatment outcomes. While the recommendations provided by ChatGPT-4 in the roles of oncologist, dietitian, and nurse were statistically similar, the model received higher evaluations when simulating the role of an oncology dietitian.",
+        "title": "AI-Enhanced Healthcare: Integrating ChatGPT-4 in ePROs for Improved Oncology Care and Decision-Making: A Pilot Evaluation",
+        "section": "Discussion",
+        "similarity": 0.028991596638655463,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39851923_sec7_C18",
+        "text": "Potential bias may exist since ChatGPT’s performance was evaluated by only six professionals. Additionally, as a large language model, ChatGPT-4 was not specifically designed to adhere to the Health Insurance Portability and Accountability Act, posing potential risks associated with race, age, and gender disparities. Furthermore, the model’s lack of accuracy and verified sources in providing cancer treatment recommendations warrants a cautious approach. A further limitation is the degree to which ChatGPT-4 truly understands the distinctions among the roles of oncologist, dietitian, and nurse.",
+        "title": "AI-Enhanced Healthcare: Integrating ChatGPT-4 in ePROs for Improved Oncology Care and Decision-Making: A Pilot Evaluation",
+        "section": "Discussion",
+        "similarity": 0.028612012987012988,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39851923_sec7_C05",
+        "text": "ChatGPT-4 particularly excelled in completeness and accuracy, indicating its effectiveness in processing ePRO data and identifying critical side effects. This underscores the potential of AI to enhance clinical decision-making and patient care, particularly by aiding healthcare professionals in managing extensive patient-reported outcomes amidst a demanding medical workflow. The minimal patient harm observed can likely be attributed to the careful limitation of ChatGPT-4’s evaluation to ePRO content only.",
+        "title": "AI-Enhanced Healthcare: Integrating ChatGPT-4 in ePROs for Improved Oncology Care and Decision-Making: A Pilot Evaluation",
+        "section": "Discussion",
+        "similarity": 0.028612012987012988,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 541.9320999644697,
+      "neo4j_ms": 98.44700002577156,
+      "total_ms": 869.1044000443071,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 20,
+        "total_tokens": 20
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 7,
+    "question": "What is P5C in context of ethylene production and how variants affect it?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC39722885_sec1_C21",
+        "text": "^{8, } Several SCS and long range variants have been experimentally studied for ethylene and P5C production. ^{7−9, } Most variants have been shown to reduce ethylene and P5C formation. ^{8,9} However, a few variants have been shown to retain the capacity for hydroxylation to various extents(A198V(60%), F283A(20%)). ^{8} Further experimental and computational studies have been performed to produce ethylene using alternate substrates^{8, }(l -canavanine, d -Arg, N^{G} -Me-Arg, agmatine).",
+        "title": "How Do Variants of Residues in the First Coordination Sphere, Second Coordination Sphere, and Remote Areas Influence the Catalytic Mechanism of Non-Heme Fe(II)/2-Oxoglutarate Dependent Ethylene-Forming Enzyme?",
+        "section": "Introduction",
+        "similarity": 0.03252247488101534,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39722885_sec1_C20",
+        "text": "^{7,9} Recently, intensive studies have been aimed at increasing enzymatic ethylene production. ^{8, } Several SCS and long range variants have been experimentally studied for ethylene and P5C production. ^{7−9, } Most variants have been shown to reduce ethylene and P5C formation. ^{8,9} However, a few variants have been shown to retain the capacity for hydroxylation to various extents(A198V(60%), F283A(20%)). ^{8} Further experimental and computational studies have been performed to produce ethylene using alternate substrates^{8, }(l -canavanine, d -Arg, N^{G} -Me-Arg, agmatine).",
+        "title": "How Do Variants of Residues in the First Coordination Sphere, Second Coordination Sphere, and Remote Areas Influence the Catalytic Mechanism of Non-Heme Fe(II)/2-Oxoglutarate Dependent Ethylene-Forming Enzyme?",
+        "section": "Introduction",
+        "similarity": 0.03252247488101534,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39722885_sec1_C22",
+        "text": "^{7−9, } Most variants have been shown to reduce ethylene and P5C formation. ^{8,9} However, a few variants have been shown to retain the capacity for hydroxylation to various extents(A198V(60%), F283A(20%)). ^{8} Further experimental and computational studies have been performed to produce ethylene using alternate substrates^{8, }(l -canavanine, d -Arg, N^{G} -Me-Arg, agmatine). Interestingly, the substitution of the Fe-coordinated aspartate to glutamate is the only variant that has constructively increased the hydroxylation reaction while reducing the ethylene-forming reaction.",
+        "title": "How Do Variants of Residues in the First Coordination Sphere, Second Coordination Sphere, and Remote Areas Influence the Catalytic Mechanism of Non-Heme Fe(II)/2-Oxoglutarate Dependent Ethylene-Forming Enzyme?",
+        "section": "Introduction",
+        "similarity": 0.03149801587301587,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39722885_sec1_C24",
+        "text": "^{8} Further experimental and computational studies have been performed to produce ethylene using alternate substrates^{8, }(l -canavanine, d -Arg, N^{G} -Me-Arg, agmatine). Interestingly, the substitution of the Fe-coordinated aspartate to glutamate is the only variant that has constructively increased the hydroxylation reaction while reducing the ethylene-forming reaction. ^{11} Recent studies demonstrated how the inactive l -Arg analog l -canavanine and two inactive EFE variants, R171A and Y306A, affect the EFE structure and LR-correlated motions.",
+        "title": "How Do Variants of Residues in the First Coordination Sphere, Second Coordination Sphere, and Remote Areas Influence the Catalytic Mechanism of Non-Heme Fe(II)/2-Oxoglutarate Dependent Ethylene-Forming Enzyme?",
+        "section": "Introduction",
+        "similarity": 0.02964426877470356,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39722885_sec1_C35",
+        "text": "^{62−64} Therefore, it is crucial to understand how substitutions in EFE affect its catalytic mechanism by considering their impact on the integrative protein environment. The present study aims to elucidate this missing knowledge by investigating four experimentally characterized EFE variants: A198V, D191E, E215A, and R171A. ^{8,11} Revealing how these variants influence the complex effects of the protein environment on the EFE catalysis will provide guidance on how in reverse to make more effective EFE variants that enhance ethylene production.",
+        "title": "How Do Variants of Residues in the First Coordination Sphere, Second Coordination Sphere, and Remote Areas Influence the Catalytic Mechanism of Non-Heme Fe(II)/2-Oxoglutarate Dependent Ethylene-Forming Enzyme?",
+        "section": "Introduction",
+        "similarity": 0.029571646010002173,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 300.91220000758767,
+      "neo4j_ms": 86.99540002271533,
+      "total_ms": 596.9426999799907,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 17,
+        "total_tokens": 17
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 8,
+    "question": "Can Vina predict binding sites in ABCB transporters?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC39598661_sec4_C02",
+        "text": "We here used the Vina algorithm to see whether it is able to predict the binding probability of substrates and co-substrates of ABCB transporters. To test the algorithm’s ability to predict molecular interactions in ABCBs correctly, we first redocked ATP to the electro-microscopically determined structure of the human ABCB4 transporter. Of the nine models generated by the docking simulation, six models match the actual N-terminal ATP-binding site and three the C-terminal one. All models showed RMSD values less than four for the chosen ATP-binding site, which supports high congruence.",
+        "title": "Substrate Specificity of ABCB Transporters Predicted by Docking Simulations Can Be Confirmed by Experimental Tests",
+        "section": "Preliminary Quality Assessment of ABCB Docking Simulation",
+        "similarity": 0.03278688524590164,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39598661_sec4_C01",
+        "text": "Virtual ligand screenings are primarily used in pharmaceutical research, particularly in the search for inhibitors. We here used the Vina algorithm to see whether it is able to predict the binding probability of substrates and co-substrates of ABCB transporters. To test the algorithm’s ability to predict molecular interactions in ABCBs correctly, we first redocked ATP to the electro-microscopically determined structure of the human ABCB4 transporter. Of the nine models generated by the docking simulation, six models match the actual N-terminal ATP-binding site and three the C-terminal one.",
+        "title": "Substrate Specificity of ABCB Transporters Predicted by Docking Simulations Can Be Confirmed by Experimental Tests",
+        "section": "Preliminary Quality Assessment of ABCB Docking Simulation",
+        "similarity": 0.03225806451612903,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39598661_sec0_C06",
+        "text": "Cardenolide binding of OfABCB1 and OfABCB2 is predicted by docking simulations and calculated binding energies are compared with substrate specificities determined in ATPase assays. Both tested ABCB transporters showed activity upon exposure to cardenolides and Km values that agreed well with the predictions of our docking simulations. We conclude that docking simulations can help identify transporter binding regions and predict substrate specificity, as well as provide deeper insights into the structural basis of ABC transporter function.",
+        "title": "Substrate Specificity of ABCB Transporters Predicted by Docking Simulations Can Be Confirmed by Experimental Tests",
+        "section": "Abstract",
+        "similarity": 0.029957522915269395,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39802744_sec8_C07",
+        "text": "Figure 3 display instances where ChooseLD predicted ligand-GPCR binding more accurately than Vina. For example, ChooseLD accurately predicted a score of 0, whereas Vina inaccurately predicted a score of 3 in cases where qKi^{exptl} value was 0. In these cases, the structures predicted by ChooseLD exhibited spatial overlap with the PDB ligands, whereas those predicted by Vina were distant from the PDB ligands. Figure 3 depict cases where Vina could accurately predict the structure.",
+        "title": "Data-driven score tuning for ChooseLD: A structure-based drug design algorithm with empirical scoring and evaluation of ligand–protein docking predictability",
+        "section": "Results",
+        "similarity": 0.02804284323271665,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39598661_sec12_C06",
+        "text": "on human ABCB1 as a vitamin D carrier or the determination of Leishmania ABCB3 as a factor in heme and cytosolic iron/sulfur clusters biogenesis. Our use of docking simulations to predict the interaction between relevant compounds and ABCB transporters shows great potential to derive educated guesses about the likelihood and strength of interaction between compound and protein.",
+        "title": "Substrate Specificity of ABCB Transporters Predicted by Docking Simulations Can Be Confirmed by Experimental Tests",
+        "section": "Discussion",
+        "similarity": 0.02797067901234568,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 280.102499993518,
+      "neo4j_ms": 112.3733000131324,
+      "total_ms": 628.946500015445,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 12,
+        "total_tokens": 12
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 9,
+    "question": "What is Thermo Fisher Scientific, Inc. used for in the described procedure?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC39770638_sec9_C01",
+        "text": "Cell culture reagents were purchased from either Gibco, Thermo Fisher Scientific, Inc. Sigma-Aldrich, or Corning. Enzymes, reagents, chemicals, and kits for DNA processing, as well as all primers in the form of standard tube oligos, were purchased from Thermo Fisher Scientific, Inc. or New England Biolabs, Inc.",
+        "title": "Targeted Variant Assessments of Human Endogenous Retroviral Regions in Whole Genome Sequencing Data Reveal Retroviral Variants Associated with Papillary Thyroid Cancer",
+        "section": "Chemicals and Reagents",
+        "similarity": 0.0315136476426799,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39823004_sec5_C01",
+        "text": "The 143B cells were inoculated into 96-well plates and then incubated in DMEM(Gibco; Thermo Fisher Scientific, Inc.) with 10% FBS(Gibco; Thermo Fisher Scientific, Inc.) for, and 72 h. CCK-8 solution(10 µL; Beyotime Institute of Biotechnology; Shanghai, China) was added to each well and the cells were incubated for an additional 2 h. A microplate reader(Thermo Fisher Scientific, Inc.) was used to detect the optical density at 450 nm.",
+        "title": "MiR-490-3p promotes cell apoptosis and cell-cycle arrest in osteosarcoma via the modulation of CDCA8/ATF3 by targeting NUSAP1",
+        "section": "Cell Counting Kit-8(CCK-8) assays",
+        "similarity": 0.01639344262295082,
+        "sources": [
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39885879_sec14_C01",
+        "text": "Weighing scale Heat block Thermal cycler96-well black polystyrene microplate Orbital shaker HulaMixer Dynal MPC-S Dynabeads Magnetic Particle Concentrator Incubator Shaker Microcentrifuge-ScanSpeed Mini Benchmark myFuge Mini Clear lid Vortex 2 Varioskan LUX multimode microplate reader Water Bath DNA Electrophoresis Equipment ChemiDoc Imaging System UV Transilluminator Disposable surgical blade NanoDrop 100 spectrophotometer CD spectrophotometer",
+        "title": "Directed evolution of peroxidase DNAzymes by a function-based approach",
+        "section": "Equipment",
+        "similarity": 0.01639344262295082,
+        "sources": [
+          "vector"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39739897_sec3_C03",
+        "text": "HCT8 cells were cultured in RPMI-1640 medium(Gibco; Thermo Fisher Scientific, Inc.) supplemented with 10% FBS(Gibco; Thermo Fisher Scientific, Inc,) and 100 U/ml penicillin/streptomycin(Gibco; Thermo Fisher Scientific, Inc,) at 37°C with 5% CO _{2}. When the cell density of HCT8 cells reached ~8x10^{5} cells/ml, they were transferred to a complete medium containing 500 ng/ml 5-Fu for further proliferation.",
+        "title": "miR-1247-3p regulation of CCND1 affects chemoresistance in colorectal cancer",
+        "section": "Cell culture",
+        "similarity": 0.016129032258064516,
+        "sources": [
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39363964_sec15_C01",
+        "text": "l -Tryptophan, indole-3-acetamide, and other standard chemicals were purchased from Tokyo Chemical Industry Co. Ltd. Molecular biology reagents were from New England BioLabs® Inc. HPLC columns, the HPLC instruments, and the RapidFire 365 mass spectrometry systems were from Agilent Technologies Inc. The automated Explore G3 Integrated Workstation systems and colony picker systems were from PerkinElmer and the K6 Biosystems. The real-time PCR thermocycler was from Bio-Rad.",
+        "title": "Enhancement of tryptophan 2-monooxygenase thermostability by semi-rational enzyme engineering: a strategic design to minimize experimental investigation†",
+        "section": "Materials and analytical instruments",
+        "similarity": 0.015873015873015872,
+        "sources": [
+          "vector"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 274.7761000646278,
+      "neo4j_ms": 83.79349997267127,
+      "total_ms": 581.5278999507427,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 16,
+        "total_tokens": 16
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 10,
+    "question": "What is the role of the short form caspase 3 generated by alternative splicing?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC39763603_sec15_C10",
+        "text": "Our observation of the short splice isoform caspase 3 in RL4RH cells suggests that development of the apoptosis-resistant RRCL phenotype may involve alternative splicing during rituximab treatment. Alternative splicing generates a short form caspase 3 of about 21 kDa, 90-aa shorter than the 32 kDa caspase-3 zymogen, which cannot be processed into active caspase 3 but antagonizes caspase-3 apoptotic activity. However, the MMRi36-induced XIAP ubiquitination and degradation circumvented such molecular resistance mechanisms by inducing caspase 7 activation.",
+        "title": "Small-molecule MMRi36 induces apoptosis in p53-mutant lymphomas by targeting MDM2/MDM4/XIAP for degradation",
+        "section": "Discussion",
+        "similarity": 0.03252247488101534,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39763603_sec15_C11",
+        "text": "Alternative splicing generates a short form caspase 3 of about 21 kDa, 90-aa shorter than the 32 kDa caspase-3 zymogen, which cannot be processed into active caspase 3 but antagonizes caspase-3 apoptotic activity. However, the MMRi36-induced XIAP ubiquitination and degradation circumvented such molecular resistance mechanisms by inducing caspase 7 activation. In this sense, the loose specificity of MMRi36 toward more than one drug target provides a new format to develop novel compounds to bring about more favorable cancer killing profile.",
+        "title": "Small-molecule MMRi36 induces apoptosis in p53-mutant lymphomas by targeting MDM2/MDM4/XIAP for degradation",
+        "section": "Discussion",
+        "similarity": 0.032266458495966696,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39763603_sec15_C09",
+        "text": "Newer targeted therapies such as MLN2238 induces caspase-independent cell death and HDAC inhibitors like Entinostat and Vorinostat only induce growth arrest in RRCLs. Our observation of the short splice isoform caspase 3 in RL4RH cells suggests that development of the apoptosis-resistant RRCL phenotype may involve alternative splicing during rituximab treatment. Alternative splicing generates a short form caspase 3 of about 21 kDa, 90-aa shorter than the 32 kDa caspase-3 zymogen, which cannot be processed into active caspase 3 but antagonizes caspase-3 apoptotic activity.",
+        "title": "Small-molecule MMRi36 induces apoptosis in p53-mutant lymphomas by targeting MDM2/MDM4/XIAP for degradation",
+        "section": "Discussion",
+        "similarity": 0.030834914611005692,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39732669_sec18_C24",
+        "text": "Caspase-3 is cleaved at an aspartate residue to generate p12 and p17 subunits, forming the active enzyme caspase-3. Active caspase-3 cleaves several cellular proteins and is responsible for morphological changes and DNA fragmentation in cells during apoptosis. In this study, we measured the expression level of caspase 3 protein in both pro-caspase 3 and cleaved caspase states to understand whether our treatment activated the cell pathway through the caspase cascade.",
+        "title": "The ability of clostridium novyi-NT spores to induce apoptosis via the mitochondrial pathway in mice with HPV-positive cervical cancer tumors derived from the TC-1 cell line",
+        "section": "The ability of Clostridium novyi -NT spores to induce apoptosis via the mitochondrial pathway in mice with HPV-positive cervical cancer tumors(derived from the TC-1 cell line)",
+        "similarity": 0.028958333333333336,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39732669_sec18_C23",
+        "text": "Caspase-3 is activated in apoptotic cells through extrinsic and intrinsic pathways. Caspase-3 is cleaved at an aspartate residue to generate p12 and p17 subunits, forming the active enzyme caspase-3. Active caspase-3 cleaves several cellular proteins and is responsible for morphological changes and DNA fragmentation in cells during apoptosis. In this study, we measured the expression level of caspase 3 protein in both pro-caspase 3 and cleaved caspase states to understand whether our treatment activated the cell pathway through the caspase cascade.",
+        "title": "The ability of clostridium novyi-NT spores to induce apoptosis via the mitochondrial pathway in mice with HPV-positive cervical cancer tumors derived from the TC-1 cell line",
+        "section": "The ability of Clostridium novyi -NT spores to induce apoptosis via the mitochondrial pathway in mice with HPV-positive cervical cancer tumors(derived from the TC-1 cell line)",
+        "similarity": 0.0288981288981289,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 477.8834000462666,
+      "neo4j_ms": 110.29720003716648,
+      "total_ms": 817.9781000362709,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 19,
+        "total_tokens": 19
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  }
+]

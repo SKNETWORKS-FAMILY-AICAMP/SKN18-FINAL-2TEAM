@@ -1,0 +1,947 @@
+[
+  {
+    "question_id": 1,
+    "question": "How is resazurin used to determine the minimum inhibitory concentration in bacterial growth assays?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC39590364_sec9_C04",
+        "text": "Following that, 10 µL of bacterial suspension(1 × 10^{6} CFU/mL) was added to the wells, and the mixture was kept at 37 °C for 24 h. Once incubated, 30 µL of resazurin(0.015%) was added to each well, and the wells were incubated for a further two to four hours to observe any color changes. After measuring plate absorbance at 570 nm, the quantity of dexamethasone/ciprofloxacin that suppressed cell growth was named as the minimum inhibitory concentration.",
+        "title": "Virtual Screening and Meta-Analysis Approach Identifies Factors for Inversion Stimulation(Fis) and Other Genes Responsible for Biofilm Production in Pseudomonas aeruginosa: A Corneal Pathogen",
+        "section": "Minimal Inhibitory Concentration(MIC)",
+        "similarity": 0.03252247488101534,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39770697_sec5_C01",
+        "text": "To determine the minimum inhibitory concentration of streptomycin for the EaSmR strain, overnight cultures of TS3128 and EaSmR were adjusted to a final absorbance of 0.01 at OD600 in LB broth containing varying concentrations of streptomycin. The bacterial suspensions were dispensed into a 96-well plate at 100 µL per well. After 24 h of incubation at 28 °C with shaking at 250 rpm, the optical density at 600 nm was measured to determine the antibiotic concentration that inhibited bacterial growth. An absorbance reading below 0.1 at 600 nm was considered to be indicative of growth inhibition.",
+        "title": "Unveiling Antibiotic Resistance: Genome Sequencing of Streptomycin-Resistant Erwinia amylovora Isolate",
+        "section": "Minimum Inhibitory Concentration",
+        "similarity": 0.031099324975891997,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39737570_sec8_C04",
+        "text": "Briefly, M. tuberculosis and the MDR-TB isolates were scraped from LJ medium, homogenized, and adjusted to 1 McFarland standard. Then, the suspensions were diluted and inoculated into a 96-well microtiter plate to achieve a final bacterial load of 10^{5} colony-forming units per well. The plates were then incubated at 37 °C for 7 days, after which 30 μL of resazurin(0.02%, wt/vol) was added to each well, and the plates were reincubated for an additional 24 h at 37 °C. A change from blue to pink or purple indicated bacterial growth.",
+        "title": "Machine learning–enabled virtual screening indicates the anti-tuberculosis activity of aldoxorubicin and quarfloxin with verification by molecular docking, molecular dynamics simulations, and biological evaluations",
+        "section": "Determination of the minimum inhibitory concentration of selected compounds",
+        "similarity": 0.0277569392348087,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC38835482_sec7_C03",
+        "text": "The bacterial growth was observed by using 0.015% Resazurin dye to examine the viability of the bacterial cells. FCGM broth supplemented with DMSO and cultures without the compound addition were used as the negative and positive controls, respectively. Meanwhile, the MIC of Florfenicol was tested in the same way against F. columnare.",
+        "title": "Identification of TonB-dependent siderophore receptor inhibitors against Flavobacterium columnare using a structure-based high-throughput virtual screening method",
+        "section": "MIC determination",
+        "similarity": 0.02625418060200669,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC38835482_sec7_C02",
+        "text": "All compounds were purchased from Selleck Chemicals and dissolved in dimethyl sulfoxide to prepare a 10 mM master batch. The 2-fold serial dilution of each compound ranging from 128 to 0.0625 μg mL^{−1} was used for the assay(the maximum concentration of Uvaol, which is extremely insoluble in water, is 32 μg mL^{−1}). The FCGM broth(pH = 7.4) was added to all wells as the medium and 0. McFarland bacteria were cultured for 24 h(Farmer,). The bacterial growth was observed by using 0.015% Resazurin dye to examine the viability of the bacterial cells.",
+        "title": "Identification of TonB-dependent siderophore receptor inhibitors against Flavobacterium columnare using a structure-based high-throughput virtual screening method",
+        "section": "MIC determination",
+        "similarity": 0.02542892156862745,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 633.5377999348566,
+      "neo4j_ms": 111.96750006638467,
+      "total_ms": 1030.5979999247938,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 19,
+        "total_tokens": 19
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 2,
+    "question": "How were rats identified as post-myocardial infarction heart failure models?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC40741281_sec0_C01",
+        "text": "IntroductionThis study investigates the molecular mechanisms by which excessive autophagy exacerbates post-myocardial infarction heart failure through nuclear receptor coactivator 4-mediated ferritinophagy and ferroptosis.Material and methodsWe developed a post-MI heart failure model in Sprague-Dawley rats via coronary artery ligation, alongside an in vitro heart failure model using hypoxia/reoxygenation-stimulated H9C2 cells. Intervention with rapamycin, 3-methyladenine, desferrioxamine, and ferredoxin-1 was performed.",
+        "title": "Excessive autophagy of myocardial cells promotes ferroptosis and exacerbates heart failure in the state of myocardial infarction",
+        "section": "Abstract",
+        "similarity": 0.03177805800756621,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC40741281_sec4_C05",
+        "text": "After 4 weeks of regular feeding, echocardiography was performed to identify rats with left ventricular ejection fractions values below 60% and fractional shortening values below 30%, establishing them as the post-myocardial infarction HF model and assigning them to the respective groups. At the end of the experiment, euthanasia was performed by intraperitoneal injection of 3% sodium pentobarbital(30 mg/kg).",
+        "title": "Excessive autophagy of myocardial cells promotes ferroptosis and exacerbates heart failure in the state of myocardial infarction",
+        "section": "Animal model",
+        "similarity": 0.030679156908665108,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC40741281_sec4_C04",
+        "text": "The thoracic cavity was closed using conventional sutures, and intraperitoneal injection of furosemide(20230106, Hefei Zhonglong Shenli Animal Pharmaceutical Co. Ltd. China) at a dose of 0.2 ml per animal was administered after thoracic closure. After 4 weeks of regular feeding, echocardiography was performed to identify rats with left ventricular ejection fractions values below 60% and fractional shortening values below 30%, establishing them as the post-myocardial infarction HF model and assigning them to the respective groups.",
+        "title": "Excessive autophagy of myocardial cells promotes ferroptosis and exacerbates heart failure in the state of myocardial infarction",
+        "section": "Animal model",
+        "similarity": 0.02928692699490662,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC40741281_sec20_C05",
+        "text": "As ferritinophagy is a type of selective autophagy, we examined its association with myocardial injury. We measured the fluorescence intensities of NCOA4 and the autophagy signature indicator LC3B in the HF model. As both of these genes co-localized, their fluorescence intensities were elevated. The foregoing results suggest that ferritinophagy and ferroptosis are implicated in the myocardial injury that occurs in rats with post-MI HF.",
+        "title": "Excessive autophagy of myocardial cells promotes ferroptosis and exacerbates heart failure in the state of myocardial infarction",
+        "section": "Ferritinophagy and ferroptosis were associated with myocardial injury in a rat post-MI HF model",
+        "similarity": 0.025561706284597852,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC40741281_sec20_C01",
+        "text": "In the present study, we induced post-MI HF in rats by ligating the left anterior descending branch of the coronary artery after 4 weeks. We validated the success of the HF model by evaluating cardiac function with echocardiography. Cardiac function was significantly impaired in the MOD group. Serum ck-MB level exhibited the highest myocardial specificity of all five myocardial enzyme profile indices and was particularly elevated under MI. The ck-MB results were consistent with those of the echocardiography.",
+        "title": "Excessive autophagy of myocardial cells promotes ferroptosis and exacerbates heart failure in the state of myocardial infarction",
+        "section": "Ferritinophagy and ferroptosis were associated with myocardial injury in a rat post-MI HF model",
+        "similarity": 0.025306978137166813,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 600.2172000007704,
+      "neo4j_ms": 115.97039992921054,
+      "total_ms": 943.840799969621,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 16,
+        "total_tokens": 16
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 3,
+    "question": "Could you please explain how understanding the position, biochemical, and biophysical properties of residues can help illuminate the mechanistic and structural basis for the mixed-membership features of SBM-based protein communities?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC39294145_sec7_C27",
+        "text": "We hypothesize that the most “relevant” voxels would highlight important sub-structures; most promisingly, that we know the position, biochemical and biophysical properties, and so on about the residues would greatly illuminate the physical basis for the deep learning-based classification. In addition, this would enable us to explore in more detail the mechanistic/structural basis for the mixed-membership features of the SBM-based protein communities.",
+        "title": "Deep generative models of protein structure uncover distant relationships across a continuous fold space",
+        "section": "Discussion",
+        "similarity": 0.03252247488101534,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39294145_sec7_C28",
+        "text": "In addition, this would enable us to explore in more detail the mechanistic/structural basis for the mixed-membership features of the SBM-based protein communities. Beyond helping to detect and define urfolds, for use in areas like protein engineering or drug design, such communities of weakly-related proteins may offer a powerful lens on remote protein homology.",
+        "title": "Deep generative models of protein structure uncover distant relationships across a continuous fold space",
+        "section": "Discussion",
+        "similarity": 0.032266458495966696,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39294145_sec7_C26",
+        "text": "Doing so would, in turn, be useful in finding common sub-domain segments from different superfamilies. We hypothesize that the most “relevant” voxels would highlight important sub-structures; most promisingly, that we know the position, biochemical and biophysical properties, and so on about the residues would greatly illuminate the physical basis for the deep learning-based classification. In addition, this would enable us to explore in more detail the mechanistic/structural basis for the mixed-membership features of the SBM-based protein communities.",
+        "title": "Deep generative models of protein structure uncover distant relationships across a continuous fold space",
+        "section": "Discussion",
+        "similarity": 0.03200204813108039,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39294145_sec6_C24",
+        "text": "We find that domains that have similar – scores against various superfamily models are more likely to contain important biophysical/biochemical properties at particular—and, presumably, functionally important—locations in 3D space; these consensus regions/properties can be thought of as defining the domain. Furthermore, if two domains map into the same SBM community, it is likely that both domains share the same scores when run through each SF model(i.e. an inference calculation), so we hypothesize that that community might contain an urfold that subsumes those two domains.",
+        "title": "Deep generative models of protein structure uncover distant relationships across a continuous fold space",
+        "section": "Protein interrelationships defy discrete clusterings",
+        "similarity": 0.02854251012145749,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39294145_sec6_C16",
+        "text": "Armed with the above SBM methodology, we can now summarize DeepUrfold’s overall approach as consisting of the following four stages: Dataset construction, e.g. via the aforementioned discretization of 3D structures and biophysical properties into voxelized representations^{44}; Training of SF-specific models, using our hybrid stacked 3D-CNN/VAE-based deep networks; In an inference stage, calculation of ELBO-based scores for fits obtained by subjecting SF representative i to the VAE models of all other SFs, j; To decipher any patterns amongst these scores, utilization of SBM-based analysis of “community structure” within the complete set of similarity scores for the VAE-based SF-level models(i.e. the full bipartite network of Fig. C, SF _{i} × model _{j}).",
+        "title": "Deep generative models of protein structure uncover distant relationships across a continuous fold space",
+        "section": "Protein interrelationships defy discrete clusterings",
+        "similarity": 0.024404761904761905,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 492.16320004779845,
+      "neo4j_ms": 126.98300008196384,
+      "total_ms": 847.5481000496075,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 39,
+        "total_tokens": 39
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 4,
+    "question": "How can AI-driven protein structure prediction contribute to environmental sustainability according to recent research?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC39125995_sec25_C03",
+        "text": "The application of AI-driven protein structure prediction in domains such as agriculture, environmental science, and materials science holds the potential to address numerous global concerns, from food security to environmental sustainability. For example, AI-driven protein structure prediction can impact our understanding of cellular energetic metabolism and biomolecular interactions. By using protein efficiency and allocation, these models provide information about phenotypic control mechanisms.",
+        "title": "AI-Driven Deep Learning Techniques in Protein Structure Prediction",
+        "section": "Future Research",
+        "similarity": 0.03278688524590164,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39125995_sec26_C19",
+        "text": "Further research may focus on dynamic protein behavior prediction and merging AI with experimental approaches for quicker structure determination. AI models’ interpretability can also be improved. This helps a better understanding of the principles that govern protein folding. AI-driven protein structure prediction could help solve global challenges in agricultural and environmental sustainability, displaying its potential for revolutionary influence.",
+        "title": "AI-Driven Deep Learning Techniques in Protein Structure Prediction",
+        "section": "Summary",
+        "similarity": 0.03200204813108039,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39125995_sec25_C02",
+        "text": "Future research attempts may focus on developing prediction models to account for dynamic protein behavior, such as conformational changes and protein–protein interactions. The application of AI-driven protein structure prediction in domains such as agriculture, environmental science, and materials science holds the potential to address numerous global concerns, from food security to environmental sustainability. For example, AI-driven protein structure prediction can impact our understanding of cellular energetic metabolism and biomolecular interactions.",
+        "title": "AI-Driven Deep Learning Techniques in Protein Structure Prediction",
+        "section": "Future Research",
+        "similarity": 0.031754032258064516,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39125995_sec26_C21",
+        "text": "This helps a better understanding of the principles that govern protein folding. AI-driven protein structure prediction could help solve global challenges in agricultural and environmental sustainability, displaying its potential for revolutionary influence. In conclusion, the incorporation of AI into protein structure prediction not only helps our understanding of structural biology but also holds significant potential for tackling real-world difficulties in healthcare, industry, and education. Beyond its current capability, AI offers many advantages.",
+        "title": "AI-Driven Deep Learning Techniques in Protein Structure Prediction",
+        "section": "Summary",
+        "similarity": 0.030798389007344232,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39125995_sec25_C01",
+        "text": "As AI continues to evolve, it can provide opportunities for more innovation and discovery. Future research attempts may focus on developing prediction models to account for dynamic protein behavior, such as conformational changes and protein–protein interactions. The application of AI-driven protein structure prediction in domains such as agriculture, environmental science, and materials science holds the potential to address numerous global concerns, from food security to environmental sustainability.",
+        "title": "AI-Driven Deep Learning Techniques in Protein Structure Prediction",
+        "section": "Future Research",
+        "similarity": 0.03055037313432836,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 570.5633000470698,
+      "neo4j_ms": 87.5224000774324,
+      "total_ms": 900.9469000156969,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 16,
+        "total_tokens": 16
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 5,
+    "question": "What is the correlation between StromalScore and overall survival rate in MM patients?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC39732710_sec20_C04",
+        "text": "As displayed in Fig. A–C, The Kaplan-Meier survival curve indicated the proportion of immune components and the overall survival rate in patients with MM are positively correlated(p < 0.001). Although the StromalScore did not show a notable correlation with the overall survival rate(p = 0.118), the ESTIMATEScore, representing the combined total of immune and stromal scores, displayed a positive association with survival(p < 0.001). These findings suggest that the TME is linked to the prognosis of MM, with the immune elements within the TME being more indicative of prognostic outcomes.",
+        "title": "Prognostic value and immune infiltration of a tumor microenvironment-related PTPN6 in metastatic melanoma",
+        "section": "ImmuneScore and StromalScore were associated with the prognosis of patients with MM",
+        "similarity": 0.03252247488101534,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39732710_sec20_C03",
+        "text": "To study the potential relationship between prognosis and ImmuneScore or StromalScore, according to the median score we divided patients into high and low-score groups for survival analysis. As displayed in Fig. A–C, The Kaplan-Meier survival curve indicated the proportion of immune components and the overall survival rate in patients with MM are positively correlated(p < 0.001).",
+        "title": "Prognostic value and immune infiltration of a tumor microenvironment-related PTPN6 in metastatic melanoma",
+        "section": "ImmuneScore and StromalScore were associated with the prognosis of patients with MM",
+        "similarity": 0.032266458495966696,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39732710_sec20_C02",
+        "text": "And we obtained the ImmuneScore, StromalScore, and ESTIMATEScore. To study the potential relationship between prognosis and ImmuneScore or StromalScore, according to the median score we divided patients into high and low-score groups for survival analysis. As displayed in Fig. A–C, The Kaplan-Meier survival curve indicated the proportion of immune components and the overall survival rate in patients with MM are positively correlated(p < 0.001).",
+        "title": "Prognostic value and immune infiltration of a tumor microenvironment-related PTPN6 in metastatic melanoma",
+        "section": "ImmuneScore and StromalScore were associated with the prognosis of patients with MM",
+        "similarity": 0.03200204813108039,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39732710_sec20_C01",
+        "text": "Based on the TCGA database, we analysed the gene expression and clinical data of 368 patients with SKCM-metastasis by the ESTIMATE algorithm. And we obtained the ImmuneScore, StromalScore, and ESTIMATEScore. To study the potential relationship between prognosis and ImmuneScore or StromalScore, according to the median score we divided patients into high and low-score groups for survival analysis. As displayed in Fig. A–C, The Kaplan-Meier survival curve indicated the proportion of immune components and the overall survival rate in patients with MM are positively correlated(p < 0.001).",
+        "title": "Prognostic value and immune infiltration of a tumor microenvironment-related PTPN6 in metastatic melanoma",
+        "section": "ImmuneScore and StromalScore were associated with the prognosis of patients with MM",
+        "similarity": 0.03125,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39759507_sec29_C05",
+        "text": "Additionally, Figure 10F displayed a heatmap showcasing variations in modeling genes, StromalScore, ImmuneScore, ESTIMATEScore, TumorPurity, and immune cell infiltration levels between the high NmRS and low NmRS groups, computed using the CIBERSORT and Xcell algorithms. Next, we presented the correlation between DEGs and tumor mutation load using a waterfall diagram for the high and low-risk groups. Furthermore, the correlation between immune checkpoint-related genes, modeling genes, risk score, and OS was displayed in a bubble plot.",
+        "title": "Unveiling the NEFH+ malignant cell subtype: Insights from single-cell RNA sequencing in prostate cancer progression and tumor microenvironment interactions",
+        "section": "Analysis of immune infiltration, mutation, and drug sensitivity",
+        "similarity": 0.027583600982429624,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 532.2240999666974,
+      "neo4j_ms": 101.73290001694113,
+      "total_ms": 856.1875000596046,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 16,
+        "total_tokens": 16
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 6,
+    "question": "How TNPO3mut affect muscle weakness in LGMDD2 flies and patients?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC34547132_sec18_C16",
+        "text": "Generally, LGMDD2 patients are born healthy and impaired motor function and muscle atrophy occurs several months or even years after birth.,,, Therefore, our data suggest that TNPO3mut induces progressive muscle weakness and degeneration in LGMDD2 flies, as in patients. LGMDD2 is a degenerative muscle disorder, but patients also display nervous system‐related symptoms such as dysphagia and dysarthria., In other degenerative muscle disorders, such as spinal muscular atrophy and amyotrophic lateral sclerosis, loss of muscle innervation leads to progressive degeneration of muscle fibers, in addition to potential autonomous effects within the muscles themselves.",
+        "title": "Inhibition of autophagy rescues muscle atrophy in a LGMDD2 Drosophila model",
+        "section": "DISCUSSION",
+        "similarity": 0.0315136476426799,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC34547132_sec18_C39",
+        "text": "Third, we propose that LGMDD2 may have a neurogenic component, based on the strong phenotypes detected in flies by expressing only human TNPO3mut in motor neurons. Finally, a robust rescue of muscle atrophy phenotypes was detected by treating adult flies exclusively with CQ, thus supporting the theory that TNPO3mut‐induced muscle phenotypes are reversible, a pivotal finding in developing therapeutic strategies for LGMDD2 patients.",
+        "title": "Inhibition of autophagy rescues muscle atrophy in a LGMDD2 Drosophila model",
+        "section": "DISCUSSION",
+        "similarity": 0.030158730158730156,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC34547132_sec16_C06",
+        "text": "Consequently, TNPO3mut expression in muscle or motor neurons in a genetically sensitized background significantly worsened survival of LGMDD2 model flies. We also studied whether TNPO3mut or TNPO3wt expression affected fly development, by quantifying the percentage of individuals reaching pupa and adult stage. Generally, flies expressing either construct in both muscle and motor neurons reached pupation normally, without significant differences.",
+        "title": "Inhibition of autophagy rescues muscle atrophy in a LGMDD2 Drosophila model",
+        "section": "TNPO3mut reduces median survival and fly’ eclosion capacity in Drosophila",
+        "similarity": 0.030117753623188408,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC34547132_sec15_C08",
+        "text": "Moreover, our data demonstrate that the lack of muscle function in the fly induced by TNPO3mut occurs over time, and after 7 days of age, loss of function may be related to the previously observed muscle degeneration. Additionally, we studied functional phenotypes in LGMDD2 model fly treated with ActD and we observed a significant improvement of climbing and flight ability in treated flies, indicating that TNPO3mut has a toxic effect.",
+        "title": "Inhibition of autophagy rescues muscle atrophy in a LGMDD2 Drosophila model",
+        "section": "LGMDD2 model flies show reduced locomotor activity",
+        "similarity": 0.029437229437229435,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC34547132_sec13_C10",
+        "text": "Although TNPO3mut expression in fly muscle impaired locomotion and median survival in flies, it did not produce significant muscular atrophy in the Drosophila IFM. These fibrillary muscles with a very similar sarcomere organization to humans have been widely used to reproduce the muscle atrophy associated with human muscle diseases. Indeed, TNPO3mut did not generate IFM degeneration in 1‐, 3‐, or 4‐week‐old flies, a critical phenotype in LGMDD2 patients. Thus, TNPO3mut appeared insufficient to trigger obvious pathogenic defects in Drosophila.",
+        "title": "Inhibition of autophagy rescues muscle atrophy in a LGMDD2 Drosophila model",
+        "section": "Generation of the Drosophila model",
+        "similarity": 0.029083245521601686,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 325.2618999686092,
+      "neo4j_ms": 85.68840008229017,
+      "total_ms": 632.3270000284538,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 17,
+        "total_tokens": 17
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 7,
+    "question": "Could you explain how the presence of a specific cell type within neural organoids affects the co-expression performance observed in organoid data sets?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC39621752_sec7_C25",
+        "text": "In general, the majority of organoid data sets with near-zero co-expression signal are also the data sets with near-zero predicted composition of the respective cell type, particularly for the differentiated cell types. This suggests co-expression performance within neural organoids is influenced largely on whether or not the cell type is present within the organoid, regardless of the exact prevalence of the cell type.",
+        "title": "Meta-analysis of single-cell RNA sequencing co-expression in human neural organoids reveals their high variability in recapitulating primary tissue",
+        "section": "Quantifying intra- and inter-MetaMarker co-expression of neural organoids",
+        "similarity": 0.03278688524590164,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39621752_sec7_C24",
+        "text": "This is most likely due to the misannotations between neural progenitors and non-neurons. In general, the majority of organoid data sets with near-zero co-expression signal are also the data sets with near-zero predicted composition of the respective cell type, particularly for the differentiated cell types. This suggests co-expression performance within neural organoids is influenced largely on whether or not the cell type is present within the organoid, regardless of the exact prevalence of the cell type.",
+        "title": "Meta-analysis of single-cell RNA sequencing co-expression in human neural organoids reveals their high variability in recapitulating primary tissue",
+        "section": "Quantifying intra- and inter-MetaMarker co-expression of neural organoids",
+        "similarity": 0.03225806451612903,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39621752_sec7_C12",
+        "text": "This demonstrates that while individual organoid data sets may suffer in performance compared to primary tissue, neural organoids in aggregate broadly replicate co-expression relationships within primary tissue marker sets. The variation among individual organoid data sets for co-expression of the primary tissue cell type markers may be influenced by the compositional variation in cell types produced across the differentiation protocols.",
+        "title": "Meta-analysis of single-cell RNA sequencing co-expression in human neural organoids reveals their high variability in recapitulating primary tissue",
+        "section": "Quantifying intra- and inter-MetaMarker co-expression of neural organoids",
+        "similarity": 0.03125,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39621752_sec7_C26",
+        "text": "This suggests co-expression performance within neural organoids is influenced largely on whether or not the cell type is present within the organoid, regardless of the exact prevalence of the cell type. As another example of this broad compositional effect on co-expression, we compare the co-expression module scores of all neural lineage MetaMarkers to scores for Microglia/Immune MetaMarkers(derived identically as the other primary tissue MetaMarkers, see Methods, S3 Table) between the neural organoid protocols and the 2 non-neural organoid protocols we sample, which are not expected to produce neural lineage cell types.",
+        "title": "Meta-analysis of single-cell RNA sequencing co-expression in human neural organoids reveals their high variability in recapitulating primary tissue",
+        "section": "Quantifying intra- and inter-MetaMarker co-expression of neural organoids",
+        "similarity": 0.02967032967032967,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39621752_sec8_C11",
+        "text": "This indicates preserved primary tissue co-expression is a global feature of organoid data sets, which is not expected if variability in cell type composition among neural organoids was a strong determinant of preserved co-expression. Importantly, regardless of the cell type composition of neural organoids, we demonstrate the vast majority of the sampled organoids consistently fail to preserve primary tissue co-expression at a level comparable to primary tissue for all the broad cell types except dividing progenitors.",
+        "title": "Meta-analysis of single-cell RNA sequencing co-expression in human neural organoids reveals their high variability in recapitulating primary tissue",
+        "section": "Organoid data sets vary in preserving gene-level primary tissue co-expression",
+        "similarity": 0.028991596638655463,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 453.61680001951754,
+      "neo4j_ms": 92.17129996977746,
+      "total_ms": 781.319799949415,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 27,
+        "total_tokens": 27
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 8,
+    "question": "Could you explain the rationale behind focusing exclusively on anti-Mtb drug repurposing with approved or investigational drugs in this study, considering sample accessibility and cost?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC39737570_sec24_C18",
+        "text": "Considering sample accessibility and cost, this study focused on only anti-Mtb drug repurposing with approved or investigational drugs. Considering that most of the top predicted compounds in DrugBank were known anti-Mtb drugs, therefore it would be promising to screen more investigational drugs to expand the range of compounds for repurposing.",
+        "title": "Machine learning–enabled virtual screening indicates the anti-tuberculosis activity of aldoxorubicin and quarfloxin with verification by molecular docking, molecular dynamics simulations, and biological evaluations",
+        "section": "Conclusion and discussion",
+        "similarity": 0.03278688524590164,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39737570_sec24_C17",
+        "text": "Second, the repurposing dataset can be further expanded to discover more candidates. Considering sample accessibility and cost, this study focused on only anti-Mtb drug repurposing with approved or investigational drugs. Considering that most of the top predicted compounds in DrugBank were known anti-Mtb drugs, therefore it would be promising to screen more investigational drugs to expand the range of compounds for repurposing.",
+        "title": "Machine learning–enabled virtual screening indicates the anti-tuberculosis activity of aldoxorubicin and quarfloxin with verification by molecular docking, molecular dynamics simulations, and biological evaluations",
+        "section": "Conclusion and discussion",
+        "similarity": 0.03225806451612903,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39737570_sec24_C19",
+        "text": "Considering that most of the top predicted compounds in DrugBank were known anti-Mtb drugs, therefore it would be promising to screen more investigational drugs to expand the range of compounds for repurposing. To address this issue, we also used our LBVS methods to predict the anti-Mtb bioactivities of molecules in the Drug Repurposing Hub to promote the identification of more potential anti-Mtb drugs and enhance the application and precision of machine learning–led anti-Mtb drug virtual screening.",
+        "title": "Machine learning–enabled virtual screening indicates the anti-tuberculosis activity of aldoxorubicin and quarfloxin with verification by molecular docking, molecular dynamics simulations, and biological evaluations",
+        "section": "Conclusion and discussion",
+        "similarity": 0.03125763125763126,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39737570_sec24_C04",
+        "text": "For anti-Mtb drug repurposing, molecules in the DrugBank database were screened and the majority of known anti-Mtb drugs could be predicted with high precision. Then, further drug category filtering and experimental validation resulted two candidates with anti-Mtb potentials, and their drug-target binding modes were further verified by molecular dynamics simulation and SPR experiments. Among the predicted two candidates, aldoxorubicin exhibited high antimicrobial activity against Mtb both in vitro and in cell lines.",
+        "title": "Machine learning–enabled virtual screening indicates the anti-tuberculosis activity of aldoxorubicin and quarfloxin with verification by molecular docking, molecular dynamics simulations, and biological evaluations",
+        "section": "Conclusion and discussion",
+        "similarity": 0.030117753623188408,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39546486_sec1_C27",
+        "text": "Drug repurposing emerges as a vital strategy in combating TB by leveraging drugs with established safety profiles and shorter regulatory paths, particularly through targeting novel pathways like bioenergetics with promising results. This study aims to repurpose drugs approved in major jurisdictions around the world to target EtfD in Mtb by employing structure-based drug design, a computer aided methodology. Through this approach, we seek to identify promising therapeutic candidates that can effectively inhibit EtfD, offering a novel and potent strategy against drug-resistant TB.",
+        "title": "Integrated virtual screening and MD simulation study to discover potential inhibitors of mycobacterial electron transfer flavoprotein oxidoreductase",
+        "section": "Introduction",
+        "similarity": 0.029206349206349208,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 403.8824000163004,
+      "neo4j_ms": 115.8794000511989,
+      "total_ms": 756.5222999546677,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 32,
+        "total_tokens": 32
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 9,
+    "question": "What is NASAs definition of life?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC39791656_sec19_C02",
+        "text": "There is no definition… what nurses create with the patient is simply beautiful. It is a type of communication that helps so much and should be in all hospitals, especially for people like me who are very emotional and anxious.”“More than this, what else can there be? They stand by us. If we call them, they come immediately and give us a word of comfort. This is a beautiful thing.",
+        "title": "Patient–Nurse Communication in an Oncology Hospital Setting: A Qualitative Study",
+        "section": "Support and Comfort",
+        "similarity": 0.01639344262295082,
+        "sources": [
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39133848_sec2_C01",
+        "text": "According to NASA’s definition, “life is a self-sustaining chemical system capable of Darwinian Evolution”. The emphasis is ours, to emphasize the implication that because life cannot be defined in the absence of its adaptation dynamics, then some form of that dynamics must have been operating at or before the OOL. In short, life cannot originate until it can propagate. Evolution must have had a beginning. Darwinian processes among molecules were apparently not acting before Origins approximately 3.5 billion years ago, when earth’s processes were purely governed by physics and chemistry.",
+        "title": "Origins of Life: The Protein Folding Problem all over again?",
+        "section": "How Did Evolution Begin?",
+        "similarity": 0.01639344262295082,
+        "sources": [
+          "vector"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39791656_sec19_C01",
+        "text": "Patients reported that nurses respond to their requests for help by providing emotional support through nonverbal forms, such as thoughtfulness and attention, and verbal comfort. This modality facilitates patients’ coping with and acceptance of oncology disease. “This communication between patients and nurses is a beautiful thing; it helps you deal with… the ’monster’—that is what I call it—that has entered us and that, thanks to God, doctors and nurses can make it disappear. There is no definition… what nurses create with the patient is simply beautiful.",
+        "title": "Patient–Nurse Communication in an Oncology Hospital Setting: A Qualitative Study",
+        "section": "Support and Comfort",
+        "similarity": 0.016129032258064516,
+        "sources": [
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39738789_sec4_C02",
+        "text": "The derived NLR was defined as the absolute neutrophil count/white cell count – absolute neutrophil count. Progression-free survival was defined as the date of immunotherapy initiation to the date of disease progression or death from any cause, whichever occurred first. Patients who were alive without disease progression were censored on the date of their last disease assessment. Overall survival was defined as the time from immunotherapy initiation to death from any cause. Patients who were still alive were censored at the date of last contact.",
+        "title": "Dissociated response and treatment outcome with immune checkpoint blockade in advanced cancer",
+        "section": "Clinical annotation",
+        "similarity": 0.016129032258064516,
+        "sources": [
+          "vector"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39630902_sec1_C12",
+        "text": "In addition, NASP is commonly associated with the deposition of histones H3 and H4 on chromatin. In Arabidopsis, several reports have indicated that NASP facilitates the formation of _{2} and _{2} tetramers and is involved in the deposition of centromeric H3. However, while mutations in Hat1 and Hat2 lead to decreased levels of H4K5Ac and H4K12Ac in the cytoplasm, they have minimal effects on yeast growth, and the Hif1 mutation does not enhance the phenotypes of hat1 or hat2, challenging the notion that the yeast NuB4 complex has an important biological function.",
+        "title": "Arabidopsis histone acetyltransferase complex coordinates cytoplasmic histone acetylation and nuclear chromatin accessibility",
+        "section": "INTRODUCTION",
+        "similarity": 0.015873015873015872,
+        "sources": [
+          "vector"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 658.1700999522582,
+      "neo4j_ms": 91.44009998999536,
+      "total_ms": 979.0982999838889,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 8,
+        "total_tokens": 8
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  },
+  {
+    "question_id": 10,
+    "question": "why MD run 100 ns in isobaric-isothermal ensemble with Parrinello-Rahman barostat and V-rescale thermostat in this study?",
+    "results_count": 5,
+    "results": [
+      {
+        "id": "SEC38919748_sec3_C04",
+        "text": "Subsequently, the system was equilibrated in two steps: 1) canonical ensemble and 2) isothermal–isobaric ensemble. Following equilibration, the MD simulations were run for 500ns. To ensure numerical stability, all bonds involving hydrogen atoms were constrained using the default linear constraint solver algorithm. The Vrescale thermostat and Parrinello–Rahman barostat were utilized with the temperature set at 300 K and pressure at 1.0bar, with time constants of 0.1 and 2ps, respectively.",
+        "title": "Active and machine learning-enhanced discovery of new FGFR3 inhibitor, Rhapontin, through virtual screening of receptor structures and anti-cancer activity assessment",
+        "section": "Structure relaxation",
+        "similarity": 0.03128054740957967,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39297030_sec8_C05",
+        "text": "^{58} Further equilibration for 100 ps at 1 bar and 300 K used an NPT ensemble with isotropic Berendsen pressure coupling. An unrestrained 200 ns MD simulation was then run with a 2 fs timestep, using a Parrinello-Rahman barostat and V-rescale thermostat. ^{59} Stability was assessed by analyzing the root mean square deviation, root mean square fluctuation, protein solvent accessible surface area, radius of gyration, number of hydrogen bonds, and Dictionary of Secondary Structure in Proteins.",
+        "title": "Identification of lead inhibitors for 3CLpro of SARS-CoV-2 target using machine learning based virtual screening, ADMET analysis, molecular docking and molecular dynamics simulations†",
+        "section": "Molecular dynamics simulation",
+        "similarity": 0.03007688828584351,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39297030_sec8_C04",
+        "text": "^{57} Energy minimization used 50 000 steps of the steepest descent method, followed by equilibration for 100 ps at 300 K in an NVT ensemble with a V-rescale thermostat. ^{58} Further equilibration for 100 ps at 1 bar and 300 K used an NPT ensemble with isotropic Berendsen pressure coupling. An unrestrained 200 ns MD simulation was then run with a 2 fs timestep, using a Parrinello-Rahman barostat and V-rescale thermostat.",
+        "title": "Identification of lead inhibitors for 3CLpro of SARS-CoV-2 target using machine learning based virtual screening, ADMET analysis, molecular docking and molecular dynamics simulations†",
+        "section": "Molecular dynamics simulation",
+        "similarity": 0.02946912242686891,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39583212_sec5_C05",
+        "text": "Herein, the MD simulation in the canonical ensemble NVT was done for a time of 1ns. Finally, the production of MD continued 100 ns in the isobaric-isothermal ensemble considering the Parrinello-Rahman barostat and V-rescale thermostat.",
+        "title": "Identification of compounds from natural Peruvian sources as potential inhibitors of SARS-CoV-2 Mpro mutations by virtual screening and computational simulations",
+        "section": "Molecular dynamics simulation and Molecular Mechanics/Generalized Born Surface Area(MM/GBSA) calculation",
+        "similarity": 0.028298204527712725,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      },
+      {
+        "id": "SEC39619613_sec7_C02",
+        "text": "Afterwards, the solvated system was minimized with cutoff value of steps. The NVT simulation was further carried out using a 100 ps V-rescale thermostat to keep the system’s temperature at 300 K. Subsequently, the Parrinello-Rahman barostat was utilized to conduct a 100 ps NPT simulation while keeping the system pressure at 1 bar. The DSSP program was used for protein secondary structure analysis. Lastly, the system underwent MD simulation for 50 ns, with trace data saved at intervals of 10 ps.",
+        "title": "Discovery of novel and highly potent dual-targeting PKMYT1/HDAC2 inhibitors for hepatocellular carcinoma through structure-based virtual screening and biological evaluation",
+        "section": "Molecular dynamics(MD) simulation",
+        "similarity": 0.02819138376017471,
+        "sources": [
+          "vector",
+          "keyword"
+        ],
+        "system": "SystemA_Neo4j_Hybrid_GraphRAG"
+      }
+    ],
+    "metrics": {
+      "system": "A",
+      "embedding_ms": 346.2970000691712,
+      "neo4j_ms": 87.61469996534288,
+      "total_ms": 663.4101000381634,
+      "embedding_usage": {
+        "model": "text-embedding-3-small",
+        "prompt_tokens": 32,
+        "total_tokens": 32
+      },
+      "k_final": 5,
+      "k_vec": 50,
+      "k_kw": 50,
+      "rrf_k": 60,
+      "vector_index": "chunk_vector_index",
+      "fulltext_index": "chunkTextIndex",
+      "fulltext_index_meta": {
+        "name": "chunkTextIndex",
+        "entityType": "NODE",
+        "labelsOrTypes": [
+          "Chunk"
+        ],
+        "properties": [
+          "text"
+        ]
+      },
+      "fulltext_enabled": true
+    }
+  }
+]
