@@ -1,4 +1,3 @@
-'''
 메모리 데이터베이스 스키마
 - chat_room_id: 채팅창 ID (conversation_id와 동일)
 - case_type: 데이터 타입 구분 (SIMULATION_Q, INFERENCE_Q, BIO_Q, PROTOCOL_Q)
@@ -27,8 +26,8 @@ class ConversationMemory(Base):
     __tablename__ = "t_memory"
 
     # 이미지 순서대로 컬럼 정의
-    chat_sid = Column(Integer, primary_key=True, autoincrement=True)  # 메모리 row 고유번호 (autoincrement)
-    chat_room_id = Column(Integer, nullable=False, index=True)  # 채팅방 ID (Django Chat.chat_sid 참조)
+    chat_sid = Column(Integer, primary_key=True, autoincrement=True)
+    chat_room_id = Column(Integer, nullable=False, index=True)  # 채팅방 아이디 (Integer)
     user_id = Column(String, nullable=False)  # 유저 아이디
     case_type = Column(String, nullable=False, index=True)  # 질문유형
     original_question = Column(Text)  # 질문 원문

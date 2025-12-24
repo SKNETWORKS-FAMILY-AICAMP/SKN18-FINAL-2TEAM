@@ -211,7 +211,7 @@ def memory_read_node(state):
     print(f"{'='*60}\n")
 
     chat_room_id = state.get("conversation_id")
-    # chat_room_id를 정수로 변환 (DB 스키마가 Integer, Django Chat.chat_sid 참조)
+    # chat_room_id를 정수로 변환 (DB 스키마가 Integer)
     try:
         chat_room_id = int(chat_room_id) if chat_room_id else None
     except (ValueError, TypeError):
@@ -322,7 +322,7 @@ def memory_write_node(state):
     print(f"{'='*60}\n")
     
     chat_room_id = state.get("conversation_id")
-    # chat_room_id를 정수로 변환 (DB 스키마가 Integer, Django Chat.chat_sid 참조)
+    # chat_room_id를 정수로 변환 (DB 스키마가 Integer)
     try:
         chat_room_id = int(chat_room_id) if chat_room_id else None
     except (ValueError, TypeError):
