@@ -27,7 +27,7 @@ from query_rewrite_node import query_rewrite_node
 from query_router import QueryRoutingNode
 from embedding_router import EmbeddingRoutingNode
 from rag_orchestrator import RAGOrchestrator
-
+from pathlib import Path
 
 def _call_with_supported_kwargs(fn: Callable[..., Any], **kwargs) -> Any:
     sig = inspect.signature(fn)
@@ -151,7 +151,11 @@ class RetrieverExecutor:
 
 
 def main() -> None:
-    load_dotenv()
+    # 프로젝트 루트 기준으로 .env 로드
+    project_root = Path(__file__).resolve().parents[2]  # SKN18-FINAL-2TEAM/
+    env_path = project_root / ".env"
+    load_dotenv(dotenv_path=env_path)
+
     ap = argparse.ArgumentParser()
     ap.add_argument("--question", required=True, help="사용자 질문")
     ap.add_argument("--pretty", action="store_true", help="JSON pretty print")
@@ -184,45 +188,45 @@ def main() -> None:
         state = embed_router(state)
         state = executor(state)
 
-    #     # ---------------------------------------------------------
-    #     # [New] 결과 저장 로직 (Rewrite, Route, Contexts)
-    #     # ---------------------------------------------------------
-    #     result_record = {
-    #         "metadata": {
-    #             "timestamp": datetime.now().isoformat(),
-    #             "question_original": state.get("question")
-    #         },
-    #         "process": {
-    #             "1_rewrite": state.get("rewrite"),          # 재작성된 쿼리 정보
-    #             "2_route": state.get("route"),              # 상위 라우팅 결과
-    #             "3_plan": state.get("retrieval_plan")       # 상세 실행 계획
-    #         },
-    #         "results": {
-    #             "count": state.get("contexts_count"),
-    #             "contexts": state.get("contexts")           # 최종 검색 결과
-    #         }
-    #     }
+        # ---------------------------------------------------------
+        # [New] 결과 저장 로직 (Rewrite, Route, Contexts)
+        # ---------------------------------------------------------
+        result_record = {
+            "metadata": {
+                "timestamp": datetime.now().isoformat(),
+                "question_original": state.get("question")
+            },
+            "process": {
+                "1_rewrite": state.get("rewrite"),          # 재작성된 쿼리 정보
+                "2_route": state.get("route"),              # 상위 라우팅 결과
+                "3_plan": state.get("retrieval_plan")       # 상세 실행 계획
+            },
+            "results": {
+                "count": state.get("contexts_count"),
+                "contexts": state.get("contexts")           # 최종 검색 결과
+            }
+        }
 
-    #     # 파일 저장
-    #     if args.save:
-    #         try:
-    #             with open(args.save, "w", encoding="utf-8") as f:
-    #                 json.dump(result_record, f, ensure_ascii=False, indent=2)
-    #             # stdout 출력을 방해하지 않기 위해 stderr로 로그 출력
-    #             print(f"💾 Search results saved to: {args.save}", file=sys.stderr)
-    #         except Exception as e:
-    #             print(f"⚠️ Failed to save results: {e}", file=sys.stderr)
-    #     # ---------------------------------------------------------
+        # 파일 저장
+        if args.save:
+            try:
+                with open(args.save, "w", encoding="utf-8") as f:
+                    json.dump(result_record, f, ensure_ascii=False, indent=2)
+                # stdout 출력을 방해하지 않기 위해 stderr로 로그 출력
+                print(f"💾 Search results saved to: {args.save}", file=sys.stderr)
+            except Exception as e:
+                print(f"⚠️ Failed to save results: {e}", file=sys.stderr)
+        # ---------------------------------------------------------
 
-    #     # 기존 stdout 출력 (파이프라이닝용)
-    #     out = {
-    #         "question": state.get("question"),
-    #         "route": state.get("route"),
-    #         "retrieval_plan": state.get("retrieval_plan"),
-    #         "contexts_count": state.get("contexts_count"),
-    #         "contexts": state.get("contexts"),
-    #     }
-    #     print(json.dumps(out, ensure_ascii=False, indent=2 if args.pretty else None))
+        # 기존 stdout 출력 (파이프라이닝용)
+        out = {
+            "question": state.get("question"),
+            "route": state.get("route"),
+            "retrieval_plan": state.get("retrieval_plan"),
+            "contexts_count": state.get("contexts_count"),
+            "contexts": state.get("contexts"),
+        }
+        print(json.dumps(out, ensure_ascii=False, indent=2 if args.pretty else None))
     
     except Exception as e:
         print(f"❌ Pipeline Error: {str(e)}")

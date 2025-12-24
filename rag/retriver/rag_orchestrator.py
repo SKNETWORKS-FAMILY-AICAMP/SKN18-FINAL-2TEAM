@@ -147,7 +147,7 @@ class RAGOrchestrator:
             "limit_protocols": 15,
             "evidence_per_protocol": 5,
             "limit_trials": 20,
-            "evidence_per_trial": 5,
+            "evidence_per_trial": 10,
             "set_size_target": 250
         }
 
