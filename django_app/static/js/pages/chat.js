@@ -382,9 +382,8 @@ async function handleSend() {
                     updateVisibleReferences();
                 });
                 
-                // 일단 렌더링 (빈 메시지 + 참고문헌)
+                // 일단 렌더링 (빈 메시지, 레퍼런스는 스트리밍 완료 후 표시)
                 renderMessages();
-                updateVisibleReferences();
             } else if (data.error) {
                 // AI generation failed, but user message was saved
                 console.error('AI generation error:', data.error);
@@ -715,8 +714,12 @@ function renderMessages() {
     }
 
     // Show/hide references sidebar based on messages and references
+    // 스트리밍 중일 때는 레퍼런스 사이드바 숨기기
     if (referencesSidebar) {
-        if (messages.length > 0 && references.length > 0) {
+        // 스트리밍 중이면 레퍼런스 숨김
+        if (currentTypingAnimation) {
+            referencesSidebar.style.display = 'none';
+        } else if (messages.length > 0 && references.length > 0) {
             referencesSidebar.style.display = 'flex';
         } else {
             referencesSidebar.style.display = 'none';
