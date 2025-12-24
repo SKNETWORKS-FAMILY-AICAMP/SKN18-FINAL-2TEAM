@@ -1,10 +1,11 @@
+"""
 메모리 데이터베이스 스키마
 - chat_room_id: 채팅창 ID (conversation_id와 동일)
 - case_type: 데이터 타입 구분 (SIMULATION_Q, INFERENCE_Q, BIO_Q, PROTOCOL_Q)
 - full_response: 원본 답변 저장
 - summary: 질문과 답변 요약 저장
 - 단순화된 3컬럼 구조로 효율적인 조회 및 관리
-'''
+"""
 
 from sqlalchemy import (
     Column, String, DateTime, Text, Integer, Sequence, ForeignKey
