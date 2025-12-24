@@ -1,0 +1,4 @@
+job_id=af_1bcd375755
+mode=monomer
+sequence_length=20
+status=MOCK_DONE

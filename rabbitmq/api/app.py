@@ -24,7 +24,7 @@ def publish_to_queue(message: dict) -> None:
     credentials = pika.PlainCredentials(RABBITMQ_USER, RABBITMQ_PASS)
     params = pika.ConnectionParameters(host= RABBITMQ_HOST, credentials=credentials)
 
-    connection = pika.BlockingConncetion(params)
+    connection = pika.BlockingConnection(params)
     channel = connection.channel()
 
     channel.queue_declare(queue=QUEUE_NAME, durable=True) # durable=True -> 서버 재시작시에도 큐가 유지됨
@@ -35,7 +35,7 @@ def publish_to_queue(message: dict) -> None:
         exchange="",
         routing_key=QUEUE_NAME,
         body=body,
-        properties=pika.BasicProperies(delivery_mode=2), # delivery_mode=2 -> 메시지가 디스크에 저장되어 서버 재시작시에도 유지됨
+        properties=pika.BasicProperties(delivery_mode=2), # delivery_mode=2 -> 메시지가 디스크에 저장되어 서버 재시작시에도 유지됨
     )
 
     connection.close()

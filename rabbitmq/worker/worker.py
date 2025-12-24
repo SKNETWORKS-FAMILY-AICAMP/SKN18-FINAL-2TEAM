@@ -48,21 +48,34 @@ def on_message(ch, method, properties, body: bytes):
         print(f"[WORKER] failed job_id={job_id} error={e}") # 실패하면 nack -> queue(큐)에 메시지 다시 넣음
         ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
 
+def connect_with_retry(params, retries=30, delay=2):
+    """
+    RabbitMQ에 재시도 연결하는 함수.
+    최대 30회 재시도, 재시도 간격 2초
+    만든 이유: worker가 RabbitMQ보다 먼저 실행되어 연결 실패하는 상황 방지하기 위함.
+    """
+    for i in range(1, retries + 1):
+        try:
+            return pika.BlockingConnection(params)
+        except pika.exceptions.AMQPConnectionError:
+            print(f"[WORKER] RabbitMQ not ready yet ({i}/{retries}) - retry in {delay}s")
+            time.sleep(delay)
+    raise RuntimeError("[WORKER] RabbitMQ connection failed after retries")
+
 def main():
     credentials = pika.PlainCredentials(RABBITMQ_USER, RABBITMQ_PASS)
     params = pika.ConnectionParameters(host=RABBITMQ_HOST, credentials=credentials)
-    
-    connection = pika.BlockingConnection(params)
+
+    connection = connect_with_retry(params) # (바로 연결 → 재시도 연결)
     channel = connection.channel()
 
     channel.queue_declare(queue=QUEUE_NAME, durable=True)
-
-    channel.basic_qos(prefetch_count=1) # 한 번에 하나의 메시지만 처리함
-
+    channel.basic_qos(prefetch_count=1)
     channel.basic_consume(queue=QUEUE_NAME, on_message_callback=on_message)
 
     print("[WORKER] waiting for messages...")
     channel.start_consuming()
+
 
 if __name__ == "__main__":
     main()

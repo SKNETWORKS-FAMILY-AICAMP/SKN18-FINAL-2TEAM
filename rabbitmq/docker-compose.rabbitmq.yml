@@ -3,11 +3,13 @@ services:
     image: rabbitmq:3-management
     container_name: rabbitmq
     ports:
-      - "5672:5672"       # RabbitMQ default port
-      - "15672:15672"     # RabbitMQ management UI port
+      - "5672:5672"
+      - "15672:15672"
     environment:
       RABBITMQ_DEFAULT_USER: admin
       RABBITMQ_DEFAULT_PASS: admin123
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq   # 이름 있는 볼륨
 
   api:
     build: ./api
@@ -15,23 +17,26 @@ services:
     ports:
       - "8000:8000"
     environment:
-      RabbitMQ_HOST: rabbitmq
+      RABBITMQ_HOST: rabbitmq
       RABBITMQ_USER: admin
       RABBITMQ_PASS: admin123
       QUEUE_NAME: alphafold_jobs
     depends_on:
       - rabbitmq
-  
+
   worker:
     build: ./worker
     container_name: worker
     environment:
-      RabbitMQ_HOST: rabbitmq
+      RABBITMQ_HOST: rabbitmq
       RABBITMQ_USER: admin
       RABBITMQ_PASS: admin123
       QUEUE_NAME: alphafold_jobs
       RESULTS_DIR: /shared/results
     volumes:
-      - ./shared:/shared
+      - ./shared:/shared                 # 로컬 폴더 공유(결과 바로 확인용)
     depends_on:
       - rabbitmq
+
+volumes:
+  rabbitmq-data:                          # 볼륨 이름 선언
