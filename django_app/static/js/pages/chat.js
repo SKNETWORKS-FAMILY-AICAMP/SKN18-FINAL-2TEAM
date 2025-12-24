@@ -29,6 +29,7 @@ let attachedTables = [];
 let attachedExperiments = [];
 let fileInputRef = null;
 let isComposing = false; // IME 조합 상태 (macOS 한글 입력 중복 전송 방지)
+let currentTypingAnimation = null; // 현재 실행 중인 타이핑 애니메이션 제어
 
 let chatList = [];
 
@@ -268,6 +269,11 @@ async function handleSend() {
     if (!input) {
         return;
     }
+    
+    // 타이핑 애니메이션 중이면 즉시 완료
+    if (currentTypingAnimation) {
+        skipTypingAnimation();
+    }
 
     // Hide empty state and show messages view
     if (emptyState) {
@@ -350,31 +356,40 @@ async function handleSend() {
                     timestamp: data.messages[0].created_at,
                 };
 
-                // AI 응답 메시지 추가
+                // AI 응답 메시지 추가 (타이핑 애니메이션용으로 빈 상태로 시작)
+                const aiContent = data.messages[1].content;
                 const assistantMessage = {
                     role: data.messages[1].role,
-                    content: data.messages[1].content,
+                    content: '',  // 타이핑 애니메이션으로 채워질 예정
                     message_id: data.messages[1].id,
                     timestamp: data.messages[1].created_at,
                 };
                 messages.push(assistantMessage);
+                
+                // 참고문헌을 먼저 추가 (타이핑 애니메이션 중에도 보이도록)
+                if (data.references && Array.isArray(data.references)) {
+                    const newRefs = data.references.map(ref => ({
+                        ...ref,
+                        message_id: data.messages[1].id
+                    }));
+                    allReferences = [...allReferences, ...newRefs];
+                }
+                
+                // 타이핑 애니메이션 시작 (비동기)
+                const messageIndex = messages.length - 1;
+                typeWriterEffect(aiContent, messageIndex, 40).then(() => {
+                    // 타이핑 완료 후 참고문헌 업데이트
+                    updateVisibleReferences();
+                });
+                
+                // 일단 렌더링 (빈 메시지 + 참고문헌)
+                renderMessages();
+                updateVisibleReferences();
             } else if (data.error) {
                 // AI generation failed, but user message was saved
                 console.error('AI generation error:', data.error);
+                renderMessages();
             }
-
-            // 목적: AI 응답과 함께 받은 참고문헌을 전체 목록에 추가
-            if (data.references && Array.isArray(data.references)) {
-                // 새 참고문헌을 allReferences에 추가
-                const newRefs = data.references.map(ref => ({
-                    ...ref,
-                    message_id: data.messages && data.messages[1] ? data.messages[1].id : null
-                }));
-                allReferences = [...allReferences, ...newRefs];
-            }
-
-            renderMessages();
-            updateVisibleReferences(); // 스크롤 기반 참고문헌 업데이트
         } else {
             // 목적: 에러 발생 시에도 로딩 메시지 제거
             messages = messages.filter(m => !m.is_loading);
@@ -489,6 +504,90 @@ async function loadChat(chatId) {
 }
 
 // Render messages
+/**
+ * 타이핑 애니메이션 효과로 메시지를 점진적으로 표시
+ * @param {string} fullText - 전체 텍스트
+ * @param {number} messageIndex - 메시지 배열 인덱스
+ * @param {number} speed - 타이핑 속도 (밀리초, 기본값: 20ms)
+ * @returns {Promise<void>}
+ */
+async function typeWriterEffect(fullText, messageIndex, speed = 20) {
+    return new Promise((resolve) => {
+        let currentIndex = 0;
+        const message = messages[messageIndex];
+        
+        // 이미 타이핑 중이면 중단
+        if (currentTypingAnimation) {
+            clearInterval(currentTypingAnimation);
+        }
+        
+        // 타이핑 애니메이션 시작
+        message.is_typing = true;
+        message.content = '';
+        message.fullText = fullText; // 전체 텍스트 저장 (중단 시 사용)
+        renderMessages();
+        
+        currentTypingAnimation = setInterval(() => {
+            if (currentIndex < fullText.length) {
+                // 한 글자씩 추가 (한글 등 유니코드 문자 처리)
+                const char = fullText[currentIndex];
+                message.content += char;
+                currentIndex++;
+                
+                // 메시지만 업데이트 (전체 렌더링 비용 절감)
+                renderMessages();
+                
+                // 스크롤을 맨 아래로 자동 이동
+                if (messagesView) {
+                    messagesView.scrollTop = messagesView.scrollHeight;
+                }
+            } else {
+                // 타이핑 완료
+                clearInterval(currentTypingAnimation);
+                currentTypingAnimation = null;
+                message.is_typing = false;
+                delete message.fullText;
+                renderMessages();
+                resolve();
+            }
+        }, speed);
+    });
+}
+
+/**
+ * 타이핑 애니메이션 중단 (즉시 전체 텍스트 표시)
+ */
+function stopTypingAnimation() {
+    if (currentTypingAnimation) {
+        clearInterval(currentTypingAnimation);
+        currentTypingAnimation = null;
+        
+        // 타이핑 중인 메시지 찾아서 완료 처리
+        const typingMessage = messages.find(m => m.is_typing);
+        if (typingMessage) {
+            typingMessage.is_typing = false;
+            
+            // 전체 텍스트로 즉시 업데이트
+            if (typingMessage.fullText) {
+                typingMessage.content = typingMessage.fullText;
+                delete typingMessage.fullText;
+            }
+            
+            renderMessages();
+        }
+    }
+}
+
+/**
+ * 타이핑 애니메이션 스킵 (ESC 키 또는 클릭으로 즉시 완료)
+ */
+function skipTypingAnimation() {
+    stopTypingAnimation();
+    
+    // 참고문헌도 즉시 업데이트
+    updateVisibleReferences();
+}
+
 function renderMessages() {
     if (!messagesView) return;
 
@@ -516,6 +615,22 @@ function renderMessages() {
                             <div class="message-content-assistant message-loading">
                                 <div class="markdown-content">
                                     <p>${escapeHtml(msg.content)}<span class="typing-indicator"><span>.</span><span>.</span><span>.</span></span></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // 타이핑 애니메이션 중: 커서 깜빡임 표시
+            if (msg.is_typing) {
+                return `
+                    <div class="message-item" data-message-id="${msg.message_id || ''}">
+                        <div class="message-assistant">
+                            <div class="message-avatar assistant-avatar">AI</div>
+                            <div class="message-content-assistant">
+                                <div class="markdown-content">
+                                    <p>${escapeHtml(msg.content)}<span class="typing-cursor">|</span></p>
                                 </div>
                             </div>
                         </div>
@@ -2060,6 +2175,21 @@ function attachClickOutsideHandlers() {
                     closeRecommendations();
                 }
             }
+        }
+        
+        // 타이핑 중인 메시지 클릭 시 애니메이션 스킵
+        if (currentTypingAnimation && e.target.closest('.message-item')) {
+            const typingMessage = messages.find(m => m.is_typing);
+            if (typingMessage) {
+                skipTypingAnimation();
+            }
+        }
+    });
+    
+    // ESC 키로 타이핑 애니메이션 스킵
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && currentTypingAnimation) {
+            skipTypingAnimation();
         }
     });
 }
