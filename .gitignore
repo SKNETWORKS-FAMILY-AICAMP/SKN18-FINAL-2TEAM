@@ -414,3 +414,5 @@ infra/neo4j/plugins/**
 
 
 # End of https://www.toptal.com/developers/gitignore/api/python,django,windows,macos,jupyternotebooks
+
+*__init__.py
