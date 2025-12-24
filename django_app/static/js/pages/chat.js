@@ -377,7 +377,7 @@ async function handleSend() {
                 
                 // 타이핑 애니메이션 시작 (비동기)
                 const messageIndex = messages.length - 1;
-                typeWriterEffect(aiContent, messageIndex, 15).then(() => {
+                typeWriterEffect(aiContent, messageIndex, 40).then(() => {
                     // 타이핑 완료 후 참고문헌 업데이트
                     updateVisibleReferences();
                 });
