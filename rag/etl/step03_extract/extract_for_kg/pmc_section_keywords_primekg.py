@@ -12,7 +12,7 @@ MAPPING_FILE = 'entities_all_dbs.csv'
 
 # 3. 최종 결과 파일
 OUTPUT_FILE = 'section_keywords_primekg.csv'
-
+# keyword with mapped PrimeKG/UMLS IDs
 # ==========================================
 # [로직] ID 갈아끼우기
 # ==========================================

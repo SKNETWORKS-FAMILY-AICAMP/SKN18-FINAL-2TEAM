@@ -264,7 +264,7 @@ if __name__ == "__main__":
     BASE = "import"
     if not os.path.exists(BASE): os.makedirs(BASE)
 
-
+    # section 분리된거 분할된거 사용이유 -> 분할하면서 클렌징 들어감.
     # 윈도우 경로 사용 시 r"..." 스트링을 쓰거나 / 슬래시 사용 권장
     META = r"C:\dev\study\skn18_fianl-2team\SKN18-FINAL-2TEAM\data\pmc_data\meta_new.csv"
     CHUNK = r"C:\dev\study\skn18_fianl-2team\SKN18-FINAL-2TEAM\data\pmc_data\before_embedding.csv"

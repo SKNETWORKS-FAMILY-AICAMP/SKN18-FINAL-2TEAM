@@ -33,7 +33,7 @@ BASE_DIR = Path(__file__).resolve().parents[2]  # SKN18-FINAL-2TEAM
 if str(BASE_DIR) not in sys.path:
     sys.path.append(str(BASE_DIR))
 
-from common_experiment_categories import (
+from kg.kg_etl.common_experiment_categories import (
     CATEGORY_TREE,
     LEAF_TO_PARENT,
     VALID_PARENTS,

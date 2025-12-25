@@ -41,7 +41,7 @@ ROOT_DIR = Path(__file__).resolve().parents[2]
 if str(ROOT_DIR) not in sys.path:
     sys.path.append(str(ROOT_DIR))
 
-from common_experiment_categories import (
+from kg.kg_etl.common_experiment_categories import (
     CATEGORY_TREE,
     LEAF_TO_PARENT,
     PARENT_DEFAULT_LEAF,
