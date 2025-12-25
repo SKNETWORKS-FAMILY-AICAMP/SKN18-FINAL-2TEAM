@@ -102,22 +102,26 @@ def evaluate_web_node(state: Dict[str, Any]) -> Dict[str, Any]:
             lines = result.strip().split('\n')
             for line in lines:
                 line = line.strip()
-                # "웹자료 N:" 형식의 줄만 추출하고, 최대 3개로 제한
+                # "웹자료 N:" 형식의 줄만 추출
                 if line and line.startswith('웹자료') and ':' in line:
                     web_selected_chunks.append(line)
-                    if len(web_selected_chunks) >= 10:  # 최대 10개로 제한
+                    if len(web_selected_chunks) >= 20:  # 최대 20개로 제한
                         break
 
-        # BIO_Q이고 관련 정보가 없는 경우 조기 종료
+        # BIO_Q이고 관련 정보가 없는 경우 조기 종료 (citations 추가하지 않음)
         if not web_selected_chunks:
             case_type = state.get("case_type", "")
             if case_type == "BIO_Q":
                 state["final_answer"] = "죄송합니다. 요청하신 정보를 찾을 수 없습니다. 다른 질문을 해주시거나, 더 구체적인 정보를 제공해주시면 도움을 드리겠습니다."
                 state["should_skip_generation"] = True
                 state["web_selected_chunks"] = []
-                print("[EvaluateWeb] BIO_Q - 관련 정보 없음, 조기 종료")
+                print("[EvaluateWeb] ⚠️ BIO_Q - 관련 정보 없음, GENERATE_ANSWER 건너뛰고 END로 이동")
+                print(f"[EvaluateWeb] should_skip_generation = {state.get('should_skip_generation')}")
+                print(f"[EvaluateWeb] final_answer = {state.get('final_answer')[:50]}...")
+                print(f"[EvaluateWeb] citations = {len(state.get('citations', []))}개 (citations 추가 안 함)")
                 return state
 
+        # web_selected_chunks를 state에 저장 (services.py에서 references 생성 시 사용)
         state["web_selected_chunks"] = web_selected_chunks
 
         print(f"[EvaluateWeb] 완료 - {len(web_selected_chunks)}개 청크 선별")
