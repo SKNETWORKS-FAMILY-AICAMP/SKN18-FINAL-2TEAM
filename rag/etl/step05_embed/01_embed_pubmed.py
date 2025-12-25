@@ -21,8 +21,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from rag.etl.step05_embed.pmc_embed_common.chunk_embedder_v2 import ChunkEmbedder
 from rag.etl.step04_chunk.pmc_chunk_common.chunking import DEFAULT_EMBED_MODEL
 
-
-def run(
+def run_for_files(
     chunks: str,
     output: str = "pmc_vector.csv",
     model: str = DEFAULT_EMBED_MODEL,
@@ -30,9 +29,8 @@ def run(
     write_csv: bool = True,
     pg_batch_size: int = 500,
 ) -> None:
-    """파이프라인/외부에서 직접 호출할 때 사용하는 엔트리포인트."""
     logger.info(
-        "[EMBED] run() called with chunks=%s, output=%s, model=%s, "
+        "[EMBED:PubMed] run_for_files() chunks=%s, output=%s, model=%s, "
         "resume=%s, write_csv=%s, pg_batch_size=%d",
         chunks,
         output,
@@ -42,21 +40,62 @@ def run(
         pg_batch_size,
     )
 
-    # pgvector / Postgres 로드는 비활성화 (pg_connect=None 고정)
-    logger.info("[EMBED] pgvector(Postgres) 로드는 비활성화됨 (CSV 출력만 사용).")
+    logger.info("[EMBED:PubMed] pgvector(Postgres) 비활성화 (CSV만 생성).")
+
+    out_path = Path(output)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
 
     emb = ChunkEmbedder(
         chunk_csv=chunks,
         output_csv=output,
         embed_model=model,
-        pg_connect=None,           # 항상 None → DB 사용 안 함
+        pg_connect=None,
         pg_table="pmc_section_chunk",
         write_csv=write_csv,
         pg_batch_size=pg_batch_size,
     )
 
     emb.run(resume=resume)
-    logger.info("[EMBED] embedding finished: %s", output)
+    logger.info("[EMBED:PubMed] embedding finished: %s", output)
+
+
+
+def run(chunks_dir: str, embeddings_dir: str) -> None:
+    """
+    pipeline_runner.run_embed 에서 사용하는 엔트리포인트.
+
+    - 입력:  {chunks_dir}/pubmed/pmc_chunks.csv
+    - 출력:  {embeddings_dir}/pubmed/pmc_vector.csv
+    """
+    chunks_base = Path(chunks_dir)
+    embeds_base = Path(embeddings_dir)
+
+    chunk_csv = chunks_base / "pubmed" / "pmc_chunks.csv"
+    output_csv = embeds_base / "pubmed" / "pmc_vector.csv"
+
+    logger.info(
+        "[EMBED:PubMed] run() called with chunks_dir=%s, embeddings_dir=%s",
+        chunks_dir,
+        embeddings_dir,
+    )
+    logger.info(
+        "[EMBED:PubMed] resolved paths: chunk_csv=%s, output_csv=%s",
+        chunk_csv,
+        output_csv,
+    )
+
+    if not chunk_csv.exists():
+        logger.error("[EMBED:PubMed] chunk CSV not found: %s", chunk_csv)
+        return
+
+    run_for_files(
+        chunks=str(chunk_csv),
+        output=str(output_csv),
+        model=DEFAULT_EMBED_MODEL,
+        resume=True,
+        write_csv=True,
+        pg_batch_size=500,
+    )
 
 
 def main(argv=None) -> None:
@@ -124,9 +163,8 @@ def main(argv=None) -> None:
             args.no_csv,
             args.pg_batch_size,
         )
-        logger.info("[EMBED][CLI] pgvector/Postgres 관련 옵션은 현재 무시됩니다.")
 
-        run(
+        run_for_files(
             chunks=args.chunks,
             output=args.output,
             model=args.model,
@@ -134,6 +172,7 @@ def main(argv=None) -> None:
             write_csv=write_csv,
             pg_batch_size=args.pg_batch_size,
         )
+
     else:
         ap.print_help()
 

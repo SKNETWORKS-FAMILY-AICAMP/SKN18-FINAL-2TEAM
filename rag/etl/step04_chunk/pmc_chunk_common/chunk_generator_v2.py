@@ -3,21 +3,34 @@
 """
 ChunkGenerator: read sections CSV and produce chunk CSV (batch processing).
 """
-from pathlib import Path
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+ChunkGenerator: read sections CSV and produce chunk CSV (batch processing).
+"""
+
 import csv
 import re
+from pathlib import Path
+from typing import List, Tuple, Set, Generator, Dict, Any
+
 from tqdm import tqdm
 
-from chunking import (
+from rag.etl.step04_chunk.pmc_chunk_common.chunking import (
     sentence_chunks,
     make_chunk_id,
     DEFAULT_CHUNK_SIZE,
     DEFAULT_OVERLAP,
     process_section_text_for_chunking,
 )
+from rag.etl.step04_chunk.pmc_chunk_common.pmc_chunk_csv_utils import (
+    load_existing_chunk_ids,
+)
 
-# [수정됨] load_existing_chunk_ids를 pmc_data_loader에서 직접 임포트합니다.
-from rag.etl.step04_chunk.pmc_chunk_common.pmc_chunk_csv_utils import load_existing_chunk_ids 
+
 
 
 class ChunkGenerator:

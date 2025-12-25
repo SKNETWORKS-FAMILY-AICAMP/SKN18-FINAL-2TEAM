@@ -19,18 +19,16 @@ from rag.etl.common.pmc_config import (
     EUTILS_ESEARCH,
     CATEGORY_KEYWORDS,
     DEFAULT_FROM_DATE,
-    DEFAULT_UNTIL_DATE,
-    DEFAULT_PREVIOUS_FILE,
-    DEFAULT_NEW_FILE,
-    TARGET_NEW_COUNT,
-    BATCH_SIZE,
-)
+    DEFAULT_UNTIL_DATE,)
 
 from rag.etl.step01_ingest.pmc_ingest_common.pmc_utils import (
     build_pubmed_term_for_category,
     categorize_article,
 )
 from rag.etl.step01_ingest.pmc_ingest_common.pmc_parsing import extract_article_info
+
+TARGET_NEW_COUNT = int(os.getenv("PUBMED_TARGET_NEW_COUNT", "10"))
+BATCH_SIZE = int(os.getenv("PUBMED_BATCH_SIZE", "50"))
 
 
 # -------------------- 0. 로깅 설정 -------------------- #
@@ -244,34 +242,63 @@ def collect_new_articles(
     return new_collected
 
 
-# -------------------- MAIN 실행 (run 명령어 대응) -------------------- #
 
-def run(prev_file: str, new_file: str, target_count: int, batch: int):
+def run_incremental(prev_file: str, new_file: str, target_count: int, batch: int) -> None:
     """
-    실질적인 실행 로직을 담당하는 함수입니다.
+    기존 prev/new JSON 파일 경로를 직접 받아서 추가 수집을 수행하는 함수.
+    (단독 실행/스크립트용)
     """
     logger.info("=== 추가 수집 프로세스 시작 ===")
     logger.info(f" - 제외 대상(기존) 파일: {prev_file}")
     logger.info(f" - 저장/업데이트 파일 : {new_file}")
     logger.info(f" - 목표 수량(카테고리당): {target_count}개")
 
-    # 1. 제외할 ID 로드
     ex_pmids, ex_pmcids = load_exclusion_ids(prev_file)
 
-    # 2. 수집 실행
     new_data = collect_new_articles(
         exclude_pmids=ex_pmids,
         exclude_pmcids=ex_pmcids,
         target_count_per_category=target_count,
         batch_size=batch,
-        save_path=new_file
+        save_path=new_file,
     )
 
-    # 3. 종료
     if any(new_data.values()):
         logger.info(f"[FINAL] 모든 수집 완료. 최종 파일: '{new_file}'")
     else:
         logger.info("[INFO] 새로 수집된 논문이 없습니다.")
+
+
+# -------------------- MAIN 실행 (run 명령어 대응) -------------------- #
+
+def run(raw_dir: str, limit: int | None = None) -> None:
+    """
+    pipeline_runner.run_ingest 에서 호출되는 엔트리포인트.
+
+    Args:
+        raw_dir: ETL_RAW_DIR (예: data/raw)
+        limit: 카테고리당 수집 목표 개수 (None이면 TARGET_NEW_COUNT 사용)
+    """
+    logger.info("=== PubMed ingest (pipeline) ===")
+    logger.info(f"RAW DIR (arg): {raw_dir}")
+    logger.info(f"LIMIT (arg): {limit}")
+
+    base_dir = Path(raw_dir) / "pubmed"
+    base_dir.mkdir(parents=True, exist_ok=True)
+
+    prev_file = base_dir / "pubmed_existing.json"
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    new_file = base_dir / f"pubmed_new_{stamp}.json"
+
+    target_count = limit if limit is not None else TARGET_NEW_COUNT
+    batch = BATCH_SIZE
+
+    run_incremental(
+        prev_file=str(prev_file),
+        new_file=str(new_file),
+        target_count=target_count,
+        batch=batch,
+    )
 
 
 if __name__ == "__main__":
@@ -287,9 +314,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # run 함수 실행
-    run(
+    run_incremental(
         prev_file=args.prev,
         new_file=args.new,
         target_count=args.count,
-        batch=args.batch
+        batch=args.batch,
     )

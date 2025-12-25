@@ -4,7 +4,11 @@ import uuid
 import re
 from typing import List, Optional, Tuple, Dict, Any
 
-from config import DEFAULT_FROM_DATE, DEFAULT_UNTIL_DATE, CATEGORY_KEYWORDS
+from rag.etl.common.pmc_config import (
+    DEFAULT_FROM_DATE,
+    DEFAULT_UNTIL_DATE,
+    CATEGORY_KEYWORDS,
+)
 
 try:
     from rag.etl.step01_ingest.pmc_ingest_common.pmc_math import extract_formula_text, handle_sup_sub
