@@ -49,7 +49,30 @@ services:
     restart: unless-stopped
 
   ########################################
-  # 3) Django + LangGraph Web (SSR + API)
+  # 3) RabbitMQ (Message Queue)
+  ########################################
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: rabbitmq-final
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
+    ports:
+      - "5672:5672"      # AMQP 포트
+      - "15672:15672"    # Management UI (운영 모니터링용)
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+      - rabbitmq-logs:/var/log/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  ########################################
+  # 4) Django + LangGraph Web (SSR + API)
   ########################################
   web:
     # CI/CD에서 ECR에 푸시한 이미지 사용
@@ -63,6 +86,14 @@ services:
         condition: service_healthy
       neo4j:
         condition: service_started
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      # RabbitMQ 연결 정보
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
     command: >
       gunicorn config.wsgi:application
       --bind 0.0.0.0:8000
@@ -73,7 +104,7 @@ services:
     restart: unless-stopped
 
   ########################################
-  # 4) Worker (ETL / 배치 / 인덱싱)
+  # 5) Worker (ETL / 배치 / Consumer)
   ########################################
   worker:
     # CI/CD에서 따로 빌드한 worker 이미지
@@ -84,14 +115,20 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    # 여기 command는 네가 실제로 돌릴 메인 워커로 바꾸면 됨
-    # 예시1: ETL 파이프라인 주기 실행
-    command: ["python", "-m", "jobs.manage_etl"]
-    # 예시2: Celery worker, RQ worker, LangGraph batch flow 등으로 변경 가능
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      # RabbitMQ 연결 정보
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
+    # 시뮬레이션 Consumer 실행
+    command: ["python", "-m", "messaging.workers.main"]
     restart: unless-stopped
 
   ########################################
-  # 5) sLLM 서버 (옵션: vLLM/Ollama 등)
+  # 6) sLLM 서버 (옵션: vLLM/Ollama 등)
   ########################################
   sllm-server:
     # 로컬 sLLM 서버를 ECR에 올린 경우 사용
@@ -110,7 +147,7 @@ services:
     #         - capabilities: ["gpu"]
 
   ########################################
-  # 6) Nginx (옵션: 프록시/도메인 붙일 때)
+  # 7) Nginx (옵션: 프록시/도메인 붙일 때)
   ########################################
   nginx:
     image: nginx:1.27-alpine
@@ -127,3 +164,5 @@ volumes:
   pgvector-data:
   neo4j-data:
   neo4j-logs:
+  rabbitmq-data:        # RabbitMQ 데이터 영속성
+  rabbitmq-logs:        # RabbitMQ 로그
