@@ -17,7 +17,7 @@ sys.path.insert(0, str(common_path))
 normalize_module = importlib.import_module("rag.etl.step02_normalize.03_normalize_protocols")
 normalize_run = normalize_module.run
 
-chunker_module = importlib.import_module("rag.etl.step04_chunk.03_chunker_protocols")
+chunker_module = importlib.import_module("rag.etl.step04_chunk.chunker_protocols")
 chunk_process_file = chunker_module.process_file
 
 from s3_utils import (
