@@ -1,0 +1,591 @@
+version: "2.6"
+name: "neo4j_rag_router_policy_12cell_reflect_actual_graph"
+
+globals:
+  defaults:
+    language: "ko"
+    hop_max: 3
+
+    seed_k:
+      entity_ft: 5
+      mention_ft: 50
+
+      paper_chunk_ft: 80
+      paper_chunk_vec: 80
+
+      protocol_chunk_ft: 80
+      protocol_chunk_vec: 80
+
+      clinical_chunk_ft: 80
+      clinical_chunk_vec: 80
+
+      exp_material_ft: 50
+      exp_equipment_ft: 50
+      journal_ft: 30
+
+    fanout:
+      articles_max: 30
+      evidence_chunks_per_article: 5
+
+      protocols_max: 10
+      assays_max: 30
+      methods_max: 30
+      experiments_max: 30
+
+      trials_max: 20
+      evidence_chunks_per_trial: 5
+
+    stop_roots:
+      paper: "Article"
+      protocol: ["Protocol", "Experiment"]
+      clinical: "ClinicalTrial"
+
+  indexes:
+    fulltext:
+      entity: "entityTextIndex"          # normalized keyword
+      mention: "mentionTextIndex"        # raw keyword
+
+      paper_chunk: "chunkTextIndex"      # article-only
+
+      protocol_chunk: "protocolChunkTextIndex"
+      clinical_chunk: "clinicalChunkTextIndex"
+
+      trial: "clinicalTrialTextIndex"    # optional
+
+      # ✅ NEW: material/equipment/journal
+      exp_material: "expMaterialTextIndex"
+      exp_equipment: "expEquipmentTextIndex"
+      journal: "journalTextIndex"
+
+    vector:
+      paper_chunk: "articleChunkEmbeddingIndex"
+      protocol_chunk: "protocolChunkEmbeddingIndex"
+      clinical_chunk: "clinicalChunkEmbeddingIndex"
+
+      #article_structure: "articleFastRPIndex"  # optional
+
+  graph_schema:
+    core_labels:
+      paper:
+        article: "Article"
+        section: "Section"
+        chunk: "Chunk"
+        mention: "Mention"
+        entity: "Entity"
+        reference: "Reference"
+        cited_work: "CitedWork"
+        meta: ["Journal", "StudyDesign", "Domain", "Topic"]
+        experiment: "Experiment"
+        exp_material: "ExpMaterial"
+        exp_equipment: "ExpEquipment"
+
+      protocol:
+        protocol: "Protocol"
+        protocol_chunk: "ProtocolChunk"
+        category_parent: "CategoryParent"
+        category_leaf: "CategoryLeaf"
+
+      clinical:
+        trial: "ClinicalTrial"
+        clinical_chunk: "ClinicalChunk"
+
+      primekg:
+        nodes: ["Drug", "Disease", "GeneProtein", "Pathway", "Anatomy", "CellularComponent", "BiologicProcess", "EffectPhenotype", "MolecularFunction", "Exposure"]
+
+    core_relations:
+      # paper body
+      ARTICLE_HAS_SECTION: "HAS_SECTION"
+      SECTION_HAS_CHUNK: "HAS_CHUNK"
+
+      # raw/normalized keyword
+      SECTION_HAS_MENTION: "HAS_MENTION"
+      MENTION_NORMALIZED_TO_ENTITY: "NORMALIZED_TO"
+
+      # article metadata
+      ARTICLE_IN_JOURNAL: "IN_JOURNAL"
+      ARTICLE_HAS_STUDY_DESIGN: "HAS_STUDY_DESIGN"
+      ARTICLE_IN_DOMAIN: "IN_DOMAIN"
+      ARTICLE_HAS_TOPIC: "HAS_TOPIC"
+
+      # citation graph (✅ Reference 유지)
+      ARTICLE_HAS_REFERENCE: "HAS_REFERENCE"
+      REFERENCE_CITES_WORK: "CITES_WORK"
+      ARTICLE_CITES_WORK: "CITES_WORK"  # if exists
+
+      # experiment/protocol linkage
+      ARTICLE_HAS_EXPERIMENT: "HAS_EXPERIMENT"
+      EXPERIMENT_LINKS_PROTOCOL: "LINKS_PROTOCOL"
+      PROTOCOL_HAS_CHUNK: "HAS_CHUNK"
+
+      EXPERIMENT_HAS_CATEGORY_PARENT: "HAS_CATEGORY_PARENT"
+      EXPERIMENT_HAS_CATEGORY_LEAF: "HAS_CATEGORY_LEAF"
+      CATEGORY_LEAF_MERGED_TO_ENTITY: "MERGED_TO_ENTITY"
+
+      # ✅ NEW: experiment meta linkage
+      EXPERIMENT_HAS_MATERIAL: "HAS_MATERIAL"
+      EXPERIMENT_HAS_EQUIPMENT: "HAS_EQUIPMENT"
+
+      # clinical linkage
+      ENTITY_LINKS_TRIAL: "LINKS_TRIAL"
+      TRIAL_HAS_CHUNK: "HAS_CHUNK"
+
+      # primekg linkage
+      ENTITY_MAPS_TO_PRIMEKG: "MAPS_TO_PRIMEKG"
+
+  gds_properties:
+    article:
+      authority: ["pagerank", "articleRank"]
+      bridge: ["betweenness"]
+      community: ["community_id"]
+    primekg:
+      community: ["community_id"]
+      embedding: ["fastrp_vec"]
+    protocol:
+      usage: ["usage_degree", "article_cnt"]
+      community: ["community_id"]
+    clinical:
+      primary_sort: ["phase", "year"]
+      effect_fields: ["hr", "p_value", "ci"]
+
+routing: # T4 routing rule 수정
+  resolution_order:
+    track: ["T4", "T3", "T2", "T1"]
+    domain: ["paper", "protocol", "clinical"]
+
+  cross_domain_evidence_rules:
+    protocol_question_can_use_paper_chunks_when:
+      any_intent_contains: ["조건", "파라미터", "비교", "유사", "사례", "케이스", "논문에서는"]
+      evidence_sources_priority: ["ProtocolChunk", "PaperChunk"]
+
+    multi_domain_expansion_T4_when:
+      any_intent_contains: ["복합", "종합", "임상", "기전", "MOA", "primekg", "지식그래프", "근거를 같이", "evidence + mechanism"]
+      note: "T4는 multi-domain 확장을 허용하는 트랙"
+
+  cells:
+
+    # =========================
+    # PAPER (T1~T4)
+    # =========================
+    paper__T1:
+      seed_strategy:
+        primary: "FT_ENTITY_RESOLVE"
+        fallback: ["FT_JOURNAL", "FT_PAPER_CHUNK", "FT_MENTION_RAW"]
+      expand:
+        stop_root: "Article"
+        paths:
+          - ["Entity", "MENTION_NORMALIZED_TO_ENTITY<-Mention", "SECTION_HAS_MENTION<-Section", "ARTICLE_HAS_SECTION<-Article"]
+          - ["Journal", "ARTICLE_IN_JOURNAL<-Article"]
+          - ["Article", "ARTICLE_HAS_TOPIC->Topic"]
+          - ["Article", "ARTICLE_HAS_STUDY_DESIGN->StudyDesign"]
+          - ["Article", "ARTICLE_IN_DOMAIN->Domain"]
+      evidence:
+        sources: ["Mention", "Chunk"]
+        max_per_article: 5
+      scoring:
+        order_by:
+          - {field: "mention_cnt", dir: "DESC"}
+          - {field: "a.year", dir: "DESC"}
+          - {field: "a.pagerank", dir: "DESC", optional: true}
+      limits:
+        hop_max: 2
+        fanout: {articles_max: 20, evidence_chunks_per_article: 5}
+
+    paper__T2:
+      seed_strategy:
+        primary: "HY_PAPER_CHUNK_VEC_PLUS_MUST"
+        fallback: ["VEC_PAPER_CHUNK", "FT_PAPER_CHUNK", "FT_JOURNAL", "FT_MENTION_RAW", "FT_ENTITY_RESOLVE"]
+      expand:
+        stop_root: "Article"
+        paths:
+          - ["Chunk", "SECTION_HAS_CHUNK<-Section", "ARTICLE_HAS_SECTION<-Article"]
+          - ["Section", "SECTION_HAS_MENTION->Mention", "MENTION_NORMALIZED_TO_ENTITY->Entity"]
+      evidence:
+        sources: ["Chunk"]
+        max_per_article: 5
+      scoring:
+        order_by:
+          - {field: "vec_score", dir: "DESC"}
+          - {field: "a.pagerank", dir: "DESC", optional: true}
+          - {field: "a.community_id", dir: "ASC", diversify: {per_bucket: 3}, optional: true}
+      limits:
+        hop_max: 2
+        fanout: {articles_max: 30, evidence_chunks_per_article: 5, chunk_seed_k: 80}
+
+    paper__T3:
+      seed_strategy:
+        primary: "FT_ENTITY_RESOLVE"
+        secondary: "HY_PAPER_CHUNK_VEC_PLUS_MUST"
+        fallback: ["FT_JOURNAL"]
+      expand:
+        stop_root: "Article"
+        include_sets: ["candidate_articles_set", "cited_works_set"]
+        paths:
+          - ["Entity", "MENTION_NORMALIZED_TO_ENTITY<-Mention", "SECTION_HAS_MENTION<-Section", "ARTICLE_HAS_SECTION<-Article"]
+          - ["Article", "ARTICLE_HAS_REFERENCE->Reference", "REFERENCE_CITES_WORK->CitedWork"]
+          - ["Article", "ARTICLE_CITES_WORK->CitedWork"]
+          - ["Article", "ARTICLE_HAS_TOPIC->Topic"]
+          - ["Article", "ARTICLE_IN_DOMAIN->Domain"]
+          - ["Article", "ARTICLE_HAS_STUDY_DESIGN->StudyDesign"]
+      scoring:
+        order_by:
+          - {field: "a.pagerank", dir: "DESC", optional: true}
+          - {field: "a.betweenness", dir: "DESC", optional: true}
+          - {field: "a.community_id", dir: "ASC", diversify: {per_bucket: 5}, optional: true}
+      limits:
+        hop_max: 3
+        fanout: {set_size_target: 250, articles_max: 60, evidence_chunks_per_article: 3}
+
+    paper__T4:
+      intent: "paper 중심이지만 임상/primekg까지 같이 확장해야 하는 종합 질문"
+      seed_strategy:
+        primary: "FT_ENTITY_RESOLVE"
+        secondary: "HY_PAPER_CHUNK_VEC_PLUS_MUST"
+      expand:
+        stop_root: "Article"
+        multi_domain_expansion:
+          expand_domains: ["paper", "clinical", "primekg"]
+          domain_paths:
+            paper:
+              - ["Entity", "MENTION_NORMALIZED_TO_ENTITY<-Mention", "SECTION_HAS_MENTION<-Section", "ARTICLE_HAS_SECTION<-Article"]
+              - ["Article", "ARTICLE_HAS_REFERENCE->Reference", "REFERENCE_CITES_WORK->CitedWork"]
+            clinical:
+              - ["Entity", "ENTITY_LINKS_TRIAL->ClinicalTrial", "TRIAL_HAS_CHUNK->ClinicalChunk"]
+            primekg:
+              - ["Entity", "ENTITY_MAPS_TO_PRIMEKG->(PrimeKGNode)", "PrimeKG 1hop neighborhood"]
+      evidence:
+        sources_priority: ["Chunk", "ClinicalChunk", "Mention"]
+        require_evidence: true
+      scoring:
+        order_by:
+          - {field: "a.pagerank", dir: "DESC", optional: true}
+          - {field: "trial.phase", dir: "DESC", optional: true}
+      limits:
+        hop_max: 3
+        fanout: {articles_max: 30, trials_max: 15, evidence_chunks_per_article: 3, evidence_chunks_per_trial: 3}
+
+    # =========================
+    # PROTOCOL (T1~T4)
+    # =========================
+    protocol__T1:
+      seed_strategy:
+        primary: "FT_ENTITY_RESOLVE"
+        fallback: ["FT_EXPMATERIAL", "FT_EXPEQUIPMENT", "FT_PROTOCOL_CHUNK", "FT_MENTION_RAW"]
+      expand:
+        stop_root: ["Protocol", "Experiment"]
+        paths:
+          - ["Entity", "MENTION_NORMALIZED_TO_ENTITY<-Mention", "SECTION_HAS_MENTION<-Section", "ARTICLE_HAS_SECTION<-Article", "ARTICLE_HAS_EXPERIMENT->Experiment"]
+          - ["Experiment", "EXPERIMENT_HAS_MATERIAL->ExpMaterial"]
+          - ["Experiment", "EXPERIMENT_HAS_EQUIPMENT->ExpEquipment"]
+          - ["Experiment", "EXPERIMENT_LINKS_PROTOCOL->Protocol", "PROTOCOL_HAS_CHUNK->ProtocolChunk"]
+          - ["Experiment", "EXPERIMENT_HAS_CATEGORY_PARENT->CategoryParent"]
+          - ["Experiment", "EXPERIMENT_HAS_CATEGORY_LEAF->CategoryLeaf", "CATEGORY_LEAF_MERGED_TO_ENTITY->Entity"]
+      evidence:
+        sources: ["ProtocolChunk", "Chunk"]
+      scoring:
+        order_by:
+          - {field: "protocol.usage_degree", dir: "DESC", optional: true}
+          - {field: "experiment_cnt", dir: "DESC", optional: true}
+          - {field: "a.year", dir: "DESC", optional: true}
+      limits:
+        hop_max: 3
+        fanout: {protocols_max: 10, experiments_max: 30, assays_max: 30, methods_max: 30}
+
+    protocol__T2:
+      seed_strategy:
+        primary: "HY_PROTOCOL_CHUNK_VEC_PLUS_MUST"
+        fallback:
+          - "VEC_PROTOCOL_CHUNK"
+          - "FT_PROTOCOL_CHUNK"
+          - "FT_EXPMATERIAL"
+          - "FT_EXPEQUIPMENT"
+          - "HY_PAPER_CHUNK_VEC_PLUS_MUST"
+          - "VEC_PAPER_CHUNK"
+          - "FT_ENTITY_RESOLVE"
+      expand:
+        stop_root: ["Protocol", "Experiment"]
+        policy_note: "조건/파라미터 발췌는 ProtocolChunk 우선. 부족하면 PaperChunk 보조 근거 허용."
+        paths:
+          - ["ProtocolChunk", "PROTOCOL_HAS_CHUNK<-Protocol", "EXPERIMENT_LINKS_PROTOCOL<-Experiment", "ARTICLE_HAS_EXPERIMENT<-Article"]
+          - ["Chunk", "SECTION_HAS_CHUNK<-Section", "ARTICLE_HAS_SECTION<-Article", "ARTICLE_HAS_EXPERIMENT->Experiment"]
+          - ["ExpMaterial", "EXPERIMENT_HAS_MATERIAL<-Experiment", "EXPERIMENT_LINKS_PROTOCOL->Protocol", "PROTOCOL_HAS_CHUNK->ProtocolChunk"]
+          - ["ExpEquipment", "EXPERIMENT_HAS_EQUIPMENT<-Experiment", "EXPERIMENT_LINKS_PROTOCOL->Protocol", "PROTOCOL_HAS_CHUNK->ProtocolChunk"]
+      evidence:
+        sources_priority: ["ProtocolChunk", "Chunk"]
+        require_evidence: true
+      scoring:
+        order_by:
+          - {field: "vec_score", dir: "DESC"}
+          - {field: "protocol.usage_degree", dir: "DESC", optional: true}
+          - {field: "a.year", dir: "DESC", optional: true}
+      limits:
+        hop_max: 3
+        fanout: {protocol_chunk_seed_k: 80, paper_chunk_seed_k: 80, evidence_chunks_per_article: 3}
+
+    protocol__T3:
+      seed_strategy:
+        primary: "FT_ENTITY_RESOLVE"
+        secondary: "HY_PROTOCOL_CHUNK_VEC_PLUS_MUST"
+        fallback: ["FT_EXPMATERIAL", "FT_EXPEQUIPMENT", "HY_PAPER_CHUNK_VEC_PLUS_MUST"]
+      expand:
+        stop_root: ["Protocol", "Experiment"]
+        policy_note: "설계/절차 추천은 ProtocolChunk 중심. 비교/유사 사례는 PaperChunk 보조."
+        include_sets: ["candidate_protocols_set", "candidate_experiments_set", "paper_examples_set"]
+        paths:
+          - ["Entity", "MENTION_NORMALIZED_TO_ENTITY<-Mention", "SECTION_HAS_MENTION<-Section", "ARTICLE_HAS_SECTION<-Article", "ARTICLE_HAS_EXPERIMENT->Experiment"]
+          - ["Experiment", "EXPERIMENT_HAS_MATERIAL->ExpMaterial"]
+          - ["Experiment", "EXPERIMENT_HAS_EQUIPMENT->ExpEquipment"]
+          - ["Experiment", "EXPERIMENT_LINKS_PROTOCOL->Protocol", "PROTOCOL_HAS_CHUNK->ProtocolChunk"]
+          - ["Article", "ARTICLE_HAS_TOPIC->Topic"]
+          - ["Article", "ARTICLE_IN_DOMAIN->Domain"]
+      scoring:
+        order_by:
+          - {field: "protocol.usage_degree", dir: "DESC", optional: true}
+          - {field: "a.year", dir: "DESC", optional: true}
+          - {field: "topic_diversity", dir: "DESC", optional: true}
+      limits:
+        hop_max: 3
+        fanout: {protocols_max: 15, experiments_max: 50, set_size_target: 200}
+
+    protocol__T4:
+      intent: "실험방법 질문이지만 질병/약물/임상/primekg까지 같이 답해야 하는 종합 질문"
+      seed_strategy:
+        primary: "FT_ENTITY_RESOLVE"
+        secondary: "HY_PROTOCOL_CHUNK_VEC_PLUS_MUST"
+        fallback: ["FT_EXPMATERIAL", "FT_EXPEQUIPMENT", "HY_PAPER_CHUNK_VEC_PLUS_MUST"]
+      expand:
+        stop_root: ["Protocol", "Experiment"]
+        multi_domain_expansion:
+          expand_domains: ["protocol", "paper", "clinical", "primekg"]
+          domain_paths:
+            protocol:
+              - ["Entity", "MENTION_NORMALIZED_TO_ENTITY<-Mention", "SECTION_HAS_MENTION<-Section", "ARTICLE_HAS_SECTION<-Article", "ARTICLE_HAS_EXPERIMENT->Experiment"]
+              - ["Experiment", "EXPERIMENT_LINKS_PROTOCOL->Protocol", "PROTOCOL_HAS_CHUNK->ProtocolChunk"]
+            paper:
+              - ["Entity", "MENTION_NORMALIZED_TO_ENTITY<-Mention", "SECTION_HAS_MENTION<-Section", "ARTICLE_HAS_SECTION<-Article"]
+            clinical:
+              - ["Entity", "ENTITY_LINKS_TRIAL->ClinicalTrial", "TRIAL_HAS_CHUNK->ClinicalChunk"]
+            primekg:
+              - ["Entity", "ENTITY_MAPS_TO_PRIMEKG->(PrimeKGNode)", "PrimeKG 1hop neighborhood"]
+      evidence:
+        sources_priority: ["ProtocolChunk", "Chunk", "ClinicalChunk"]
+        require_evidence: true
+      scoring:
+        order_by:
+          - {field: "protocol.usage_degree", dir: "DESC", optional: true}
+          - {field: "a.year", dir: "DESC", optional: true}
+          - {field: "trial.phase", dir: "DESC", optional: true}
+      limits:
+        hop_max: 3
+        fanout: {protocols_max: 15, articles_max: 20, trials_max: 10, evidence_chunks_per_article: 2, evidence_chunks_per_trial: 2}
+
+    # =========================
+    # CLINICAL (T1~T4)
+    # =========================
+    clinical__T1:
+      seed_strategy:
+        primary: "FT_TRIAL_ID"
+        fallback: ["FT_ENTITY_RESOLVE", "FT_CLINICAL_CHUNK"]
+      expand:
+        stop_root: "ClinicalTrial"
+        paths:
+          - ["ClinicalTrial"]
+          - ["ClinicalTrial", "TRIAL_HAS_CHUNK->ClinicalChunk"]
+      evidence:
+        sources: ["ClinicalChunk"]
+        require_evidence: false
+      scoring:
+        order_by:
+          - {field: "match_quality", dir: "DESC", optional: true}
+      limits:
+        hop_max: 1
+        fanout: {trials_max: 5, evidence_chunks_per_trial: 3}
+
+    clinical__T2:
+      seed_strategy:
+        primary: "HY_CLINICAL_CHUNK_VEC_PLUS_MUST"
+        fallback: ["VEC_CLINICAL_CHUNK", "FT_TRIAL_ID", "FT_ENTITY_RESOLVE"]
+      expand:
+        stop_root: "ClinicalTrial"
+        paths:
+          - ["ClinicalChunk", "TRIAL_HAS_CHUNK<-ClinicalTrial"]
+          - ["ClinicalTrial", "ENTITY_LINKS_TRIAL<-Entity", "MENTION_NORMALIZED_TO_ENTITY<-Mention", "SECTION_HAS_MENTION<-Section", "ARTICLE_HAS_SECTION<-Article"]
+      evidence:
+        sources: ["ClinicalChunk"]
+        require_evidence: true
+      scoring:
+        order_by:
+          - {field: "vec_score", dir: "DESC"}
+          - {field: "trial.phase", dir: "DESC", optional: true}
+          - {field: "trial.year", dir: "DESC", optional: true}
+      limits:
+        hop_max: 2
+        fanout: {clinical_chunk_seed_k: 80, trials_max: 20, evidence_chunks_per_trial: 5}
+
+    clinical__T3:
+      seed_strategy:
+        primary: "DUAL_SEED_BY_ENTITY_OR_TRIALID"
+        secondary: "HY_CLINICAL_CHUNK_VEC_PLUS_MUST"
+      expand:
+        stop_root: "ClinicalTrial"
+        paths:
+          - ["Entity", "ENTITY_LINKS_TRIAL->ClinicalTrial", "TRIAL_HAS_CHUNK->ClinicalChunk"]
+      evidence:
+        sources_priority: ["ClinicalChunk"]
+        require_evidence: true
+      scoring:
+        order_by:
+          - {field: "trial.phase", dir: "DESC"}
+          - {field: "effect_size", dir: "DESC", optional: true}
+          - {field: "trial.year", dir: "DESC"}
+      limits:
+        hop_max: 2
+        fanout: {set_size_each: 30, trials_max: 50, evidence_chunks_per_trial: 3}
+
+    clinical__T4:
+      intent: "Drug/Disease 기반 복합 질문: clinical + primekg + paper(+protocol 선택) 종합"
+      seed_strategy:
+        primary: "DUAL_SEED_BY_ENTITY_OR_TRIALID"
+        secondary: "HY_CLINICAL_CHUNK_VEC_PLUS_MUST"
+        fallback: ["HY_PAPER_CHUNK_VEC_PLUS_MUST", "HY_PROTOCOL_CHUNK_VEC_PLUS_MUST"]
+      expand:
+        stop_root: "ClinicalTrial"
+        multi_domain_expansion:
+          expand_domains: ["clinical", "primekg", "paper", "protocol"]
+          domain_paths:
+            clinical:
+              - ["Entity", "ENTITY_LINKS_TRIAL->ClinicalTrial", "TRIAL_HAS_CHUNK->ClinicalChunk"]
+            primekg:
+              - ["Entity", "ENTITY_MAPS_TO_PRIMEKG->(PrimeKGNode)", "PrimeKG 1hop neighborhood"]
+            paper:
+              - ["Entity", "MENTION_NORMALIZED_TO_ENTITY<-Mention", "SECTION_HAS_MENTION<-Section", "ARTICLE_HAS_SECTION<-Article"]
+              - ["Article", "ARTICLE_HAS_REFERENCE->Reference", "REFERENCE_CITES_WORK->CitedWork"]
+            protocol:
+              - ["Entity", "MENTION_NORMALIZED_TO_ENTITY<-Mention", "SECTION_HAS_MENTION<-Section", "ARTICLE_HAS_SECTION<-Article", "ARTICLE_HAS_EXPERIMENT->Experiment"]
+              - ["Experiment", "EXPERIMENT_LINKS_PROTOCOL->Protocol", "PROTOCOL_HAS_CHUNK->ProtocolChunk"]
+      evidence:
+        sources_priority: ["ClinicalChunk", "Chunk", "ProtocolChunk", "Mention"]
+        require_evidence: true
+      scoring:
+        order_by:
+          - {field: "trial.phase", dir: "DESC"}
+          - {field: "effect_size", dir: "DESC", optional: true}
+          - {field: "trial.year", dir: "DESC"}
+          - {field: "a.pagerank", dir: "DESC", optional: true}
+      limits:
+        hop_max: 3
+        fanout: {trials_max: 30, articles_max: 20, protocols_max: 10, evidence_chunks_per_trial: 3, evidence_chunks_per_article: 2}
+
+operators:
+  # =========================
+  # KEYWORD SEEDS
+  # =========================
+  FT_ENTITY_RESOLVE:
+    tool: "neo4j_fulltext"
+    index: "entityTextIndex"
+    output_seed_type: "entity_ids"
+
+  FT_MENTION_RAW:
+    tool: "neo4j_fulltext"
+    index: "mentionTextIndex"
+    output_seed_type: "mention_ids"
+
+  FT_JOURNAL:
+    tool: "neo4j_fulltext"
+    index: "journalTextIndex"
+    output_seed_type: "journal_ids"
+
+  FT_EXPMATERIAL:
+    tool: "neo4j_fulltext"
+    index: "expMaterialTextIndex"
+    output_seed_type: "exp_material_ids"
+
+  FT_EXPEQUIPMENT:
+    tool: "neo4j_fulltext"
+    index: "expEquipmentTextIndex"
+    output_seed_type: "exp_equipment_ids"
+
+  # =========================
+  # PAPER CHUNK (article-only)
+  # =========================
+  FT_PAPER_CHUNK:
+    tool: "neo4j_fulltext"
+    index: "chunkTextIndex"
+    output_seed_type: "paper_chunk_ids"
+
+  VEC_PAPER_CHUNK:
+    tool: "neo4j_vector"
+    index: "articleChunkEmbeddingIndex"
+    output_seed_type: "paper_chunk_ids"
+
+  HY_PAPER_CHUNK_VEC_PLUS_MUST:
+    tool: "neo4j_vector_then_filter"
+    vector_index: "articleChunkEmbeddingIndex"
+    filter: {must: "from_query_rewrite", must_not: "from_query_rewrite"}
+    output_seed_type: "paper_chunk_ids"
+
+  # =========================
+  # PROTOCOL CHUNK
+  # =========================
+  FT_PROTOCOL_CHUNK:
+    tool: "neo4j_fulltext_optional"
+    index: "protocolChunkTextIndex"
+    output_seed_type: "protocol_chunk_ids"
+
+  VEC_PROTOCOL_CHUNK:
+    tool: "neo4j_vector"
+    index: "protocolChunkEmbeddingIndex"
+    output_seed_type: "protocol_chunk_ids"
+
+  HY_PROTOCOL_CHUNK_VEC_PLUS_MUST:
+    tool: "neo4j_vector_then_filter"
+    vector_index: "protocolChunkEmbeddingIndex"
+    filter: {must: "from_query_rewrite", must_not: "from_query_rewrite"}
+    output_seed_type: "protocol_chunk_ids"
+
+  # =========================
+  # CLINICAL CHUNK / TRIAL
+  # =========================
+  FT_CLINICAL_CHUNK:
+    tool: "neo4j_fulltext_optional"
+    index: "clinicalChunkTextIndex"
+    output_seed_type: "clinical_chunk_ids"
+
+  VEC_CLINICAL_CHUNK:
+    tool: "neo4j_vector"
+    index: "clinicalChunkEmbeddingIndex"
+    output_seed_type: "clinical_chunk_ids"
+
+  HY_CLINICAL_CHUNK_VEC_PLUS_MUST:
+    tool: "neo4j_vector_then_filter"
+    vector_index: "clinicalChunkEmbeddingIndex"
+    filter: {must: "from_query_rewrite", must_not: "from_query_rewrite"}
+    output_seed_type: "clinical_chunk_ids"
+
+  FT_TRIAL_ID:
+    tool: "neo4j_lookup"
+    by: ["nct_id", "trial_id"]
+    output_seed_type: "trial_ids"
+
+  FT_TRIAL_ID_OR_ENTITY:
+    tool: "router_choice"
+    choices: ["FT_TRIAL_ID", "FT_ENTITY_RESOLVE"]
+
+  DUAL_SEED_BY_ENTITY_OR_TRIALID:
+    tool: "multi_seed"
+    seeds: ["FT_TRIAL_ID_OR_ENTITY", "FT_TRIAL_ID_OR_ENTITY"]
+
+postprocessing:
+  safeguards:
+    enforce_stop_root: true
+
+    restrict_cross_domain_seed_usage:
+      protocol:
+        paper_chunk_as_seed_allowed_only_when:
+          any_intent_contains: ["조건", "파라미터", "비교", "유사", "사례"]
+      clinical:
+        paper_chunk_as_seed_allowed_only_when:
+          any_intent_contains: ["기전", "MOA", "관련 논문", "근거", "전임상", "메커니즘"]
+
+    evidence_policy:
+      require_evidence_for_T2: true
+      evidence_must_come_from_chunks: true
