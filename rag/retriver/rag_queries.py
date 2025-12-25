@@ -414,7 +414,7 @@ class GraphCellQueries:
     RETURN collect(m { text: m.raw_text, .type })[0..coalesce($evidence_per_article, 5)] AS evidence_mentions
     }
 
-    OPTIONAL MATCH (a)-[:IN_JOURNAL]->(j:Journal)
+    OPTIONAL MATCH (a)-[:PUBLISHED_IN]->(j:Journal)
     RETURN
     a { .doi, .title, .year, .abstract } AS article,
     mention_cnt,
@@ -442,7 +442,7 @@ class GraphCellQueries:
     MATCH (a)-[:HAS_SECTION]->(:Section)-[:HAS_CHUNK]->(c2:Chunk)
     RETURN collect(c2 { .chunk_id, .text })[0..coalesce($evidence_per_article, 5)] AS evidence_chunks
     }
-    OPTIONAL MATCH (a)-[:IN_JOURNAL]->(j:Journal)
+    OPTIONAL MATCH (a)-[:PUBLISHED_IN]->(j:Journal)
 
     RETURN 
     a { .doi, .title, .year } AS article,
