@@ -27,8 +27,8 @@ class ConversationMemory(Base):
     __tablename__ = "t_memory"
 
     # 이미지 순서대로 컬럼 정의
-    chat_sid = Column(Integer, Sequence('chat_sid_seq'), primary_key=True, autoincrement=True)  # 채팅응답아이디 (PK)
-    chat_room_id = Column(String, nullable=False, index=True)  # 채팅방 아이디
+    chat_sid = Column(Integer, primary_key=True, autoincrement=True)
+    chat_room_id = Column(Integer, nullable=False, index=True)  # 채팅방 아이디 (Integer)
     user_id = Column(String, nullable=False)  # 유저 아이디
     case_type = Column(String, nullable=False, index=True)  # 질문유형
     original_question = Column(Text)  # 질문 원문
