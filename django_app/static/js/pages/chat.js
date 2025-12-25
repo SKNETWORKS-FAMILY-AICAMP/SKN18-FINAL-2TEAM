@@ -303,12 +303,14 @@ async function handleSend() {
     // Close recommendations
     closeRecommendations();
 
-    // 새로운 질문을 보낼 때 이전 레퍼런스 모달 숨기기
-    references = [];
+    // 새로운 질문을 보낼 때 레퍼런스 패널 숨기기 (타이핑 완료 후 표시될 예정)
+    // references = []; // 주석 처리: 새 응답의 레퍼런스가 타이핑 완료 후 표시됨
+    // allReferences는 유지 (누적)
+    references = []; // 기존 레퍼런스 비우기
     if (referencesSidebar) {
         referencesSidebar.style.display = 'none';
     }
-    renderReferences();
+    renderReferences(); // 빈 상태로 렌더링하여 깜빡임 방지
 
     // 목적: AI 응답 대기 중 사용자에게 로딩 상태 표시
     // AI 로딩 메시지 추가 (애니메이션 효과와 함께 표시됨)
@@ -374,21 +376,39 @@ async function handleSend() {
                 messages.push(assistantMessage);
                 
                 // 참고문헌을 먼저 추가 (타이핑 애니메이션 중에도 보이도록)
+                console.log('[DEBUG] Received references:', data.references);
+                console.log('[DEBUG] AI message ID:', data.messages[1].id, 'type:', typeof data.messages[1].id);
                 if (data.references && Array.isArray(data.references)) {
-                    const newRefs = data.references.map(ref => ({
-                        ...ref,
-                        message_id: data.messages[1].id
-                    }));
+                    const messageId = data.messages[1].id;
+
+                    // 이 메시지에 대한 기존 레퍼런스 제거 (중복 방지)
+                    allReferences = allReferences.filter(ref => ref.message_id !== messageId);
+
+                    // 중복 제거: 같은 URL/title을 가진 reference는 하나만 추가
+                    const newRefs = data.references
+                        .filter((ref, index, self) => {
+                            // URL이 있으면 URL 기준, 없으면 title 기준으로 중복 체크
+                            const key = ref.url || ref.title;
+                            return index === self.findIndex(r => (r.url || r.title) === key);
+                        })
+                        .map(ref => ({
+                            ...ref,
+                            message_id: messageId
+                        }));
+
+                    console.log('[DEBUG] New references to add (after dedup):', newRefs.length, '개');
                     allReferences = [...allReferences, ...newRefs];
+                    console.log('[DEBUG] Total allReferences:', allReferences.length);
                 }
-                
+
                 // 타이핑 애니메이션 시작 (비동기)
                 const messageIndex = messages.length - 1;
                 typeWriterEffect(aiContent, messageIndex, 40).then(() => {
+                    console.log('[DEBUG] Typing animation completed, updating references');
                     // 타이핑 완료 후 참고문헌 업데이트
                     updateVisibleReferences();
                 });
-                
+
                 // 일단 렌더링 (빈 메시지, 레퍼런스는 스트리밍 완료 후 표시)
                 renderMessages();
             } else if (data.error) {
@@ -1490,6 +1510,14 @@ async function loadReferences() {
 function renderReferences() {
     if (!referencesList) return;
 
+    // 타이핑 애니메이션이 진행 중이면 레퍼런스 패널을 표시하지 않음 (깜빡임 방지)
+    if (currentTypingAnimation) {
+        if (referencesSidebar) {
+            referencesSidebar.style.display = 'none';
+        }
+        return;
+    }
+
     // Show references sidebar if references exist and messages exist
     if (references.length > 0 && messages.length > 0 && referencesSidebar) {
         referencesSidebar.style.display = 'flex';
@@ -2236,8 +2264,19 @@ function handleMessagesScroll() {
 
 // Update visible references based on currently visible messages
 function updateVisibleReferences() {
+    console.log('[DEBUG] updateVisibleReferences called');
+    console.log('[DEBUG] allReferences:', allReferences);
+    console.log('[DEBUG] allReferences.length:', allReferences?.length);
+
+    // 타이핑 애니메이션이 진행 중이면 레퍼런스 업데이트 건너뛰기 (깜빡임 방지)
+    if (currentTypingAnimation) {
+        console.log('[DEBUG] Typing animation in progress, skipping reference update');
+        return;
+    }
+
     if (!chatMessagesList || !allReferences || allReferences.length === 0) {
         // No references to show
+        console.log('[DEBUG] No references to show - allReferences empty or null');
         references = [];
         renderReferences();
         return;
@@ -2245,8 +2284,10 @@ function updateVisibleReferences() {
 
     // Get AI message items only (exclude user messages)
     const aiMessageItems = chatMessagesList.querySelectorAll('.message-item .message-assistant');
+    console.log('[DEBUG] Found AI message items:', aiMessageItems.length);
 
     if (aiMessageItems.length === 0) {
+        console.log('[DEBUG] No AI message items found');
         references = [];
         renderReferences();
         return;
@@ -2267,7 +2308,10 @@ function updateVisibleReferences() {
         const messageItem = aiMsg.closest('.message-item');
         const messageId = messageItem?.getAttribute('data-message-id');
 
-        if (!messageId) return;
+        if (!messageId) {
+            console.log('[DEBUG] AI message has no message-id attribute');
+            return;
+        }
 
         const rect = messageItem.getBoundingClientRect();
         const messageCenter = (rect.top + rect.bottom) / 2;
@@ -2284,14 +2328,27 @@ function updateVisibleReferences() {
         }
     });
 
+    console.log('[DEBUG] Closest message ID:', closestMessageId);
+
     // Filter references for the closest message only
     if (closestMessageId) {
-        const visibleRefs = allReferences.filter(ref => ref.message_id === closestMessageId);
+        const visibleRefs = allReferences.filter(ref => {
+            // 타입 불일치 문제 해결: 숫자와 문자열 모두 비교
+            const refMessageId = parseInt(ref.message_id);
+            const match = refMessageId === closestMessageId;
+            if (match) {
+                console.log('[DEBUG] Reference matched:', ref.title, 'refMessageId:', refMessageId, 'closestMessageId:', closestMessageId);
+            }
+            return match;
+        });
+        console.log('[DEBUG] Visible references for message', closestMessageId, ':', visibleRefs);
         references = visibleRefs;
     } else {
+        console.log('[DEBUG] No closest message found');
         references = [];
     }
 
+    console.log('[DEBUG] Final references to render:', references);
     renderReferences();
 }
 

@@ -45,8 +45,15 @@ def route_retrieval_or_web(state: BioRAGState):
 
 def route_after_evaluate_web(state: BioRAGState):
     """evaluate_web 이후 라우팅: 조기 종료가 필요하면 memory_write로, 아니면 generate_answer로"""
-    if state.get("should_skip_generation", False):
+    should_skip = state.get("should_skip_generation", False)
+    print(f"\n[ROUTE] route_after_evaluate_web 호출")
+    print(f"[ROUTE] should_skip_generation: {should_skip}")
+
+    if should_skip:
+        print(f"[ROUTE] ✅ GENERATE_ANSWER 건너뛰고 MEMORY_WRITE로 이동")
         return "skip_generation"
+
+    print(f"[ROUTE] ➡️ GENERATE_ANSWER로 이동")
     return "generate_answer"
 
 
