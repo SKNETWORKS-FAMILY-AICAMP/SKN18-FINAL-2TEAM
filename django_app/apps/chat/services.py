@@ -117,20 +117,26 @@ def _format_citations(raw_result: Dict[str, Any]) -> tuple[List[Dict[str, Any]],
     if web_selected_chunks and web_results:
         print(f"[DEBUG _format_citations] web_selected_chunks 처리 중: {len(web_selected_chunks)}개")
 
-        # "웹자료 N:" 형식에서 인덱스 추출
+        # "웹자료 N:" 형식에서 인덱스 추출 (중복 제거)
         selected_indices = []
+        seen_indices = set()  # 중복 방지용
         for chunk in web_selected_chunks:
             try:
                 if chunk.startswith('웹자료') and ':' in chunk:
                     idx_str = chunk.split(':')[0].replace('웹자료', '').strip()
                     idx = int(idx_str) - 1  # 0-based index
-                    selected_indices.append(idx)
-                    print(f"[DEBUG] 웹자료 인덱스 추출: '{chunk[:30]}...' → idx: {idx}")
+                    # 중복 인덱스 제거
+                    if idx not in seen_indices:
+                        selected_indices.append(idx)
+                        seen_indices.add(idx)
+                        print(f"[DEBUG] 웹자료 인덱스 추출: '{chunk[:30]}...' → idx: {idx}")
+                    else:
+                        print(f"[DEBUG] 중복 인덱스 제거: idx={idx}")
             except Exception as e:
                 print(f"[DEBUG] 웹자료 인덱스 추출 실패: {chunk[:30]}, error: {e}")
                 pass
 
-        print(f"[DEBUG] selected_indices: {selected_indices}")
+        print(f"[DEBUG] selected_indices (중복 제거 후): {selected_indices}")
 
         # 선택된 인덱스의 web_results만 references로 추가
         for idx in selected_indices:
