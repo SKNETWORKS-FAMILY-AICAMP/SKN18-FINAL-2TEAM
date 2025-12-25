@@ -303,13 +303,14 @@ async function handleSend() {
     // Close recommendations
     closeRecommendations();
 
-    // 새로운 질문을 보낼 때 이전 레퍼런스 초기화하지 않음 (타이핑 완료 후 표시될 예정)
+    // 새로운 질문을 보낼 때 레퍼런스 패널 숨기기 (타이핑 완료 후 표시될 예정)
     // references = []; // 주석 처리: 새 응답의 레퍼런스가 타이핑 완료 후 표시됨
     // allReferences는 유지 (누적)
+    references = []; // 기존 레퍼런스 비우기
     if (referencesSidebar) {
         referencesSidebar.style.display = 'none';
     }
-    // renderReferences(); // 주석 처리: 타이핑 완료 후 자동으로 렌더링됨
+    renderReferences(); // 빈 상태로 렌더링하여 깜빡임 방지
 
     // 목적: AI 응답 대기 중 사용자에게 로딩 상태 표시
     // AI 로딩 메시지 추가 (애니메이션 효과와 함께 표시됨)
@@ -1509,6 +1510,14 @@ async function loadReferences() {
 function renderReferences() {
     if (!referencesList) return;
 
+    // 타이핑 애니메이션이 진행 중이면 레퍼런스 패널을 표시하지 않음 (깜빡임 방지)
+    if (currentTypingAnimation) {
+        if (referencesSidebar) {
+            referencesSidebar.style.display = 'none';
+        }
+        return;
+    }
+
     // Show references sidebar if references exist and messages exist
     if (references.length > 0 && messages.length > 0 && referencesSidebar) {
         referencesSidebar.style.display = 'flex';
@@ -2258,6 +2267,12 @@ function updateVisibleReferences() {
     console.log('[DEBUG] updateVisibleReferences called');
     console.log('[DEBUG] allReferences:', allReferences);
     console.log('[DEBUG] allReferences.length:', allReferences?.length);
+
+    // 타이핑 애니메이션이 진행 중이면 레퍼런스 업데이트 건너뛰기 (깜빡임 방지)
+    if (currentTypingAnimation) {
+        console.log('[DEBUG] Typing animation in progress, skipping reference update');
+        return;
+    }
 
     if (!chatMessagesList || !allReferences || allReferences.length === 0) {
         // No references to show
