@@ -43,12 +43,12 @@ retrieval_decide_search_strategy_llm = gpt4_1_nano
 
 
 # ===== evaluate_web.py =====
-evaluate_web_node_llm = gpt4_1_nano
+evaluate_web_node_llm = gpt4o_mini
 
 
 # ===== evaluate_chunk.py =====
-evaluate_chunk_bio_node_llm = gpt4_1_nano
-evaluate_chunk_protocol_node_llm = gpt4_1_nano
+evaluate_chunk_bio_node_llm = gpt4o_mini
+evaluate_chunk_protocol_node_llm = gpt4o_mini
 
 
 # ===== generate_answer.py =====

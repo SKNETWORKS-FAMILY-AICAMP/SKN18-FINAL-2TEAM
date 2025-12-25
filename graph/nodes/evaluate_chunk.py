@@ -14,32 +14,85 @@ from graph.llm_config import (
 )
 
 
-def _build_evaluation_prompt(question: str, context: str) -> str:
+# ============================================
+# Helper: 2단계 평가 (Coarse Filter → Mechanistic Relevance)
+# ============================================
+
+def _coarse_filter_prompt(question: str, entities: List[str]) -> str:
     """
-    평가 프롬프트 생성 (공통 템플릿)
-    
+    ✅ 방법 2 - Stage 1: Coarse Filter
+    엔티티 등장 여부만 빠르게 체크
+
+    Args:
+        question: 사용자 질문
+        entities: 추출된 엔티티 리스트
+
+    Returns:
+        Coarse filter 프롬프트
+    """
+    entity_list = " / ".join(entities[:10]) if entities else "the entities in the question"
+
+    return f"""Quick screening: Does ANY of the following chunks mention at least one of these entities?
+
+Entities to check: {entity_list}
+
+Question for context: {question}
+
+Instructions:
+- Answer "YES" if ANY chunk mentions at least one entity
+- Answer "NO" if NO chunks mention any entities
+
+Response format:
+Answer: [YES/NO]
+"""
+
+
+def _build_evaluation_prompt(question: str, context: str, entities: List[str] = None) -> str:
+    """
+    평가 프롬프트 생성 (개선된 템플릿)
+
+    ✅ 방법 1: Indirect mechanistic relevance 명시
+    ✅ 방법 3: 질문을 mini 친화적으로 재구성
+
     Args:
         question: 사용자 질문
         context: 검색된 문서들
-        
+        entities: 추출된 엔티티 리스트 (optional)
+
     Returns:
         평가 프롬프트
     """
-    return f"""다음 검색된 문서들이 사용자 질문에 답변하기에 충분히 관련성이 있는지 평가하세요.
 
-질문: {question}
+    # 엔티티 기반 mini 친화적 질문 재구성
+    evaluation_question = question
+    if entities and len(entities) > 0:
+        entity_mentions = " / ".join(entities[:10])  # 최대 10개까지만
+        evaluation_question = f"Does this chunk describe mechanisms or interactions involving: {entity_mentions}?"
 
-검색된 문서들:
+    return f"""Evaluate whether the following documents are relevant to answering the user's question.
+
+**CRITICAL INSTRUCTION - Consider indirect mechanistic relevance:**
+A chunk is relevant if it provides part of a causal chain needed to answer the question, even if the question entities are not directly linked in one sentence.
+
+For example:
+- If the question asks "How does A affect C?", a chunk describing "A → B" or "B → C" is RELEVANT.
+- If the chunk mentions regulatory pathways, protein interactions, or upstream/downstream mechanisms related to the entities, it is RELEVANT.
+
+Original Question: {question}
+
+Evaluation Focus: {evaluation_question}
+
+Retrieved Documents:
 ---
 {context}
 ---
 
-위 문서들이 질문에 적합한 답변을 제공할 수 있는 자료인지 평가하세요.
+Evaluate whether these documents can provide information to answer the question.
 
-다음 형식으로만 답변하세요:
-관련성: [높음/낮음]
-점수: [0.0-1.0 사이의 숫자]
-이유: [간단한 설명]
+**Response Format:**
+Relevance: [High/Low]
+Score: [0.0-1.0]
+Reason: [Brief explanation]
 """
 
 
@@ -144,6 +197,37 @@ def bio_evaluate_chunk_node(state: Dict[str, Any]) -> Dict[str, Any]:
         print(f"[OpenEvaluate] 검색 결과 없음, 웹 검색으로 이동")
         return state
 
+    # 엔티티 정보 가져오기 (state에서)
+    entities = state.get("entities", [])
+
+    # ✅ 방법 2: 2단계 평가 - Stage 1 (Coarse Filter)
+    if entities:
+        print(f"[BioEvaluate] Stage 1: Coarse Filter (엔티티 등장 여부 체크)...")
+        context_preview = "\n\n".join([
+            f"[문서 {i}] {(result.get('content', str(result)) if isinstance(result, dict) else str(result))[:200]}..."
+            for i, result in enumerate(reranked_results[:5], 1)
+        ])
+
+        coarse_prompt = _coarse_filter_prompt(search_query, entities)
+        coarse_prompt += f"\n\nChunks to check:\n---\n{context_preview}\n---"
+
+        try:
+            coarse_result = evaluate_chunk_bio_node_llm(coarse_prompt)
+            print(f"[BioEvaluate] Coarse Filter 결과: {coarse_result[:100]}")
+
+            # "NO" 또는 "없음"이면 조기 종료
+            if "NO" in coarse_result.upper() or "없음" in coarse_result or "none" in coarse_result.lower():
+                print(f"[BioEvaluate] Stage 1 Failed: 엔티티 미등장, 웹 검색으로 이동")
+                state["chunk_is_relevant"] = False
+                state["chunk_relevance_score"] = 0.0
+                state["selected_chunks"] = []
+                return state
+        except Exception as e:
+            print(f"[BioEvaluate] Coarse Filter 오류 (계속 진행): {e}")
+
+    # ✅ 방법 2: Stage 2 (Mechanistic Relevance) - 통과한 경우만
+    print(f"[BioEvaluate] Stage 2: Mechanistic Relevance 평가...")
+
     # 검색 결과를 컨텍스트로 변환
     context_parts = []
     for i, result in enumerate(reranked_results[:5], 1):  # 최대 5개만 평가
@@ -152,11 +236,11 @@ def bio_evaluate_chunk_node(state: Dict[str, Any]) -> Dict[str, Any]:
         else:
             content = str(result)
         context_parts.append(f"[문서 {i}] {content[:500]}...")
-    
+
     context = "\n\n".join(context_parts)
-    
-    # 평가 프롬프트 생성 (실제 검색에 사용된 질문 사용)
-    prompt = _build_evaluation_prompt(search_query, context)
+
+    # ✅ 평가 프롬프트 생성 (엔티티 정보 포함)
+    prompt = _build_evaluation_prompt(search_query, context, entities)
 
     try:
         # LLM을 사용하여 관련성 평가
@@ -254,6 +338,37 @@ def protocol_evaluate_chunk_node(state: Dict[str, Any]) -> Dict[str, Any]:
         print(f"[SLLMEvaluate] 검색 결과 없음, 웹 검색으로 이동")
         return state
 
+    # 엔티티 정보 가져오기 (state에서)
+    entities = state.get("entities", [])
+
+    # ✅ 방법 2: 2단계 평가 - Stage 1 (Coarse Filter) - Protocol도 동일 적용
+    if entities:
+        print(f"[ProtocolEvaluate] Stage 1: Coarse Filter (엔티티 등장 여부 체크)...")
+        context_preview = "\n\n".join([
+            f"[문서 {i}] {(result.get('content', str(result)) if isinstance(result, dict) else str(result))[:200]}..."
+            for i, result in enumerate(reranked_results[:5], 1)
+        ])
+
+        coarse_prompt = _coarse_filter_prompt(search_query, entities)
+        coarse_prompt += f"\n\nChunks to check:\n---\n{context_preview}\n---"
+
+        try:
+            coarse_result = evaluate_chunk_protocol_node_llm(coarse_prompt)
+            print(f"[ProtocolEvaluate] Coarse Filter 결과: {coarse_result[:100]}")
+
+            # "NO" 또는 "없음"이면 조기 종료
+            if "NO" in coarse_result.upper() or "없음" in coarse_result or "none" in coarse_result.lower():
+                print(f"[ProtocolEvaluate] Stage 1 Failed: 엔티티 미등장, 웹 검색으로 이동")
+                state["chunk_is_relevant"] = False
+                state["chunk_relevance_score"] = 0.0
+                state["selected_chunks"] = []
+                return state
+        except Exception as e:
+            print(f"[ProtocolEvaluate] Coarse Filter 오류 (계속 진행): {e}")
+
+    # ✅ 방법 2: Stage 2 (Mechanistic Relevance) - 통과한 경우만
+    print(f"[ProtocolEvaluate] Stage 2: Mechanistic Relevance 평가...")
+
     # 검색 결과를 컨텍스트로 변환
     context_parts = []
     for i, result in enumerate(reranked_results[:5], 1):  # 최대 5개만 평가
@@ -262,11 +377,11 @@ def protocol_evaluate_chunk_node(state: Dict[str, Any]) -> Dict[str, Any]:
         else:
             content = str(result)
         context_parts.append(f"[문서 {i}] {content[:500]}...")
-    
+
     context = "\n\n".join(context_parts)
-    
-    # 평가 프롬프트 생성 (실제 검색에 사용된 질문 사용)
-    prompt = _build_evaluation_prompt(search_query, context)
+
+    # ✅ 평가 프롬프트 생성 (엔티티 정보 포함)
+    prompt = _build_evaluation_prompt(search_query, context, entities)
 
     try:
         # LLM을 사용하여 관련성 평가

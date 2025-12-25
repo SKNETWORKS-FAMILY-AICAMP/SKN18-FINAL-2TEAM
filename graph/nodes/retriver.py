@@ -14,6 +14,162 @@ from graph.nodes.rag_retriever_bridge import run_rag_retrieval_pipeline
 
 
 # ============================================
+# Helper: Context 로깅 함수
+# ============================================
+
+def _log_contexts_pretty(contexts: List[Dict[str, Any]]) -> None:
+    """
+    검색된 contexts의 전체 내용을 보기 좋게 로그 출력
+    - 근거 파일(Graph Node) 메타데이터 포함
+    - CSV 파일 추적 가능하도록 DOI, chunk_id 등 명시
+
+    Args:
+        contexts: RAG 파이프라인에서 검색된 청크 리스트
+    """
+
+    if not contexts:
+        print("\n  ℹ️  검색된 contexts 없음\n")
+        return
+
+    print(f"\n{'='*60}")
+    print(f"📚 RAG 검색 결과: 총 {len(contexts)}개 청크 검색됨")
+    print(f"{'='*60}\n")
+
+    for i, ctx in enumerate(contexts, 1):
+        # dict가 아닌 경우 처리
+        if not isinstance(ctx, dict):
+            print(f"╔{'═'*59}")
+            print(f"║ 📄 청크 #{i} [UNKNOWN TYPE]")
+            print(f"╠{'═'*59}")
+            print(f"║ ⚠️  예상치 못한 타입: {type(ctx)}")
+            print(f"╠{'─'*59}")
+            print(f"║ {str(ctx)}")
+            print(f"╚{'═'*59}\n")
+            continue
+
+        # Context 타입 판별 (PAPER, PROTOCOL, CLINICAL 등)
+        ctx_type = "UNKNOWN"
+        metadata_lines = []
+        score = None
+        all_chunks = []  # 실제 텍스트 청크들
+
+        # PAPER 타입 감지
+        if "article" in ctx:
+            ctx_type = "PAPER"
+            article = ctx.get("article", {})
+            doi = article.get("doi", "N/A")
+            title = article.get("title", "N/A")
+            year = article.get("year", "N/A")
+            journal = ctx.get("journal_title", "N/A")
+
+            metadata_lines.append(f"║    └─ Article DOI: {doi}")
+            metadata_lines.append(f"║    └─ Title: {title}")
+            metadata_lines.append(f"║    └─ Year: {year}")
+            metadata_lines.append(f"║    └─ Journal: {journal}")
+
+            score = ctx.get("vec_score") or ctx.get("hy_score")
+            all_chunks = ctx.get("evidence_chunks", [])
+
+        # PROTOCOL 타입 감지
+        elif "protocol" in ctx:
+            ctx_type = "PROTOCOL"
+            protocol = ctx.get("protocol", {})
+            protocol_title = protocol.get("title", "N/A")
+            source_article = ctx.get("source_article", {})
+            source_title = source_article.get("title", "N/A")
+            experiment = ctx.get("experiment", {})
+            method_name = experiment.get("method_name", "N/A")
+
+            metadata_lines.append(f"║    └─ Protocol: {protocol_title}")
+            metadata_lines.append(f"║    └─ Source Article: {source_title}")
+            metadata_lines.append(f"║    └─ Experiment Method: {method_name}")
+
+            score = ctx.get("vec_score") or ctx.get("hy_score")
+
+            # Protocol은 두 종류의 청크가 있을 수 있음
+            protocol_chunks = ctx.get("evidence_protocol_chunks", [])
+            paper_chunks = ctx.get("evidence_paper_chunks", [])
+            all_chunks = protocol_chunks  # 일단 protocol 청크만 출력
+
+        # CLINICAL 타입 감지
+        elif "trial" in ctx or "node" in ctx:
+            ctx_type = "CLINICAL"
+            trial = ctx.get("trial") or ctx.get("node", {})
+            nct_id = trial.get("nct_id", "N/A")
+            phase = trial.get("phase", "N/A")
+            title = trial.get("title", "N/A")
+
+            metadata_lines.append(f"║    └─ NCT ID: {nct_id}")
+            metadata_lines.append(f"║    └─ Phase: {phase}")
+            metadata_lines.append(f"║    └─ Title: {title}")
+
+            score = ctx.get("vec_score") or ctx.get("hy_score")
+            all_chunks = ctx.get("evidence", []) or ctx.get("evidence_chunks", [])
+
+        # Fallback: 직접 content 필드가 있는 경우 (backward compatibility)
+        elif "content" in ctx or "text" in ctx:
+            ctx_type = "DIRECT"
+            content = ctx.get("content") or ctx.get("text", "")
+            chunk_id = ctx.get("chunk_id") or ctx.get("chunking_id") or "N/A"
+            domain = ctx.get("domain", "N/A")
+
+            metadata_lines.append(f"║    └─ Chunk ID: {chunk_id}")
+            metadata_lines.append(f"║    └─ Domain: {domain}")
+
+            score = ctx.get("score") or ctx.get("similarity")
+            all_chunks = [{"chunk_id": chunk_id, "text": content}]
+
+        # 헤더 출력
+        print(f"╔{'═'*59}")
+        print(f"║ 📄 청크 #{i} [{ctx_type}]")
+        print(f"╠{'═'*59}")
+        print(f"║ 📌 근거 파일(Graph Node):")
+        for line in metadata_lines:
+            print(line)
+        print(f"║")
+
+        if score is not None:
+            print(f"║ ⭐ Retrieval Score: {score:.4f}" if isinstance(score, float) else f"║ ⭐ Retrieval Score: {score}")
+
+        print(f"║")
+        print(f"║ 📦 Evidence Chunks: {len(all_chunks)}개")
+        print(f"║")
+        print(f"╠{'─'*59}")
+        print(f"║ 📖 청크 실제 내용:")
+        print(f"╠{'─'*59}")
+        print(f"║")
+
+        # 각 청크 내용 출력
+        for chunk in all_chunks:
+            if isinstance(chunk, dict):
+                chunk_id = chunk.get("chunk_id") or chunk.get("chunking_id", "")
+                chunk_text = chunk.get("text", str(chunk))
+
+                if chunk_id:
+                    print(f"║ [Chunk ID: {chunk_id}]")
+
+                # 텍스트 줄바꿈 처리
+                text_lines = chunk_text.split('\n')
+                for line in text_lines:
+                    # 긴 줄은 자동 줄바꿈 (57자 기준)
+                    if len(line) <= 57:
+                        print(f"║ {line}")
+                    else:
+                        while len(line) > 57:
+                            print(f"║ {line[:57]}")
+                            line = line[57:]
+                        if line:
+                            print(f"║ {line}")
+                print(f"║")
+            else:
+                # chunk가 문자열인 경우
+                print(f"║ {str(chunk)}")
+                print(f"║")
+
+        print(f"╚{'═'*59}\n")
+
+
+# ============================================
 # BIO_Q 리트리버 노드 (RAG 파이프라인 연동)
 # ============================================
 
@@ -89,6 +245,10 @@ def retriever_bio_node(state: Dict[str, Any]) -> Dict[str, Any]:
     print(f"\n[RETRIEIVER_BIO NODE] 완료")
     print(f"  contexts: {len(contexts)}개")
     print(f"  entities: {len(entities)}개")
+
+    # 🎯 Contexts 상세 로그 출력
+    _log_contexts_pretty(contexts)
+
     print(f"{'='*60}\n")
 
     return state
@@ -161,6 +321,10 @@ def retriever_protocol_node(state: Dict[str, Any]) -> Dict[str, Any]:
     print(f"\n[RETRIEIVER_PROTOCOL NODE] 완료")
     print(f"  contexts: {len(contexts)}개")
     print(f"  entities: {len(entities)}개")
+
+    # 🎯 Contexts 상세 로그 출력
+    _log_contexts_pretty(contexts)
+
     print(f"{'='*60}\n")
 
     return state    
