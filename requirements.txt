@@ -8,6 +8,8 @@ numpy==1.26.4
 torch==2.2.2
 pandas
 scipy
+spacy
+gilda
 
 # OpenAI API (embedding용)
 openai

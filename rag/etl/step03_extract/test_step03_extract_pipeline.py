@@ -60,7 +60,7 @@ def run_step03_pipeline(source: SourceType = "pubmed", limit: int | None = None)
         ent_mod.run(  # type: ignore[attr-defined]
             processed_dir=cfg.processed_dir,
             entities_dir=cfg.entities_dir,
-            source=source,
+            source="all",
         )
     except Exception as e:
         logger.error("[STEP03-TEST] 01_entity_extraction 실행 실패: %s", e, exc_info=True)

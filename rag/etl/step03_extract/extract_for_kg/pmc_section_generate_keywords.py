@@ -1,6 +1,6 @@
 import pandas as pd
 import spacy
-import scispacy.linking
+import scispacy.linking 
 from scispacy.linking import EntityLinker
 from openai import OpenAI
 import os

@@ -1,15 +1,19 @@
-import pandas as pd
-import gilda
+# [중요] 충돌 방지를 위해 scispacy/torch 관련 모듈을 가장 먼저 import
+import scispacy.linking 
+from scispacy.linking import EntityLinker
 import spacy
+import torch  # 혹시 모르니 명시적으로 추가해도 좋음
+
+import pandas as pd
+import gilda  # <--- 나중에 import
 import os
 from pathlib import Path
 from tqdm import tqdm
-
 # ==========================================
 # [설정] 파일 경로 및 배치 설정
 # ==========================================
-ROOT_DIR = Path(__file__).resolve().parents[2]
-NIH_DIR = ROOT_DIR / "data" / "processed" / "nih" / "nih_csv"
+ROOT_DIR = Path(__file__).resolve().parents[4]
+NIH_DIR = ROOT_DIR / "data" / "processed" / "nih" 
 OUT_DIR = ROOT_DIR / "data" / "entities" / "nih"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -26,14 +30,20 @@ BATCH_SIZE = 2000
 # ==========================================
 # [준비] 모델 및 캐시 초기화
 # ==========================================
-print("⏳ ScispaCy 모델 로딩 중 (NER 전용)...")
-try:
-    # NER 외 불필요한 파이프라인 비활성화로 속도 향상
-    nlp = spacy.load("en_core_sci_sm", disable=["tagger", "parser", "attribute_ruler", "lemmatizer"])
-except OSError:
-    print("❌ 모델을 찾을 수 없습니다. (pip install scispacy...)")
-    exit()
 
+def init_umls_pipeline():
+    """scispaCy + UMLS 링커 초기화 (한 번만 로딩)"""
+    print("⚙️ scispaCy 모델 로딩 중 (en_core_sci_lg)...")
+    try:
+        nlp = spacy.load("en_core_sci_lg")
+    except OSError:
+        print("❌ 모델 설치 필요: pip install https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.5.1/en_core_sci_lg-0.5.1.tar.gz")
+        exit(1)
+        
+    print("🔗 UMLS Entity Linker 연결 중...")
+    if "scispacy_linker" not in nlp.pipe_names:
+        nlp.add_pipe("scispacy_linker", config={"resolve_abbreviations": True, "linker_name": "umls"})
+    return nlp, nlp.get_pipe("scispacy_linker")
 # [핵심] 중복 연산 방지용 인메모리 캐시
 id_cache = {}
 

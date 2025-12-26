@@ -70,9 +70,15 @@ def build_global_entity_master():
         .set_index("primekg_key")["entity_id"]
     )
 
-    # 2-2) 임상 meta 엔티티 로드
+    # 2-2) 임상 meta 엔티티 로드 (없으면 PubMed 기준으로만 global master 생성)
     if not os.path.exists(CLIN_META_FILE):
-        raise FileNotFoundError(CLIN_META_FILE)
+        print(f"⚠ 임상(meta) 엔티티 파일 없음: {CLIN_META_FILE}")
+        print("  → PubMed ts_entity_master만으로 global_entity_master를 생성합니다.")
+        entity_master_global = ts_ent.copy()
+        entity_master_global.to_csv(ENTITY_MASTER_OUT, index=False)
+        # 임상 엔티티 매핑이 없으므로 빈 매핑 반환
+        entityid_to_entityid = pd.Series(dtype=object)
+        return entity_master_global, entityid_to_entityid
 
     clin_meta = pd.read_csv(CLIN_META_FILE)
 

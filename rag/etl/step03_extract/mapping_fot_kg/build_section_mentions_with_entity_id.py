@@ -22,7 +22,8 @@ def main():
     ent = pd.read_csv(ENTITY_MASTER)
     sec = pd.read_csv(SECTION_FILE)
 
-    key_cols = ["normalized_entity", "entity_type"]
+    # 조인 키: entity_type은 제외, normalized_entity만 사용
+    key_cols = ["normalized_entity"]
     for c in key_cols:
         if c not in ent.columns or c not in sec.columns:
             raise ValueError(f"'{c}' 컬럼이 ent/sec 둘 다 있어야 합니다.")
