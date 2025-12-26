@@ -1,0 +1,33 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# 시스템 의존성
+RUN apt-get update && apt-get install -y \
+    gcc \
+    postgresql-client \
+    docker.io \
+    && rm -rf /var/lib/apt/lists/*
+
+# Python 의존성
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Worker에 필요한 코드만 복사
+COPY rag/ ./rag/
+COPY kg/ ./kg/
+COPY jobs/ ./jobs/
+COPY messaging/ ./messaging/  # Consumer 모듈 포함
+COPY sim_tools/common/ ./sim_tools/common/  # 시뮬레이션 공통 유틸
+
+# Django 설정 (ORM 사용 시)
+COPY django_app/config/ ./django_app/config/
+COPY django_app/apps/ ./django_app/apps/
+COPY django_app/manage.py ./django_app/manage.py
+
+WORKDIR /app
+ENV PYTHONPATH=/app
+
+# Consumer 실행
+CMD ["python", "-m", "messaging.workers.main"]
+

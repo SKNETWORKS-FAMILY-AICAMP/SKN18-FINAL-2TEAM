@@ -95,7 +95,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--limit",
         type=int,
-        default=3,
+        default=1,
         help="테스트용 최대 처리 row 수 (현재는 로깅/확장용 파라미터)",
     )
     return parser.parse_args()
