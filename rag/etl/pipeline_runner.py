@@ -289,7 +289,6 @@ def run_chunk(source: SourceType, cfg: PipelineConfig) -> None:
 
 
 def run_embed(source: SourceType, cfg: PipelineConfig, limit: int | None = None) -> None:
-def run_embed(source: SourceType, cfg: PipelineConfig, limit: int | None = None) -> None:
     """
     05_embed/ 아래 각 소스 모듈의 run() 또는 main() 호출.
 
