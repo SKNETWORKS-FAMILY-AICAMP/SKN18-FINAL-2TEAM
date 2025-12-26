@@ -1,0 +1,128 @@
+{
+  "metadata": {
+    "timestamp": "2025-12-24T15:12:30.250092",
+    "question_original": "How does CI treatment affect the interfacial tension of modified EWP according to the study?"
+  },
+  "process": {
+    "1_rewrite": {
+      "track": "T2",
+      "intent": "evidence_search",
+      "domains": null,
+      "confidence": 0.7,
+      "reason_short": "CI 치료와 EWP의 계면장력 관련 연구",
+      "normalized_question": "How does CI treatment affect the interfacial tension of modified EWP according to the study?",
+      "entities": [
+        {
+          "name": "CI",
+          "type": "drug",
+          "id": null
+        },
+        {
+          "name": "EWP",
+          "type": "material",
+          "id": null
+        }
+      ],
+      "must": [
+        {
+          "name": "interfacial tension",
+          "type": "concept",
+          "id": null
+        }
+      ],
+      "should": [],
+      "must_not": [],
+      "filters": {
+        "year_from": null,
+        "year_to": null,
+        "journal": null,
+        "study_type": null,
+        "domain": null
+      },
+      "retrieval": {
+        "k_seed": 300,
+        "k_final": 40,
+        "hop_limit": 2,
+        "fanout_limit": 200
+      },
+      "track_debug": {
+        "llm_track": "T2",
+        "rule_track": "T2",
+        "rule_conf": 0.0,
+        "llm_conf": 0.7,
+        "why": "agree"
+      },
+      "intent_debug": {
+        "domain_strength": {
+          "paper": 0.0,
+          "clinical": 0.0,
+          "protocol": 0.0,
+          "kg": 0.0
+        },
+        "strong_domains": [],
+        "any_domains": [],
+        "explicit_multi": false,
+        "rule_wants_multi": false,
+        "llm_conf": 0.7,
+        "why_intent": "agree",
+        "rule_intent": "evidence_search"
+      },
+      "must_terms_expanded": [],
+      "must_not_terms_expanded": []
+    },
+    "2_route": {
+      "track": "T2",
+      "intent": "evidence_search",
+      "domains": [],
+      "confidence": 0.7,
+      "reason_short": "CI 치료와 EWP의 계면장력 관련 연구",
+      "track_why": "agree",
+      "intent_why": "agree"
+    },
+    "3_plan": [
+      {
+        "domain": "paper",
+        "mode": "HY",
+        "embedder": "main_1536",
+        "priority": 15,
+        "why": "default paper hybrid"
+      }
+    ]
+  },
+  "results": {
+    "count": 1,
+    "contexts": [
+      {
+        "article": {
+          "title": "Mechanism study on the improvement of egg white emulsifying characteristic by ultrasound synergized citral: Physicochemical properties, molecular flexibility, protein structure",
+          "year": 2024,
+          "doi": "10.1016/j.ultsonch.2024.107104"
+        },
+        "vec_score": 0.03278688524590164,
+        "journal_title": "Ultrasonics Sonochemistry",
+        "evidence_chunks": [
+          {
+            "text": "The authors declare that they have no known competing financial interests or personal relationships that could have appeared to influence the work reported in this paper.",
+            "chunk_id": "SEC39413471_sec42_C01"
+          },
+          {
+            "text": "2. All experiments were conducted in triplicate, and the results were displayed as mean ± standard deviation. IBM SPSS Statistics 27 was used for data analysis by Duncan test and one-way analysis of variance. The significant level was p < 0.05. Origin 2023 was used for plotting and correlation analysis.",
+            "chunk_id": "SEC39413471_sec21_C01"
+          },
+          {
+            "text": "2.6. Molecular flexibility can be characterized by the sensitivity of proteins to trypsin. Following the method of Sun et al. with appropriate modifications, trypsin was dissolved in Tris HCl buffer(0.05 mol/L, pH 8.0) to prepare the trypsin solution(1 mg/mL). Then, 250 μL of trypsin solution was thoroughly mixed with 4 mL protein solution(5 mg/mL), and incubated in a 37 °C water bath for 15 min. The reaction was terminated by adding 4 mL of 5 % trichloroacetic acid solution. The absorbance of supernatant at 280 nm was measured after centrifugation.",
+            "chunk_id": "SEC39413471_sec12_C01"
+          },
+          {
+            "text": "The absorbance of supernatant at 280 nm was measured after centrifugation. The absorbance value A was used to characterize the molecular flexibility of proteins.",
+            "chunk_id": "SEC39413471_sec12_C02"
+          },
+          {
+            "text": "2.5. The surface hydrophobicity of EWP was measured according to the method of Huang et al. with slightly modified. The 200 μL of bromophenol blue solution(1 mg/mL) was mixed thoroughly with 1 mL of protein sample solution(5 mg/mL), then the mixture was centrifuged at 8000 × g and 4°C for 15 min. After diluting the obtained supernatant, the absorbance value at wavelength 595 nm was measured and denoted as A. The deionized water was used as a blank, and its absorbance was recorded as A _{1}. Surface hydrophobicity of EWPs was calculated by the following formula: [EQ:EQ6]",
+            "chunk_id": "SEC39413471_sec9_C01"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -928,8 +928,10 @@ def chat_messages(request, chat_id=None):
     chat.save(update_fields=['preview', 'updated_at'])
 
     # 9. citations를 ChatReference로 저장
-    print(f"[DEBUG] citations 개수: {len(citations)}")
-    print(f"[DEBUG] citations 내용: {citations}")
+    print(f"[DEBUG views.py] citations 개수: {len(citations)}")
+    if citations:
+        for i, citation in enumerate(citations[:5], 1):
+            print(f"[DEBUG views.py citation {i}] title: {citation.get('title', 'N/A')[:50]}, url: {citation.get('url', 'N/A')[:50]}")
 
     for citation in citations:
         # ref_id는 citation의 'id' 필드 사용 (services.py에서 1부터 생성됨)
