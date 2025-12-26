@@ -27,7 +27,7 @@ from dotenv import load_dotenv
 # ─────────────────────────────────────
 # 0) 프로젝트 루트(.env) 로드
 # ─────────────────────────────────────
-BASE_DIR = Path(__file__).resolve().parents[2]  # SKN18-FINAL-2TEAM
+BASE_DIR = Path(__file__).resolve().parents[4]  # SKN18-FINAL-2TEAM
 
 # 공통 카테고리 모듈 import 위해 sys.path에 루트 추가
 if str(BASE_DIR) not in sys.path:
@@ -137,8 +137,9 @@ def classify_protocol(title: str, url: str | None = None) -> tuple[str, str]:
 # ─────────────────────────────────────
 
 def main():
-    # 입력: data/processed/protocol/protocol_csv 안의 메타데이터 파일
-    input_dir = BASE_DIR / "data" / "processed" / "protocol" / "protocol_csv"
+    # 입력: data/processed/protocols/protocol_csv 안의 메타데이터 파일
+    input_dir = BASE_DIR / "data" / "processed" / "protocols" / "protocol_csv"
+    # 실제 파일명에 공백이 포함되어 있음에 주의 ("Cell .csv")
     input_path = input_dir / "t_protocol_metadata_Cell.csv"
 
     # 출력: data/entities/protocol 안에 라벨링된 파일 저장
