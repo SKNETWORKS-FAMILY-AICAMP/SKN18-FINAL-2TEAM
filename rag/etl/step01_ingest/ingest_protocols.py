@@ -324,7 +324,7 @@ def ingest_keyword(search_keyword: str, raw_dir: Path | None = None) -> None:
             steps_list = proto.get("steps") or []
             ordered_steps = build_ordered_steps(steps_list)
             step_str = ""
-            print(steps_list)
+
             for s in ordered_steps:
                 step_html = s.get("step") or ""
                 step_number = s.get("number") or ""
@@ -334,8 +334,7 @@ def ingest_keyword(search_keyword: str, raw_dir: Path | None = None) -> None:
                 
                 # 버튼 텍스트를 추출 (모두 공백으로 join)
                 button_texts = [btn.get_text(strip=True) for btn in soup]
-                print(button_texts)
-                buttons_combined = " <STEP " + button_texts[0] + ">"
+                buttons_combined = f"(STEP {button_texts[0]}) "
                 print(f"buttons_combined: {buttons_combined}")
                 
                 # 기존 테이블 변환 및 superscript 변환 적용
