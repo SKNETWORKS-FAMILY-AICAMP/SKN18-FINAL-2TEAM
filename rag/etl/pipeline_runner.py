@@ -262,7 +262,7 @@ def run_chunk(source: SourceType, cfg: PipelineConfig) -> None:
 # ─────────────────────────────────────────────
 
 
-def run_embed(source: SourceType, cfg: PipelineConfig) -> None:
+def run_embed(source: SourceType, cfg: PipelineConfig, limit: int | None = None) -> None:
     """
     05_embed/ 아래 각 소스 모듈의 run() 또는 main() 호출.
 
@@ -270,6 +270,9 @@ def run_embed(source: SourceType, cfg: PipelineConfig) -> None:
       rag.etl.step05_embed.01_embed_pubmed.run(chunks_dir, embeddings_dir)
       rag.etl.step05_embed.02_embed_nih.run(...)
       rag.etl.step05_embed.03_embed_protocols.main()  # main() 함수 사용
+
+    limit 파라미터는 테스트 편의를 위해 유지되며, 각 모듈에서 별도 지원하지 않는 한
+    현재는 로깅에만 사용됩니다.
     """
     logger = logging.getLogger("etl.embed")
     ensure_dirs(cfg.embeddings_dir)
@@ -280,13 +283,16 @@ def run_embed(source: SourceType, cfg: PipelineConfig) -> None:
         targets = [source]
 
     for s in targets:
-        logger.info("▶ [EMBED] start source=%s", s)
+        logger.info("▶ [EMBED] start source=%s (limit=%s)", s, limit)
 
         try:
             if s == "pubmed":
                 mod = import_module("rag.etl.step05_embed.01_embed_pubmed")
                 if hasattr(mod, 'run'):
-                    mod.run(chunks_dir=cfg.chunks_dir, embeddings_dir=cfg.embeddings_dir)
+                    mod.run(
+                        chunks_dir=cfg.chunks_dir,
+                        embeddings_dir=cfg.embeddings_dir,
+                    )
                 elif hasattr(mod, 'main'):
                     mod.main()
                 else:
