@@ -130,6 +130,72 @@ def ensure_csv(path: Path) -> None:
     else:
         print(f"[INGEST][Protocol.io] appending to existing file {path}", flush=True)
 
+def build_ordered_steps(steps: list[dict]) -> list[dict]:
+    if not steps:
+        return []
+
+    # 1️⃣ id → step 맵
+    step_by_id = {}
+    for s in steps:
+        sid = s.get("id")
+        if sid is not None:
+            step_by_id[sid] = s
+
+    # 2️⃣ previous_id → next step 맵
+    next_by_prev = {}
+    for s in steps:
+        prev = s.get("previous_id")
+        if prev:
+            # 중복 prev 방어 (뒤에 온 것을 우선)
+            next_by_prev[prev] = s
+
+    # 3️⃣ HEAD 찾기 (previous_id == 0 or None)
+    head = None
+    for s in steps:
+        if not s.get("previous_id"):
+            head = s
+            break
+
+    # 방어: HEAD 못 찾았을 경우
+    if head is None:
+        # fallback: number 기준 정렬
+        return sorted(
+            steps,
+            key=lambda x: int(x.get("number", 0) or 0)
+        )
+
+    # 4️⃣ 체인 따라가며 순서 복원
+    ordered = []
+    visited = set()
+    current = head
+
+    while current:
+        cid = current.get("id")
+        if cid in visited:
+            # 루프 감지 → 중단
+            break
+
+        ordered.append(current)
+        visited.add(cid)
+
+        current = next_by_prev.get(cid)
+
+    # 5️⃣ 체인에 포함되지 못한 step들 (section, dangling step 등)
+    if len(ordered) < len(steps):
+        remaining = [
+            s for s in steps
+            if s.get("id") not in visited
+        ]
+
+        # number 기준으로 보조 정렬 후 뒤에 붙임
+        remaining_sorted = sorted(
+            remaining,
+            key=lambda x: int(x.get("number", 0) or 0)
+        )
+
+        ordered.extend(remaining_sorted)
+
+    return ordered
 
 def ingest_keyword(search_keyword: str, raw_dir: Path | None = None) -> None:
     """
@@ -151,7 +217,7 @@ def ingest_keyword(search_keyword: str, raw_dir: Path | None = None) -> None:
         search_keyword, 
         pages_to_reserve=MAX_PAGES_PER_RUN
     )
-    start_page = 1
+    # start_page = 1 # 디버그용 하드코딩
     
     if start_page is None:
         print(
@@ -256,8 +322,10 @@ def ingest_keyword(search_keyword: str, raw_dir: Path | None = None) -> None:
             print(f"abstract: {abstract_str}")
 
             steps_list = proto.get("steps") or []
+            ordered_steps = build_ordered_steps(steps_list)
             step_str = ""
-            for s in steps_list:
+            print(steps_list)
+            for s in ordered_steps:
                 step_html = s.get("step") or ""
                 step_number = s.get("number") or ""
                 
