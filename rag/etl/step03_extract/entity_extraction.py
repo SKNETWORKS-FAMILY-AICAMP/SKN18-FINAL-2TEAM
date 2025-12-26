@@ -26,7 +26,7 @@ import logging
 import subprocess
 import sys
 from pathlib import Path
-
+import gilda
 
 def _run_module(module: str, *args: str) -> None:
     """
@@ -113,7 +113,7 @@ def run(processed_dir: str, entities_dir: str, source: str | None = None) -> Non
         source,
     )
 
-    src = source or "pubmed"
+    src = source or "all"
 
     if src in ("pubmed", "all"):
         logger.info("[EXTRACT:Entities] PubMed KG 파이프라인 실행")

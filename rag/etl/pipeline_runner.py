@@ -156,9 +156,9 @@ def run_normalize(source: SourceType, cfg: PipelineConfig) -> None:
 
 def run_extract(cfg: PipelineConfig, source: SourceType) -> None:
     """
-    03_extract/00_pmc_normalization_pipeline.py,
-    01_entity_extraction.py,
-    02_relation_extraction.py 의 run()을 순차 실행.
+    03_extract/pmc_normalization_pipeline.py,
+    entity_extraction.py,
+    relation_extraction.py 의 run()을 순차 실행.
     """
     logger = logging.getLogger("etl.extract")
     ensure_dirs(cfg.entities_dir)
@@ -167,35 +167,35 @@ def run_extract(cfg: PipelineConfig, source: SourceType) -> None:
 
     # 0) PMC 정제 파이프라인 (pmid/section_id/cleansing)
     try:
-        logger.info("▶ [EXTRACT] 00_pmc_normalization_pipeline start (source=%s)", source)
-        norm_mod = import_module("rag.etl.step03_extract.00_pmc_normalization_pipeline")
+        logger.info("▶ [EXTRACT] pmc_normalization_pipeline start (source=%s)", source)
+        norm_mod = import_module("rag.etl.step03_extract.pmc_normalization_pipeline")
         norm_mod.run(cfg, source)  # cfg: PipelineConfig, source: SourceType
-        logger.info("✔ [EXTRACT] 00_pmc_normalization_pipeline done")
+        logger.info("✔ [EXTRACT] pmc_normalization_pipeline done")
     except ModuleNotFoundError:
-        logger.info("⏭  [EXTRACT] 00_pmc_normalization_pipeline 모듈 없음 → 스킵")
+        logger.info("⏭  [EXTRACT] pmc_normalization_pipeline 모듈 없음 → 스킵")
     except Exception as e:
-        logger.error("[EXTRACT] 00_pmc_normalization_pipeline 실행 실패: %s", e, exc_info=True)
+        logger.error("[EXTRACT] pmc_normalization_pipeline 실행 실패: %s", e, exc_info=True)
         raise
 
     # 1) 엔터티 추출
-    logger.info("▶ [EXTRACT] 01_entity_extraction start (source=%s)", source)
-    ent_mod = import_module("rag.etl.step03_extract.01_entity_extraction")
+    logger.info("▶ [EXTRACT] entity_extraction start (source=%s)", source)
+    ent_mod = import_module("rag.etl.step03_extract.entity_extraction")
     ent_mod.run(
         processed_dir=cfg.processed_dir,
         entities_dir=cfg.entities_dir,
         source=src_filter,
     )
-    logger.info("✔ [EXTRACT] 01_entity_extraction done")
+    logger.info("✔ [EXTRACT] entity_extraction done")
 
     # 2) 관계 추출 (파일 없으면 스킵 가능하도록 try/except)
     try:
-        logger.info("▶ [EXTRACT] 02_relation_extraction start (source=%s)", source)
-        rel_mod = import_module("rag.etl.step03_extract.02_relation_extraction")
+        logger.info("▶ [EXTRACT] relation_extraction start (source=%s)", source)
+        rel_mod = import_module("rag.etl.step03_extract.relation_extraction")
         rel_mod.run(
             entities_dir=cfg.entities_dir,
             source=src_filter,
         )
-        logger.info("✔ [EXTRACT] 02_relation_extraction done")
+        logger.info("✔ [EXTRACT] relation_extraction done")
     except ModuleNotFoundError:
         logger.info("⏭  [EXTRACT] relation_extraction 모듈 없음 → 스킵")
 

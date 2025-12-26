@@ -8,7 +8,7 @@ ROOT_DIR = Path(__file__).resolve().parents[4]
 ENT_DIR = ROOT_DIR / "data" / "entities"
 
 ENTITY_MASTER = ENT_DIR / "pubmed" / "ts_entity_master.csv"
-SECTION_FILE  = ENT_DIR / "pubmed" / "ts_section_keywords_primekg.csv"
+SECTION_FILE  = ENT_DIR / "pubmed" / "ts_section_keywords.csv"
 OUTPUT_FILE   = ENT_DIR / "pubmed" / "ts_section_entity_mentions.csv"
 #keyword(raw text) - entity(nomalized text) mapping file
 def main():

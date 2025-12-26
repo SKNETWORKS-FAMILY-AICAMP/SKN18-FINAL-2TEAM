@@ -154,6 +154,16 @@ def main():
     # 1) 기본 입력 CSV 읽기
     base_df = pd.read_csv(input_path)
 
+    # 테스트용 limit (STEP03_TEST_LIMIT 환경변수) 적용
+    limit_env = os.getenv("STEP03_TEST_LIMIT")
+    if limit_env:
+        try:
+            limit_val = int(limit_env)
+        except ValueError:
+            limit_val = None
+        if limit_val is not None and limit_val > 0:
+            base_df = base_df.head(limit_val).copy()
+
     # 2) 이미 라벨링된 파일이 있으면 거기서 이어서 하기
     if output_path.exists():
         print("💾 기존 라벨링 파일 발견! (resume 모드)")

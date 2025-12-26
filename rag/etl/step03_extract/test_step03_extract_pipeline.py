@@ -44,38 +44,44 @@ def run_step03_pipeline(source: SourceType = "pubmed", limit: int | None = None)
     cfg = PipelineConfig()
     logger.info("[STEP03-TEST] start: source=%s, limit=%s, cfg=%s", source, limit, cfg)
 
+    # 테스트용 limit를 하위 스크립트(특히 protocol_category_etl)에서
+    # 참고할 수 있도록 환경변수로 내려준다.
+    # (실제 운영 파이프라인에는 영향을 주지 않음)
+    if limit is not None:
+        os.environ["STEP03_TEST_LIMIT"] = str(limit)
+
     # 00) PMC 정제 파이프라인 (pmid/section_id/cleansing)
     try:
-        norm_mod = import_module("rag.etl.step03_extract.00_pmc_normalization_pipeline")
-        logger.info("[STEP03-TEST] 00_pmc_normalization_pipeline.run() (limit=%s)", limit)
+        norm_mod = import_module("rag.etl.step03_extract.pmc_normalization_pipeline")
+        logger.info("[STEP03-TEST] pmc_normalization_pipeline.run() (limit=%s)", limit)
         norm_mod.run(cfg, source)  # 현재는 limit 미사용
     except Exception as e:
-        logger.error("[STEP03-TEST] 00_pmc_normalization_pipeline 실행 실패: %s", e, exc_info=True)
+        logger.error("[STEP03-TEST] pmc_normalization_pipeline 실행 실패: %s", e, exc_info=True)
         raise
 
     # 01) 엔터티 추출 파이프라인 (extract_for_kg)
     try:
-        ent_mod = import_module("rag.etl.step03_extract.01_entity_extraction")
-        logger.info("[STEP03-TEST] 01_entity_extraction.run()")
+        ent_mod = import_module("rag.etl.step03_extract.entity_extraction")
+        logger.info("[STEP03-TEST] entity_extraction.run()")
         ent_mod.run(  # type: ignore[attr-defined]
             processed_dir=cfg.processed_dir,
             entities_dir=cfg.entities_dir,
             source="all",
         )
     except Exception as e:
-        logger.error("[STEP03-TEST] 01_entity_extraction 실행 실패: %s", e, exc_info=True)
+        logger.error("[STEP03-TEST] entity_extraction 실행 실패: %s", e, exc_info=True)
         raise
 
     # 02) 관계/매핑 파이프라인 (mapping_fot_kg)
     try:
-        rel_mod = import_module("rag.etl.step03_extract.02_relation_extraction")
-        logger.info("[STEP03-TEST] 02_relation_extraction.run()")
+        rel_mod = import_module("rag.etl.step03_extract.relation_extraction")
+        logger.info("[STEP03-TEST] relation_extraction.run()")
         rel_mod.run(  # type: ignore[attr-defined]
             entities_dir=cfg.entities_dir,
             source=source,
         )
     except Exception as e:
-        logger.error("[STEP03-TEST] 02_relation_extraction 실행 실패: %s", e, exc_info=True)
+        logger.error("[STEP03-TEST] relation_extraction 실행 실패: %s", e, exc_info=True)
         raise
 
     logger.info("[STEP03-TEST] done")
@@ -83,7 +89,7 @@ def run_step03_pipeline(source: SourceType = "pubmed", limit: int | None = None)
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Test runner for step03_extract (00~02 pipeline)",
+        description="Test runner for step03_extract (pipeline)",
     )
     parser.add_argument(
         "--source",
