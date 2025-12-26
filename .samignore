@@ -78,9 +78,11 @@ data/entities/
 README*
 LICENSE*
 *.txt
+# requirements.txt 제외 (Lambda는 Layer에서 의존성 관리)
 requirements.txt
-!requirements-lambda-protocols.txt
-!requirements-lambda-nih.txt
+# 아래 파일들은 더 이상 사용하지 않지만 참고용으로 주석 처리
+# !requirements-lambda-protocols.txt
+# !requirements-lambda-nih.txt
 
 # Docker (Lambda에는 불필요)
 docker-compose*.yml
@@ -104,9 +106,12 @@ infra/aws/terraform/
 infra/aws/lambda_functions/trigger_sim/
 infra/aws/lambda_functions/daily_report/
 # trigger_etl은 포함 (Lambda 핸들러)
+# trigger_etl 내부의 requirements.txt는 제외 (Layer에서 관리)
+**/trigger_etl/**/requirements.txt
 
-# Django 앱 (Lambda에는 불필요)
+# Django 앱 및 웹 프레임워크 (Lambda에는 불필요)
 django_app/
+django_ui/
 graph/
 kg/
 sim_tools/
@@ -116,6 +121,21 @@ static/
 staticfiles/
 media/
 uploads/
+
+# Node.js (Lambda에는 불필요)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+
+# Python 패키지 디렉토리 (로컬에 설치된 패키지 제외)
+*.dist-info/
+*.egg-info/
+*.egg
+jedi/
+yapf*/
 
 # 테스트
 tests/

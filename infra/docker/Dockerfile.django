@@ -1,0 +1,30 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# 시스템 의존성
+RUN apt-get update && apt-get install -y \
+    gcc \
+    postgresql-client \
+    && rm -rf /var/lib/apt/lists/*
+
+# Python 의존성
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# 애플리케이션 코드 복사
+COPY django_app/ ./django_app/
+COPY graph/ ./graph/
+COPY rag/ ./rag/
+COPY kg/ ./kg/
+COPY sllm/ ./sllm/
+COPY messaging/ ./messaging/  # Producer 모듈 포함
+
+# Django 설정
+WORKDIR /app/django_app
+ENV PYTHONPATH=/app
+
+EXPOSE 8000
+
+CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3"]
+

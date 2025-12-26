@@ -1,0 +1,476 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: "Core Infrastructure - VPC, S3, EC2, IAM"
+
+Parameters:
+  # Parameter Store에서 값을 읽어오는 파라미터들
+  # 각 파라미터는 Parameter Store 경로를 직접 참조합니다
+  KeyName:
+    Type: "AWS::SSM::Parameter::Value<String>"
+    Default: "/skn18/key-name"
+    Description: "EC2 SSH KeyPair 이름 (Parameter Store: /skn18/key-name)"
+
+  InstanceType:
+    Type: "AWS::SSM::Parameter::Value<String>"
+    Default: "/skn18/instance-type"
+    Description: "EC2 인스턴스 타입 (Parameter Store: /skn18/instance-type)"
+
+  AllowedCidr:
+    Type: "AWS::SSM::Parameter::Value<String>"
+    Default: "/skn18/allowed-cidr"
+    Description: "DB에 접근 가능한 CIDR (Parameter Store: /skn18/allowed-cidr)"
+
+  PostgresDbName:
+    Type: "AWS::SSM::Parameter::Value<String>"
+    Default: "/skn18/postgres-db-name"
+    Description: "PostgreSQL 데이터베이스 이름 (Parameter Store: /skn18/postgres-db-name)"
+
+  PostgresUser:
+    Type: "AWS::SSM::Parameter::Value<String>"
+    Default: "/skn18/postgres-user"
+    Description: "PostgreSQL 사용자 이름 (Parameter Store: /skn18/postgres-user)"
+
+  # PostgresPassword는 EC2 UserData에서 AWS CLI로 직접 가져옴 (SecureString 지원)
+
+  PostgresPort:
+    Type: "AWS::SSM::Parameter::Value<String>"
+    Default: "/skn18/postgres-port"
+    Description: "PostgreSQL 포트 (Parameter Store: /skn18/postgres-port, String 타입으로 저장 필요)"
+
+  LatestAmiId:
+    Type: "AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>"
+    Default: "/skn18/pgvector-ami-id"
+    Description: "AMI ID for pgvector EC2 instance (Packer로 빌드된 AMI ID를 Parameter Store에 저장 필요: /skn18/pgvector-ami-id). 기본값이 없으면 AWS 공용 AMI 사용 가능: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64"
+
+  S3BucketName:
+    Type: "AWS::SSM::Parameter::Value<String>"
+    Default: "/skn18/s3-bucket-name"
+    Description: "ETL 데이터 저장용 S3 버킷 이름 (Parameter Store: /skn18/s3-bucket-name)"
+
+Resources:
+  # =========================
+  # 네트워크 (VPC 자동 생성)
+  # =========================
+  AppVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: "10.0.0.0/16"
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags:
+        - Key: Name
+          Value: "skn18-vpc"
+
+  AppInternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: "skn18-igw"
+
+  AppVpcIgwAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref AppVPC
+      InternetGatewayId: !Ref AppInternetGateway
+
+  AppPublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref AppVPC
+      CidrBlock: "10.0.1.0/24"
+      MapPublicIpOnLaunch: true
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      Tags:
+        - Key: Name
+          Value: "skn18-public-subnet"
+
+  AppPublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref AppVPC
+      Tags:
+        - Key: Name
+          Value: "skn18-public-rt"
+
+  AppPublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: AppVpcIgwAttachment
+    Properties:
+      RouteTableId: !Ref AppPublicRouteTable
+      DestinationCidrBlock: "0.0.0.0/0"
+      GatewayId: !Ref AppInternetGateway
+
+  AppPublicSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref AppPublicSubnet
+      RouteTableId: !Ref AppPublicRouteTable
+
+  # =========================
+  # S3 버킷 (ETL 데이터 저장소)
+  # =========================
+  EtlDataBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref S3BucketName
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: Name
+          Value: "skn18-etl-data"
+
+  # =========================
+  # 보안 그룹
+  # =========================
+  PgVectorSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Security group for pgvector EC2"
+      VpcId: !Ref AppVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: !Ref PostgresPort
+          ToPort: !Ref PostgresPort
+          CidrIp: !Ref AllowedCidr
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref AllowedCidr
+      Tags:
+        - Key: Name
+          Value: "skn18-pgvector-sg"
+
+  # =========================
+  # EC2 인스턴스
+  # =========================
+  PgVectorInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: !Ref InstanceType
+      ImageId: !Ref LatestAmiId
+      KeyName: !Ref KeyName
+      IamInstanceProfile: !Ref Ec2InstanceProfile
+      SubnetId: !Ref AppPublicSubnet
+      SecurityGroupIds:
+        - !Ref PgVectorSecurityGroup
+      Tags:
+        - Key: Name
+          Value: "skn18-pgvector-ec2"
+      BlockDeviceMappings:
+        - DeviceName: "/dev/xvda"
+          Ebs:
+            VolumeSize: 30
+            VolumeType: gp3
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          set -xe
+
+          # ========================================
+          # AMI에 이미 포함된 설정:
+          # - Docker 설치 및 설정 완료
+          # - ec2-user가 docker 그룹에 추가됨
+          # - /var/lib/postgresql 디렉토리 준비됨
+          # - /home/ec2-user/init.sql 파일 준비됨
+          # ========================================
+
+          # ---------
+          # Docker 서비스 시작 (AMI에 설치되어 있지만 중지 상태)
+          # ---------
+          systemctl start docker
+          systemctl enable docker
+
+          # ---------
+          # 기존 컨테이너 정리 (재시작 시 중복 방지)
+          # ---------
+          docker stop pg-db-final || true
+          docker rm -f pg-db-final || true
+
+          # ---------
+          # PostgreSQL 데이터 디렉토리 최종 확인 (AMI에 준비되어 있지만 재확인)
+          # ---------
+          mkdir -p /var/lib/postgresql
+          chown ec2-user:ec2-user /var/lib/postgresql
+
+          # ---------
+          # Parameter Store에서 PostgreSQL 비밀번호 가져오기 (SecureString 지원)
+          # ---------
+          REGION=$(curl -s http://169.254.169.254/latest/meta-data/placement/region || echo "ap-northeast-2")
+          POSTGRES_PASSWORD=$(aws ssm get-parameter --name /skn18/postgres-password --with-decryption --region "$REGION" --query 'Parameter.Value' --output text 2>&1)
+          if [ $? -ne 0 ] || [ -z "$POSTGRES_PASSWORD" ]; then
+            echo "ERROR: Failed to retrieve PostgreSQL password from Parameter Store"
+            echo "Error details: $POSTGRES_PASSWORD"
+            # 임시로 기본값 사용 (디버깅용)
+            POSTGRES_PASSWORD="s18f2t!@#"
+            echo "Using fallback password for debugging"
+          else
+            echo "PostgreSQL password retrieved successfully from Parameter Store"
+          fi
+
+          # ---------
+          # Docker 컨테이너 실행 (pgvector/pgvector:pg18)
+          # + healthcheck 추가
+          # ---------
+          docker run -d \
+            --name pg-db-final \
+            -e POSTGRES_DB=${PostgresDbName} \
+            -e POSTGRES_USER=${PostgresUser} \
+            -e POSTGRES_PASSWORD="$POSTGRES_PASSWORD" \
+            -p ${PostgresPort}:5432 \
+            -v /var/lib/postgresql:/var/lib/postgresql \
+            -v /home/ec2-user/init.sql:/docker-entrypoint-initdb.d/init.sql \
+            --restart unless-stopped \
+            --health-cmd "pg_isready -d ${PostgresDbName} -U ${PostgresUser}" \
+            --health-interval=10s \
+            --health-timeout=5s \
+            --health-retries=5 \
+            --health-start-period=10s \
+            pgvector/pgvector:pg18
+
+          echo "=== PostgreSQL Docker container started successfully ==="
+
+  # =========================
+  # EC2 IAM 역할 (Parameter Store 접근용)
+  # =========================
+  Ec2ParameterStoreRole:
+    Type: AWS::IAM::Role
+    Properties:
+      # RoleName 제거: CloudFormation이 자동으로 고유한 이름 생성
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+      Policies:
+        - PolicyName: ParameterStoreAccessPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ssm:GetParameter
+                  - ssm:GetParameters
+                Resource: !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/skn18/*"
+
+  Ec2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      # InstanceProfileName 제거: CloudFormation이 자동으로 고유한 이름 생성
+      Roles:
+        - !Ref Ec2ParameterStoreRole
+
+  # =========================
+  # Lambda IAM 역할
+  # =========================
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      # RoleName 제거: CloudFormation이 자동으로 고유한 이름 생성 (기존 역할과 충돌 방지)
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: S3AccessPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              # 객체 작업 (GetObject, PutObject, DeleteObject)
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                Resource: !Sub "arn:aws:s3:::${S3BucketName}/*"
+              # 버킷 작업 (ListBucket)
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                Resource: !Sub "arn:aws:s3:::${S3BucketName}"
+        # Lambda 호출 권한 추가 (필수) - 와일드카드로 변경하여 모든 Lambda 함수 호출 허용
+        - PolicyName: LambdaInvokePolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource: !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:skn18-*"
+
+  # =========================
+  # Lambda Layers
+  # =========================
+  # 공통 라이브러리 Layer
+  CommonLambdaLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: skn18-common-layer
+      Description: "Common libraries for all Lambda functions (requests, python-dateutil, python-dotenv)"
+      ContentUri: ../lambda_layers/common/
+      CompatibleRuntimes:
+        - python3.12
+      CompatibleArchitectures:
+        - x86_64
+      RetentionPolicy: Retain
+    Metadata:
+      BuildMethod: python3.12
+      BuildProperties:
+        BuildCommand: |
+          pip install -r requirements-layer-common.txt -t python/lib/python3.12/site-packages/
+
+  # Protocols 전용 Layer
+  ProtocolsLambdaLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: skn18-protocols-layer
+      Description: "Protocols-specific libraries (beautifulsoup4, lxml, psycopg2-binary)"
+      ContentUri: ../lambda_layers/protocols/
+      CompatibleRuntimes:
+        - python3.12
+      CompatibleArchitectures:
+        - x86_64
+      RetentionPolicy: Retain
+    Metadata:
+      BuildMethod: python3.12
+      BuildProperties:
+        BuildCommand: |
+          pip install -r requirements-layer-protocols.txt -t python/lib/python3.12/site-packages/
+
+  # NIH 전용 Layer (NLTK 데이터 포함)
+  NihLambdaLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: skn18-nih-layer
+      Description: "NIH-specific libraries including NLTK data (tiktoken, nltk)"
+      ContentUri: ../lambda_layers/nih/
+      CompatibleRuntimes:
+        - python3.12
+      CompatibleArchitectures:
+        - x86_64
+      RetentionPolicy: Retain
+    Metadata:
+      BuildMethod: python3.12
+      BuildProperties:
+        BuildCommand: |
+          pip install -r requirements-layer-nih.txt -t python/lib/python3.12/site-packages/
+          python3 -c "import nltk; nltk.download('punkt', download_dir='python/lib/python3.12/site-packages/nltk_data'); nltk.download('punkt_tab', download_dir='python/lib/python3.12/site-packages/nltk_data')" || true
+
+Outputs:
+  InstanceId:
+    Description: "EC2 Instance ID"
+    Value: !Ref PgVectorInstance
+    Export:
+      Name: !Sub "${AWS::StackName}-InstanceId"
+
+  PublicIp:
+    Description: "EC2 Public IP"
+    Value: !GetAtt PgVectorInstance.PublicIp
+    Export:
+      Name: !Sub "${AWS::StackName}-PublicIp"
+
+  DbEndpoint:
+    Description: "DB 접속 엔드포인트 (host:port)"
+    Value: !Sub "${PgVectorInstance.PublicIp}:${PostgresPort}"
+    Export:
+      Name: !Sub "${AWS::StackName}-DbEndpoint"
+
+  ConnectionStringExample:
+    Description: "psql 접속 예시 (비밀번호는 Parameter Store에서 확인: /skn18/postgres-password)"
+    Value: !Sub "psql postgresql://${PostgresUser}:[PASSWORD]@${PgVectorInstance.PublicIp}:${PostgresPort}/${PostgresDbName}"
+    Export:
+      Name: !Sub "${AWS::StackName}-ConnectionStringExample"
+
+  DatabaseUrl:
+    Description: "DATABASE_URL (비밀번호는 Parameter Store에서 확인: /skn18/postgres-password)"
+    Value: !Sub "postgresql://${PostgresUser}:[PASSWORD]@${PgVectorInstance.PublicIp}:${PostgresPort}/${PostgresDbName}"
+    Export:
+      Name: !Sub "${AWS::StackName}-DatabaseUrl"
+
+  VpcId:
+    Description: "생성된 VPC ID"
+    Value: !Ref AppVPC
+    Export:
+      Name: !Sub "${AWS::StackName}-VpcId"
+
+  SubnetId:
+    Description: "생성된 Public Subnet ID"
+    Value: !Ref AppPublicSubnet
+    Export:
+      Name: !Sub "${AWS::StackName}-SubnetId"
+
+  SecurityGroupId:
+    Description: "Security Group ID"
+    Value: !Ref PgVectorSecurityGroup
+    Export:
+      Name: !Sub "${AWS::StackName}-SecurityGroupId"
+
+  EtlDataBucketName:
+    Description: "ETL 데이터 저장용 S3 버킷 이름"
+    Value: !Ref S3BucketName
+    Export:
+      Name: !Sub "${AWS::StackName}-EtlDataBucketName"
+
+  LambdaExecutionRoleArn:
+    Description: "Lambda 실행 역할 ARN"
+    Value: !GetAtt LambdaExecutionRole.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-LambdaExecutionRoleArn"
+
+  PostgresUser:
+    Description: "PostgreSQL 사용자 이름"
+    Value: !Ref PostgresUser
+    Export:
+      Name: !Sub "${AWS::StackName}-PostgresUser"
+
+  PostgresPasswordParameter:
+    Description: "PostgreSQL 비밀번호 Parameter Store 경로"
+    Value: "/skn18/postgres-password"
+    Export:
+      Name: !Sub "${AWS::StackName}-PostgresPasswordParameter"
+
+  PostgresPort:
+    Description: "PostgreSQL 포트"
+    Value: !Ref PostgresPort
+    Export:
+      Name: !Sub "${AWS::StackName}-PostgresPort"
+
+  PostgresDbName:
+    Description: "PostgreSQL 데이터베이스 이름"
+    Value: !Ref PostgresDbName
+    Export:
+      Name: !Sub "${AWS::StackName}-PostgresDbName"
+
+  # Lambda Layer Outputs
+  CommonLayerArn:
+    Description: "Common Lambda Layer ARN"
+    Value: !Ref CommonLambdaLayer
+    Export:
+      Name: !Sub "${AWS::StackName}-CommonLayerArn"
+
+  ProtocolsLayerArn:
+    Description: "Protocols Lambda Layer ARN"
+    Value: !Ref ProtocolsLambdaLayer
+    Export:
+      Name: !Sub "${AWS::StackName}-ProtocolsLayerArn"
+
+  NihLayerArn:
+    Description: "NIH Lambda Layer ARN"
+    Value: !Ref NihLambdaLayer
+    Export:
+      Name: !Sub "${AWS::StackName}-NihLayerArn"
+
