@@ -10,7 +10,7 @@ from tqdm import tqdm
 DATA_DIR = "./import"  # CSV 파일들이 있는 폴더
 REF_FILE = "references.csv"
 ARTICLE_FILE = "article_enriched.csv"
-
+# 기능 ㅣ 저널 논문 제목 정규화 -> article_enriched.csv 와 references.csv 의 제목 비교 용이하게
 # ==========================================
 # 정규화 함수 (핵심 로직)
 # ==========================================

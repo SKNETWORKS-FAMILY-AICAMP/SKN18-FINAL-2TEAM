@@ -130,7 +130,7 @@ prepare_protocols() {
     echo "  Copying step01_ingest (Protocols files only)..."
     mkdir -p "$PROTOCOLS_DIR/rag/etl/step01_ingest/modules"
     cp "$PROJECT_ROOT/rag/etl/step01_ingest/__init__.py" "$PROTOCOLS_DIR/rag/etl/step01_ingest/" 2>/dev/null || true
-    cp "$PROJECT_ROOT/rag/etl/step01_ingest/03_ingest_protocols.py" "$PROTOCOLS_DIR/rag/etl/step01_ingest/"
+    cp "$PROJECT_ROOT/rag/etl/step01_ingest/ingest_protocols.py" "$PROTOCOLS_DIR/rag/etl/step01_ingest/"
     # modules 폴더의 Protocols 관련 파일만 복사
     cp "$PROJECT_ROOT/rag/etl/step01_ingest/modules/__init__.py" "$PROTOCOLS_DIR/rag/etl/step01_ingest/modules/" 2>/dev/null || true
     cp "$PROJECT_ROOT/rag/etl/step01_ingest/modules/protocol.py" "$PROTOCOLS_DIR/rag/etl/step01_ingest/modules/"
@@ -146,7 +146,7 @@ prepare_protocols() {
         touch "$PROTOCOLS_DIR/rag/etl/step02_normalize/__init__.py"
         echo "  Created missing __init__.py for step02_normalize"
     fi
-    cp "$PROJECT_ROOT/rag/etl/step02_normalize/03_normalize_protocols.py" "$PROTOCOLS_DIR/rag/etl/step02_normalize/"
+    cp "$PROJECT_ROOT/rag/etl/step02_normalize/normalize_protocols.py" "$PROTOCOLS_DIR/rag/etl/step02_normalize/"
     
     # step04_chunk: Protocols 관련 파일만 복사 (Cleanse+Chunk Lambda용)
     echo "  Copying step04_chunk (Protocols files only)..."
@@ -158,10 +158,7 @@ prepare_protocols() {
         touch "$PROTOCOLS_DIR/rag/etl/step04_chunk/__init__.py"
         echo "  Created missing __init__.py for step04_chunk"
     fi
-    cp "$PROJECT_ROOT/rag/etl/step04_chunk/03_chunker_protocols.py" "$PROTOCOLS_DIR/rag/etl/step04_chunk/"
-    # protocols_cleanse_chunk.py에서 chunker_protocols로 import하므로 별칭 파일 생성
-    cp "$PROJECT_ROOT/rag/etl/step04_chunk/03_chunker_protocols.py" "$PROTOCOLS_DIR/rag/etl/step04_chunk/chunker_protocols.py"
-    echo "  Created chunker_protocols.py alias for import compatibility"
+    cp "$PROJECT_ROOT/rag/etl/step04_chunk/chunker_protocols.py" "$PROTOCOLS_DIR/rag/etl/step04_chunk/"
     
     # step05_embed: Protocols 관련 파일만 복사 (Cleanse+Chunk+Embed Lambda용)
     echo "  Copying step05_embed (Protocols files only)..."
@@ -173,7 +170,7 @@ prepare_protocols() {
         touch "$PROTOCOLS_DIR/rag/etl/step05_embed/__init__.py"
         echo "  Created missing __init__.py for step05_embed"
     fi
-    cp "$PROJECT_ROOT/rag/etl/step05_embed/03_embed_protocols.py" "$PROTOCOLS_DIR/rag/etl/step05_embed/"
+    cp "$PROJECT_ROOT/rag/etl/step05_embed/embed_protocols.py" "$PROTOCOLS_DIR/rag/etl/step05_embed/"
     
     # common: 전체 복사 (db_connection.py가 schedule_store에서 사용됨)
     echo "  Copying common modules..."
@@ -183,10 +180,19 @@ prepare_protocols() {
     
     # infra/aws/lambda_functions/trigger_etl: Ingest Lambda 6개와 Cleanse+Chunk Lambda용
     echo "  Copying infra/aws/lambda_functions/trigger_etl..."
-    mkdir -p "$PROTOCOLS_DIR/infra/aws/lambda_functions"
-    cp -r "$PROJECT_ROOT/infra/aws/lambda_functions/trigger_etl" "$PROTOCOLS_DIR/infra/aws/lambda_functions/"
+    mkdir -p "$PROTOCOLS_DIR/infra/aws/lambda_functions/trigger_etl/protocols"
+    # trigger_etl 디렉토리 내용 복사
+    cp -r "$PROJECT_ROOT/infra/aws/lambda_functions/trigger_etl"/* "$PROTOCOLS_DIR/infra/aws/lambda_functions/trigger_etl/" 2>/dev/null || true
     # .gitkeep 파일 제거
     find "$PROTOCOLS_DIR/infra/aws/lambda_functions/trigger_etl" -name ".gitkeep" -type f -delete 2>/dev/null || true
+    
+    # Handler 경로를 위한 __init__.py 파일 생성 (Python 모듈 import를 위해 필수)
+    echo "  Creating __init__.py files for Handler path..."
+    touch "$PROTOCOLS_DIR/infra/__init__.py"
+    touch "$PROTOCOLS_DIR/infra/aws/__init__.py"
+    touch "$PROTOCOLS_DIR/infra/aws/lambda_functions/__init__.py"
+    touch "$PROTOCOLS_DIR/infra/aws/lambda_functions/trigger_etl/__init__.py"
+    touch "$PROTOCOLS_DIR/infra/aws/lambda_functions/trigger_etl/protocols/__init__.py"
     
     # Protocols Lambda에 불필요한 파일 제거
     echo "  Removing unnecessary files for Protocols Lambda..."
@@ -195,20 +201,27 @@ prepare_protocols() {
     rm -rf "$PROTOCOLS_DIR/infra/aws/lambda_functions/trigger_etl/pubmed" || true
     # protocols_cleanse_chunk_embed.py 제거 (protocols_cleanse_chunk.py만 사용)
     rm -f "$PROTOCOLS_DIR/infra/aws/lambda_functions/trigger_etl/protocols/protocols_cleanse_chunk_embed.py" || true
-    # trigger_etl/requirements.txt 제거 (requirements-lambda-protocols.txt만 사용)
+    # trigger_etl/requirements.txt 제거 (Layer에 중복된 패키지가 들어있을 수 있음)
     rm -f "$PROTOCOLS_DIR/infra/aws/lambda_functions/trigger_etl/requirements.txt" || true
     
-    # requirements 파일 복사
-    cp "$PROJECT_ROOT/requirements-lambda-protocols.txt" "$PROTOCOLS_DIR/"
-    
-    # SAM이 requirements.txt를 찾을 수 있도록 심볼릭 링크 생성
-    cd "$PROTOCOLS_DIR"
-    ln -sf requirements-lambda-protocols.txt requirements.txt
-    cd "$BUILD_DIR"
+    # Protocols Lambda requirements 복사
+    # pandas는 ProtocolsLambdaLayer에 포함되어 있으므로, 추가 패키지가 필요한 경우에만 requirements-lambda-protocols.txt에 추가
+    if [ -f "$PROJECT_ROOT/requirements-lambda-protocols.txt" ]; then
+        # 파일이 비어있지 않으면 복사, 비어있으면 생성하지 않음
+        if [ -s "$PROJECT_ROOT/requirements-lambda-protocols.txt" ]; then
+            cp "$PROJECT_ROOT/requirements-lambda-protocols.txt" "$PROTOCOLS_DIR/requirements.txt"
+        else
+            # 빈 파일이면 requirements.txt를 생성하지 않음 (SAM이 빈 파일을 경고할 수 있음)
+            rm -f "$PROTOCOLS_DIR/requirements.txt" || true
+        fi
+    else
+        # 파일이 없으면 requirements.txt를 생성하지 않음
+        rm -f "$PROTOCOLS_DIR/requirements.txt" || true
+    fi
     
     # PROJECT_ROOT 경로를 Lambda 환경에 맞게 수정
     echo "Fixing PROJECT_ROOT path for Lambda environment..."
-    fix_project_root "$PROTOCOLS_DIR/rag/etl/step01_ingest/03_ingest_protocols.py"
+    fix_project_root "$PROTOCOLS_DIR/rag/etl/step01_ingest/ingest_protocols.py"
     
     # infra handler들의 project_root 경로도 수정
     for handler_file in "$PROTOCOLS_DIR/infra/aws/lambda_functions/trigger_etl/protocols"/*.py; do
@@ -234,10 +247,7 @@ prepare_nih() {
     echo "  Copying step01_ingest (NIH files only)..."
     mkdir -p "$NIH_DIR/rag/etl/step01_ingest"
     cp "$PROJECT_ROOT/rag/etl/step01_ingest/__init__.py" "$NIH_DIR/rag/etl/step01_ingest/" 2>/dev/null || true
-    cp "$PROJECT_ROOT/rag/etl/step01_ingest/02_ingest_nih.py" "$NIH_DIR/rag/etl/step01_ingest/"
-    # 숫자로 시작하는 파일명을 import 가능한 별칭으로 생성
-    cp "$PROJECT_ROOT/rag/etl/step01_ingest/02_ingest_nih.py" "$NIH_DIR/rag/etl/step01_ingest/ingest_nih.py"
-    echo "  Created ingest_nih.py alias for import compatibility"
+    cp "$PROJECT_ROOT/rag/etl/step01_ingest/ingest_nih.py" "$NIH_DIR/rag/etl/step01_ingest/"
     # modules 폴더는 전체 복사 (필요한 경우를 위해)
     cp -r "$PROJECT_ROOT/rag/etl/step01_ingest/modules" "$NIH_DIR/rag/etl/step01_ingest/" 2>/dev/null || true
     # .gitkeep 파일 제거
@@ -247,9 +257,7 @@ prepare_nih() {
     echo "  Copying step02_normalize (NIH files only)..."
     mkdir -p "$NIH_DIR/rag/etl/step02_normalize/modules"
     cp "$PROJECT_ROOT/rag/etl/step02_normalize/__init__.py" "$NIH_DIR/rag/etl/step02_normalize/" 2>/dev/null || true
-    cp "$PROJECT_ROOT/rag/etl/step02_normalize/02_normalize_nih.py" "$NIH_DIR/rag/etl/step02_normalize/"
-    # 숫자로 시작하는 파일명을 import 가능한 별칭으로 생성
-    cp "$PROJECT_ROOT/rag/etl/step02_normalize/02_normalize_nih.py" "$NIH_DIR/rag/etl/step02_normalize/normalize_nih.py"
+    cp "$PROJECT_ROOT/rag/etl/step02_normalize/normalize_nih.py" "$NIH_DIR/rag/etl/step02_normalize/"
     echo "  Created normalize_nih.py alias for import compatibility"
     # modules/nih/만 복사
     cp -r "$PROJECT_ROOT/rag/etl/step02_normalize/modules/nih" "$NIH_DIR/rag/etl/step02_normalize/modules/"
@@ -261,10 +269,7 @@ prepare_nih() {
     echo "  Copying step04_chunk (NIH files only)..."
     mkdir -p "$NIH_DIR/rag/etl/step04_chunk/modules"
     cp "$PROJECT_ROOT/rag/etl/step04_chunk/__init__.py" "$NIH_DIR/rag/etl/step04_chunk/" 2>/dev/null || true
-    cp "$PROJECT_ROOT/rag/etl/step04_chunk/02_chunker_nih.py" "$NIH_DIR/rag/etl/step04_chunk/"
-    # 숫자로 시작하는 파일명을 import 가능한 별칭으로 생성
-    cp "$PROJECT_ROOT/rag/etl/step04_chunk/02_chunker_nih.py" "$NIH_DIR/rag/etl/step04_chunk/chunker_nih.py"
-    echo "  Created chunker_nih.py alias for import compatibility"
+    cp "$PROJECT_ROOT/rag/etl/step04_chunk/chunker_nih.py" "$NIH_DIR/rag/etl/step04_chunk/"
     # modules/nih/만 복사
     cp -r "$PROJECT_ROOT/rag/etl/step04_chunk/modules/nih" "$NIH_DIR/rag/etl/step04_chunk/modules/"
     # .gitkeep 파일 제거
@@ -277,25 +282,35 @@ prepare_nih() {
     # .gitkeep 파일 제거
     find "$NIH_DIR/rag/etl/common" -name ".gitkeep" -type f -delete 2>/dev/null || true
     
-    mkdir -p "$NIH_DIR/infra/aws/lambda_functions"
-    cp -r "$PROJECT_ROOT/infra/aws/lambda_functions/trigger_etl" "$NIH_DIR/infra/aws/lambda_functions/"
+    # infra/aws/lambda_functions 디렉토리 구조 생성
+    mkdir -p "$NIH_DIR/infra/aws/lambda_functions/trigger_etl/nih"
+    # trigger_etl 디렉토리 내용 복사
+    cp -r "$PROJECT_ROOT/infra/aws/lambda_functions/trigger_etl"/* "$NIH_DIR/infra/aws/lambda_functions/trigger_etl/" 2>/dev/null || true
     # .gitkeep 파일 제거
     find "$NIH_DIR/infra/aws/lambda_functions/trigger_etl" -name ".gitkeep" -type f -delete 2>/dev/null || true
+    
+    # Handler 경로를 위한 __init__.py 파일 생성 (Python 모듈 import를 위해 필수)
+    echo "  Creating __init__.py files for Handler path..."
+    touch "$NIH_DIR/infra/__init__.py"
+    touch "$NIH_DIR/infra/aws/__init__.py"
+    touch "$NIH_DIR/infra/aws/lambda_functions/__init__.py"
+    touch "$NIH_DIR/infra/aws/lambda_functions/trigger_etl/__init__.py"
+    touch "$NIH_DIR/infra/aws/lambda_functions/trigger_etl/nih/__init__.py"
     
     # NIH Lambda에 불필요한 파일 제거
     echo "Removing unnecessary files for NIH Lambda..."
     rm -rf "$NIH_DIR/infra/aws/lambda_functions/trigger_etl/protocols" || true
     rm -rf "$NIH_DIR/infra/aws/lambda_functions/trigger_etl/pubmed" || true
-    # trigger_etl/requirements.txt 제거 (requirements-lambda-nih.txt만 사용)
+    # trigger_etl/requirements.txt 제거 (Layer에 중복된 패키지가 들어있을 수 있음)
     rm -f "$NIH_DIR/infra/aws/lambda_functions/trigger_etl/requirements.txt" || true
     
-    # requirements 파일 복사
-    cp "$PROJECT_ROOT/requirements-lambda-nih.txt" "$NIH_DIR/"
-    
-    # SAM이 requirements.txt를 찾을 수 있도록 심볼릭 링크 생성
-    cd "$NIH_DIR"
-    ln -sf requirements-lambda-nih.txt requirements.txt
-    cd "$BUILD_DIR"
+    # NIH Lambda requirements 복사 (현재는 주석만 포함되지만 추후 의존성 추가 가능)
+    if [ -f "$PROJECT_ROOT/requirements-lambda-nih.txt" ]; then
+        cp "$PROJECT_ROOT/requirements-lambda-nih.txt" "$NIH_DIR/requirements.txt"
+    else
+        echo "⚠ requirements-lambda-nih.txt not found. Creating empty requirements.txt"
+        : > "$NIH_DIR/requirements.txt"
+    fi
     
     # Lambda 핸들러의 import 문 수정 (새로운 핸들러 파일들 포함)
     echo "Fixing import statements in Lambda handlers..."

@@ -5,7 +5,7 @@ import os
 ENTITY_MASTER = "entity_master.csv"
 SECTION_FILE  = "section_keywords_primekg.csv"
 OUTPUT_FILE   = "section_entity_mentions.csv"
-
+#keyword(raw text) - entity(nomalized text) mapping file
 def main():
     if not os.path.exists(ENTITY_MASTER):
         print(f"❌ 엔티티 마스터 파일 없음: {ENTITY_MASTER}")
