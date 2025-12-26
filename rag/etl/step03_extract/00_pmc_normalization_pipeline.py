@@ -55,9 +55,18 @@ def _pmid_filter_step(pmc_dir: Path) -> None:
             continue
 
         output_path = filtered_dir / input_path.name
-        logger.info("[PMC] pmid 필터링 시작: %s -> %s", input_path, output_path)
-        filter_pmid_nonzero(str(input_path), str(output_path))
-        logger.info("[PMC] pmid 필터링 완료: %s", output_path)
+        try:
+            logger.info("[PMC] pmid 필터링 시작: %s -> %s", input_path, output_path)
+            # pmid 컬럼이 없는 파일(예: sections_for_chunk.csv)은 pmc_filter_pmid_nonzero
+            # 내부에서 ValueError 를 발생시키므로, 해당 경우는 스킵한다.
+            filter_pmid_nonzero(str(input_path), str(output_path))
+            logger.info("[PMC] pmid 필터링 완료: %s", output_path)
+        except ValueError as e:
+            logger.info(
+                "[PMC] pmid 컬럼 없음 또는 형식 불일치로 필터 스킵: %s (%s)",
+                input_path,
+                e,
+            )
 
 
 def _section_id_filter_step(chunks_path: Path, vector_path: Path) -> None:

@@ -43,7 +43,6 @@ class PipelineConfig:
     entities_dir: str = os.getenv("ETL_ENTITIES_DIR", "data/entities")
     chunks_dir: str = os.getenv("ETL_CHUNKS_DIR", "data/chunks")
     embeddings_dir: str = os.getenv("ETL_EMBEDDINGS_DIR", "data/embeddings")
-
     batch_size: int = int(os.getenv("ETL_BATCH_SIZE", "50"))
 
 
@@ -76,9 +75,9 @@ def run_ingest(source: SourceType, cfg: PipelineConfig, limit: int | None = None
     01_ingest/ 아래 각 소스 모듈의 run()을 호출.
 
     기대하는 모듈 & 함수 시그니처:
-      - rag.etl.step01_ingest.01_ingest_pubmed.run(raw_dir: str, limit: int | None)
-      - rag.etl.step01_ingest.02_ingest_nih.run(raw_dir: str, limit: int | None)
-      - rag.etl.step01_ingest.03_ingest_protocols.run(raw_dir: str, limit: int | None)
+    - rag.etl.step01_ingest.01_ingest_pubmed.run(raw_dir: str, limit: int | None)
+    - rag.etl.step01_ingest.02_ingest_nih.run(raw_dir: str, limit: int | None)
+    - rag.etl.step01_ingest.03_ingest_protocols.run(raw_dir: str, limit: int | None)
     """
     logger = logging.getLogger("etl.ingest")
 
@@ -157,44 +156,46 @@ def run_normalize(source: SourceType, cfg: PipelineConfig) -> None:
 
 def run_extract(cfg: PipelineConfig, source: SourceType) -> None:
     """
-    03_extract/01_entity_extraction.py 및 02_relation_extraction.py 의 run() 호출.
-
-    기대 시그니처:
-      rag.etl.step03_extract.01_entity_extraction.run(
-          processed_dir: str,
-          entities_dir: str,
-          source: str | None,
-      )
-
-      rag.etl.step03_extract.02_relation_extraction.run(
-          entities_dir: str,
-          source: str | None,
-      )
+    03_extract/00_pmc_normalization_pipeline.py,
+    01_entity_extraction.py,
+    02_relation_extraction.py 의 run()을 순차 실행.
     """
     logger = logging.getLogger("etl.extract")
     ensure_dirs(cfg.entities_dir)
 
     src_filter = None if source == "all" else source
 
-    # 엔터티 추출
-    logger.info("▶ [EXTRACT] entity extraction start (source=%s)", source)
+    # 0) PMC 정제 파이프라인 (pmid/section_id/cleansing)
+    try:
+        logger.info("▶ [EXTRACT] 00_pmc_normalization_pipeline start (source=%s)", source)
+        norm_mod = import_module("rag.etl.step03_extract.00_pmc_normalization_pipeline")
+        norm_mod.run(cfg, source)  # cfg: PipelineConfig, source: SourceType
+        logger.info("✔ [EXTRACT] 00_pmc_normalization_pipeline done")
+    except ModuleNotFoundError:
+        logger.info("⏭  [EXTRACT] 00_pmc_normalization_pipeline 모듈 없음 → 스킵")
+    except Exception as e:
+        logger.error("[EXTRACT] 00_pmc_normalization_pipeline 실행 실패: %s", e, exc_info=True)
+        raise
+
+    # 1) 엔터티 추출
+    logger.info("▶ [EXTRACT] 01_entity_extraction start (source=%s)", source)
     ent_mod = import_module("rag.etl.step03_extract.01_entity_extraction")
     ent_mod.run(
         processed_dir=cfg.processed_dir,
         entities_dir=cfg.entities_dir,
         source=src_filter,
     )
-    logger.info("✔ [EXTRACT] entity extraction done")
+    logger.info("✔ [EXTRACT] 01_entity_extraction done")
 
-    # 관계 추출 (파일 없으면 스킵 가능하도록 try/except)
+    # 2) 관계 추출 (파일 없으면 스킵 가능하도록 try/except)
     try:
-        logger.info("▶ [EXTRACT] relation extraction start (source=%s)", source)
+        logger.info("▶ [EXTRACT] 02_relation_extraction start (source=%s)", source)
         rel_mod = import_module("rag.etl.step03_extract.02_relation_extraction")
         rel_mod.run(
             entities_dir=cfg.entities_dir,
             source=src_filter,
         )
-        logger.info("✔ [EXTRACT] relation extraction done")
+        logger.info("✔ [EXTRACT] 02_relation_extraction done")
     except ModuleNotFoundError:
         logger.info("⏭  [EXTRACT] relation_extraction 모듈 없음 → 스킵")
 

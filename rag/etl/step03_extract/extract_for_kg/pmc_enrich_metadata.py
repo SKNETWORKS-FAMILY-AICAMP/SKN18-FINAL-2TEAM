@@ -27,14 +27,13 @@ from openai import OpenAI
 # 1. 설정
 # ======================================================================
 # pmid 필터링이 끝난 PMC 기사 파일(articles.csv)을 사용하고,
-# 같은 디렉터리 안에 article_enriched.csv / article_topics.csv / article_designs.csv 를 생성한다.
-ROOT_DIR = Path(__file__).resolve().parents[2]
-END_DIR = ROOT_DIR / "data" / "entities" / "pubmed"
-FILTERED_DIR = ROOT_DIR / "data" / "pubmed" / "pmc_csv" / "filtered"
-
+# data/processed/pubmed/pmc_csv/filtered 아래에서 article_enriched 를 생성한다.
+# (END_DIR 은 data/entities/pubmed 쪽으로 둬도 되지만, 현재는 processed/filtered 기준으로 맞춘다.)
+ROOT_DIR = Path(__file__).resolve().parents[4]
+FILTERED_DIR = ROOT_DIR / "data" / "processed" / "pubmed" / "pmc_csv" / "filtered"
 
 INPUT_FILE = FILTERED_DIR / "articles.csv"
-OUTPUT_FILE = END_DIR / "ts_article_enriched.csv"
+OUTPUT_FILE = FILTERED_DIR / "article_enriched.csv"
 # TOPIC_FILE = END_DIR / "tsarticle_topics.csv"
 # DESIGN_FILE = END_DIR / "ts_article_designs.csv"
 
@@ -286,8 +285,4 @@ def run_enrichment():
 
 
 if __name__ == "__main__":
-    # import 폴더 확인
-    if not os.path.exists("import"):
-        os.makedirs("import")
-
     run_enrichment()

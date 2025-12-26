@@ -263,12 +263,12 @@ def run_batch_pipeline(meta_csv, embedding_csv, out_entities, out_keywords, batc
 
 if __name__ == "__main__":
     # 프로젝트 루트 기준 경로 설정
-    ROOT_DIR = Path(__file__).resolve().parents[2]
+    ROOT_DIR = Path(__file__).resolve().parents[4]
 
     # pmid 필터링이 완료된 섹션 정보 사용
     META = ROOT_DIR / "data" / "processed" / "pubmed" / "pmc_csv" / "filtered" / "sections.csv"
-    # 임베딩/청크 텍스트는 정규 파이프라인에서 생성된 pmc_chunks.csv 사용
-    CHUNK = ROOT_DIR / "data" / "chunks" / "pubmed" /"pmc_csv" / "filtered" / "sections_for_chunk.csv"
+    # 청크 텍스트는 section_id 기준으로 필터링된 pmc_chunks_filtered.csv 사용
+    CHUNK = ROOT_DIR / "data" / "chunks" / "pubmed" / "pmc_chunks_filtered.csv"
 
     BASE = ROOT_DIR / "data" / "entities" / "pubmed"
     BASE.mkdir(parents=True, exist_ok=True)
