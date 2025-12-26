@@ -1,10 +1,15 @@
 # build_section_mentions_with_entity_id.py
 import pandas as pd
 import os
+from pathlib import Path
 
-ENTITY_MASTER = "entity_master.csv"
-SECTION_FILE  = "section_keywords_primekg.csv"
-OUTPUT_FILE   = "section_entity_mentions.csv"
+# data/entities 기준 경로
+ROOT_DIR = Path(__file__).resolve().parents[2]
+ENT_DIR = ROOT_DIR / "data" / "entities"
+
+ENTITY_MASTER = ENT_DIR / "pubmed" / "ts_entity_master.csv"
+SECTION_FILE  = ENT_DIR / "pubmed" / "ts_section_keywords_primekg.csv"
+OUTPUT_FILE   = ENT_DIR / "pubmed" / "ts_section_entity_mentions.csv"
 #keyword(raw text) - entity(nomalized text) mapping file
 def main():
     if not os.path.exists(ENTITY_MASTER):
@@ -51,6 +56,7 @@ def main():
     print("📊 전체 mention 수:", len(merged))
     print("⚠ entity_id 없는 mention 수:", merged["entity_id"].isna().sum())
 
+    ENT_DIR.mkdir(parents=True, exist_ok=True)
     merged.to_csv(OUTPUT_FILE, index=False)
     print(f"✅ section_entity_mentions 저장 완료: {OUTPUT_FILE}")
     print(merged.head())

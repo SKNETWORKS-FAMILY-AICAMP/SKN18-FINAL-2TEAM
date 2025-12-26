@@ -270,9 +270,9 @@ if __name__ == "__main__":
     # 임베딩/청크 텍스트는 정규 파이프라인에서 생성된 pmc_chunks.csv 사용
     CHUNK = ROOT_DIR / "data" / "chunks" / "pubmed" /"pmc_csv" / "filtered" / "sections_for_chunk.csv"
 
-    BASE = ROOT_DIR / "data" / "entities" / "pmc"
+    BASE = ROOT_DIR / "data" / "entities" / "pubmed"
     BASE.mkdir(parents=True, exist_ok=True)
-    OUT_ENT = BASE / "entities.csv"
-    OUT_KW = BASE / "section_keywords.csv"
+    OUT_ENT = BASE / "ts_entities.csv"
+    OUT_KW = BASE / "ts_section_keywords.csv"
 
     run_batch_pipeline(str(META), str(CHUNK), str(OUT_ENT), str(OUT_KW), batch_size=10)

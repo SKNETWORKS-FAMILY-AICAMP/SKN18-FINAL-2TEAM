@@ -1,16 +1,20 @@
 import os
+from pathlib import Path
+
 import pandas as pd
 import numpy as np
 
 # ====================================
 # 0. 파일 경로 설정
 # ====================================
-TS_ENTITY_MASTER_FILE = "C:\\dev\\study\\skn18_fianl-2team\\SKN18-FINAL-2TEAM\\neo4j\\import\\ts_entity_master.csv"
-TS_MENTIONS_FILE      = "C:\\dev\\study\\skn18_fianl-2team\\SKN18-FINAL-2TEAM\\neo4j\\import\\ts_section_entity_mentions.csv"
-CLIN_META_FILE        = "C:\\dev\\study\\skn18_fianl-2team\\SKN18-FINAL-2TEAM\\neo4j\\import\\nih_mapped_metadata_entities_1208.csv"
+ROOT_DIR = Path(__file__).resolve().parents[2]
+ENT_DIR = ROOT_DIR / "data" / "entities"
 
-ENTITY_MASTER_OUT  = "C:\\dev\\study\\skn18_fianl-2team\\SKN18-FINAL-2TEAM\\neo4j\\import\\global_entity_master.csv"
-MENTION_MASTER_OUT = "C:\\dev\\study\\skn18_fianl-2team\\SKN18-FINAL-2TEAM\\neo4j\\import\\global_mention_master.csv"
+TS_ENTITY_MASTER_FILE = ENT_DIR / "pubmed" / "ts_entity_master.csv"
+TS_MENTIONS_FILE      = ENT_DIR / "pubmed"/ "ts_section_entity_mentions.csv"
+CLIN_META_FILE        = ENT_DIR / "nih" / "ts_mapped_metadata_entities.csv"
+ENTITY_MASTER_OUT  = ENT_DIR / "ts_global_entity_master.csv"
+MENTION_MASTER_OUT = ENT_DIR / "ts_global_mention_master.csv"
 
 
 # ====================================

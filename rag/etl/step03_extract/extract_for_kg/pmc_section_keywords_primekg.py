@@ -6,24 +6,12 @@ import os
 # [설정] 파일 경로
 # ==========================================
 ROOT_DIR = Path(__file__).resolve().parents[2]
-ENT_DIR = ROOT_DIR / "data" / "entities" / "pmc"
+ENT_DIR = ROOT_DIR / "data" / "entities" / "pubmed"
 
-SECTION_FILE = ENT_DIR / "section_keywords.csv"
-MAPPING_FILE = ENT_DIR / "entity_master.csv"
-OUTPUT_FILE  = ENT_DIR / "section_keywords_primekg.csv"
+SECTION_FILE = ENT_DIR / "ts_section_keywords.csv"
+MAPPING_FILE = ENT_DIR / "ts_entity_master.csv"
+OUTPUT_FILE  = ENT_DIR / "ts_section_keywords_primekg.csv"
 
-
-
-
-# 1. 방금 업로드하신 섹션별 키워드 파일
-SECTION_FILE = 'section_keywords.csv' 
-
-# 2. 앞서 Gilda로 만든 매핑 파일 (이 파일이 있어야 합니다!)
-MAPPING_FILE = 'entities_all_dbs.csv' 
-
-# 3. 최종 결과 파일
-OUTPUT_FILE = 'section_keywords_primekg.csv'
-# keyword with mapped PrimeKG/UMLS IDs
 # ==========================================
 # [로직] ID 갈아끼우기
 # ==========================================

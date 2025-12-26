@@ -33,7 +33,7 @@ BASE_DIR = Path(__file__).resolve().parents[2]  # SKN18-FINAL-2TEAM
 if str(BASE_DIR) not in sys.path:
     sys.path.append(str(BASE_DIR))
 
-from kg.kg_etl.common_experiment_categories import (
+from rag.etl.step03_extract.extract_for_kg.common_experiment_categories import (
     CATEGORY_TREE,
     LEAF_TO_PARENT,
     VALID_PARENTS,
@@ -144,7 +144,7 @@ def main():
     # 출력: data/entities/protocol 안에 라벨링된 파일 저장
     output_dir = BASE_DIR / "data" / "entities" / "protocol"
     output_dir.mkdir(parents=True, exist_ok=True)
-    output_path = output_dir / "t_protocol_metadata_Cell_labeled.csv"
+    output_path = output_dir / "ts_protocol_metadata_Cell_labeled.csv"
 
     print(f"입력 파일 경로:   {input_path}")
     print(f"출력 파일 경로:   {output_path}")

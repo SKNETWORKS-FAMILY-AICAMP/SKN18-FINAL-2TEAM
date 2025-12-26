@@ -29,14 +29,14 @@ from openai import OpenAI
 # pmid 필터링이 끝난 PMC 기사 파일(articles.csv)을 사용하고,
 # 같은 디렉터리 안에 article_enriched.csv / article_topics.csv / article_designs.csv 를 생성한다.
 ROOT_DIR = Path(__file__).resolve().parents[2]
-END_DIR = ROOT_DIR / "data" / "entities" / "pmc"
+END_DIR = ROOT_DIR / "data" / "entities" / "pubmed"
 FILTERED_DIR = ROOT_DIR / "data" / "pubmed" / "pmc_csv" / "filtered"
 
 
 INPUT_FILE = FILTERED_DIR / "articles.csv"
-OUTPUT_FILE = END_DIR / "article_enriched.csv"
-TOPIC_FILE = END_DIR / "article_topics.csv"
-DESIGN_FILE = END_DIR / "article_designs.csv"
+OUTPUT_FILE = END_DIR / "ts_article_enriched.csv"
+# TOPIC_FILE = END_DIR / "tsarticle_topics.csv"
+# DESIGN_FILE = END_DIR / "ts_article_designs.csv"
 
 BATCH_SIZE = 20  # 한 번에 처리할 논문 수 (LLM 속도 고려하여 작게 설정 권장)
 
@@ -207,9 +207,9 @@ def run_enrichment():
 
     print(f"🚀 분석 시작 (Batch Size: {BATCH_SIZE})...")
 
-    # topics/design 정규화 테이블 헤더 여부
-    topic_header = not os.path.exists(TOPIC_FILE)
-    design_header = not os.path.exists(DESIGN_FILE)
+    # # topics/design 정규화 테이블 헤더 여부
+    # topic_header = not os.path.exists(TOPIC_FILE)
+    # design_header = not os.path.exists(DESIGN_FILE)
 
     # tqdm 진행바
     with tqdm(total=total_rows, initial=start_row, unit="paper") as pbar:
@@ -253,27 +253,27 @@ def run_enrichment():
                 OUTPUT_FILE, mode="a", header=is_header, index=False
             )
 
-            # topics 정규화 테이블 저장
-            if topics_rows:
-                tdf = pd.DataFrame(topics_rows)
-                tdf.to_csv(
-                    TOPIC_FILE,
-                    mode="a",
-                    header=topic_header,
-                    index=False,
-                )
-                topic_header = False
+            # # topics 정규화 테이블 저장
+            # if topics_rows:
+            #     tdf = pd.DataFrame(topics_rows)
+            #     tdf.to_csv(
+            #         TOPIC_FILE,
+            #         mode="a",
+            #         header=topic_header,
+            #         index=False,
+            #     )
+            #     topic_header = False
 
-            # design 정규화 테이블 저장
-            if designs_rows:
-                ddf = pd.DataFrame(designs_rows)
-                ddf.to_csv(
-                    DESIGN_FILE,
-                    mode="a",
-                    header=design_header,
-                    index=False,
-                )
-                design_header = False
+            # # design 정규화 테이블 저장
+            # if designs_rows:
+            #     ddf = pd.DataFrame(designs_rows)
+            #     ddf.to_csv(
+            #         DESIGN_FILE,
+            #         mode="a",
+            #         header=design_header,
+            #         index=False,
+            #     )
+            #     design_header = False
 
             # 상태 업데이트
             start_row += len(chunk_df)
@@ -281,8 +281,8 @@ def run_enrichment():
 
     print(f"\n✅ 작업 완료!")
     print(f"  - 메인: {OUTPUT_FILE}")
-    print(f"  - 토픽 정규화: {TOPIC_FILE}")
-    print(f"  - 설계 정규화: {DESIGN_FILE}")
+    # print(f"  - 토픽 정규화: {TOPIC_FILE}")
+    # print(f"  - 설계 정규화: {DESIGN_FILE}")
 
 
 if __name__ == "__main__":
