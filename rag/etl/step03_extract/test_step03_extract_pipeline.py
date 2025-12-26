@@ -18,7 +18,7 @@ import argparse
 import logging
 from importlib import import_module
 from pathlib import Path
-
+import gilda
 from dotenv import load_dotenv
 
 # 프로젝트 루트(SKN18-FINAL-2TEAM)가 import 경로에 잡히도록 설정

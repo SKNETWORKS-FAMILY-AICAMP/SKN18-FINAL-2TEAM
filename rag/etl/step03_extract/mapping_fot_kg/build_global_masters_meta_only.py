@@ -7,7 +7,7 @@ import numpy as np
 # ====================================
 # 0. 파일 경로 설정
 # ====================================
-ROOT_DIR = Path(__file__).resolve().parents[2]
+ROOT_DIR = Path(__file__).resolve().parents[4]
 ENT_DIR = ROOT_DIR / "data" / "entities"
 
 TS_ENTITY_MASTER_FILE = ENT_DIR / "pubmed" / "ts_entity_master.csv"

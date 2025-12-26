@@ -9,7 +9,7 @@ from tqdm import tqdm
 # ==========================================
 # [설정] 파일 경로
 # ==========================================
-ROOT_DIR = Path(__file__).resolve().parents[2]
+ROOT_DIR = Path(__file__).resolve().parents[4]
 ENT_DIR = ROOT_DIR / "data" / "entities" / "pubmed"
 
 INPUT_FILE  = ENT_DIR / "ts_entities.csv"      # pmc_section_generate_keywords 에서 생성한 엔티티 파일

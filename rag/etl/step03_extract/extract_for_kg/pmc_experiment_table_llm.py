@@ -35,7 +35,7 @@ from openai import OpenAI
 # ─────────────────────────────────────
 
 # 프로젝트 루트 추론
-ROOT_DIR = Path(__file__).resolve().parents[2]
+ROOT_DIR = Path(__file__).resolve().parents[4]
 
 # common_experiment_categories 모듈 import 가능하도록 sys.path에 추가
 if str(ROOT_DIR) not in sys.path:

@@ -1,7 +1,7 @@
 import pandas as pd
 from pathlib import Path
 
-ROOT_DIR = Path(__file__).resolve().parents[2]
+ROOT_DIR = Path(__file__).resolve().parents[4]
 ENT_DIR = ROOT_DIR / "data" / "entities"
 
 # 1. 파일 로드

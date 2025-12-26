@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 
 # data/entities 기준 경로
-ROOT_DIR = Path(__file__).resolve().parents[2]
+ROOT_DIR = Path(__file__).resolve().parents[4]
 ENT_DIR = ROOT_DIR / "data" / "entities"
 
 ENTITY_MASTER = ENT_DIR / "pubmed" / "ts_entity_master.csv"

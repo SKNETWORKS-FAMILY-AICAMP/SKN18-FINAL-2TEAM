@@ -26,7 +26,7 @@ import logging
 import subprocess
 import sys
 from pathlib import Path
-import gilda
+
 
 def _run_module(module: str, *args: str) -> None:
     """
