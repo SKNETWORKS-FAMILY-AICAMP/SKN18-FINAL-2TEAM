@@ -18,7 +18,7 @@ OUT_DIR = ROOT_DIR / "data" / "entities" / "nih"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 METADATA_FILE = NIH_DIR / "nih_metadata1208.csv"
-CHUNK_FILE = "C:\\dev\\study\\skn18_fianl-2team\\SKN18-FINAL-2TEAM\\data\\chunks\\nih\\nih_chunks.csv"
+CHUNK_FILE = "C:\\dev\\study\\skn18_fianl-2team\\SKN18-FINAL-2TEAM\\data\\chunks\\nih\\nih_chunk_data1208.csv"
 
 # 최종 결과 파일
 OUTPUT_METADATA_ENTITIES = OUT_DIR / "ts_mapped_metadata_entities.csv"
@@ -213,14 +213,19 @@ def process_chunks_batch():
             
             pbar.update(len(df))
 
+
 # ==========================================
 # [메인 실행]
 # ==========================================
 if __name__ == "__main__":
-    process_metadata_batch() # Keywords 포함
+    # UMLS + scispaCy 파이프라인 한 번만 초기화
+    nlp, umls_linker = init_umls_pipeline()
+
+    process_metadata_batch()  # Keywords 포함
     process_chunks_batch()
-    
-    print("\n✅ 모든 작업 완료!")
+
+    print("\n? 모든 작업 완료!")
     print(f"1. {OUTPUT_METADATA_ENTITIES} (Conditions, Interventions, Keywords)")
     print(f"2. {OUTPUT_CHUNK_ENTITIES}")
-    print(f"📊 캐시된 고유 단어 수: {len(id_cache)}개")
+    print(f"?? 캐시된 고유 단어 수: {len(id_cache)}개")
+
