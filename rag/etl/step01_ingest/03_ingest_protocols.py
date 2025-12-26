@@ -151,6 +151,7 @@ def ingest_keyword(search_keyword: str, raw_dir: Path | None = None) -> None:
         search_keyword, 
         pages_to_reserve=MAX_PAGES_PER_RUN
     )
+    start_page = 1
     
     if start_page is None:
         print(
@@ -258,11 +259,30 @@ def ingest_keyword(search_keyword: str, raw_dir: Path | None = None) -> None:
             step_str = ""
             for s in steps_list:
                 step_html = s.get("step") or ""
+                step_number = s.get("number") or ""
+                
+                # 버튼 태그 텍스트를 포함시키는 로직 추가
+                soup = BeautifulSoup(step_number, "html.parser")
+                
+                # 버튼 텍스트를 추출 (모두 공백으로 join)
+                button_texts = [btn.get_text(strip=True) for btn in soup]
+                print(button_texts)
+                buttons_combined = " <STEP " + button_texts[0] + ">"
+                print(f"buttons_combined: {buttons_combined}")
+                
+                # 기존 테이블 변환 및 superscript 변환 적용
                 step_html = parse_table_to_text(step_html)
-                step_str += html_to_text_with_superscript(step_html)
+                step_text = html_to_text_with_superscript(step_html)
+                
+                # 버튼 텍스트가 있으면 앞이나 뒤에 붙임 (예: 앞에 번호 넣기)
+                if buttons_combined:
+                    step_text = buttons_combined + " " + step_text
+                
+                step_str += step_text
             if not step_str.strip():
                 step_str = "<no data>"
             print(f"step_content: {step_str}")
+
 
             reference_html = proto.get("protocol_references") or ""
             reference_html = parse_table_to_text(reference_html)
