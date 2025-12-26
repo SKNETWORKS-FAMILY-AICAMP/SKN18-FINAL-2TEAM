@@ -13,8 +13,8 @@ from tqdm import tqdm
 # [설정] 파일 경로 및 배치 설정
 # ==========================================
 ROOT_DIR = Path(__file__).resolve().parents[4]
-NIH_DIR = ROOT_DIR / "data" / "processed" / "nih" 
-OUT_DIR = ROOT_DIR / "data" / "entities" / "nih"
+NIH_DIR = ROOT_DIR / "data" / "processed" / "nih" / "nih_csv"
+OUT_DIR = ROOT_DIR / "data" / "entities" / "nih" 
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 METADATA_FILE = NIH_DIR / "nih_metadata1208.csv"
@@ -163,55 +163,55 @@ def process_metadata_batch():
 # ==========================================
 # [2] Chunk 배치 처리 (NLP)
 # ==========================================
-def process_chunks_batch():
-    print(f"\n🚀 [2/2] Chunk 배치 처리 시작: {CHUNK_FILE}")
+# def process_chunks_batch():
+#     print(f"\n🚀 [2/2] Chunk 배치 처리 시작: {CHUNK_FILE}")
     
-    if os.path.exists(OUTPUT_CHUNK_ENTITIES): os.remove(OUTPUT_CHUNK_ENTITIES)
+#     if os.path.exists(OUTPUT_CHUNK_ENTITIES): os.remove(OUTPUT_CHUNK_ENTITIES)
     
-    try:
-        total_rows = sum(1 for _ in open(CHUNK_FILE, encoding='utf-8')) - 1
-    except:
-        total_rows = None
+#     try:
+#         total_rows = sum(1 for _ in open(CHUNK_FILE, encoding='utf-8')) - 1
+#     except:
+#         total_rows = None
 
-    chunk_iter = pd.read_csv(CHUNK_FILE, chunksize=BATCH_SIZE)
+#     chunk_iter = pd.read_csv(CHUNK_FILE, chunksize=BATCH_SIZE)
 
-    with tqdm(total=total_rows, unit='rows') as pbar:
-        for i, df in enumerate(chunk_iter):
-            batch_results = []
+#     with tqdm(total=total_rows, unit='rows') as pbar:
+#         for i, df in enumerate(chunk_iter):
+#             batch_results = []
             
-            texts = df['chunk'].fillna("").tolist()
-            chunk_ids = df['chunk_id'].tolist()
-            if 'nctid' in df.columns:
-                nct_ids = df['nctid'].tolist()
-            else:
-                nct_ids = ["Unknown"] * len(texts)
+#             texts = df['chunk'].fillna("").tolist()
+#             chunk_ids = df['chunk_id'].tolist()
+#             if 'nctid' in df.columns:
+#                 nct_ids = df['nctid'].tolist()
+#             else:
+#                 nct_ids = ["Unknown"] * len(texts)
 
-            for doc, chunk_id, nct_id in zip(nlp.pipe(texts), chunk_ids, nct_ids):
-                seen_entities = set()
+#             for doc, chunk_id, nct_id in zip(nlp.pipe(texts), chunk_ids, nct_ids):
+#                 seen_entities = set()
                 
-                for ent in doc.ents:
-                    res = get_cached_id(ent.text)
-                    if res:
-                        unique_key = (chunk_id, res['id'])
-                        if unique_key not in seen_entities:
-                            batch_results.append({
-                                'nctId': nct_id,
-                                'chunkId': chunk_id,
-                                'sourceType': 'Chunk_Text',
-                                'entityId': f"{res['db']}:{res['id']}",
-                                'entityName': res['name'],
-                                'entityType': res['db'],
-                                'score': res['score'],
-                                'originalText': ent.text
-                            })
-                            seen_entities.add(unique_key)
+#                 for ent in doc.ents:
+#                     res = get_cached_id(ent.text)
+#                     if res:
+#                         unique_key = (chunk_id, res['id'])
+#                         if unique_key not in seen_entities:
+#                             batch_results.append({
+#                                 'nctId': nct_id,
+#                                 'chunkId': chunk_id,
+#                                 'sourceType': 'Chunk_Text',
+#                                 'entityId': f"{res['db']}:{res['id']}",
+#                                 'entityName': res['name'],
+#                                 'entityType': res['db'],
+#                                 'score': res['score'],
+#                                 'originalText': ent.text
+#                             })
+#                             seen_entities.add(unique_key)
             
-            if batch_results:
-                mode = 'w' if i == 0 else 'a'
-                header = (i == 0)
-                pd.DataFrame(batch_results).to_csv(OUTPUT_CHUNK_ENTITIES, mode=mode, index=False, header=header)
+#             if batch_results:
+#                 mode = 'w' if i == 0 else 'a'
+#                 header = (i == 0)
+#                 pd.DataFrame(batch_results).to_csv(OUTPUT_CHUNK_ENTITIES, mode=mode, index=False, header=header)
             
-            pbar.update(len(df))
+#             pbar.update(len(df))
 
 
 # ==========================================
@@ -222,7 +222,7 @@ if __name__ == "__main__":
     nlp, umls_linker = init_umls_pipeline()
 
     process_metadata_batch()  # Keywords 포함
-    process_chunks_batch()
+    # process_chunks_batch()
 
     print("\n? 모든 작업 완료!")
     print(f"1. {OUTPUT_METADATA_ENTITIES} (Conditions, Interventions, Keywords)")
