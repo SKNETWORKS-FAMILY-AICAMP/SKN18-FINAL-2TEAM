@@ -417,4 +417,5 @@ infra/neo4j/plugins/**
 
 *__init__.py
 *graph\models\*
-.fine-tuning\data\* # fine-tuning data
+# Fine-tuning data directory
+.fine-tuning/data/
