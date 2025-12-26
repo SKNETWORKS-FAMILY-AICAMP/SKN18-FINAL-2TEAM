@@ -41,7 +41,7 @@ ROOT_DIR = Path(__file__).resolve().parents[2]
 if str(ROOT_DIR) not in sys.path:
     sys.path.append(str(ROOT_DIR))
 
-from kg.kg_etl.common_experiment_categories import (
+from rag.etl.step03_extract.extract_for_kg.common_experiment_categories import (
     CATEGORY_TREE,
     LEAF_TO_PARENT,
     PARENT_DEFAULT_LEAF,
@@ -51,8 +51,8 @@ from kg.kg_etl.common_experiment_categories import (
 DEBUG = False
 
 # sections.csv / 출력 경로
-SECTIONS_PATH = ROOT_DIR / "data" / "pmc_1000" / "t_sections_filtered.csv"
-OUTPUT_PATH = ROOT_DIR / "data" / "pmc_1000" / "ts_paper_experiments_table.csv"
+SECTIONS_PATH = ROOT_DIR / "data" / "processed" / "pubmed" / "pmc_csv"/ "filtered" / "sections.csv"
+OUTPUT_PATH = ROOT_DIR / "data" / "entities" / "pmc" / "ts_paper_experiments.csv"
 
 # .env 로드
 load_dotenv(ROOT_DIR / ".env")

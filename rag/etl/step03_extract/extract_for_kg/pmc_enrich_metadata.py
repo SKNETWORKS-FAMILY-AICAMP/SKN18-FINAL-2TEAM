@@ -19,16 +19,24 @@ enrich_article_metadata_chunked.py
 import pandas as pd
 import json
 import os
+from pathlib import Path
 from tqdm import tqdm
 from openai import OpenAI
 
 # ======================================================================
 # 1. 설정
 # ======================================================================
-INPUT_FILE = "/content/drive/MyDrive/final_project/t_articles_filtered.csv"
-OUTPUT_FILE = "/content/drive/MyDrive/final_project/ts_article_enriched.csv"
-TOPIC_FILE = "/content/drive/MyDrive/final_project/ts_article_topics.csv"
-DESIGN_FILE = "/content/drive/MyDrive/final_project/ts_article_designs.csv"
+# pmid 필터링이 끝난 PMC 기사 파일(articles.csv)을 사용하고,
+# 같은 디렉터리 안에 article_enriched.csv / article_topics.csv / article_designs.csv 를 생성한다.
+ROOT_DIR = Path(__file__).resolve().parents[2]
+END_DIR = ROOT_DIR / "data" / "entities" / "pmc"
+FILTERED_DIR = ROOT_DIR / "data" / "pubmed" / "pmc_csv" / "filtered"
+
+
+INPUT_FILE = FILTERED_DIR / "articles.csv"
+OUTPUT_FILE = END_DIR / "article_enriched.csv"
+TOPIC_FILE = END_DIR / "article_topics.csv"
+DESIGN_FILE = END_DIR / "article_designs.csv"
 
 BATCH_SIZE = 20  # 한 번에 처리할 논문 수 (LLM 속도 고려하여 작게 설정 권장)
 

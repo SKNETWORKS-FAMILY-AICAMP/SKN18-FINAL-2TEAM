@@ -1,5 +1,7 @@
 # build_entity_master_with_gilda.py
 import os
+from pathlib import Path
+
 import pandas as pd
 import gilda
 from tqdm import tqdm
@@ -7,8 +9,11 @@ from tqdm import tqdm
 # ==========================================
 # [설정] 파일 경로
 # ==========================================
-INPUT_FILE  = "entities.csv"          # section_keywords_primekg에서 분리한 엔티티 마스터
-OUTPUT_FILE = "entity_master.csv"     # Gilda 매핑 + entity_id까지 포함한 최종 엔티티 마스터
+ROOT_DIR = Path(__file__).resolve().parents[2]
+ENT_DIR = ROOT_DIR / "data" / "entities" / "pmc"
+
+INPUT_FILE  = ENT_DIR / "entities.csv"      # pmc_section_generate_keywords 에서 생성한 엔티티 파일
+OUTPUT_FILE = ENT_DIR / "entity_master.csv"  # Gilda 매핑 + entity_id까지 포함한 최종 엔티티 마스터
 
 # ==========================================
 # Gilda 호출 헬퍼: 이름 -> (label, db, id, score)

@@ -2,17 +2,23 @@ import pandas as pd
 import gilda
 import spacy
 import os
+from pathlib import Path
 from tqdm import tqdm
 
 # ==========================================
 # [설정] 파일 경로 및 배치 설정
 # ==========================================
-METADATA_FILE = 'nih_metadata1208.csv'
-CHUNK_FILE = 'nih_chunk_data1208.csv'
+ROOT_DIR = Path(__file__).resolve().parents[2]
+NIH_DIR = ROOT_DIR / "data" / "processed" / "nih" / "nih_csv"
+OUT_DIR = ROOT_DIR / "data" / "entities" / "nih"
+OUT_DIR.mkdir(parents=True, exist_ok=True)
+
+METADATA_FILE = NIH_DIR / "nih_metadata1208.csv"
+CHUNK_FILE = "C:\\dev\\study\\skn18_fianl-2team\\SKN18-FINAL-2TEAM\\data\\chunks\\nih\\nih_chunks.csv"
 
 # 최종 결과 파일
-OUTPUT_METADATA_ENTITIES = 'mapped_metadata_entities.csv'
-OUTPUT_CHUNK_ENTITIES = 'mapped_chunk_entities.csv'
+OUTPUT_METADATA_ENTITIES = OUT_DIR / "mapped_metadata_entities.csv"
+OUTPUT_CHUNK_ENTITIES = OUT_DIR / "mapped_chunk_entities.csv"
 
 # 한 번에 처리할 행 개수 (메모리 관리용)
 BATCH_SIZE = 2000 

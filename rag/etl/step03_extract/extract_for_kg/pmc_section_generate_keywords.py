@@ -5,6 +5,7 @@ from scispacy.linking import EntityLinker
 from openai import OpenAI
 import os
 import json
+from pathlib import Path
 from tqdm import tqdm
 from dotenv import load_dotenv  # [추가] .env 로드용
 
@@ -261,14 +262,17 @@ def run_batch_pipeline(meta_csv, embedding_csv, out_entities, out_keywords, batc
 
 
 if __name__ == "__main__":
-    BASE = "import"
-    if not os.path.exists(BASE): os.makedirs(BASE)
+    # 프로젝트 루트 기준 경로 설정
+    ROOT_DIR = Path(__file__).resolve().parents[2]
 
-    # section 분리된거 분할된거 사용이유 -> 분할하면서 클렌징 들어감.
-    # 윈도우 경로 사용 시 r"..." 스트링을 쓰거나 / 슬래시 사용 권장
-    META = r"C:\dev\study\skn18_fianl-2team\SKN18-FINAL-2TEAM\data\pmc_data\meta_new.csv"
-    CHUNK = r"C:\dev\study\skn18_fianl-2team\SKN18-FINAL-2TEAM\data\pmc_data\before_embedding.csv"
-    
-    OUT_ENT = r"C:\dev\study\skn18_fianl-2team\SKN18-FINAL-2TEAM\import\entities_v2.csv"
-    OUT_KW = r"C:\dev\study\skn18_fianl-2team\SKN18-FINAL-2TEAM\import\section_keywords_v2.csv"
-    run_batch_pipeline(META, CHUNK, OUT_ENT, OUT_KW, batch_size=10)
+    # pmid 필터링이 완료된 섹션 정보 사용
+    META = ROOT_DIR / "data" / "processed" / "pubmed" / "pmc_csv" / "filtered" / "sections.csv"
+    # 임베딩/청크 텍스트는 정규 파이프라인에서 생성된 pmc_chunks.csv 사용
+    CHUNK = ROOT_DIR / "data" / "chunks" / "pubmed" /"pmc_csv" / "filtered" / "sections_for_chunk.csv"
+
+    BASE = ROOT_DIR / "data" / "entities" / "pmc"
+    BASE.mkdir(parents=True, exist_ok=True)
+    OUT_ENT = BASE / "entities.csv"
+    OUT_KW = BASE / "section_keywords.csv"
+
+    run_batch_pipeline(str(META), str(CHUNK), str(OUT_ENT), str(OUT_KW), batch_size=10)

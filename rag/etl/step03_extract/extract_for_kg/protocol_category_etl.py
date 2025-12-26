@@ -137,11 +137,14 @@ def classify_protocol(title: str, url: str | None = None) -> tuple[str, str]:
 # ─────────────────────────────────────
 
 def main():
-    neo4j_dir = BASE_DIR / "neo4j"
-    import_dir = neo4j_dir / "import"
+    # 입력: data/processed/protocol/protocol_csv 안의 메타데이터 파일
+    input_dir = BASE_DIR / "data" / "processed" / "protocol" / "protocol_csv"
+    input_path = input_dir / "t_protocol_metadata_Cell.csv"
 
-    input_path = import_dir / "t_protocol_metadata_Cell.csv"
-    output_path = import_dir / "t_protocol_metadata_Cell_labeled.csv"
+    # 출력: data/entities/protocol 안에 라벨링된 파일 저장
+    output_dir = BASE_DIR / "data" / "entities" / "protocol"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_path = output_dir / "t_protocol_metadata_Cell_labeled.csv"
 
     print(f"입력 파일 경로:   {input_path}")
     print(f"출력 파일 경로:   {output_path}")
