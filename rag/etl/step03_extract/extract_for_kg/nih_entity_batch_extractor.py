@@ -17,8 +17,8 @@ METADATA_FILE = NIH_DIR / "nih_metadata1208.csv"
 CHUNK_FILE = "C:\\dev\\study\\skn18_fianl-2team\\SKN18-FINAL-2TEAM\\data\\chunks\\nih\\nih_chunks.csv"
 
 # 최종 결과 파일
-OUTPUT_METADATA_ENTITIES = OUT_DIR / "mapped_metadata_entities.csv"
-OUTPUT_CHUNK_ENTITIES = OUT_DIR / "mapped_chunk_entities.csv"
+OUTPUT_METADATA_ENTITIES = OUT_DIR / "ts_mapped_metadata_entities.csv"
+OUTPUT_CHUNK_ENTITIES = OUT_DIR / "ts_mapped_chunk_entities.csv"
 
 # 한 번에 처리할 행 개수 (메모리 관리용)
 BATCH_SIZE = 2000 
