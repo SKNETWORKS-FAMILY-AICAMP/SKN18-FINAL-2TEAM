@@ -204,28 +204,70 @@ jobs:
           TARGET_GROUP_ARN: ${{ steps.infra-info.outputs.target-group-arn }}
         run: |
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
-            $EC2_USER@$EC2_HOST << 'DEPLOY_SCRIPT'
+            $EC2_USER@$EC2_HOST bash -s << EOF
             set -e
             
+            # 환경 변수 설정 (GitHub Actions에서 전달)
+            export ECR_REGISTRY="$ECR_REGISTRY"
+            export ECR_REPOSITORY="$ECR_REPOSITORY"
+            export AWS_REGION="${{ env.AWS_REGION }}"
+            export PROJECT_PATH="$PROJECT_PATH"
+            export TARGET_GROUP_ARN="$TARGET_GROUP_ARN"
+            
+            echo "=== Deployment Script ==="
+            echo "ECR Registry: \$ECR_REGISTRY"
+            echo "ECR Repository: \$ECR_REPOSITORY"
+            echo "AWS Region: \$AWS_REGION"
+            echo "Project Path: \$PROJECT_PATH"
+            echo "Target Group ARN: \$TARGET_GROUP_ARN"
+            
             # ECR 로그인
-            aws ecr get-login-password --region ${{ env.AWS_REGION }} | \
-              docker login --username AWS --password-stdin $ECR_REGISTRY
-            
-            cd $PROJECT_PATH || { echo "Error: Project directory not found"; exit 1; }
-            
-            # 이전 이미지 태그 저장 (롤백용)
-            PREVIOUS_IMAGE=$(docker-compose -f docker-compose.prod.yml config | grep -A 1 "image:" | grep -v "image:" | tr -d ' ' || echo "")
-            if [ -n "$PREVIOUS_IMAGE" ]; then
-              echo "Previous image: $PREVIOUS_IMAGE"
-              echo "$PREVIOUS_IMAGE" > /tmp/previous_image.txt
+            echo "Logging in to ECR..."
+            if ! aws ecr get-login-password --region \$AWS_REGION | \
+              docker login --username AWS --password-stdin \$ECR_REGISTRY; then
+              echo "ERROR: ECR login failed"
+              echo "Checking AWS credentials..."
+              aws sts get-caller-identity || echo "AWS credentials check failed"
+              exit 1
             fi
             
-            # 환경 변수 설정
-            export ECR_WEB_IMAGE=$ECR_REGISTRY/$ECR_REPOSITORY:latest
+            echo "✓ ECR login successful"
             
-            # docker-compose pull
+            cd \$PROJECT_PATH || { echo "Error: Project directory not found"; exit 1; }
+            
+            # 이전 이미지 태그 저장 (롤백용)
+            PREVIOUS_IMAGE=\$(docker-compose -f docker-compose.prod.yml config | grep -A 1 "image:" | grep -v "image:" | tr -d ' ' || echo "")
+            if [ -n "\$PREVIOUS_IMAGE" ]; then
+              echo "Previous image: \$PREVIOUS_IMAGE"
+              echo "\$PREVIOUS_IMAGE" > /tmp/previous_image.txt
+            fi
+            
+            # 환경 변수 설정 (docker-compose에서 사용)
+            export ECR_WEB_IMAGE=\$ECR_REGISTRY/\$ECR_REPOSITORY:latest
+            echo "Image to pull: \$ECR_WEB_IMAGE"
+            
+            # docker-compose config로 이미지 확인
+            echo "Checking docker-compose configuration..."
+            docker-compose -f docker-compose.prod.yml config | grep -A 2 "image:" || echo "Image configuration not found"
+            
+            # 환경 변수 확인
+            echo "Environment variables:"
+            echo "  ECR_WEB_IMAGE=\$ECR_WEB_IMAGE"
+            echo "  ECR_REGISTRY=\$ECR_REGISTRY"
+            echo "  ECR_REPOSITORY=\$ECR_REPOSITORY"
+            
+            # docker-compose pull (환경 변수 명시적 전달)
             echo "Pulling latest image..."
-            docker-compose -f docker-compose.prod.yml pull web
+            if ! ECR_WEB_IMAGE=\$ECR_WEB_IMAGE docker-compose -f docker-compose.prod.yml pull web; then
+              echo "ERROR: Failed to pull image"
+              echo "Checking ECR repository..."
+              aws ecr describe-repositories --repository-names \$ECR_REPOSITORY --region \$AWS_REGION || echo "ECR repository check failed"
+              echo "Checking image tags..."
+              aws ecr list-images --repository-name \$ECR_REPOSITORY --region \$AWS_REGION --query 'imageIds[*].imageTag' --output table || echo "Image list check failed"
+              exit 1
+            fi
+            
+            echo "✓ Image pulled successfully"
             
             # 기존 컨테이너 중지 (마이그레이션은 새 컨테이너 시작 시 자동 실행)
             echo "Stopping existing container..."
@@ -243,9 +285,9 @@ jobs:
                 break
               fi
               if docker logs web-app 2>&1 | grep -q "Database is ready - executing migrations"; then
-                echo "Migrations in progress... ($i/24)"
+                echo "Migrations in progress... (\$i/24)"
               fi
-              if [ $i -eq 24 ]; then
+              if [ \$i -eq 24 ]; then
                 echo "⚠ Migration timeout - check logs manually"
                 docker logs web-app --tail 50
               fi
@@ -261,23 +303,23 @@ jobs:
             fi
             
             # 컨테이너 IP 가져오기
-            CONTAINER_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' web-app 2>/dev/null || echo "")
+            CONTAINER_IP=\$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' web-app 2>/dev/null || echo "")
             
-            if [ -n "$CONTAINER_IP" ]; then
-              echo "Container IP: $CONTAINER_IP"
+            if [ -n "\$CONTAINER_IP" ]; then
+              echo "Container IP: \$CONTAINER_IP"
               
               # ALB Target Group에 등록
               aws elbv2 register-targets \
-                --target-group-arn $TARGET_GROUP_ARN \
-                --targets Id=$CONTAINER_IP,Port=8000 \
-                --region ${{ env.AWS_REGION }} || echo "Target may already be registered"
+                --target-group-arn \$TARGET_GROUP_ARN \
+                --targets Id=\$CONTAINER_IP,Port=8000 \
+                --region \$AWS_REGION || echo "Target may already be registered"
             fi
             
             # 배포 확인
             docker-compose -f docker-compose.prod.yml ps
             
             echo "✓ Deployment completed"
-          DEPLOY_SCRIPT
+          EOF
 
       - name: Health Check
         run: |
