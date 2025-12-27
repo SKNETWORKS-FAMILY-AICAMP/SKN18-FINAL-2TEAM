@@ -1,55 +1,12 @@
 name: SKN18-final-prod
 
+# 주의: 이 docker-compose.prod.yml은 App EC2에서 실행됩니다.
+# PostgreSQL과 Neo4j는 외부 EC2 인스턴스를 사용합니다.
+# .env 파일에서 POSTGRES_HOST와 NEO4J_HOST를 외부 EC2 IP로 설정하세요.
+
 services:
   ########################################
-  # 1) PostgreSQL + pgvector (RDB + 벡터DB)
-  ########################################
-  db:
-    image: pgvector/pgvector:pg18
-    container_name: pg-db
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB:-sknfinaldb}
-      POSTGRES_USER: ${POSTGRES_USER:-root}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-root1234}
-    ports:
-      # prod에서 외부에서 직접 DB 붙을 일 없으면 이 라인 지워도 됨
-      - "${POSTGRES_PORT:-5432}:5432"
-    volumes:
-      - pgvector-data:/var/lib/postgresql/data
-      # 초기 스키마 + pgvector extension
-      - ./infra/db/init.sql:/docker-entrypoint-initdb.d/init.sql
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -d ${POSTGRES_DB:-sknfinaldb} -U ${POSTGRES_USER:-root}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-    restart: unless-stopped
-
-  ########################################
-  # 2) Neo4j (Knowledge Graph)
-  ########################################
-  neo4j:
-    image: neo4j:5.26.17-community
-    container_name: neo4j-final
-    environment:
-      # 계정/비밀번호: neo4j / neo4jpass
-      NEO4J_AUTH: neo4j/neo4jpass
-      # 필요시 메모리/튜닝 옵션 추가 가능
-      # NEO4J_dbms_memory_pagecache_size: 2G
-      # NEO4J_dbms_memory_heap_max__size: 2G
-    ports:
-      - "7474:7474"  # Neo4j Browser
-      - "7687:7687"  # Bolt
-    volumes:
-      - neo4j-data:/data
-      - neo4j-logs:/logs
-      - ./infra/neo4j/neo4j.conf:/config/neo4j.conf
-      - ./infra/neo4j/init.cypher:/docker-entrypoint-initdb.d/init.cypher
-    restart: unless-stopped
-
-  ########################################
-  # 3) RabbitMQ (Message Queue)
+  # 1) RabbitMQ (Message Queue)
   ########################################
   rabbitmq:
     image: rabbitmq:3.13-management-alpine
@@ -72,39 +29,48 @@ services:
     restart: unless-stopped
 
   ########################################
-  # 4) Django + LangGraph Web (SSR + API)
+  # 2) Django + LangGraph Web (SSR + API)
   ########################################
   web:
     # CI/CD에서 ECR에 푸시한 이미지 사용
-    # ex) 123456789012.dkr.ecr.ap-northeast-2.amazonaws.com/skn18-final-web:latest
-    image: ${ECR_WEB_IMAGE:-skn18-final-web:latest}
+    # ex) 123456789012.dkr.ecr.ap-northeast-2.amazonaws.com/helixops_web:latest
+    image: ${ECR_WEB_IMAGE:-helixops_web:latest}
     container_name: web-app
     env_file:
       - .env
     depends_on:
-      db:
-        condition: service_healthy
-      neo4j:
-        condition: service_started
       rabbitmq:
         condition: service_healthy
+      # db와 neo4j는 외부 EC2를 사용하므로 depends_on 제거
     environment:
       # RabbitMQ 연결 정보
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
       RABBITMQ_USER: ${RABBITMQ_USER:-guest}
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
+    # Entrypoint가 마이그레이션을 실행한 후 CMD 실행
     command: >
       gunicorn config.wsgi:application
       --bind 0.0.0.0:8000
       --workers 3
+      --access-logfile -
+      --error-logfile -
+      --log-level info
+    # CloudWatch 로그 드라이버 사용 (AWS 환경에서만 동작)
+    logging:
+      driver: awslogs
+      options:
+        awslogs-group: /ec2/skn18/web-service
+        awslogs-region: ap-northeast-2
+        awslogs-stream-prefix: web-app
     ports:
-      # Nginx 앞단 붙이면 8000 포트는 내부용으로만 써도 됨
+      # ALB를 통해 접근하므로 내부용으로만 사용
       - "8000:8000"
     restart: unless-stopped
+    network_mode: bridge
 
   ########################################
-  # 5) Worker (ETL / 배치 / Consumer)
+  # 3) Worker (ETL / 배치 / Consumer)
   ########################################
   worker:
     # CI/CD에서 따로 빌드한 worker 이미지
@@ -113,10 +79,9 @@ services:
     env_file:
       - .env
     depends_on:
-      db:
-        condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      # db는 외부 EC2를 사용하므로 depends_on 제거
     environment:
       # RabbitMQ 연결 정보
       RABBITMQ_HOST: rabbitmq
@@ -128,7 +93,7 @@ services:
     restart: unless-stopped
 
   ########################################
-  # 6) sLLM 서버 (옵션: vLLM/Ollama 등)
+  # 4) sLLM 서버 (옵션: vLLM/Ollama 등)
   ########################################
   sllm-server:
     # 로컬 sLLM 서버를 ECR에 올린 경우 사용
@@ -147,7 +112,7 @@ services:
     #         - capabilities: ["gpu"]
 
   ########################################
-  # 7) Nginx (옵션: 프록시/도메인 붙일 때)
+  # 5) Nginx (옵션: 프록시/도메인 붙일 때)
   ########################################
   nginx:
     image: nginx:1.27-alpine
@@ -161,8 +126,5 @@ services:
     restart: unless-stopped
 
 volumes:
-  pgvector-data:
-  neo4j-data:
-  neo4j-logs:
   rabbitmq-data:        # RabbitMQ 데이터 영속성
   rabbitmq-logs:        # RabbitMQ 로그
