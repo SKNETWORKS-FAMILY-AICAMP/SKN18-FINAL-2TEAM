@@ -35,12 +35,13 @@ services:
       --error-logfile -
       --log-level info
     # CloudWatch 로그 드라이버 사용 (AWS 환경에서만 동작)
+    # 주의: EC2에 CloudWatch 로그 드라이버가 설치되어 있어야 함
+    # awslogs-stream-prefix는 일부 Docker 버전에서 지원되지 않을 수 있으므로 제거
     logging:
       driver: awslogs
       options:
         awslogs-group: /ec2/skn18/web-service
         awslogs-region: ap-northeast-2
-        awslogs-stream-prefix: web-app
     ports:
       # ALB를 통해 접근하므로 내부용으로만 사용
       - "8000:8000"
@@ -101,5 +102,6 @@ services:
       - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     restart: unless-stopped
 
-volumes:
-  # RabbitMQ는 외부 EC2에서 실행되므로 볼륨 제거
+# volumes:
+# RabbitMQ는 외부 EC2에서 실행되므로 볼륨이 필요 없음
+# (필요시 위 주석을 해제하고 볼륨 정의 추가)
