@@ -38,39 +38,40 @@ Figure 캡션 + Figure 설명 텍스트 + Results 섹션만으로 파인튜닝�
 #### 추천 파인튜닝 데이터셋 포맷 (assistant의 값)
 ```
 {
-  "experimental_context": {
-    "model": "mouse",
-    "assay": "IHC",
-    "target": "Hyaluronan",
-    "experimental_purpose": "in vivo HA level comparison"
+  "fig_id": "38598310_fig5",  // 그림 ID
+  
+  "experimental_context": {  // 실험 맥락
+    "model": "not stated",  // 모델 (예: 마우스, 세포주)
+    "assay / measurement method": "MD simulations"  // 분석법 / 측정 방법 (예: IHC, IVIS)
   },
-  "observation": {
-    "measurement": "HA-positive pixels",
-    "direction": "decrease",
-    "magnitude": "approximately 5% at 2h vs ~25% in vehicle"
+  
+  "observation": {  // 관찰 결과
+    "what was measured": "molecular flexibility and accessible conformers of PreD",  // 측정 대상
+    "direction of change": "not stated",  // 변화 방향 (증가/감소/변화 없음/명시되지 않음)
+    "approximate magnitude or qualitative description": "unrestricted molecular flexibility in free scenario; restricted torsional movement in encapsulated system"  // 대략적 크기 또는 정성적 설명
   },
-  "comparison": {
-    "experimental_group": "L19-WT",
-    "control_group": "vehicle-treated mice"
+  
+  "comparison": {  // 비교
+    "treatment vs control": "encapsulated vs free PreD",  // 처리군 vs 대조군
+    "group vs group": "not stated",  // 그룹 간 비교
+    "time or dose comparison": "not stated"  // 시간 또는 용량 비교
   },
-  "temporal_or_dose_dimension": {
-    "time": "2 h",
-    "dose": "not stated"
+  
+  "temporal_or_dose_dimension": {  // 시간 또는 용량 차원
+    "time point(s)": "not stated",  // 시점(들)
+    "dose / concentration": "not stated"  // 용량 / 농도
   },
-  "statistical_claim": {
-    "reported": true,
-    "confidence": "marginal"
+  
+  "statistical_claim": {  // 통계적 주장
+    "significant": "not stated",  // 유의함
+    "not significant": "not stated",  // 유의하지 않음
+    "trend": "not stated",  // 경향
+    "not stated": "not stated"  // 명시되지 않음
   },
-  "interpretation_boundary": {
-    "can_conclude": [
-      "HA-positive signal is lower in L19-WT-treated mice than in vehicle controls at 2 h"
-    ],
-    "cannot_conclude": [
-      "mechanism of HA degradation",
-      "whether degradation is direct or indirect",
-      "long-term persistence of the effect",
-      "dose–response relationship"
-    ]
+  
+  "interpretation_boundary": {  // 해석 경계
+    "what can be concluded based ONLY on this result": "the β-CD dimer cavity restricts the torsional movement of PreD, leading to a limited number of accessible conformers",  // 이 결과만으로 결론 내릴 수 있는 것
+    "what cannot be concluded based on this result": "the exact rate constant of the thermal sigmatropic reaction or the specific dynamics of the reaction pathway"  // 이 결과만으로 결론 내릴 수 없는 것
   }
 }
 
@@ -278,50 +279,14 @@ Do not add explanations outside the JSON.
 **해석:**
 다음에 주어지는 Results 문장을 바탕으로, 연구자가 해당 그림을 보며 확인할 수 있는 명시적인 추론 단위들로 분해하라. 이 프롬프트는 Results 문장을 '연구자가 그림을 보고 확인한 사실 단위'로만 분해하게 하며, 해석의 범위를 JSON 구조로 엄격히 제한하는 지시문이다.
 
-#### ✅ 파인튜닝데이터 입력 예시 (User 메시지)
+#### ✅ 파인튜닝데이터 입력/출력 예시
+
+**입력 (User 메시지):**
 ```
 At 2 h, L19-WT treatment significantly reduced HA-positive pixels compared to vehicle-treated mice.
 ```
 
-#### ✅ 출력 예시 (Assistant 응답 - 구조화된 JSON)
-```json
-{
-  "experimental_context": {
-    "model": "mouse",
-    "assay": "IHC",
-    "target": "Hyaluronan",
-    "experimental_purpose": "in vivo HA level comparison"
-  },
-  "observation": {
-    "measurement": "HA-positive pixels",
-    "direction": "decrease",
-    "magnitude": "approximately 5% at 2h vs ~25% in vehicle"
-  },
-  "comparison": {
-    "experimental_group": "L19-WT",
-    "control_group": "vehicle-treated mice"
-  },
-  "temporal_or_dose_dimension": {
-    "time": "2 h",
-    "dose": "not stated"
-  },
-  "statistical_claim": {
-    "reported": true,
-    "confidence": "significant"
-  },
-  "interpretation_boundary": {
-    "can_conclude": [
-      "HA-positive signal is lower in L19-WT-treated mice than in vehicle controls at 2 h"
-    ],
-    "cannot_conclude": [
-      "mechanism of HA degradation",
-      "whether degradation is direct or indirect",
-      "long-term persistence of the effect",
-      "dose–response relationship"
-    ]
-  }
-}
-```
+**출력 (Assistant 응답):** 위의 "분해 결과 (구조화된 JSON)" 예시와 동일한 구조입니다.
 
 👉 이 JSON 하나가 sLLM이 학습해야 할 **최소 사고 단위(minimal reasoning unit)**입니다.
 
@@ -330,15 +295,14 @@ At 2 h, L19-WT treatment significantly reduced HA-positive pixels compared to ve
 
 ## 결론
 
-### Step 1.5: 파인튜닝 (가장 중요)
-- 실험 결과 해석을 위한 핵심 학습 단계
-- Results 문장을 구조화된 사고 단위로 분해하여 학습
-- 해석적 판단 제한
-- **시스템 메시지를 전역으로 설정**하고 구조화된 데이터셋으로 모델을 파인튜닝
+본 문서에서는 실험 결과를 해석하는 sLLM을 만들기 위한 데이터셋 준비 방법을 설명했습니다. 핵심은 **Results 문장을 구조화된 사고 단위로 분해**하여 학습하는 것입니다.
 
-### Step 2: 접근 방법 선택
-- ❌ **파인튜닝만으로는 부족**: Step 2에서는 파인튜닝만으로는 한계가 있음 (학습 데이터 패턴에만 의존하여 동적 규칙 적용이나 실시간 판단이 어려움)
-- ✅ **rule + prompt + LLM**: 규칙 기반 로직, 프롬프트 엔지니어링, LLM을 결합한 하이브리드 접근 방식이 효과적
+**주요 단계:**
+1. **파인튜닝 (Step 1)**: Results 문장을 구조화된 사고 단위로 분해하여 학습
+2. **하이브리드 접근 (Step 2)**: 파인튜닝만으로는 부족하므로 rule + prompt + LLM을 결합
+ (파인튜닝만으로는 한계 존재 - 학습 데이터 패턴에만 의존하여 동적 규칙 적용이나 실시간 판단이 어려움)
+
+자세한 내용은 위의 "단계별 접근 방법" 및 "본론" 섹션을 참고하세요.
 
 ------------------------------------------------------------
 
@@ -417,23 +381,6 @@ At 2 h, L19-WT treatment significantly reduced HA-positive pixels compared to ve
 ---
 
 ## 데이터셋 전처리 (Preprocessing) 가이드
-
-### ⭐ 통합 파이프라인 실행 (권장)
-
-**`run_phase012.py`를 실행하면 Phase 0 → 1 → 2가 순차적으로 자동 실행됩니다!**
-
-```bash
-# 통합 파이프라인 실행 (Phase 0 → 1 → 2)
-python run_phase012.py
-
-# 또는 개별 Phase 실행
-python phase_1_result_desc_to_json.py  # Phase 1: 중복 제거 + 구조화
-python phase_2_create_training_dataset.py  # Phase 2: System 분리 + JSONL 생성
-
-# 최종 출력:
-#   - training_dataset_preprocessed_*.jsonl (바로 사용 가능!)
-#   - system_message_*.txt (전역 시스템 메시지)
-```
 
 ---
 
@@ -575,7 +522,7 @@ python phase_2_create_training_dataset.py  # Phase 2: System 분리 + JSONL 생�
 
 ```bash
 # run_phase012.py: Phase 0 → 1 → 2 자동 실행
-python run_phase012.py
+python sllm\datasets\.prepare_data\code\run_phase012.py
 
 # 출력:
 #   - CSV에 is_experiment_result, structured_json 컬럼 추가

@@ -165,6 +165,94 @@ Results text:
 
         return final_results
 
+    def clean_user_message(self, text: str) -> str:
+        """
+        User 메시지에서 instruction 제거 및 중복 문장 정리
+        - Instruction prefix/suffix 제거
+        - 줄바꿈 문자를 공백으로 변환
+        - 중복 문장 제거
+
+        Args:
+            text: 원본 user 메시지
+
+        Returns:
+            정리된 실험 결과 텍스트 (instruction 없이)
+        """
+        prompt_prefix = "Analyze the following experimental results text and decompose it into structured reasoning units.\n\nResults text:\n"
+        prompt_suffix = "\n\nProvide a JSON output with the following structure:\n- experimental_context: model and assay information\n- observation: measurement, direction, and magnitude\n- comparison: groups being compared\n- temporal_or_dose_dimension: time and dose information\n- statistical_claim: statistical significance\n- interpretation_boundary: what can and cannot be concluded"
+
+        # 1. 본문 추출 (instruction 제거)
+        if text.startswith(prompt_prefix) and text.endswith(prompt_suffix):
+            results_text = text[len(prompt_prefix):-len(prompt_suffix)]
+        else:
+            results_text = text
+
+        # 2. 줄바꿈 문자를 공백으로 변환 (데이터 정리)
+        results_text = results_text.replace('\n\n', ' ').replace('\n', ' ')
+
+        # 3. 연속된 공백을 하나로 정리
+        results_text = re.sub(r'\s+', ' ', results_text).strip()
+
+        # 4. 마침표와 쉼표를 기준으로 문장 분리
+        sentences = re.split(r'\.,|\.\s+', results_text)
+
+        seen_normalized = set()
+        deduplicated_sentences = []
+
+        for sentence in sentences:
+            clean_sentence = sentence.strip()
+            if not clean_sentence:
+                continue
+
+            # 비교용 데이터 정규화
+            normalized = re.sub(r'\s+', ' ', clean_sentence.lower().rstrip('.'))
+
+            if normalized not in seen_normalized:
+                seen_normalized.add(normalized)
+                deduplicated_sentences.append(clean_sentence.rstrip('.'))
+
+        # 5. 문장 재구성
+        final_results = '. '.join(deduplicated_sentences)
+
+        if results_text.rstrip().endswith('.'):
+            final_results += '.'
+
+        return final_results
+
+    def clean_assistant_message(self, json_str: str) -> str:
+        """
+        Assistant 메시지에서 "not stated" 필드 제거
+
+        Args:
+            json_str: JSON 문자열
+
+        Returns:
+            정리된 JSON 문자열 (값이 있는 필드만 포함)
+        """
+        try:
+            data = json.loads(json_str)
+
+            # "not stated" 값을 가진 필드를 재귀적으로 제거
+            def remove_not_stated(obj):
+                if isinstance(obj, dict):
+                    return {
+                        k: remove_not_stated(v)
+                        for k, v in obj.items()
+                        if v != "not stated" and v != "" and v is not None
+                    }
+                elif isinstance(obj, list):
+                    return [remove_not_stated(item) for item in obj]
+                else:
+                    return obj
+
+            cleaned_data = remove_not_stated(data)
+
+            # 깔끔한 JSON 문자열로 변환 (들여쓰기 2칸)
+            return json.dumps(cleaned_data, ensure_ascii=False, indent=2)
+
+        except json.JSONDecodeError:
+            # JSON 파싱 실패 시 원본 반환
+            return json_str
 
     def _parse_retry_after(self, error_message: str) -> Optional[float]:
         """
@@ -289,18 +377,20 @@ Results text:
         self,
         input_csv: str,
         output_csv: str,
-        output_json: Optional[str] = None,
+        output_jsonl: Optional[str] = None,
         sample_size: Optional[int] = None,
         resume: bool = True
     ) -> pd.DataFrame:
         """
-        Phase 0 완료된 CSV를 배치 처리하여 구조화된 JSON 생성
-        (중복 문장 제거 포함)
+        Phase 0 완료된 CSV를 배치 처리하여:
+        1. 구조화된 JSON 생성 (중복 문장 제거 포함)
+        2. Training dataset 형식으로 변환 및 전처리
+        3. CSV에 structured_json 컬럼 추가
 
         Args:
             input_csv: Phase 0 완료된 CSV (t_figures_with_result_desc_v4.csv)
             output_csv: 출력 CSV (원본에 structured_json 컬럼 추가)
-            output_json: 출력 JSON 파일 경로 (선택, 검증용)
+            output_jsonl: 출력 JSONL 파일 경로 (training_dataset_preprocessed_*.jsonl)
             sample_size: 처리할 샘플 개수 (None = 전체)
             resume: True면 기존 결과 파일에서 이어서 진행
 
@@ -354,31 +444,63 @@ Results text:
             target_indices = target_df.index
 
         # 미처리 데이터 필터링 (resume)
+        # is_experiment_result=true이면서 structured_json이 비어있는 것만 처리
         if resume:
             # CSV에서 structured_json이 비어있는 것만
             unprocessed_mask = df.loc[target_indices, 'structured_json'].isna() | (df.loc[target_indices, 'structured_json'] == '')
             unprocessed_indices = target_indices[unprocessed_mask]
             processed_count = len(target_indices) - len(unprocessed_indices)
             if processed_count > 0:
-                print(f"   Resuming: {processed_count} figures already processed")
+                print(f"   Resuming: {processed_count} figures already processed (skipping)")
             indices_to_process = unprocessed_indices
             print(f"   Remaining: {len(indices_to_process)} figures to process")
         else:
-            indices_to_process = target_indices
+            # resume=False일 때도 structured_json이 비어있는 것만 처리
+            unprocessed_mask = df.loc[target_indices, 'structured_json'].isna() | (df.loc[target_indices, 'structured_json'] == '')
+            indices_to_process = target_indices[unprocessed_mask]
+            if len(indices_to_process) < len(target_indices):
+                print(f"   Skipping {len(target_indices) - len(indices_to_process)} already processed figures")
+            print(f"   Processing: {len(indices_to_process)} figures with empty structured_json")
 
         if len(indices_to_process) == 0:
             print("✅ All data already processed!")
+            if output_jsonl and os.path.exists(output_jsonl):
+                with open(output_jsonl, 'r', encoding='utf-8') as f:
+                    existing_count = sum(1 for line in f if line.strip())
+                print(f"   Loaded existing {existing_count} samples from JSONL")
             return df
 
-        # JSON 저장용 리스트 (검증용)
-        json_results = []
-        processed_count = 0
+        # Training dataset 저장용 리스트
+        all_training_samples = []
+
+        # 기존 JSONL 파일이 있으면 로드
+        if output_jsonl and os.path.exists(output_jsonl):
+            with open(output_jsonl, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip()
+                    if line:
+                        all_training_samples.append(json.loads(line))
+            print(f"   Loaded {len(all_training_samples)} existing samples from JSONL")
+
+        # User prompt template (training dataset 생성용)
+        user_prompt_template = """Analyze the following experimental results text and decompose it into structured reasoning units.
+
+Results text:
+{result_desc}
+
+Provide a JSON output with the following structure:
+- experimental_context: model and assay information
+- observation: measurement, direction, and magnitude
+- comparison: groups being compared
+- temporal_or_dose_dimension: time and dose information
+- statistical_claim: statistical significance
+- interpretation_boundary: what can and cannot be concluded"""
 
         # 실패한 항목 추적용 리스트
         failed_items = []
 
         # 각 result_desc 처리
-        print("\n🔄 Processing result_desc to structured JSON (with deduplication)...")
+        print("\n🔄 Processing result_desc to structured JSON and creating training dataset...")
         for idx in tqdm(indices_to_process, desc="Progress"):
             row = df.loc[idx]
             fig_id = row['fig_id']
@@ -387,9 +509,9 @@ Results text:
             # 구조화 실행 (내부에서 중복 제거 수행)
             structured_json = self.structure_result_desc(result_desc)
 
-            # 에러가 있으면 실패 항목으로 추가
+            # 에러가 있으면 실패 항목으로 추가 (Phase 3에서 처리)
             if 'error' in structured_json:
-                print(f"⚠️  Warning: {fig_id} has error, adding to true_fail.csv")
+                print(f"⚠️  Warning: {fig_id} has error, skipping (will be handled in Phase 3)")
                 failed_items.append({
                     'fig_id': fig_id,
                     'result_desc': result_desc,
@@ -397,24 +519,55 @@ Results text:
                 })
                 continue
 
-            # CSV에 structured_json 저장
+            # CSV에 structured_json 저장 (먼저 저장하여 중단 시에도 보존)
             df.loc[idx, 'structured_json'] = json.dumps(structured_json, ensure_ascii=False)
+            
+            # CSV 즉시 저장 (중단 시에도 데이터 보존)
+            try:
+                df.to_csv(output_csv, index=False)
+            except Exception as e:
+                print(f"⚠️  Warning: Failed to save CSV: {e}")
 
-            # JSON 검증용 리스트에 추가
-            if output_json:
-                json_results.append({
-                    "fig_id": fig_id,
-                    **structured_json
-                })
-                processed_count += 1
+            # Training dataset 형식으로 변환
+            # User prompt 생성
+            user_content = user_prompt_template.format(result_desc=result_desc)
+            
+            # Assistant response (구조화된 JSON을 문자열로)
+            assistant_content = json.dumps(structured_json, ensure_ascii=False, indent=2)
 
-                # 10건마다 JSON 저장
-                if processed_count % 10 == 0:
-                    with open(output_json, 'w', encoding='utf-8') as f:
-                        json.dump(json_results, f, ensure_ascii=False, indent=2)
+            # 전처리 적용
+            # User 메시지 정리 (instruction 제거 + 중복 제거)
+            cleaned_user_msg = self.clean_user_message(user_content)
+            
+            # Assistant 메시지 정리 ("not stated" 필드 제거)
+            cleaned_assistant_msg = self.clean_assistant_message(assistant_content)
 
-            # CSV 저장 (매 건마다)
-            df.to_csv(output_csv, index=False)
+            # Training dataset 샘플 생성 (system은 제외, user와 assistant만)
+            training_sample = {
+                "fig_id": fig_id,
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": cleaned_user_msg
+                    },
+                    {
+                        "role": "assistant",
+                        "content": cleaned_assistant_msg
+                    }
+                ]
+            }
+
+            # Training dataset 리스트에 추가
+            all_training_samples.append(training_sample)
+
+            # JSONL 저장 (매 건마다, 중단 시에도 보존)
+            if output_jsonl:
+                try:
+                    with open(output_jsonl, 'w', encoding='utf-8') as f:
+                        for sample in all_training_samples:
+                            f.write(json.dumps(sample, ensure_ascii=False) + '\n')
+                except Exception as e:
+                    print(f"⚠️  Warning: Failed to save JSONL: {e}")
 
             # API Rate limit 방지 (1.5초 대기)
             time.sleep(1.5)
@@ -426,17 +579,34 @@ Results text:
             fail_df.to_csv(fail_csv_path, index=False, encoding='utf-8')
             print(f"\n⚠️  실패한 항목 저장: {fail_csv_path.name} ({len(failed_items)}개)")
 
-        # JSON 파일 최종 저장 (검증용)
-        if output_json and json_results:
-            print(f"\n💾 Saving JSON for validation...")
-            with open(output_json, 'w', encoding='utf-8') as f:
-                json.dump(json_results, f, ensure_ascii=False, indent=2)
-            print(f"   📄 JSON 파일: {Path(output_json).name} ({len(json_results)}개 샘플)")
+        # 최종 저장 (처리된 항목이 있는 경우)
+        if output_jsonl and len(all_training_samples) > 0:
+            print(f"\n💾 Saving final training dataset to: {output_jsonl}")
+            with open(output_jsonl, 'w', encoding='utf-8') as f:
+                for sample in all_training_samples:
+                    f.write(json.dumps(sample, ensure_ascii=False) + '\n')
+            print(f"✅ Saved {len(all_training_samples)} training samples to: {output_jsonl}")
+        elif output_jsonl:
+            print(f"\n⚠️  Warning: No training samples to save. File will not be created: {output_jsonl}")
+
+        # System 메시지를 별도 파일로 저장 (전역 선언용)
+        if output_jsonl:
+            system_file = Path(output_jsonl).parent / f"system_message_{datetime.now().strftime('%Y%m%d%H%M%S')}.txt"
+            training_system_message = "You are a biomedical research assistant specialized in analyzing experimental results. Your task is to decompose Results sections into structured reasoning units. Extract only explicit facts from the text - do not infer mechanisms, do not make assumptions, and do not generalize beyond what is stated. Always specify what can and cannot be concluded based on the results provided."
+            with open(system_file, 'w', encoding='utf-8') as f:
+                f.write(training_system_message)
+            print(f"[Saved] system message to: {system_file.name}")
 
         print(f"\n✅ Phase 1 완료!")
+        print(f"   - Training dataset samples: {len(all_training_samples)}개")
         print(f"   - CSV structured_json: {len(df[df['structured_json'].notna() & (df['structured_json'] != '')])}개")
-        if output_json and json_results:
-            print(f"   - JSON 검증 파일: {Path(output_json).name}")
+        
+        # 처리 완료된 항목 수 출력
+        processed_count = len(df[df['structured_json'].notna() & (df['structured_json'] != '')])
+        total_experimental = len(df[df['is_experiment_result'] == True])
+        remaining_count = total_experimental - processed_count
+        if remaining_count > 0:
+            print(f"   - Remaining to process: {remaining_count} figures (is_experiment_result=true with empty structured_json)")
 
         return df
 
@@ -558,11 +728,14 @@ def main(
         model=model
     )
 
+    # 출력 JSONL 파일 경로 (전처리된 형태)
+    OUTPUT_JSONL = DATASET_DIR / f"training_dataset_preprocessed_{timestamp}.jsonl"
+
     # 배치 처리 실행
     result_df = converter.process_batch(
         input_csv=str(INPUT_CSV),
         output_csv=str(OUTPUT_CSV),
-        output_json=str(OUTPUT_JSON),
+        output_jsonl=str(OUTPUT_JSONL),
         sample_size=sample_size,
         resume=resume
     )
@@ -571,14 +744,17 @@ def main(
     print("✅ Phase 1 완료!")
     print(f"📊 CSV 파일: {OUTPUT_CSV}")
     print(f"   - structured_json 컬럼 추가됨 (중복 제거된 result_desc 기반)")
-    print(f"📄 JSON 검증 파일: {OUTPUT_JSON.name}")
+    if os.path.exists(OUTPUT_JSONL):
+        with open(OUTPUT_JSONL, 'r', encoding='utf-8') as f:
+            sample_count = sum(1 for line in f if line.strip())
+        print(f"📦 Training Dataset (JSONL): {OUTPUT_JSONL.name}")
+        print(f"   - {sample_count} training samples")
     print("="*60)
     print("\n다음 단계:")
-    print("1. JSON 파일로 데이터 품질 확인")
-    print("2. Phase 2에서 training dataset 생성 (system 분리 + user/assistant 형식)")
-    print("3. Phase 3에서 에러 항목 처리 (필요시)")
-    print("4. Colab T4 GPU에서 Gemma-3-1B-IT QLoRA 파인튜닝 실행")
-    print("5. 파인튜닝된 모델 평가 및 배포")
+    print("1. 데이터셋 품질 검증")
+    print("2. Phase 3에서 에러 항목 처리 (필요시)")
+    print("3. Colab T4 GPU에서 Gemma-3-1B-IT QLoRA 파인튜닝 실행")
+    print("4. 파인튜닝된 모델 평가 및 배포")
 
 
 # ============================================================================

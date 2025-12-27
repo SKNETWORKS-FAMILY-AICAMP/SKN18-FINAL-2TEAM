@@ -161,13 +161,13 @@ def run_phase_1(
     resume: bool
 ) -> Path:
     """
-    Phase 1 실행: result_desc 중복 제거 + 구조화된 JSON 생성
+    Phase 1 실행: result_desc 중복 제거 + 구조화된 JSON 생성 + 전처리
 
     Returns:
-        Phase 1 완료된 CSV 파일 경로 (structured_json 컬럼 추가)
+        Phase 1에서 생성된 전처리된 JSONL 파일 경로
     """
     print("\n" + "="*80)
-    print("🚀 Phase 1: Result Desc to Structured JSON (with Deduplication) 시작")
+    print("🚀 Phase 1: Result Desc to Structured JSON + Preprocessing 시작")
     print("="*80)
 
     # Phase 1 클래스 직접 사용
@@ -179,23 +179,27 @@ def run_phase_1(
     if not api_key:
         raise ValueError("OPENAI_API_KEY environment variable not set")
 
-    # JSON 파일 경로 (검증용)
+    # 출력 JSONL 파일 경로 (타임스탬프 포함, 전처리된 형태)
     base_dir = get_base_dir()
     dataset_dir = base_dir / "data" / "dataset"
     dataset_dir.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-    output_json_path = dataset_dir / f"structured_results_{timestamp}.json"
+    output_jsonl_path = dataset_dir / f"training_dataset_preprocessed_{timestamp}.jsonl"
+
+    print(f"📁 Output directory: {dataset_dir}")
+    print(f"📄 Output file: {output_jsonl_path.name}")
+    print(f"📂 Full path: {output_jsonl_path}")
 
     converter = ResultDescToStructuredConverter(
         api_key=api_key,
         model=model
     )
 
-    # 배치 처리 실행 (중복 제거 + 구조화)
+    # 배치 처리 실행 (중복 제거 + 구조화 + 전처리)
     result_df = converter.process_batch(
         input_csv=str(input_csv_path),
         output_csv=str(input_csv_path),  # 같은 파일에 structured_json 컬럼 추가
-        output_json=str(output_json_path),  # JSON 검증 파일
+        output_jsonl=str(output_jsonl_path),
         sample_size=sample_size,
         resume=resume
     )
@@ -203,9 +207,10 @@ def run_phase_1(
     print(f"\n✅ Phase 1 완료!")
     print(f"📊 CSV 파일: {input_csv_path.name}")
     print(f"   - structured_json 컬럼 추가됨 (중복 제거된 result_desc 기반)")
-    print(f"📄 JSON 검증 파일: {output_json_path.name}")
+    print(f"📦 Training Dataset (JSONL, Preprocessed): {output_jsonl_path.name}")
+    print(f"📂 Saved to: {output_jsonl_path}")
 
-    return input_csv_path
+    return output_jsonl_path
 
 
 def run_phase_2(
@@ -272,27 +277,23 @@ def main():
             resume=RESUME
         )
 
-        # Phase 1 실행 (중복 제거 + 구조화)
-        phase_1_output_csv = run_phase_1(
+        # Phase 1 실행 (중복 제거 + 구조화 + 전처리)
+        phase_1_output_jsonl = run_phase_1(
             input_csv_path=phase_0_output_csv,
             sample_size=PHASE_1_SAMPLE_SIZE,
             model=LLM_MODEL,
             resume=RESUME
         )
 
-        # Phase 2 실행 (System 분리 + Training dataset 생성)
-        phase_2_output_jsonl = run_phase_2(
-            input_csv_path=phase_1_output_csv,
-            sample_size=PHASE_2_SAMPLE_SIZE
-        )
+        # Phase 2는 이제 Phase 1에 통합되어 있으므로 스킵
+        # (필요시 선택적으로 실행 가능)
 
         # 최종 요약
         print("\n" + "="*80)
         print("🎉 전체 파이프라인 완료!")
         print("="*80)
         print(f"✅ Phase 0 완료: {phase_0_output_csv}")
-        print(f"✅ Phase 1 완료: {phase_1_output_csv.name} (structured_json 추가)")
-        print(f"✅ Phase 2 완료: {phase_2_output_jsonl.name} (training dataset)")
+        print(f"✅ Phase 1 완료 (전처리 포함): {phase_1_output_jsonl.name}")
         print("="*80)
         print("\n다음 단계:")
         print("1. 데이터셋 품질 검증")
