@@ -57,6 +57,20 @@ Resources:
         VpcId: !GetAtt CoreInfraStack.Outputs.VpcId
         SubnetId: !GetAtt CoreInfraStack.Outputs.SubnetId
 
+  # =========================
+  # App Infrastructure Stack (Django + Graph + RAG)
+  # =========================
+  AppInfraStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: CoreInfraStack
+    Properties:
+      TemplateURL: app-infra.yaml
+      Parameters:
+        VpcId: !GetAtt CoreInfraStack.Outputs.VpcId
+        SubnetId: !GetAtt CoreInfraStack.Outputs.SubnetId
+        SubnetId2: !GetAtt CoreInfraStack.Outputs.SubnetId2
+        # 나머지 파라미터는 app-infra.yaml에서 Parameter Store를 직접 참조
+
 Outputs:
   # Core Infrastructure Outputs
   InstanceId:
@@ -149,3 +163,28 @@ Outputs:
   Neo4jConnectionString:
     Description: "Neo4j 접속 예시 (비밀번호는 Parameter Store에서 확인: /skn18/neo4j-password)"
     Value: !GetAtt Neo4jInfraStack.Outputs.ConnectionStringExample
+
+  # App Infrastructure Outputs
+  AppInstanceId:
+    Description: "App EC2 Instance ID (Django + Graph + RAG)"
+    Value: !GetAtt AppInfraStack.Outputs.InstanceId
+
+  AppPublicIp:
+    Description: "App EC2 Public IP"
+    Value: !GetAtt AppInfraStack.Outputs.PublicIp
+
+  AlbDnsName:
+    Description: "ALB DNS Name"
+    Value: !GetAtt AppInfraStack.Outputs.AlbDnsName
+
+  AlbTargetGroupArn:
+    Description: "ALB Target Group ARN"
+    Value: !GetAtt AppInfraStack.Outputs.AlbTargetGroupArn
+
+  EcrRepositoryUri:
+    Description: "ECR Repository URI for helixops_web"
+    Value: !GetAtt AppInfraStack.Outputs.EcrRepositoryUri
+
+  WebServiceLogGroup:
+    Description: "CloudWatch Log Group for web service"
+    Value: !GetAtt AppInfraStack.Outputs.WebServiceLogGroup
