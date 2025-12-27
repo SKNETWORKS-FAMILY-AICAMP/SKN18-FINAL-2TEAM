@@ -139,7 +139,16 @@ def ingest_keyword(search_keyword: str, raw_dir: Path | None = None) -> None:
         search_keyword: 처리할 키워드
         raw_dir: raw 데이터 저장 디렉토리 (None이면 전역 RAW_DIR 사용)
     """
+    # 테이블 생성 및 마이그레이션 (테이블이 없으면 생성, 있으면 컬럼 체크)
+    print(
+        f"[INGEST][Protocol.io][{search_keyword}] 테이블 생성/확인 중...",
+        flush=True,
+    )
     schedule_store.ensure_table()
+    print(
+        f"[INGEST][Protocol.io][{search_keyword}] 테이블 생성/확인 완료",
+        flush=True,
+    )
     
     # raw_dir이 제공되면 전역 변수 업데이트
     if raw_dir is not None:

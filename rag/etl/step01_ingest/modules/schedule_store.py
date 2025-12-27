@@ -35,10 +35,26 @@ def ensure_table() -> None:
     """
     with _get_connection() as conn:
         with conn.cursor() as cur:
-            # 테이블 생성
-            cur.execute(ddl)
+            # 테이블 존재 여부 확인
+            cur.execute("""
+                SELECT EXISTS (
+                    SELECT FROM information_schema.tables 
+                    WHERE table_schema = 'public' 
+                    AND table_name = %s
+                );
+            """, (TABLE_NAME,))
+            table_exists = cur.fetchone()[0]
             
-            # 기존 테이블에 컬럼이 있는지 확인하고 추가 (병렬 실행 시 race condition 방지)
+            # 테이블이 없으면 생성
+            if not table_exists:
+                cur.execute(ddl)
+                conn.commit()
+                print(f"[SCHEDULE] Created table {TABLE_NAME}", flush=True)
+                # 새로 생성된 테이블은 모든 컬럼이 이미 포함되어 있으므로 컬럼 체크 불필요
+                return
+            
+            # 테이블이 이미 존재하는 경우에만 컬럼 체크 및 추가 (병렬 실행 시 race condition 방지)
+            print(f"[SCHEDULE] Table {TABLE_NAME} already exists, checking columns...", flush=True)
             columns_to_check = [
                 ("is_completed", "BOOLEAN NOT NULL DEFAULT FALSE"),
                 ("is_embeded", "BOOLEAN NOT NULL DEFAULT FALSE"),
@@ -69,6 +85,10 @@ def ensure_table() -> None:
                         else:
                             # 다른 에러는 다시 발생
                             raise
+            
+            # 컬럼 추가 작업 후 커밋
+            conn.commit()
+            print(f"[SCHEDULE] Table {TABLE_NAME} column check completed", flush=True)
 
 
 def get_next_page(keyword: str) -> Optional[int]:
