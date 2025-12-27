@@ -289,7 +289,7 @@ def get_completed_not_embedded_keywords() -> list[str]:
     """
     is_completed가 True이고 is_embeded가 False인 키워드 목록을 조회한다.
     (임베딩이 아직 완료되지 않은 완료된 키워드)
-    
+
     Returns:
         완료되었지만 아직 임베딩되지 않은 키워드 목록
     """
@@ -306,10 +306,28 @@ def get_completed_not_embedded_keywords() -> list[str]:
             return keywords
 
 
+def get_embedded_keywords() -> list[str]:
+    """
+    is_embeded가 True인 키워드 목록을 조회한다.
+    (임베딩 완료된 키워드만 업서트 등 후속 단계에서 사용)
+    """
+    query = f"SELECT keyword FROM {TABLE_NAME} WHERE is_embeded = TRUE ORDER BY keyword"
+    with _get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(query)
+            rows = cur.fetchall()
+            keywords = [row[0] for row in rows]
+            print(
+                f"[SCHEDULE] 임베딩 완료된 키워드 조회: {len(keywords)}개 - {keywords}",
+                flush=True,
+            )
+            return keywords
+
+
 def update_is_embeded(keyword: str) -> None:
     """
     특정 키워드의 is_embeded를 True로 설정한다.
-    
+
     컬럼이 존재하지 않으면 자동으로 생성한 후 업데이트를 실행한다.
     
     Args:

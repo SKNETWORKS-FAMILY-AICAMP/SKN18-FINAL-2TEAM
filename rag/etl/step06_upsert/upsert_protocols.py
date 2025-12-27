@@ -19,6 +19,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from rag.etl.common.db_connection import get_connection
+from rag.etl.step01_ingest.modules import schedule_store
 
 # psycopg2 extras는 get_connection 내부에서 사용 가능
 try:
@@ -232,28 +233,62 @@ def run(embeddings_dir: str) -> None:
     
     # 테이블 생성 확인
     ensure_table()
+
+    # 스케줄 테이블에서 is_embeded=True인 키워드만 조회
+    try:
+        schedule_store.ensure_table()
+        embedded_keywords = schedule_store.get_embedded_keywords()
+    except Exception as e:
+        print(f"[UPSERT][Protocol.io] ⚠️  스케줄 테이블 조회 실패: {e}")
+        return
+
+    if not embedded_keywords:
+        print("[UPSERT][Protocol.io] ⚠️  is_embeded=True인 키워드가 없어 업서트를 건너뜁니다.")
+        return
+
+    embedded_keywords_set = {k.lower(): k for k in embedded_keywords}
+    keyword_dirs = {
+        d.name.lower(): d for d in sorted(protocols_dir.iterdir()) if d.is_dir()
+    }
+
+    keyword_to_files: dict[str, list[Path]] = {}
+    for lower_keyword, original_keyword in embedded_keywords_set.items():
+        dir_path = keyword_dirs.get(lower_keyword)
+        if not dir_path:
+            print(
+                f"[UPSERT][Protocol.io] ⚠️  키워드 '{original_keyword}'의 임베딩 디렉토리를 찾을 수 없습니다.",
+                flush=True,
+            )
+            continue
+
+        keyword_files = sorted(dir_path.glob("protocol_embedded_*.csv"))
+        if not keyword_files:
+            print(
+                f"[UPSERT][Protocol.io] ⚠️  키워드 '{original_keyword}'의 CSV 파일이 없습니다. ({dir_path})",
+                flush=True,
+            )
+            continue
+
+        keyword_to_files[original_keyword] = keyword_files
+
+    if not keyword_to_files:
+        print("[UPSERT][Protocol.io] ⚠️  처리할 CSV 파일이 없습니다 (is_embeded=True 조건에 해당하는 디렉토리 없음).")
+        return
     
     # 키워드별 디렉토리에서 protocol_embedded_*.csv 파일 찾기
     # 구조: {protocols_dir}/{keyword}/protocol_embedded_{keyword}.csv
-    csv_files = []
-    for keyword_dir in sorted(protocols_dir.iterdir()):
-        if keyword_dir.is_dir():
-            keyword_csv_files = sorted(keyword_dir.glob("protocol_embedded_*.csv"))
-            csv_files.extend(keyword_csv_files)
-    
-    if not csv_files:
-        print(f"[UPSERT][Protocol.io] ⚠️  처리할 CSV 파일이 없습니다: {protocols_dir}")
-        return
-    
-    print(f"[UPSERT][Protocol.io] 발견된 CSV 파일 수: {len(csv_files)}")
-    
-    for csv_path in csv_files:
-        print(f"[UPSERT][Protocol.io] 처리 중: {csv_path.parent.name}/{csv_path.name}")
-        try:
-            upsert_csv(csv_path, expected_dim=EMBEDDING_DIM, batch_size=BATCH_SIZE)
-        except Exception as e:
-            print(f"[UPSERT][Protocol.io] ❌ 파일 처리 실패: {csv_path.name} - {e}")
-            raise
+    total_files = sum(len(files) for files in keyword_to_files.values())
+    print(f"[UPSERT][Protocol.io] 임베딩 완료 키워드 수: {len(keyword_to_files)} (총 파일 {total_files}개)")
+
+    for keyword, files in keyword_to_files.items():
+        print(f"[UPSERT][Protocol.io] ▶ 키워드 '{keyword}' 처리 시작 ({len(files)}개 파일)")
+        for csv_path in files:
+            print(f"[UPSERT][Protocol.io]   - {csv_path.name}")
+            try:
+                upsert_csv(csv_path, expected_dim=EMBEDDING_DIM, batch_size=BATCH_SIZE)
+            except Exception as e:
+                print(f"[UPSERT][Protocol.io] ❌ 파일 처리 실패: {csv_path.name} - {e}")
+                raise
     
     print(f"[UPSERT][Protocol.io] 🎉 모든 파일 처리 완료!")
 
@@ -276,4 +311,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
