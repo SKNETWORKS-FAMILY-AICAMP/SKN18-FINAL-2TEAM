@@ -17,15 +17,15 @@ services:
     image: ${ECR_WEB_IMAGE:-helixops_web:latest}
     container_name: web-app
     env_file:
-      - .env
+      - .env  # 다른 설정값은 .env에서 (DJANGO_SECRET_KEY, OPENAI_API_KEY 등)
     # db, neo4j, rabbitmq는 외부 EC2를 사용하므로 depends_on 제거
     environment:
-      # RabbitMQ 연결 정보 (외부 EC2 사용)
-      # .env 파일에서 RABBITMQ_HOST를 RabbitMQ EC2 IP로 설정하세요
-      RABBITMQ_HOST: ${RABBITMQ_HOST}
-      RABBITMQ_PORT: ${RABBITMQ_PORT:-5672}
-      RABBITMQ_USER: ${RABBITMQ_USER}
-      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+      # PostgreSQL과 RabbitMQ 설정은 entrypoint.sh에서 Parameter Store에서 자동으로 읽음
+      # 환경 변수가 이미 설정되어 있으면 그 값을 사용 (덮어쓰지 않음)
+      AWS_REGION: ${AWS_REGION:-ap-northeast-2}
+      STACK_NAME: ${STACK_NAME:-skn18-final-infra}
+      # IAM Role을 사용하기 위해 EC2 메타데이터 서비스 접근 필요
+      AWS_CONTAINER_CREDENTIALS_RELATIVE_URI: ""
     # Entrypoint가 마이그레이션을 실행한 후 CMD 실행
     command: >
       gunicorn config.wsgi:application

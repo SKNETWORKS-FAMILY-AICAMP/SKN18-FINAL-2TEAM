@@ -283,6 +283,17 @@ Resources:
                   - logs:PutLogEvents
                   - logs:DescribeLogStreams
                 Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/ec2/skn18/*"
+        # ALB Target Group 등록 권한
+        - PolicyName: ElbTargetRegistrationPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - elasticloadbalancing:RegisterTargets
+                  - elasticloadbalancing:DeregisterTargets
+                  - elasticloadbalancing:DescribeTargetHealth
+                Resource: !Ref WebTargetGroup
 
   AppEc2InstanceProfile:
     Type: AWS::IAM::InstanceProfile
