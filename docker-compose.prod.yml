@@ -2,10 +2,7 @@ name: SKN18-final-prod
 
 # 주의: 이 docker-compose.prod.yml은 App EC2에서 실행됩니다.
 # PostgreSQL, Neo4j, RabbitMQ는 외부 EC2 인스턴스를 사용합니다.
-# .env 파일에서 다음을 설정하세요:
-#   - POSTGRES_HOST: PostgreSQL EC2 IP
-#   - NEO4J_HOST: Neo4j EC2 IP
-#   - RABBITMQ_HOST: RabbitMQ EC2 IP
+# 모든 설정은 Parameter Store에서 entrypoint.sh가 자동으로 읽어옵니다.
 
 services:
   ########################################
@@ -16,14 +13,14 @@ services:
     # ex) 123456789012.dkr.ecr.ap-northeast-2.amazonaws.com/helixops_web:latest
     image: ${ECR_WEB_IMAGE:-helixops_web:latest}
     container_name: web-app
-    env_file:
-      - .env  # 다른 설정값은 .env에서 (DJANGO_SECRET_KEY, OPENAI_API_KEY 등)
+    # env_file 제거 - Parameter Store에서 모든 설정을 읽어옴
     # db, neo4j, rabbitmq는 외부 EC2를 사용하므로 depends_on 제거
     environment:
       # PostgreSQL과 RabbitMQ 설정은 entrypoint.sh에서 Parameter Store에서 자동으로 읽음
       # 환경 변수가 이미 설정되어 있으면 그 값을 사용 (덮어쓰지 않음)
       AWS_REGION: ${AWS_REGION:-ap-northeast-2}
       STACK_NAME: ${STACK_NAME:-skn18-final-infra}
+      RABBITMQ_STACK_NAME: ${RABBITMQ_STACK_NAME:-skn18-rabbitmq-infra}
       # IAM Role을 사용하기 위해 EC2 메타데이터 서비스 접근 필요
       AWS_CONTAINER_CREDENTIALS_RELATIVE_URI: ""
     # Entrypoint가 마이그레이션을 실행한 후 CMD 실행
@@ -55,16 +52,13 @@ services:
     # CI/CD에서 따로 빌드한 worker 이미지
     image: ${ECR_WORKER_IMAGE:-skn18-final-worker:latest}
     container_name: etl-worker
-    env_file:
-      - .env
+    # env_file 제거 - Parameter Store에서 모든 설정을 읽어옴
     # db와 rabbitmq는 외부 EC2를 사용하므로 depends_on 제거
     environment:
-      # RabbitMQ 연결 정보 (외부 EC2 사용)
-      # .env 파일에서 RABBITMQ_HOST를 RabbitMQ EC2 IP로 설정하세요
-      RABBITMQ_HOST: ${RABBITMQ_HOST}
-      RABBITMQ_PORT: ${RABBITMQ_PORT:-5672}
-      RABBITMQ_USER: ${RABBITMQ_USER}
-      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+      # RabbitMQ 연결 정보는 entrypoint.sh에서 Parameter Store에서 읽어옴
+      AWS_REGION: ${AWS_REGION:-ap-northeast-2}
+      STACK_NAME: ${STACK_NAME:-skn18-final-infra}
+      RABBITMQ_STACK_NAME: ${RABBITMQ_STACK_NAME:-skn18-rabbitmq-infra}
     # 시뮬레이션 Consumer 실행
     command: ["python", "-m", "messaging.workers.main"]
     restart: unless-stopped
@@ -76,8 +70,9 @@ services:
     # 로컬 sLLM 서버를 ECR에 올린 경우 사용
     image: ${ECR_SLLM_IMAGE:-skn18-final-sllm-server:latest}
     container_name: sllm-server
-    env_file:
-      - .env
+    # env_file 제거
+    environment:
+      AWS_REGION: ${AWS_REGION:-ap-northeast-2}
     ports:
       - "8001:8001"
     restart: unless-stopped
