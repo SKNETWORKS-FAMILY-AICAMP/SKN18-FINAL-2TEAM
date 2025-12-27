@@ -10,7 +10,8 @@ evaluate_chunk.py
 from typing import Dict, Any, List
 from graph.llm_config import (
     evaluate_chunk_bio_node_llm,
-    evaluate_chunk_protocol_node_llm
+    evaluate_chunk_protocol_node_llm,
+    get_model_name
 )
 
 
@@ -47,7 +48,7 @@ Answer: [YES/NO]
 """
 
 
-def _build_evaluation_prompt(question: str, context: str, entities: List[str] = None) -> str:
+def _build_evaluation_prompt(question: str, context: str) -> str:
     """
     평가 프롬프트 생성 (개선된 템플릿)
 
@@ -243,8 +244,11 @@ def bio_evaluate_chunk_node(state: Dict[str, Any]) -> Dict[str, Any]:
     prompt = _build_evaluation_prompt(search_query, context, entities)
 
     try:
+        # 사용 모델 확인
+        model_name = get_model_name(evaluate_chunk_bio_node_llm)
+        print(f"[OpenEvaluate] 사용 모델: {model_name}")
+        
         # LLM을 사용하여 관련성 평가
-        print(f"[BioEvaluate] {llm_model_name} 모델로 평가 중...")
         result = evaluate_chunk_bio_node_llm(prompt)
 
         # 결과 파싱
@@ -384,8 +388,11 @@ def protocol_evaluate_chunk_node(state: Dict[str, Any]) -> Dict[str, Any]:
     prompt = _build_evaluation_prompt(search_query, context, entities)
 
     try:
+        # 사용 모델 확인
+        model_name = get_model_name(evaluate_chunk_protocol_node_llm)
+        print(f"[SLLMEvaluate] 사용 모델: {model_name}")
+        
         # LLM을 사용하여 관련성 평가
-        print(f"[ProtocolEvaluate] {llm_model_name} 모델로 평가 중...")
         result = evaluate_chunk_protocol_node_llm(prompt)
 
         # 결과 파싱
