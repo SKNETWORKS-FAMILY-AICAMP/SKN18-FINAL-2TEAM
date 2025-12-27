@@ -44,6 +44,19 @@ Resources:
         CommonLayerArn: !GetAtt CoreInfraStack.Outputs.CommonLayerArn
         NihLayerArn: !GetAtt CoreInfraStack.Outputs.NihLayerArn
 
+  # =========================
+  # Neo4j Infrastructure Stack
+  # =========================
+  Neo4jInfraStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: neo4j-infra.yaml
+      Parameters:
+        # neo4j-infra.yaml에서 Parameter Store를 직접 참조하므로 파라미터 전달 불필요
+        # VpcId를 CoreInfraStack의 VPC를 사용하려면 아래처럼 전달 가능 (선택사항)
+        VpcId: !GetAtt CoreInfraStack.Outputs.VpcId
+        SubnetId: !GetAtt CoreInfraStack.Outputs.SubnetId
+
 Outputs:
   # Core Infrastructure Outputs
   InstanceId:
@@ -115,3 +128,24 @@ Outputs:
   NihCleanseChunkLambdaArn:
     Description: "NIH Cleansing + Chunking Lambda 함수 ARN"
     Value: !GetAtt NihLambdaStack.Outputs.NihCleanseChunkLambdaArn
+
+  # Neo4j Infrastructure Outputs
+  Neo4jInstanceId:
+    Description: "Neo4j EC2 Instance ID"
+    Value: !GetAtt Neo4jInfraStack.Outputs.InstanceId
+
+  Neo4jPublicIp:
+    Description: "Neo4j EC2 Public IP"
+    Value: !GetAtt Neo4jInfraStack.Outputs.PublicIp
+
+  Neo4jHttpEndpoint:
+    Description: "Neo4j HTTP 접속 엔드포인트"
+    Value: !GetAtt Neo4jInfraStack.Outputs.HttpEndpoint
+
+  Neo4jBoltEndpoint:
+    Description: "Neo4j Bolt 접속 엔드포인트"
+    Value: !GetAtt Neo4jInfraStack.Outputs.BoltEndpoint
+
+  Neo4jConnectionString:
+    Description: "Neo4j 접속 예시 (비밀번호는 Parameter Store에서 확인: /skn18/neo4j-password)"
+    Value: !GetAtt Neo4jInfraStack.Outputs.ConnectionStringExample

@@ -7,11 +7,26 @@ Protocols.io 문서를 청크 단위로 분리한다.
 
 import re
 import os
+import sys
 import hashlib
 from datetime import datetime
 from pathlib import Path
 
+# 패키지 형태로 실행하지 않아도 rag.* 모듈을 찾을 수 있도록 루트 경로 추가
+# Lambda 환경 감지
+if os.environ.get('AWS_LAMBDA_FUNCTION_NAME'):
+    # Lambda 환경: /var/task가 루트
+    PROJECT_ROOT = Path('/var/task')
+else:
+    # 로컬 환경: 기존 방식
+    PROJECT_ROOT = Path(__file__).resolve().parents[3]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
 import pandas as pd
+
+# schedule_store는 is_completed 키워드 조회용으로 사용
+from rag.etl.step01_ingest.modules import schedule_store
 
 # Lambda 환경 감지 및 경로 조정
 def _get_base_path() -> Path:
@@ -26,6 +41,10 @@ def _get_base_path() -> Path:
 BASE_PATH = _get_base_path()
 INPUT_ROOT = BASE_PATH / "data/processed/protocols/success"
 OUTPUT_ROOT = BASE_PATH / "data/processed/protocols"
+CHUNKS_SPLIT_ROOT = BASE_PATH / "data/chunks/protocols"  # 분할된 청크 파일 저장 위치
+
+# 분할 단위 (환경 변수로 제어 가능)
+SPLIT_ROWS_PER_FILE = int(os.getenv("PROTOCOL_CHUNK_SPLIT_SIZE", "3000"))
 
 
 def protect_table_blocks(text: str) -> str:
@@ -297,6 +316,89 @@ def load_existing_urls(csv_path: Path) -> set[str]:
     return existing_urls
 
 
+def split_chunk_file(chunk_file: Path, keyword: str, rows_per_file: int = SPLIT_ROWS_PER_FILE) -> list[Path]:
+    """
+    청크 파일을 지정된 행 수 단위로 분할하여 저장한다.
+    
+    Args:
+        chunk_file: 분할할 청크 파일 경로
+        keyword: 키워드
+        rows_per_file: 파일당 행 수 (기본값: 300)
+    
+    Returns:
+        생성된 분할 파일 경로 리스트
+    """
+    if not chunk_file.exists():
+        print(f"[CHUNK][Protocol.io][{keyword}] 분할할 파일이 없습니다: {chunk_file}", flush=True)
+        return []
+    
+    # 출력 디렉토리: data/chunks/protocols/{날짜}_{시분}/{keyword}
+    now = datetime.now()
+    date_str = now.strftime("%Y%m%d")
+    time_str = now.strftime("%H%M")
+    date_time_dir = f"{date_str}_{time_str}"
+    output_dir = CHUNKS_SPLIT_ROOT / date_time_dir / keyword
+    output_dir.mkdir(parents=True, exist_ok=True)
+    
+    print(f"[CHUNK][Protocol.io][{keyword}] 청크 파일 분할 시작: {chunk_file}", flush=True)
+    
+    split_files = []
+    try:
+        # 청크 파일을 chunksize로 읽어서 메모리 효율적으로 처리
+        total_rows = 0
+        current_part = 1
+        current_rows = []
+        
+        for chunk_df in pd.read_csv(chunk_file, chunksize=rows_per_file):
+            total_rows += len(chunk_df)
+            
+            # 현재 청크를 행 리스트로 변환
+            chunk_rows = chunk_df.to_dict('records')
+            
+            for row in chunk_rows:
+                current_rows.append(row)
+                
+                # 지정된 행 수에 도달하면 파일로 저장
+                if len(current_rows) >= rows_per_file:
+                    part_file = output_dir / f"protocol_chunked_{keyword}_part{current_part:03d}.csv"
+                    part_df = pd.DataFrame(current_rows)
+                    part_df.to_csv(part_file, index=False)
+                    split_files.append(part_file)
+                    print(
+                        f"[CHUNK][Protocol.io][{keyword}] 분할 파일 생성: {part_file.name} "
+                        f"({len(current_rows)}개 행)",
+                        flush=True,
+                    )
+                    current_rows = []
+                    current_part += 1
+        
+        # 남은 행이 있으면 마지막 파일로 저장
+        if current_rows:
+            part_file = output_dir / f"protocol_chunked_{keyword}_part{current_part:03d}.csv"
+            part_df = pd.DataFrame(current_rows)
+            part_df.to_csv(part_file, index=False)
+            split_files.append(part_file)
+            print(
+                f"[CHUNK][Protocol.io][{keyword}] 마지막 분할 파일 생성: {part_file.name} "
+                f"({len(current_rows)}개 행)",
+                flush=True,
+            )
+        
+        print(
+            f"[CHUNK][Protocol.io][{keyword}] 분할 완료: 총 {len(split_files)}개 파일 생성 "
+            f"(전체 {total_rows}개 행, 파일당 {rows_per_file}개 행)",
+            flush=True,
+        )
+        
+    except Exception as e:
+        print(f"[CHUNK][Protocol.io][{keyword}] 분할 중 오류 발생: {e}", flush=True)
+        import traceback
+        traceback.print_exc()
+        raise
+    
+    return split_files
+
+
 def process_file(csv_path: Path) -> None:
     """
     Incremental 처리 방식으로 cleaned CSV 파일을 chunked CSV로 변환.
@@ -330,6 +432,42 @@ def process_file(csv_path: Path) -> None:
                 f"(전체 {total_rows}개 모두 중복)",
                 flush=True,
             )
+            # 새 데이터가 없어도 기존 청크 파일이 있으면 분할 실행
+            # 오늘 날짜의 청크 파일이 없으면 모든 날짜에서 찾기
+            chunk_file_to_split = None
+            if out_path.exists():
+                chunk_file_to_split = out_path
+            else:
+                # 모든 날짜의 청크 파일 검색
+                chunk_files = sorted(OUTPUT_ROOT.glob(f"**/stage=chunked/protocol_chunked_{keyword}.csv"))
+                if chunk_files:
+                    # 가장 최근 파일 사용
+                    chunk_file_to_split = chunk_files[-1]
+                    print(
+                        f"[CHUNK][Protocol.io][{keyword}] 오늘 날짜 청크 파일 없음. "
+                        f"최근 청크 파일 사용: {chunk_file_to_split}",
+                        flush=True,
+                    )
+            
+            if chunk_file_to_split and chunk_file_to_split.exists():
+                print(f"[CHUNK][Protocol.io][{keyword}] 기존 청크 파일 분할 시작: {chunk_file_to_split}", flush=True)
+                split_files = split_chunk_file(chunk_file_to_split, keyword, rows_per_file=SPLIT_ROWS_PER_FILE)
+                if split_files:
+                    # 저장 위치 출력 (날짜_시분 디렉토리 포함)
+                    now = datetime.now()
+                    date_str = now.strftime("%Y%m%d")
+                    time_str = now.strftime("%H%M")
+                    date_time_dir = f"{date_str}_{time_str}"
+                    print(
+                        f"[CHUNK][Protocol.io][{keyword}] 분할 완료: {len(split_files)}개 파일 생성 "
+                        f"(저장 위치: {CHUNKS_SPLIT_ROOT / date_time_dir / keyword})",
+                        flush=True,
+                    )
+            else:
+                print(
+                    f"[CHUNK][Protocol.io][{keyword}] 분할할 청크 파일이 없습니다.",
+                    flush=True,
+                )
             return
         
         duplicate_count = total_rows - len(new_cleaned_df)
@@ -386,6 +524,21 @@ def process_file(csv_path: Path) -> None:
             flush=True,
         )
         
+        # 7. 청크 파일을 300개 단위로 분할하여 data/chunks/protocols/{날짜}_{시분}/{keyword}에 저장
+        print(f"[CHUNK][Protocol.io][{keyword}] 청크 파일 분할 시작...", flush=True)
+        split_files = split_chunk_file(out_path, keyword, rows_per_file=SPLIT_ROWS_PER_FILE)
+        if split_files:
+            # 저장 위치 출력 (날짜_시분 디렉토리 포함)
+            now = datetime.now()
+            date_str = now.strftime("%Y%m%d")
+            time_str = now.strftime("%H%M")
+            date_time_dir = f"{date_str}_{time_str}"
+            print(
+                f"[CHUNK][Protocol.io][{keyword}] 분할 완료: {len(split_files)}개 파일 생성 "
+                f"(저장 위치: {CHUNKS_SPLIT_ROOT / date_time_dir / keyword})",
+                flush=True,
+            )
+        
     except Exception as exc:
         status = "fail"
         out_path = build_output_path(keyword, status)
@@ -398,10 +551,58 @@ def main() -> None:
     start_time = datetime.now()
     print(f"[CHUNK][Protocol.io] TIMESTAMP_START={start_time.isoformat()}", flush=True)
     
-    input_files = sorted(INPUT_ROOT.glob("**/stage=cleaned/protocol_cleaned_*.csv"))
+    # is_completed=True인 키워드 조회
+    try:
+        schedule_store.ensure_table()
+        completed_keywords = schedule_store.get_completed_keywords()
+        
+        if not completed_keywords:
+            print(f"[CHUNK][Protocol.io] ⚠️  완료된 키워드가 없습니다. chunking을 건너뜁니다.")
+            return
+        
+        print(f"[CHUNK][Protocol.io] 완료된 키워드 목록: {completed_keywords}")
+    except Exception as e:
+        print(f"[CHUNK][Protocol.io] ⚠️  스케줄 테이블 조회 실패: {e}. 모든 키워드를 처리합니다.")
+        completed_keywords = None  # None이면 필터링하지 않음
+    
+    # 오늘 날짜의 cleaned 파일만 찾기 (cleaned 실행 후 바로 chunk 실행되므로)
+    now = datetime.now()
+    today_path = (
+        INPUT_ROOT 
+        / f"year={now.year:04d}" 
+        / f"month={now.month:02d}" 
+        / f"day={now.day:02d}" 
+        / "stage=cleaned"
+    )
+    all_input_files = sorted(today_path.glob("protocol_cleaned_*.csv")) if today_path.exists() else []
+    
+    if not all_input_files:
+        print(
+            f"[CHUNK][Protocol.io] 오늘 날짜({now.year:04d}-{now.month:02d}-{now.day:02d})의 cleaned 파일이 없습니다.",
+            flush=True,
+        )
+    
+    # 완료된 키워드만 필터링
+    if completed_keywords:
+        input_files = []
+        for csv_path in all_input_files:
+            # 파일명에서 키워드 추출: protocol_cleaned_{keyword}.csv
+            keyword = csv_path.stem.replace("protocol_cleaned_", "")
+            if keyword in completed_keywords:
+                input_files.append(csv_path)
+            else:
+                print(f"[CHUNK][Protocol.io] ⏭️  키워드 '{keyword}'는 아직 완료되지 않아 건너뜁니다.")
+    else:
+        input_files = all_input_files
+    
     if not input_files:
-        print("[CHUNK][Protocol.io] 처리할 입력 파일이 없습니다.")
+        if completed_keywords:
+            print(f"[CHUNK][Protocol.io] 완료된 키워드({completed_keywords})의 cleaned 파일이 없습니다.")
+        else:
+            print("[CHUNK][Protocol.io] 처리할 입력 파일이 없습니다.")
         return
+
+    print(f"[CHUNK][Protocol.io] 처리할 파일 수: {len(input_files)}/{len(all_input_files)}")
 
     for csv_path in input_files:
         print(f"[CHUNK][Protocol.io] processing {csv_path}")
