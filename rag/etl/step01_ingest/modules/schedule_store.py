@@ -16,7 +16,8 @@ TABLE_NAME = "zh_protocol_schedule"
 @contextmanager
 def _get_connection() -> Generator:
     """Protocol 스케줄 전용 DB 연결"""
-    with get_connection(specific_url_env="PROTOCOL_SCHEDULE_DATABASE_URL") as conn:
+    # 트랜잭션 관리를 위해 autocommit=False로 설정
+    with get_connection(specific_url_env="PROTOCOL_SCHEDULE_DATABASE_URL", autocommit=False) as conn:
         yield conn
 
 
@@ -27,6 +28,7 @@ def ensure_table() -> None:
         keyword TEXT PRIMARY KEY,
         next_page INTEGER NOT NULL DEFAULT 1,
         is_completed BOOLEAN NOT NULL DEFAULT FALSE,
+        is_embeded BOOLEAN NOT NULL DEFAULT FALSE,
         schedule_started_at TIMESTAMPTZ,
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
@@ -39,6 +41,7 @@ def ensure_table() -> None:
             # 기존 테이블에 컬럼이 있는지 확인하고 추가 (병렬 실행 시 race condition 방지)
             columns_to_check = [
                 ("is_completed", "BOOLEAN NOT NULL DEFAULT FALSE"),
+                ("is_embeded", "BOOLEAN NOT NULL DEFAULT FALSE"),
                 ("schedule_started_at", "TIMESTAMPTZ")
             ]
             
@@ -120,6 +123,7 @@ def update_next_page(
     with _get_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(query, (keyword, next_page, is_completed))
+            conn.commit()
             if is_completed:
                 print(
                     f"[SCHEDULE][{keyword}] Last page reached. Execution will stop on next run.",
@@ -143,10 +147,8 @@ def get_and_reserve_next_page(keyword: str, pages_to_reserve: int = 10) -> Optio
     """
     with _get_connection() as conn:
         with conn.cursor() as cur:
-            # 트랜잭션 시작
-            cur.execute("BEGIN")
             try:
-                # 현재 상태 확인
+                # 현재 상태 확인 (autocommit=False이므로 트랜잭션이 자동으로 시작됨)
                 cur.execute(
                     f"SELECT next_page, is_completed FROM {TABLE_NAME} WHERE keyword = %s FOR UPDATE",
                     (keyword,)
@@ -236,7 +238,129 @@ def update_ingestion_completed(keyword: str) -> None:
     with _get_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(query, (keyword,))
+            conn.commit()
             print(
                 f"[SCHEDULE][{keyword}] API 호출 완료 시점 기록 완료",
+                flush=True,
+            )
+
+
+def get_completed_keywords() -> list[str]:
+    """
+    is_completed가 True인 키워드 목록을 조회한다.
+    
+    Returns:
+        완료된 키워드 목록
+    """
+    query = f"SELECT keyword FROM {TABLE_NAME} WHERE is_completed = TRUE ORDER BY keyword"
+    with _get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(query)
+            rows = cur.fetchall()
+            keywords = [row[0] for row in rows]
+            print(
+                f"[SCHEDULE] 완료된 키워드 조회: {len(keywords)}개 - {keywords}",
+                flush=True,
+            )
+            return keywords
+
+
+def get_completed_keywords_with_updated_at() -> dict[str, datetime]:
+    """
+    is_completed가 True인 키워드와 해당 키워드의 updated_at을 함께 조회한다.
+    
+    Returns:
+        키워드를 키로, updated_at datetime을 값으로 하는 딕셔너리
+    """
+    query = f"SELECT keyword, updated_at FROM {TABLE_NAME} WHERE is_completed = TRUE ORDER BY keyword"
+    with _get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(query)
+            rows = cur.fetchall()
+            result = {row[0]: row[1] for row in rows}
+            print(
+                f"[SCHEDULE] 완료된 키워드와 updated_at 조회: {len(result)}개 - {list(result.keys())}",
+                flush=True,
+            )
+            return result
+
+
+def get_completed_not_embedded_keywords() -> list[str]:
+    """
+    is_completed가 True이고 is_embeded가 False인 키워드 목록을 조회한다.
+    (임베딩이 아직 완료되지 않은 완료된 키워드)
+    
+    Returns:
+        완료되었지만 아직 임베딩되지 않은 키워드 목록
+    """
+    query = f"SELECT keyword FROM {TABLE_NAME} WHERE is_completed = TRUE AND is_embeded = FALSE ORDER BY keyword"
+    with _get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(query)
+            rows = cur.fetchall()
+            keywords = [row[0] for row in rows]
+            print(
+                f"[SCHEDULE] 완료되었지만 임베딩되지 않은 키워드 조회: {len(keywords)}개 - {keywords}",
+                flush=True,
+            )
+            return keywords
+
+
+def update_is_embeded(keyword: str) -> None:
+    """
+    특정 키워드의 is_embeded를 True로 설정한다.
+    
+    컬럼이 존재하지 않으면 자동으로 생성한 후 업데이트를 실행한다.
+    
+    Args:
+        keyword: 키워드
+    """
+    with _get_connection() as conn:
+        with conn.cursor() as cur:
+            # is_embeded 컬럼 존재 여부 확인
+            cur.execute("""
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_name = %s AND column_name = 'is_embeded'
+            """, (TABLE_NAME,))
+            
+            if not cur.fetchone():
+                # 컬럼이 없으면 생성
+                try:
+                    cur.execute(f"""
+                        ALTER TABLE {TABLE_NAME} 
+                        ADD COLUMN IF NOT EXISTS is_embeded BOOLEAN NOT NULL DEFAULT FALSE;
+                    """)
+                    conn.commit()
+                    print(
+                        f"[SCHEDULE][{keyword}] is_embeded 컬럼이 없어 자동으로 생성했습니다.",
+                        flush=True,
+                    )
+                except Exception as e:
+                    # 다른 프로세스가 이미 추가했을 수 있음 (race condition)
+                    error_msg = str(e).lower()
+                    if "already exists" in error_msg or "duplicate column" in error_msg:
+                        # 정상적인 상황이므로 무시하고 계속 진행
+                        conn.rollback()
+                        print(
+                            f"[SCHEDULE][{keyword}] is_embeded 컬럼이 다른 프로세스에 의해 이미 생성되었습니다.",
+                            flush=True,
+                        )
+                    else:
+                        # 다른 에러는 다시 발생
+                        conn.rollback()
+                        raise
+            
+            # 컬럼이 존재하면 (또는 방금 생성했으면) 업데이트 실행
+            query = f"""
+                UPDATE {TABLE_NAME}
+                SET is_embeded = TRUE,
+                    updated_at = NOW()
+                WHERE keyword = %s;
+            """
+            cur.execute(query, (keyword,))
+            conn.commit()
+            print(
+                f"[SCHEDULE][{keyword}] 임베딩 완료 표시 (is_embeded=TRUE)",
                 flush=True,
             )
