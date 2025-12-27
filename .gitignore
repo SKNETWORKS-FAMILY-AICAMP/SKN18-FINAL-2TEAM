@@ -392,6 +392,11 @@ nltk_data/
 # AWS SAM 빌드 아티팩트, config
 .aws-sam/
 samconfig.toml
+packaged.yaml
+
+# CloudFormation 배포 로그
+infra/aws/cloudformation/logs/
+infra/aws/cloudformation/deploy.log
 
 # Lambda invoke 출력 파일
 output.json

@@ -1,0 +1,446 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: "Protocols Lambda Functions"
+
+Parameters:
+  S3BucketName:
+    Type: String
+    Description: "ETL 데이터 저장용 S3 버킷 이름 (Core Stack에서 전달)"
+
+  LambdaExecutionRoleArn:
+    Type: String
+    Description: "Lambda 실행 역할 ARN (Core Stack에서 전달)"
+
+  DatabaseUrl:
+    Type: String
+    Description: "Database 연결 URL (Core Stack에서 전달)"
+
+  CommonLayerArn:
+    Type: String
+    Description: "Common Lambda Layer ARN (Core Stack에서 전달)"
+
+  ProtocolsLayerArn:
+    Type: String
+    Description: "Protocols Lambda Layer ARN (Core Stack에서 전달)"
+
+  # Parameter Store 경로 (Lambda 함수에서 직접 가져옴)
+  ClientAccessTokenParameterPath:
+    Type: String
+    Default: "/skn18/client-access-token"
+    Description: "Protocols.io Client Access Token Parameter Store 경로 (SecureString, Lambda 함수에서 직접 가져옴)"
+
+  LambdaTimeout:
+    Type: Number
+    Default: 900
+    Description: "Lambda 함수 타임아웃 (초, 기본값: 900)"
+
+  LambdaMemorySize:
+    Type: Number
+    Default: 2048
+    Description: "Lambda 함수 메모리 크기 (MB, 기본값: 2048)"
+
+Resources:
+  # =========================
+  # Lambda 함수: Protocols ETL (키워드별)
+  # =========================
+  # Protocols Lambda 함수들
+  ProtocolsEtlLambdaProtein:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: skn18-protocols-etl-protein
+      Runtime: python3.12
+      Handler: infra.aws.lambda_functions.trigger_etl.protocols.protocols_ingest_protein.lambda_handler
+      Role: !Ref LambdaExecutionRoleArn
+      Timeout: !Ref LambdaTimeout
+      MemorySize: !Ref LambdaMemorySize
+      Layers:
+        - !Ref CommonLayerArn
+        - !Ref ProtocolsLayerArn
+      Environment:
+        Variables:
+          S3_BUCKET_NAME: !Ref S3BucketName
+          CLIENT_ACCESS_TOKEN_PARAMETER_PATH: !Ref ClientAccessTokenParameterPath
+          PROTOCOL_SCHEDULE_DATABASE_URL: !Ref DatabaseUrl
+      CodeUri: ../lambda_build/protocols
+      Tags:
+        Name: skn18-protocols-etl-protein
+    Metadata:
+      BuildMethod: python3.12
+      BuildProperties:
+        BuildCommand: &ProtocolsCommonBuild |
+          # Handler 경로를 위한 __init__.py 파일 생성
+          echo "[SAM BUILD] Creating __init__.py files for Handler path..."
+          mkdir -p infra/aws/lambda_functions/trigger_etl/protocols
+          touch infra/__init__.py
+          touch infra/aws/__init__.py
+          touch infra/aws/lambda_functions/__init__.py
+          touch infra/aws/lambda_functions/trigger_etl/__init__.py
+          touch infra/aws/lambda_functions/trigger_etl/protocols/__init__.py
+          # prepare_build.sh가 이미 필요한 파일만 복사했으므로
+          # 추가 정리만 수행 (캐시 파일 및 메타데이터 제거)
+          echo "[SAM BUILD] Cleaning up build artifacts..."
+          find . -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
+          find . -name "*.pyc" -delete 2>/dev/null || true
+          find . -name "*.pyo" -delete 2>/dev/null || true
+          find . -name ".DS_Store" -delete 2>/dev/null || true
+          echo "[SAM BUILD] Cleanup completed."
+
+  # Cell 키워드
+  ProtocolsEtlLambdaCell:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: skn18-protocols-etl-cell
+      Runtime: python3.12
+      Handler: infra.aws.lambda_functions.trigger_etl.protocols.protocols_ingest_cell.lambda_handler
+      Role: !Ref LambdaExecutionRoleArn
+      Timeout: !Ref LambdaTimeout
+      MemorySize: !Ref LambdaMemorySize
+      Layers:
+        - !Ref CommonLayerArn
+        - !Ref ProtocolsLayerArn
+      Environment:
+        Variables:
+          S3_BUCKET_NAME: !Ref S3BucketName
+          CLIENT_ACCESS_TOKEN_PARAMETER_PATH: !Ref ClientAccessTokenParameterPath
+          PROTOCOL_SCHEDULE_DATABASE_URL: !Ref DatabaseUrl
+      CodeUri: ../lambda_build/protocols
+      Tags:
+        Name: skn18-protocols-etl-cell
+        Keyword: Cell
+    Metadata:
+      BuildMethod: python3.12
+      BuildProperties:
+        BuildCommand: *ProtocolsCommonBuild
+
+  # DNA 키워드
+  ProtocolsEtlLambdaDna:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: skn18-protocols-etl-dna
+      Runtime: python3.12
+      Handler: infra.aws.lambda_functions.trigger_etl.protocols.protocols_ingest_dna.lambda_handler
+      Role: !Ref LambdaExecutionRoleArn
+      Timeout: !Ref LambdaTimeout
+      MemorySize: !Ref LambdaMemorySize
+      Layers:
+        - !Ref CommonLayerArn
+        - !Ref ProtocolsLayerArn
+      Environment:
+        Variables:
+          S3_BUCKET_NAME: !Ref S3BucketName
+          CLIENT_ACCESS_TOKEN_PARAMETER_PATH: !Ref ClientAccessTokenParameterPath
+          PROTOCOL_SCHEDULE_DATABASE_URL: !Ref DatabaseUrl
+      CodeUri: ../lambda_build/protocols
+      Tags:
+        Name: skn18-protocols-etl-dna
+        Keyword: DNA
+    Metadata:
+      BuildMethod: python3.12
+      BuildProperties:
+        BuildCommand: *ProtocolsCommonBuild
+
+  # RNA 키워드
+  ProtocolsEtlLambdaRna:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: skn18-protocols-etl-rna
+      Runtime: python3.12
+      Handler: infra.aws.lambda_functions.trigger_etl.protocols.protocols_ingest_rna.lambda_handler
+      Role: !Ref LambdaExecutionRoleArn
+      Timeout: !Ref LambdaTimeout
+      MemorySize: !Ref LambdaMemorySize
+      Layers:
+        - !Ref CommonLayerArn
+        - !Ref ProtocolsLayerArn
+      Environment:
+        Variables:
+          S3_BUCKET_NAME: !Ref S3BucketName
+          CLIENT_ACCESS_TOKEN_PARAMETER_PATH: !Ref ClientAccessTokenParameterPath
+          PROTOCOL_SCHEDULE_DATABASE_URL: !Ref DatabaseUrl
+      CodeUri: ../lambda_build/protocols
+      Tags:
+        Name: skn18-protocols-etl-rna
+        Keyword: RNA
+    Metadata:
+      BuildMethod: python3.12
+      BuildProperties:
+        BuildCommand: *ProtocolsCommonBuild
+
+  # vivo 키워드
+  ProtocolsEtlLambdaVivo:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: skn18-protocols-etl-vivo
+      Runtime: python3.12
+      Handler: infra.aws.lambda_functions.trigger_etl.protocols.protocols_ingest_vivo.lambda_handler
+      Role: !Ref LambdaExecutionRoleArn
+      Timeout: !Ref LambdaTimeout
+      MemorySize: !Ref LambdaMemorySize
+      Layers:
+        - !Ref CommonLayerArn
+        - !Ref ProtocolsLayerArn
+      Environment:
+        Variables:
+          S3_BUCKET_NAME: !Ref S3BucketName
+          CLIENT_ACCESS_TOKEN_PARAMETER_PATH: !Ref ClientAccessTokenParameterPath
+          PROTOCOL_SCHEDULE_DATABASE_URL: !Ref DatabaseUrl
+      CodeUri: ../lambda_build/protocols
+      Tags:
+        Name: skn18-protocols-etl-vivo
+        Keyword: vivo
+    Metadata:
+      BuildMethod: python3.12
+      BuildProperties:
+        BuildCommand: *ProtocolsCommonBuild
+
+  # mouse 키워드
+  ProtocolsEtlLambdaMouse:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: skn18-protocols-etl-mouse
+      Runtime: python3.12
+      Handler: infra.aws.lambda_functions.trigger_etl.protocols.protocols_ingest_mouse.lambda_handler
+      Role: !Ref LambdaExecutionRoleArn
+      Timeout: !Ref LambdaTimeout
+      MemorySize: !Ref LambdaMemorySize
+      Layers:
+        - !Ref CommonLayerArn
+        - !Ref ProtocolsLayerArn
+      Environment:
+        Variables:
+          S3_BUCKET_NAME: !Ref S3BucketName
+          CLIENT_ACCESS_TOKEN_PARAMETER_PATH: !Ref ClientAccessTokenParameterPath
+          PROTOCOL_SCHEDULE_DATABASE_URL: !Ref DatabaseUrl
+      CodeUri: ../lambda_build/protocols
+      Tags:
+        Name: skn18-protocols-etl-mouse
+        Keyword: mouse
+    Metadata:
+      BuildMethod: python3.12
+      BuildProperties:
+        BuildCommand: *ProtocolsCommonBuild
+
+  # Protocols Cleansing + Chunking Lambda
+  ProtocolsCleanseChunkLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: skn18-protocols-cleanse-chunk
+      Runtime: python3.12
+      Handler: infra.aws.lambda_functions.trigger_etl.protocols.protocols_cleanse_chunk.lambda_handler
+      Role: !Ref LambdaExecutionRoleArn
+      Timeout: !Ref LambdaTimeout
+      MemorySize: 5120  # Cleansing + Chunking은 메모리 사용량이 많음
+      Layers:
+        - !Ref CommonLayerArn
+        - !Ref ProtocolsLayerArn
+      Environment:
+        Variables:
+          S3_BUCKET_NAME: !Ref S3BucketName
+      CodeUri: ../lambda_build/protocols
+      Tags:
+        Name: skn18-protocols-cleanse-chunk
+    Metadata:
+      BuildMethod: python3.12
+      BuildProperties:
+        BuildCommand: *ProtocolsCommonBuild
+
+  # =========================
+  # EventBridge 규칙: Protocols (키워드별)
+  # =========================
+  # Protein 키워드 스케줄
+  ProtocolsEtlScheduleRuleProtein:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: skn18-protocols-etl-protein-schedule
+      Description: "Protocols ETL 실행 스케줄 - Protein 키워드"
+      ScheduleExpression: "rate(1 day)"
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt ProtocolsEtlLambdaProtein.Arn
+          Id: "ProtocolsProteinTarget"
+          Input: !Sub |
+            {
+              "keyword": "Protein",
+              "raw_dir": "data/raw"
+            }
+
+  # Cell 키워드 스케줄
+  ProtocolsEtlScheduleRuleCell:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: skn18-protocols-etl-cell-schedule
+      Description: "Protocols ETL 실행 스케줄 - Cell 키워드"
+      ScheduleExpression: "rate(1 day)"
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt ProtocolsEtlLambdaCell.Arn
+          Id: "ProtocolsCellTarget"
+          Input: !Sub |
+            {
+              "keyword": "Cell",
+              "raw_dir": "data/raw"
+            }
+
+  # DNA 키워드 스케줄
+  ProtocolsEtlScheduleRuleDna:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: skn18-protocols-etl-dna-schedule
+      Description: "Protocols ETL 실행 스케줄 - DNA 키워드"
+      ScheduleExpression: "rate(1 day)"
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt ProtocolsEtlLambdaDna.Arn
+          Id: "ProtocolsDnaTarget"
+          Input: !Sub |
+            {
+              "keyword": "DNA",
+              "raw_dir": "data/raw"
+            }
+
+  # RNA 키워드 스케줄
+  ProtocolsEtlScheduleRuleRna:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: skn18-protocols-etl-rna-schedule
+      Description: "Protocols ETL 실행 스케줄 - RNA 키워드"
+      ScheduleExpression: "rate(1 day)"
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt ProtocolsEtlLambdaRna.Arn
+          Id: "ProtocolsRnaTarget"
+          Input: !Sub |
+            {
+              "keyword": "RNA",
+              "raw_dir": "data/raw"
+            }
+
+  # vivo 키워드 스케줄
+  ProtocolsEtlScheduleRuleVivo:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: skn18-protocols-etl-vivo-schedule
+      Description: "Protocols ETL 실행 스케줄 - vivo 키워드"
+      ScheduleExpression: "rate(1 day)"
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt ProtocolsEtlLambdaVivo.Arn
+          Id: "ProtocolsVivoTarget"
+          Input: !Sub |
+            {
+              "keyword": "vivo",
+              "raw_dir": "data/raw"
+            }
+
+  # mouse 키워드 스케줄
+  ProtocolsEtlScheduleRuleMouse:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: skn18-protocols-etl-mouse-schedule
+      Description: "Protocols ETL 실행 스케줄 - mouse 키워드"
+      ScheduleExpression: "rate(1 day)"
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt ProtocolsEtlLambdaMouse.Arn
+          Id: "ProtocolsMouseTarget"
+          Input: !Sub |
+            {
+              "keyword": "mouse",
+              "raw_dir": "data/raw"
+            }
+
+  # =========================
+  # Lambda 권한: EventBridge에서 Lambda 호출 허용
+  # =========================
+  # Protocols 키워드별 권한
+  ProtocolsLambdaPermissionProtein:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ProtocolsEtlLambdaProtein
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+
+  ProtocolsLambdaPermissionCell:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ProtocolsEtlLambdaCell
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+
+  ProtocolsLambdaPermissionDna:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ProtocolsEtlLambdaDna
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+
+  ProtocolsLambdaPermissionRna:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ProtocolsEtlLambdaRna
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+
+  ProtocolsLambdaPermissionVivo:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ProtocolsEtlLambdaVivo
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+
+  ProtocolsLambdaPermissionMouse:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ProtocolsEtlLambdaMouse
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+
+  ProtocolsCleanseChunkLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ProtocolsCleanseChunkLambda
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+
+Outputs:
+  ProtocolsLambdaArnProtein:
+    Description: "Protocols ETL Lambda 함수 ARN (Protein)"
+    Value: !GetAtt ProtocolsEtlLambdaProtein.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-ProtocolsLambdaArnProtein"
+
+  ProtocolsLambdaArnCell:
+    Description: "Protocols ETL Lambda 함수 ARN (Cell)"
+    Value: !GetAtt ProtocolsEtlLambdaCell.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-ProtocolsLambdaArnCell"
+
+  ProtocolsLambdaArnDna:
+    Description: "Protocols ETL Lambda 함수 ARN (DNA)"
+    Value: !GetAtt ProtocolsEtlLambdaDna.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-ProtocolsLambdaArnDna"
+
+  ProtocolsLambdaArnRna:
+    Description: "Protocols ETL Lambda 함수 ARN (RNA)"
+    Value: !GetAtt ProtocolsEtlLambdaRna.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-ProtocolsLambdaArnRna"
+
+  ProtocolsLambdaArnVivo:
+    Description: "Protocols ETL Lambda 함수 ARN (vivo)"
+    Value: !GetAtt ProtocolsEtlLambdaVivo.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-ProtocolsLambdaArnVivo"
+
+  ProtocolsLambdaArnMouse:
+    Description: "Protocols ETL Lambda 함수 ARN (mouse)"
+    Value: !GetAtt ProtocolsEtlLambdaMouse.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-ProtocolsLambdaArnMouse"
+
+  ProtocolsCleanseChunkLambdaArn:
+    Description: "Protocols Cleansing + Chunking Lambda 함수 ARN"
+    Value: !GetAtt ProtocolsCleanseChunkLambda.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-ProtocolsCleanseChunkLambdaArn"
