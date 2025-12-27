@@ -11,26 +11,53 @@ AWS_REGION="${AWS_REGION:-$(curl -s --max-time 5 http://169.254.169.254/latest/m
 
 # CloudFormation 스택 이름 (환경 변수 또는 기본값)
 STACK_NAME="${STACK_NAME:-skn18-final-infra}"
+RABBITMQ_STACK_NAME="${RABBITMQ_STACK_NAME:-skn18-rabbitmq-infra}"
 
 # AWS CLI가 설치되어 있고 IAM Role이 있는지 확인
 if command -v aws &> /dev/null; then
-  echo "AWS CLI found. Fetching configuration from Parameter Store..."
+  echo "AWS CLI found. Fetching configuration from Parameter Store and CloudFormation..."
   
-  # CloudFormation에서 PostgreSQL EC2 IP 가져오기
+  # ========================================
+  # 1. CloudFormation에서 PostgreSQL EC2 IP 가져오기
+  # ========================================
   POSTGRES_HOST=$(aws cloudformation describe-stacks \
     --stack-name "$STACK_NAME" \
     --region "$AWS_REGION" \
     --query 'Stacks[0].Outputs[?OutputKey==`PublicIp`].OutputValue' \
     --output text 2>/dev/null || echo "")
   
-  # CloudFormation에서 RabbitMQ EC2 IP 가져오기
+  # CloudFormation에서 가져오지 못한 경우, Parameter Store에서 직접 읽기 시도
+  if [ -z "$POSTGRES_HOST" ]; then
+    echo "⚠ Could not get POSTGRES_HOST from CloudFormation, trying Parameter Store..."
+    POSTGRES_HOST=$(aws ssm get-parameter \
+      --name /skn18/postgres-host \
+      --region "$AWS_REGION" \
+      --query 'Parameter.Value' \
+      --output text 2>/dev/null || echo "")
+  fi
+  
+  # ========================================
+  # 2. CloudFormation에서 RabbitMQ EC2 IP 가져오기
+  # ========================================
   RABBITMQ_HOST=$(aws cloudformation describe-stacks \
-    --stack-name "$STACK_NAME" \
+    --stack-name "$RABBITMQ_STACK_NAME" \
     --region "$AWS_REGION" \
     --query 'Stacks[0].Outputs[?OutputKey==`RabbitMQPublicIp`].OutputValue' \
     --output text 2>/dev/null || echo "")
   
-  # Parameter Store에서 PostgreSQL 설정 가져오기
+  # CloudFormation에서 가져오지 못한 경우, Parameter Store에서 직접 읽기 시도
+  if [ -z "$RABBITMQ_HOST" ]; then
+    echo "⚠ Could not get RABBITMQ_HOST from CloudFormation, trying Parameter Store..."
+    RABBITMQ_HOST=$(aws ssm get-parameter \
+      --name /skn18/rabbitmq-host \
+      --region "$AWS_REGION" \
+      --query 'Parameter.Value' \
+      --output text 2>/dev/null || echo "")
+  fi
+  
+  # ========================================
+  # 3. Parameter Store에서 PostgreSQL 설정 가져오기
+  # ========================================
   if [ -z "$POSTGRES_DB" ]; then
     POSTGRES_DB=$(aws ssm get-parameter \
       --name /skn18/postgres-db-name \
@@ -64,7 +91,9 @@ if command -v aws &> /dev/null; then
       --output text 2>/dev/null || echo "5432")
   fi
   
-  # Parameter Store에서 RabbitMQ 설정 가져오기
+  # ========================================
+  # 4. Parameter Store에서 RabbitMQ 설정 가져오기
+  # ========================================
   if [ -z "$RABBITMQ_USER" ]; then
     RABBITMQ_USER=$(aws ssm get-parameter \
       --name /skn18/rabbitmq-user \
@@ -82,6 +111,35 @@ if command -v aws &> /dev/null; then
       --output text 2>/dev/null || echo "")
   fi
   
+  if [ -z "$RABBITMQ_PORT" ]; then
+    RABBITMQ_PORT=$(aws ssm get-parameter \
+      --name /skn18/rabbitmq-port \
+      --region "$AWS_REGION" \
+      --query 'Parameter.Value' \
+      --output text 2>/dev/null || echo "5672")
+  fi
+  
+  # ========================================
+  # 5. 기타 Django 설정도 Parameter Store에서 가져오기
+  # ========================================
+  if [ -z "$DJANGO_SECRET_KEY" ]; then
+    DJANGO_SECRET_KEY=$(aws ssm get-parameter \
+      --name /skn18/django-secret-key \
+      --with-decryption \
+      --region "$AWS_REGION" \
+      --query 'Parameter.Value' \
+      --output text 2>/dev/null || echo "")
+  fi
+  
+  if [ -z "$OPENAI_API_KEY" ]; then
+    OPENAI_API_KEY=$(aws ssm get-parameter \
+      --name /skn18/openai-api-key \
+      --with-decryption \
+      --region "$AWS_REGION" \
+      --query 'Parameter.Value' \
+      --output text 2>/dev/null || echo "")
+  fi
+  
   # 환경 변수로 export (이미 설정된 경우 덮어쓰지 않음)
   [ -n "$POSTGRES_HOST" ] && export POSTGRES_HOST
   [ -n "$POSTGRES_DB" ] && export POSTGRES_DB
@@ -91,12 +149,33 @@ if command -v aws &> /dev/null; then
   [ -n "$RABBITMQ_HOST" ] && export RABBITMQ_HOST
   [ -n "$RABBITMQ_USER" ] && export RABBITMQ_USER
   [ -n "$RABBITMQ_PASSWORD" ] && export RABBITMQ_PASSWORD
+  [ -n "$RABBITMQ_PORT" ] && export RABBITMQ_PORT
+  [ -n "$DJANGO_SECRET_KEY" ] && export DJANGO_SECRET_KEY
+  [ -n "$OPENAI_API_KEY" ] && export OPENAI_API_KEY
   
   echo "✓ Configuration loaded from Parameter Store"
   echo "  POSTGRES_HOST: ${POSTGRES_HOST:-(not set)}"
   echo "  RABBITMQ_HOST: ${RABBITMQ_HOST:-(not set)}"
+  echo "  POSTGRES_DB: ${POSTGRES_DB:-(not set)}"
+  echo "  POSTGRES_USER: ${POSTGRES_USER:-(not set)}"
 else
-  echo "⚠ AWS CLI not found. Using environment variables from .env file or container environment."
+  echo "⚠ AWS CLI not found. Using environment variables from container environment."
+fi
+
+# ========================================
+# 필수 환경 변수 검증
+# ========================================
+if [ -z "$POSTGRES_HOST" ]; then
+  echo "ERROR: POSTGRES_HOST is not set!"
+  exit 1
+fi
+
+if [ -z "$POSTGRES_DB" ] || [ -z "$POSTGRES_USER" ] || [ -z "$POSTGRES_PASSWORD" ]; then
+  echo "ERROR: PostgreSQL configuration is incomplete!"
+  echo "  POSTGRES_DB: ${POSTGRES_DB:-(not set)}"
+  echo "  POSTGRES_USER: ${POSTGRES_USER:-(not set)}"
+  echo "  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:+***}"
+  exit 1
 fi
 
 # 데이터베이스 연결 대기
