@@ -5,7 +5,8 @@
 
 # 기본 패키지
 numpy==1.26.4
-torch==2.2.2
+# PyTorch는 Dockerfile에서 CPU-only 버전으로 별도 설치 (크기 절감: 2GB → 500MB)
+# torch==2.2.2  # Dockerfile에서 먼저 설치하므로 여기서는 제외
 pandas
 scipy
 
@@ -64,10 +65,14 @@ python-dotenv
 # 기타 유틸리티
 PyYAML
 
-# Jupyter Notebook Support
-jupyter
-ipywidgets  # tqdm 진행률 표시용
-notebook
+# Jupyter Notebook Support 제거 (서비스용 컨테이너이므로 불필요)
+# 로컬 개발 시에만 필요하면 별도로 설치: pip install jupyter notebook ipywidgets
+# jupyter
+# ipywidgets
+# notebook
 
 # AWS SDK (Lambda에 기본 포함되지만 명시)
 boto3
+
+# RabbitMQ (Message Queue)
+pika

@@ -17,7 +17,7 @@ sys.path.insert(0, str(common_path))
 normalize_module = importlib.import_module("rag.etl.step02_normalize.03_normalize_protocols")
 normalize_run = normalize_module.run
 
-chunker_module = importlib.import_module("rag.etl.step04_chunk.03_chunker_protocols")
+chunker_module = importlib.import_module("rag.etl.step04_chunk.chunker_protocols")
 chunk_process_file = chunker_module.process_file
 
 from s3_utils import (
@@ -36,16 +36,20 @@ def lambda_handler(event, context):
     {
         "raw_dir": "data/raw",           # 선택: 기본값 "data/raw"
         "processed_dir": "data/processed", # 선택: 기본값 "data/processed"
+        "chunks_dir": "data/chunks",     # 선택: 기본값 "data/chunks" (분할된 청크 파일)
         "keyword": "Protein",             # 선택: 특정 키워드만 처리 (None이면 모든 키워드)
         "s3_raw_prefix": "data/raw/protocols",      # 선택: S3 raw 데이터 접두사
-        "s3_processed_prefix": "data/processed/protocols"  # 선택: S3 processed 데이터 접두사
+        "s3_processed_prefix": "data/processed/protocols",  # 선택: S3 processed 데이터 접두사
+        "s3_chunks_prefix": "data/chunks/protocols"  # 선택: S3 chunks 데이터 접두사
     }
     """
     raw_dir = event.get("raw_dir", "data/raw")
     processed_dir = event.get("processed_dir", "data/processed")
+    chunks_dir = event.get("chunks_dir", "data/chunks")
     keyword = event.get("keyword")  # None이면 모든 키워드 처리
     s3_raw_prefix = event.get("s3_raw_prefix", f"{raw_dir}/protocols")
     s3_processed_prefix = event.get("s3_processed_prefix", f"{processed_dir}/protocols")
+    s3_chunks_prefix = event.get("s3_chunks_prefix", f"{chunks_dir}/protocols")
     
     print(f"[Lambda][Protocols][Cleanse+Chunk] Processing started", flush=True)
     start_time = datetime.now()
@@ -55,8 +59,10 @@ def lambda_handler(event, context):
         if is_lambda_environment():
             local_raw_dir = ensure_local_path(raw_dir)
             local_processed_dir = ensure_local_path(processed_dir)
+            local_chunks_dir = ensure_local_path(chunks_dir)
             os.makedirs(local_raw_dir, exist_ok=True)
             os.makedirs(local_processed_dir, exist_ok=True)
+            os.makedirs(local_chunks_dir, exist_ok=True)
             
             # S3에서 raw 데이터 다운로드
             print(f"[Lambda][Protocols] S3에서 raw 데이터 다운로드 중...", flush=True)
@@ -64,6 +70,7 @@ def lambda_handler(event, context):
         else:
             local_raw_dir = raw_dir
             local_processed_dir = processed_dir
+            local_chunks_dir = chunks_dir
         
         # 1. Cleansing (Normalize)
         print(f"[Lambda][Protocols][Step 1/2] Cleansing started", flush=True)
@@ -93,6 +100,8 @@ def lambda_handler(event, context):
         chunker_module.OUTPUT_ROOT = Path(local_processed_dir) / "protocols"
         # INPUT_ROOT도 설정 필요
         chunker_module.INPUT_ROOT = Path(local_processed_dir) / "protocols" / "success"
+        # CHUNKS_SPLIT_ROOT 설정 (분할된 청크 파일 저장 위치)
+        chunker_module.CHUNKS_SPLIT_ROOT = Path(local_chunks_dir) / "protocols"
 
         for csv_path in input_files:
             chunk_process_file(csv_path)
@@ -102,6 +111,11 @@ def lambda_handler(event, context):
         if is_lambda_environment():
             print(f"[Lambda][Protocols] 처리된 데이터를 S3에 업로드 중...", flush=True)
             upload_directory_to_s3(local_processed_dir, s3_processed_prefix)
+            
+            # 분할된 청크 파일도 S3에 업로드
+            if Path(local_chunks_dir).exists():
+                print(f"[Lambda][Protocols] 분할된 청크 파일을 S3에 업로드 중...", flush=True)
+                upload_directory_to_s3(local_chunks_dir, s3_chunks_prefix)
         
         end_time = datetime.now()
         duration = (end_time - start_time).total_seconds()

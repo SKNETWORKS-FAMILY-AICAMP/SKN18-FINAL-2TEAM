@@ -1,0 +1,14 @@
+{
+  "builds": [
+    {
+      "name": "skn18-pgvector",
+      "builder_type": "amazon-ebs",
+      "build_time": 1766265136,
+      "files": null,
+      "artifact_id": "ap-northeast-2:ami-06193ed264e0db2f2",
+      "packer_run_uuid": "7247320e-11bd-45cf-0c72-34ac6bb3f9cd",
+      "custom_data": null
+    }
+  ],
+  "last_run_uuid": "7247320e-11bd-45cf-0c72-34ac6bb3f9cd"
+}

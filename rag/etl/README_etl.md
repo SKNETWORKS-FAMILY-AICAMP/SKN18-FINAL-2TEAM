@@ -273,28 +273,132 @@ NCT12345,chi_1,"Secondary Outcomes: Measured in minutes.",text-embedding-3-small
 - RNA
 - vivo
 - mouse
-  
-### protocol etl 수정 사항
 
-- api
-  - 03_ingest_protocols_io.py 
-  - CLIENT_ACCESS_TOKEN .env로 이동
-  - 한 번에 메모리에 쌓았다가 CSV 저장 방식에서 -> 페이지마다 append 저장하는 방식으로 변경 
-  - 스케줄 히스토리 저장 : schedule_store.py
-  - raw 데이터 저장 경로 : data/raw/protocols
-  - keyword 종류별로 api 병렬로 실행하도록 변경
-    - MAX_PARALLEL_WORKERS = 2  # 동시에 돌릴 최대 키워드 수
-    - 요청 간 time.sleep(0.6) 추가
-  - page_size=30으로 변경 (람다 수행 제한 시간 고려)
-  - 429/504 응답 시 exponential backoff 재시도 추가
-    - MAX_RETRIES = int(os.getenv("PROTOCOLS_IO_MAX_RETRIES", "3"))
-- clean
-  -  03_normalize_protocols.py
-  -  input, output 경로 변경
-- chunk : 
-  - 03_embed_protocols.py
-  - input, output 경로 변경
-  - 오버랩이 문장 단위로 붙도록 변경
+### 전체 프로세스 흐름
+
+```
+1. Ingest (수집)
+   → data/raw/protocols/{YYYYMMDD}/api_data_{keyword}.csv
+   → DB: zh_protocol_schedule 테이블에 진행 상황 저장 (is_completed, updated_at)
+
+2. Normalize (정규화)
+   → data/processed/protocols/{success|fail}/year=YYYY/month=MM/day=DD/stage=cleaned/protocol_cleaned_{keyword}.csv
+   → is_completed=True인 키워드만 처리
+   → updated_at 기준으로 날짜 폴더 필터링 (updated_at 날짜 이하의 모든 폴더)
+
+3. Chunk (청킹)
+   → data/processed/protocols/{success|fail}/year=YYYY/month=MM/day=DD/stage=chunked/protocol_chunked_{keyword}.csv
+   → data/chunks/protocols/{YYYYMMDD}_{HHMM}/{keyword}/protocol_chunked_{keyword}_part*.csv (분할 파일)
+   → is_completed=True인 키워드만 처리
+   → 오늘 날짜의 cleaned 파일만 처리 (cleaned 실행 후 바로 실행되므로)
+
+4. Embed (임베딩)
+   → data/embeddings/protocols/{keyword}/protocol_embedded_{keyword}.csv
+   → is_completed=True인 키워드만 처리
+   → 오늘 날짜의 청크 파일만 처리 (chunk 실행 후 바로 실행되므로)
+
+5. Upsert (DB 저장)
+   → PostgreSQL (pgvector)
+```
+
+### AWS Lambda 스케줄 (EventBridge)
+
+- **Ingest**: 매 시간 정각마다 실행 (`cron(0 * * * ? *)`) - 0시, 1시, 2시... 23시 UTC
+  - 각 키워드별로 개별 Lambda 함수 (Protein, Cell, DNA, RNA, vivo, mouse)
+  
+- **Cleansing + Chunking**: 매일 02:00 UTC에 한 번 실행 (`cron(0 2 * * ? *)`)
+  - is_completed=True인 키워드만 처리
+  
+- **Embedding**: 매일 04:00 UTC에 한 번 실행 (`cron(0 4 * * ? *)`)
+  - Step Functions로 병렬 처리
+  - is_completed=True인 키워드만 처리
+
+### 각 단계별 특징
+
+#### 1. Ingest (수집)
+- **입력**: Protocols.io API
+- **출력**: `data/raw/protocols/{YYYYMMDD}/api_data_{keyword}.csv`
+- **특징**:
+  - 페이지 단위로 append 저장 (메모리 효율적)
+  - 스케줄 히스토리 저장: `schedule_store.py`를 통해 DB에 진행 상황 저장
+  - 키워드별 병렬 처리 (MAX_PARALLEL_WORKERS = 1)
+  - 페이지 예약 방식으로 중복 처리 방지 (원자적 연산)
+  - 페이지당 30개 프로토콜 수집 (람다 시간 제한 고려)
+  - 요청 간 0.5초 간격 (rate limiting)
+  - 429/504 응답 시 exponential backoff 재시도
+  - 마지막 페이지 도달 시 `is_completed=True` 설정
+
+#### 2. Normalize (정규화)
+- **입력**: `data/raw/protocols/{YYYYMMDD}/api_data_{keyword}.csv`
+- **출력**: `data/processed/protocols/{success|fail}/year=YYYY/month=MM/day=DD/stage=cleaned/protocol_cleaned_{keyword}.csv`
+- **특징**:
+  - **is_completed 확인**: DB에서 `is_completed=True`인 키워드만 처리
+  - **날짜 필터링**: 각 키워드의 `updated_at` 날짜 이하의 모든 날짜 폴더 처리
+    - 예: `updated_at=2025-12-26`이면 `20251226`, `20251225`, `20251224` 등 모든 이전 날짜 폴더 포함
+  - **Incremental 처리**: 기존 cleaned 파일의 URL Set을 로드하여 중복 제거
+  - **텍스트 정규화**: 
+    - HTML 태그 제거 및 superscript 처리
+    - 표(table) → 텍스트 변환
+    - 중복 제거 (url, title 기준)
+
+#### 3. Chunk (청킹)
+- **입력**: `stage=cleaned/protocol_cleaned_{keyword}.csv` (오늘 날짜만)
+- **출력**: 
+  - `stage=chunked/protocol_chunked_{keyword}.csv`
+  - `data/chunks/protocols/{YYYYMMDD}_{HHMM}/{keyword}/protocol_chunked_{keyword}_part*.csv` (분할 파일)
+- **특징**:
+  - **is_completed 확인**: DB에서 `is_completed=True`인 키워드만 처리
+  - **오늘 날짜만 처리**: cleaned 실행 후 바로 실행되므로 오늘 날짜의 cleaned 파일만 처리
+  - **Incremental 처리**: 기존 chunked 파일의 URL Set을 로드하여 중복 제거
+  - **문장 단위 청킹**: 문장 분리 후 오버랩 적용
+  - **청킹 설정**:
+    - 청크 크기: 400 문자
+    - 오버랩: 100 문자 (문장 단위)
+    - 최소 청크 크기: 300 문자
+  - **파일 분할**: 3000개 행 단위로 분할하여 저장 (환경 변수로 제어 가능)
+
+#### 4. Embed (임베딩)
+- **입력**: 
+  - 분할 파일: `data/chunks/protocols/{YYYYMMDD}_{HHMM}/{keyword}/protocol_chunked_{keyword}_part*.csv` (우선)
+  - 기존 파일: `stage=chunked/protocol_chunked_{keyword}.csv` (fallback, 오늘 날짜만)
+- **출력**: `data/embeddings/protocols/{keyword}/protocol_embedded_{keyword}.csv`
+- **특징**:
+  - **is_completed 확인**: DB에서 `is_completed=True`인 키워드만 처리
+  - **오늘 날짜만 처리**: chunk 실행 후 바로 실행되므로 오늘 날짜의 청크 파일만 처리
+  - **Step Functions 병렬 처리**: 여러 파일을 동시에 처리 (최대 동시 실행 수: 10, 환경 변수로 제어 가능)
+  - **배치 처리**: 메모리 효율성을 위해 배치 단위로 저장 (기본값: 100개)
+  - **모델**: OpenAI `text-embedding-3-small`
+  - **임베딩 차원**: 1536
+
+#### 5. Upsert (DB 저장)
+- **입력**: `data/embeddings/protocols/{keyword}/protocol_embedded_{keyword}.csv`
+- **출력**: PostgreSQL (pgvector)
+- **특징**:
+  - 벡터 DB에 임베딩 저장
+  - 중복 체크 및 업데이트 (chunking_id 기준)
+
+### 파일 처리 방식
+
+| 단계 | 파일 처리 방식 | is_completed 확인 | 날짜 필터링 |
+|------|---------------|------------------|------------|
+| **Ingest** | 새 파일 생성 (날짜별 디렉토리) | - | - |
+| **Normalize** | Incremental (기존 파일에 append) | ✅ 완료된 키워드만 | ✅ updated_at 이하 모든 날짜 |
+| **Chunk** | Incremental (기존 파일에 append) | ✅ 완료된 키워드만 | ✅ 오늘 날짜만 |
+| **Embed** | 새 파일 생성 (키워드별 디렉토리) | ✅ 완료된 키워드만 | ✅ 오늘 날짜만 |
+
+### 스케줄 관리 (schedule_store)
+
+- **테이블**: `zh_protocol_schedule`
+- **컬럼**:
+  - `keyword`: 키워드 (Primary Key)
+  - `next_page`: 다음 처리할 페이지 번호
+  - `is_completed`: 모든 페이지 수집 완료 여부 (Boolean)
+  - `schedule_started_at`: 첫 실행 시점
+  - `updated_at`: 마지막 업데이트 시점
+- **동작**:
+  - Ingest 단계에서 페이지 예약 및 진행 상황 기록
+  - 마지막 페이지 도달 시 `is_completed=True` 설정
+  - Normalize, Chunk, Embed 단계에서 `is_completed=True`인 키워드만 처리
 
 ### Raw data column 분석
 - 컬럼 구성: url, title, abstract, step_content, reference, guidelines, materials
@@ -310,6 +414,16 @@ NCT12345,chi_1,"Secondary Outcomes: Measured in minutes.",text-embedding-3-small
     - 각 요소에서 name 값을 추출: `i.split(",")[0]`
 - 프로토콜 별 고유 ID 재부여
 - title 중복 + reference가 없을 때: reference가 없는 경우 해당 row는 제거
+
+### 주요 설정
+- **페이지 크기**: 30개 프로토콜/페이지
+- **최대 예약 페이지**: 5페이지/실행 (람다 시간 제한 고려)
+- **청크 크기**: 400 문자
+- **청크 오버랩**: 100 문자 (문장 단위)
+- **최소 청크 크기**: 300 문자
+- **분할 파일 크기**: 3000개 행/파일
+- **임베딩 모델**: text-embedding-3-small
+- **임베딩 차원**: 1536
 
 #### DB에 필요한 컬럼 구성 -json : cs
 - RDB:
