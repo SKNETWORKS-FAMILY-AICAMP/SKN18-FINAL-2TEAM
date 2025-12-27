@@ -207,8 +207,9 @@ def ingest_keyword(search_keyword: str, raw_dir: Path | None = None) -> None:
                 f"마지막 페이지 도달 (page {page_id}).",
                 flush=True,
             )
-            # 마지막 페이지 도달 표시
-            schedule_store.update_next_page(search_keyword, 1, is_completed=True)
+            # 마지막 페이지 도달 표시 (is_completed=True 설정)
+            # next_page는 마지막 페이지 번호를 유지 (실제로는 is_completed=True이므로 다음 실행 시 중단됨)
+            schedule_store.update_next_page(search_keyword, page_id, is_completed=True)
             break
 
         page_rows: list[dict[str, str]] = []
@@ -366,8 +367,16 @@ def run_parallel(keywords: Iterable[str]) -> None:
     print(f"[INGEST][Protocol.io] TIMESTAMP_END={end_time.isoformat()} | DURATION={duration:.2f}초", flush=True)
 
 
-def main() -> None:
-    """메인 함수: 모든 키워드에 대해 ingestion 실행"""
+def main(raw_dir: str | None = None) -> None:
+    """
+    메인 함수: 모든 키워드에 대해 ingestion 실행
+    
+    Args:
+        raw_dir: raw 데이터 디렉토리 경로 (None이면 기본값 "data/raw" 사용)
+    """
+    global RAW_DIR
+    if raw_dir is not None:
+        RAW_DIR = Path(raw_dir) / "protocols" if isinstance(raw_dir, str) else Path(raw_dir) / "protocols"
     run_parallel(KEYWORDS)
 
 
