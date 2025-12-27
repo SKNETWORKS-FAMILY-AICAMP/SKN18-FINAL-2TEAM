@@ -83,7 +83,18 @@ Resources:
       AvailabilityZone: !Select [0, !GetAZs ""]
       Tags:
         - Key: Name
-          Value: "skn18-public-subnet"
+          Value: "skn18-public-subnet-1"
+
+  AppPublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref AppVPC
+      CidrBlock: "10.0.2.0/24"
+      MapPublicIpOnLaunch: true
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      Tags:
+        - Key: Name
+          Value: "skn18-public-subnet-2"
 
   AppPublicRouteTable:
     Type: AWS::EC2::RouteTable
@@ -105,6 +116,12 @@ Resources:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       SubnetId: !Ref AppPublicSubnet
+      RouteTableId: !Ref AppPublicRouteTable
+
+  AppPublicSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref AppPublicSubnet2
       RouteTableId: !Ref AppPublicRouteTable
 
   # =========================
@@ -496,10 +513,22 @@ Outputs:
       Name: !Sub "${AWS::StackName}-VpcId"
 
   SubnetId:
-    Description: "생성된 Public Subnet ID"
+    Description: "생성된 Public Subnet ID (첫 번째)"
     Value: !Ref AppPublicSubnet
     Export:
       Name: !Sub "${AWS::StackName}-SubnetId"
+
+  SubnetId2:
+    Description: "생성된 Public Subnet ID (두 번째)"
+    Value: !Ref AppPublicSubnet2
+    Export:
+      Name: !Sub "${AWS::StackName}-SubnetId2"
+
+  SubnetIds:
+    Description: "모든 Public Subnet IDs (ALB용, comma-separated)"
+    Value: !Join [",", [!Ref AppPublicSubnet, !Ref AppPublicSubnet2]]
+    Export:
+      Name: !Sub "${AWS::StackName}-SubnetIds"
 
   SecurityGroupId:
     Description: "Security Group ID"
