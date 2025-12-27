@@ -6,10 +6,24 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     gcc \
     postgresql-client \
+    curl \
+    unzip \
     && rm -rf /var/lib/apt/lists/*
+
+# AWS CLI 설치 (Parameter Store 접근용)
+RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && \
+    unzip awscliv2.zip && \
+    ./aws/install && \
+    rm -rf awscliv2.zip aws/
 
 # Python 의존성
 COPY requirements.txt .
+# PyTorch CPU-only 버전 먼저 설치 (GPU 없이 EC2에서 실행하므로 CUDA 제외하여 크기 절감)
+# CPU-only 버전 사용 시 약 2GB → 500MB로 크기 감소
+RUN pip install --no-cache-dir \
+    --index-url https://download.pytorch.org/whl/cpu \
+    torch==2.2.2
+# 나머지 패키지 설치
 RUN pip install --no-cache-dir -r requirements.txt
 
 # 애플리케이션 코드 복사
