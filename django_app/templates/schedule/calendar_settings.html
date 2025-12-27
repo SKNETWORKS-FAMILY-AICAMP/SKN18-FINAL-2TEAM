@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Google Calendar 연동 설정 - HelixOps{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/pages/schedule.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="gc-settings-wrap">
+  <div class="gc-settings-title">Google Calendar 연동 설정</div>
+  <div class="gc-settings-desc">연동할 캘린더를 선택하고 저장하세요.</div>
+
+  <form method="post">
+    {% csrf_token %}
+
+    <div class="gc-list">
+      {% for cal in calendars %}
+        <label class="gc-item">
+          <input
+            type="checkbox"
+            name="calendars"
+            value="{{ cal.calendar_id }}"
+            {% if cal.selected %}checked{% endif %}
+          />
+          <div>
+            <!-- ✅ 화면에는 이름(summary)이 메인으로 보이게 -->
+            <strong>{{ cal.summary }}</strong>
+            <!-- ✅ ID는 작게(원하면 이 줄 삭제 가능) -->
+            <div class="gc-id">{{ cal.calendar_id }}</div>
+          </div>
+        </label>
+      {% empty %}
+        <div style="padding: 16px; color: #6b7280;">
+          표시할 캘린더가 없습니다. (구글 연동이 제대로 되었는지 확인해 주세요)
+        </div>
+      {% endfor %}
+    </div>
+
+    <div class="gc-actions">
+      <button class="gc-btn" type="submit">저장</button>
+      <a class="gc-btn secondary" href="{% url 'schedule:schedule' %}">일정으로 돌아가기</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,182 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: "NIH Lambda Functions"
+
+Parameters:
+  S3BucketName:
+    Type: String
+    Description: "ETL 데이터 저장용 S3 버킷 이름 (Core Stack에서 전달)"
+
+  LambdaExecutionRoleArn:
+    Type: String
+    Description: "Lambda 실행 역할 ARN (Core Stack에서 전달)"
+
+  CommonLayerArn:
+    Type: String
+    Description: "Common Lambda Layer ARN (Core Stack에서 전달)"
+
+  NihLayerArn:
+    Type: String
+    Description: "NIH Lambda Layer ARN (Core Stack에서 전달)"
+
+  # Parameter Store에서 값을 읽어오는 파라미터들
+  # Number 타입이 필요하므로 기본값 사용 (필요시 Parameter Store에서 읽어서 수동으로 설정)
+  LambdaTimeout:
+    Type: Number
+    Default: 900
+    Description: "Lambda 함수 타임아웃 (초, 기본값: 900)"
+
+  LambdaMemorySize:
+    Type: Number
+    Default: 2048
+    Description: "Lambda 함수 메모리 크기 (MB, 기본값: 2048)"
+
+  NihCleanseChunkMemorySize:
+    Type: Number
+    Default: 5120
+    Description: "NIH Cleansing + Chunking Lambda 메모리 크기 (MB, 기본값: 5120)"
+
+  # Parameter Store 경로 (Lambda 함수에서 직접 가져옴)
+  OpenAiApiKeyParameterPath:
+    Type: String
+    Default: "/skn18/openai-api-key"
+    Description: "OpenAI API Key Parameter Store 경로 (SecureString, Lambda 함수에서 직접 가져옴)"
+
+Resources:
+  # =========================
+  # Lambda 함수: NIH ETL
+  # =========================
+  # NIH Ingest Lambda
+  NihIngestLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: skn18-nih-ingest
+      Runtime: python3.12
+      Handler: infra.aws.lambda_functions.trigger_etl.nih.nih_ingest.lambda_handler
+      Role: !Ref LambdaExecutionRoleArn
+      Timeout: !Ref LambdaTimeout
+      MemorySize: !Ref LambdaMemorySize
+      Layers:
+        - !Ref CommonLayerArn
+        - !Ref NihLayerArn
+      Environment:
+        Variables:
+          S3_BUCKET_NAME: !Ref S3BucketName
+      CodeUri: ../lambda_build/nih
+      Tags:
+        Name: skn18-nih-ingest
+    Metadata:
+      BuildMethod: python3.12
+      BuildProperties:
+        BuildCommand: &NihCommonBuild |
+          # Handler 경로를 위한 __init__.py 파일 생성
+          echo "[SAM BUILD] Creating __init__.py files for Handler path..."
+          mkdir -p infra/aws/lambda_functions/trigger_etl/nih
+          touch infra/__init__.py
+          touch infra/aws/__init__.py
+          touch infra/aws/lambda_functions/__init__.py
+          touch infra/aws/lambda_functions/trigger_etl/__init__.py
+          touch infra/aws/lambda_functions/trigger_etl/nih/__init__.py
+          # prepare_build.sh가 이미 필요한 파일만 복사했으므로
+          # 추가 정리만 수행 (캐시 파일 및 메타데이터 제거)
+          echo "[SAM BUILD] Cleaning up build artifacts..."
+          find . -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
+          find . -name "*.pyc" -delete 2>/dev/null || true
+          find . -name "*.pyo" -delete 2>/dev/null || true
+          find . -name ".DS_Store" -delete 2>/dev/null || true
+          echo "[SAM BUILD] Cleanup completed."
+
+  # NIH Cleansing + Chunking Lambda
+  NihCleanseChunkLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: skn18-nih-cleanse-chunk
+      Runtime: python3.12
+      Handler: infra.aws.lambda_functions.trigger_etl.nih.nih_cleanse_chunk.lambda_handler
+      Role: !Ref LambdaExecutionRoleArn
+      Timeout: !Ref LambdaTimeout
+      MemorySize: !Ref NihCleanseChunkMemorySize
+      Layers:
+        - !Ref CommonLayerArn
+        - !Ref NihLayerArn
+      Environment:
+        Variables:
+          S3_BUCKET_NAME: !Ref S3BucketName
+          OPENAI_API_KEY_PARAMETER_PATH: !Ref OpenAiApiKeyParameterPath
+      CodeUri: ../lambda_build/nih
+      Tags:
+        Name: skn18-nih-cleanse-chunk
+    Metadata:
+      BuildMethod: python3.12
+      BuildProperties:
+        BuildCommand: *NihCommonBuild
+
+  # =========================
+  # EventBridge 규칙: NIH
+  # =========================
+  # NIH Ingest 스케줄 (하루에 한 번)
+  NihIngestScheduleRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: skn18-nih-ingest-schedule
+      Description: "NIH Ingest 실행 스케줄 - 하루에 한 번"
+      ScheduleExpression: "rate(1 day)"
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt NihIngestLambda.Arn
+          Id: "NihIngestTarget"
+          Input: !Sub |
+            {
+              "raw_dir": "data/raw",
+              "s3_raw_prefix": "data/raw/nih"
+            }
+
+  # NIH Cleansing + Chunking 스케줄 (Ingest에서 직접 호출하므로 비활성화)
+  NihCleanseChunkScheduleRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: skn18-nih-cleanse-chunk-schedule
+      Description: "NIH Cleansing + Chunking 실행 스케줄 - Ingest에서 직접 호출하므로 비활성화"
+      ScheduleExpression: "rate(1 day)"
+      State: DISABLED  # 비활성화
+      Targets:
+        - Arn: !GetAtt NihCleanseChunkLambda.Arn
+          Id: "NihCleanseChunkTarget"
+          Input: !Sub |
+            {
+              "raw_dir": "data/raw",
+              "processed_dir": "data/processed",
+              "s3_raw_prefix": "data/raw/nih",
+              "s3_processed_prefix": "data/processed/nih"
+            }
+
+  # =========================
+  # Lambda 권한: EventBridge에서 Lambda 호출 허용
+  # =========================
+  # NIH Lambda 권한
+  NihIngestLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref NihIngestLambda
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+
+  NihCleanseChunkLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref NihCleanseChunkLambda
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+
+Outputs:
+  NihIngestLambdaArn:
+    Description: "NIH Ingest Lambda 함수 ARN"
+    Value: !GetAtt NihIngestLambda.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-NihIngestLambdaArn"
+
+  NihCleanseChunkLambdaArn:
+    Description: "NIH Cleansing + Chunking Lambda 함수 ARN"
+    Value: !GetAtt NihCleanseChunkLambda.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-NihCleanseChunkLambdaArn"

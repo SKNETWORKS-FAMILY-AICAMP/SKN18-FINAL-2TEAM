@@ -26,30 +26,20 @@ class ConversationMemory(Base):
 
     __tablename__ = "t_memory"
 
-    # ---------------------------
-    # 기본 정보
-    # ---------------------------
-    chat_id = Column(Integer, Sequence('chat_id_seq'), primary_key=True, autoincrement=True)  # 자동증가 PK
-    chat_room_id = Column(String, nullable=False, index=True)  # 채팅방 ID (같은 방에 여러 row 가능)
-    user_id = Column(String, nullable=False)            # 유저 ID
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    # ---------------------------
-    # 메타 정보
-    # ---------------------------
-    original_question = Column(Text)         # 질문 원문
-    topic = Column(String)                   # 1줄 주제 요약
-    entities = Column(JSONB, default=list)   # 추출된 엔티티들
-    latest_keywords = Column(JSONB, default=list)  # 최근 키워드들
-    referenced_memory_count = Column(Integer, default=0)  # 답변 생성 시 참고한 이전 대화 개수
-
-    # ---------------------------
-    # 답변 정보 (단순화된 구조)
-    # ---------------------------
-    case_type = Column(String, nullable=False, index=True)  # 데이터 타입: SIMULATION_Q, INFERENCE_Q, BIO_Q, PROTOCOL_Q
-    full_response = Column(Text, nullable=True)             # 원본 답변 전체
-    summary = Column(Text, nullable=True)                   # 질문과 답변 요약
-
+    # 이미지 순서대로 컬럼 정의
+    chat_sid = Column(Integer, primary_key=True, autoincrement=True)
+    chat_room_id = Column(Integer, nullable=False, index=True)  # 채팅방 아이디 (Integer)
+    user_id = Column(String, nullable=False)  # 유저 아이디
+    case_type = Column(String, nullable=False, index=True)  # 질문유형
+    original_question = Column(Text)  # 질문 원문
+    full_response = Column(Text, nullable=True)  # 원본 답변 전체
+    summary = Column(Text, nullable=True)  # 질문과 답변 요약
+    topic = Column(String)  # 1줄주제요약
+    referenced_memory_count = Column(Integer, default=0)  # 참고한 이전 대화 개수
+    
+    # 추가 메타 정보 (이미지에는 없지만 기존 기능 유지)
+    entities = Column(JSONB, default=list)  # retrieval에서 추출된 엔티티들
+    created_at = Column(DateTime, default=datetime.utcnow)  # 생성시간
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # 수정시간
     def __repr__(self):
-        return f"<ConversationMemory(chat_id={self.chat_id}, chat_room_id={self.chat_room_id}, user_id={self.user_id})>"
+        return f"<ConversationMemory(chat_sid={self.chat_sid}, chat_room_id={self.chat_room_id}, user_id={self.user_id})>"

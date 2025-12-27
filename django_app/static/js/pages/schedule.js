@@ -1,5 +1,8 @@
 // Schedule Page JavaScript Logic
 
+// ✅ Base URL (schedule 앱이 /schedule 하위에 붙어있으니 통일)
+const API_BASE = '/schedule';
+
 // State variables
 let currentDate = new Date();
 let viewMode = 'month'; // 'day' | 'week' | 'month'
@@ -26,6 +29,10 @@ const fullcalendarEl = document.getElementById('fullcalendar');
 const todayBtn = document.getElementById('todayBtn');
 const prevBtn = document.getElementById('prevBtn');
 const nextBtn = document.getElementById('nextBtn');
+
+// ✅ 추가: 최신일정 가져오기 버튼
+const refreshLatestBtn = document.getElementById('refreshLatestBtn');
+
 const viewModeBtns = document.querySelectorAll('.view-mode-btn[data-view]');
 
 // Initialize schedule page
@@ -62,6 +69,11 @@ function initSchedule() {
         nextBtn.addEventListener('click', handleNext);
     }
 
+    // ✅ 추가: 최신일정 가져오기 버튼 이벤트
+    if (refreshLatestBtn) {
+        refreshLatestBtn.addEventListener('click', handleRefreshLatest);
+    }
+
     // View mode buttons
     viewModeBtns.forEach(btn => {
         btn.addEventListener('click', (e) => {
@@ -78,7 +90,7 @@ function initSchedule() {
 
     // Status change handlers
     attachStatusChangeHandlers();
-    
+
     // Add calendar button handler
     const addCalendarBtn = document.getElementById('addCalendarBtn');
     if (addCalendarBtn) {
@@ -101,10 +113,9 @@ function initFullCalendar() {
         firstDay: 0, // Sunday
         dayMaxEvents: 3, // Show max 3 events per day in month view
         moreLinkText: function(n) {
-            // Return "+{count} 더보기" format
             return '+' + n + ' 더보기';
         },
-        moreLinkClick: 'popover', // Show popover for more events
+        moreLinkClick: 'popover',
         eventDisplay: 'block',
         eventTimeFormat: {
             hour: '2-digit',
@@ -119,40 +130,72 @@ function initFullCalendar() {
         slotMaxTime: '24:00:00',
         slotDuration: '01:00:00',
         allDaySlot: true,
-        contentHeight: 'auto', // Auto adjust content height
-        aspectRatio: 1.35, // Adjust aspect ratio for better month view
+        contentHeight: 'auto',
+        aspectRatio: 1.35,
+
         eventClick: function(info) {
             const scheduleId = info.event.id;
-            // Open detail modal instead of navigating
             if (window.ScheduleDetailModal && window.ScheduleDetailModal.open) {
                 window.ScheduleDetailModal.open(scheduleId);
             } else {
                 handleScheduleClick(scheduleId);
             }
         },
+
         dateClick: function(info) {
             const date = formatDate(info.date);
-            // Open add modal with pre-filled date
             if (window.ScheduleAddModal && window.ScheduleAddModal.open) {
                 window.ScheduleAddModal.open(date);
             } else {
                 handleDayClick(date);
             }
         },
+
         datesSet: function(info) {
-            // Update title and currentDate when view changes
-            currentDate = info.start;
-            updateCalendarTitle();
+            // ✅ FullCalendar가 화면 바꿀 때마다 여기 들어옴
+            currentDate = calendar.getDate();   // ✅ 핵심: activeStart 말고 "현재 보고있는 기준 날짜"
+            updateCalendarTitle();              // ✅ 제목 업데이트
         },
-        events: function(fetchInfo, successCallback, failureCallback) {
-            // Convert schedules to FullCalendar events
-            const events = convertSchedulesToEvents(schedules);
-            successCallback(events);
-        }
+
+        // ✅ 핵심: eventSources 2개(내 일정 + 구글 이벤트)
+        eventSources: [
+            // (1) 내 일정(DB schedules)
+            {
+                id: 'local-schedules',
+                events: function(fetchInfo, successCallback, failureCallback) {
+                    try {
+                        const events = convertSchedulesToEvents(schedules);
+                        successCallback(events);
+                    } catch (e) {
+                        console.error('Error building local schedule events:', e);
+                        failureCallback(e);
+                    }
+                }
+            },
+
+            // (2) 구글 캘린더 이벤트
+            {
+                id: 'google-events',
+                url: `${API_BASE}/api/google-events/`,
+                method: 'GET',
+                extraParams: function() {
+                    return {};
+                },
+                failure: function(err) {
+                    console.warn('Google events load failed:', err);
+                }
+            }
+        ]
     });
 
     calendar.render();
-    
+
+    // ✅ 다른 모듈이 접근할 수 있게 노출(선택)
+    window.fullCalendarInstance = calendar;
+
+    // ✅ 최초 렌더 직후에도 제목 한 번 맞춰주기
+    updateCalendarTitle();
+
     // Force FullCalendar to recalculate height after rendering
     setTimeout(() => {
         if (calendar) {
@@ -165,8 +208,10 @@ function initFullCalendar() {
 function convertSchedulesToEvents(schedules) {
     return schedules.map(schedule => {
         const startDate = new Date(schedule.start_datetime);
-        const endDate = schedule.end_datetime ? new Date(schedule.end_datetime) : new Date(startDate.getTime() + 60 * 60 * 1000); // Default 1 hour
-        
+        const endDate = schedule.end_datetime
+            ? new Date(schedule.end_datetime)
+            : new Date(startDate.getTime() + 60 * 60 * 1000);
+
         return {
             id: String(schedule.id),
             title: schedule.title,
@@ -181,7 +226,7 @@ function convertSchedulesToEvents(schedules) {
                 description: schedule.description || '',
                 location: schedule.location || '',
                 hasNote: schedule.linked_note ? true : false,
-                noteId: schedule.linked_note ? schedule.linked_note.id || schedule.linked_note : null
+                noteId: schedule.linked_note ? (schedule.linked_note.id || schedule.linked_note) : null
             },
             display: 'block'
         };
@@ -191,11 +236,11 @@ function convertSchedulesToEvents(schedules) {
 // Get schedule color based on type
 function getScheduleColor(type) {
     const colorMap = {
-        '실험': '#3b82f6', // blue
-        '미팅': '#a855f7', // purple
-        '분석': '#f97316', // orange
-        '세미나': '#ec4899', // pink
-        '일정': '#10b981' // green
+        '실험': '#3b82f6',
+        '미팅': '#a855f7',
+        '분석': '#f97316',
+        '세미나': '#ec4899',
+        '일정': '#10b981'
     };
     return colorMap[type] || '#3b82f6';
 }
@@ -203,7 +248,7 @@ function getScheduleColor(type) {
 // Load schedules from API
 async function loadSchedules() {
     try {
-        const response = await fetch('/schedule/api/schedules/', {
+        const response = await fetch(`${API_BASE}/api/schedules/`, {
             method: 'GET',
             headers: {
                 'X-CSRFToken': getCsrfToken(),
@@ -215,7 +260,7 @@ async function loadSchedules() {
             const data = await response.json();
             schedules = data.results || data;
             renderScheduleList();
-            refreshCalendar();
+            refreshCalendar(); // ✅ local + google 둘 다 refetch
         }
     } catch (error) {
         console.error('Error loading schedules:', error);
@@ -242,6 +287,25 @@ async function loadUserCalendars() {
     }
 }
 
+// ✅ 추가: 최신일정 가져오기
+async function handleRefreshLatest() {
+    try {
+        // 1) 캘린더를 진짜 "오늘"로 이동
+        if (calendar) calendar.today();
+
+        // 2) 내 일정 API 다시 가져오고(왼쪽 목록도 갱신됨)
+        await loadSchedules();
+
+        // 3) 혹시 모달이나 다른 소스에서 구글 캘린더 선택이 바뀌었을 수도 있으니 한 번 더 refetch
+        refreshCalendar();
+
+        if (window.notyf) window.notyf.success('최신 일정을 불러왔습니다.');
+    } catch (e) {
+        console.error('Error refreshing latest:', e);
+        if (window.notyf) window.notyf.error('최신 일정 불러오기에 실패했습니다.');
+    }
+}
+
 // Handle schedule search
 function handleScheduleSearch(e) {
     scheduleSearchQuery = e.target.value.toLowerCase().trim();
@@ -250,30 +314,31 @@ function handleScheduleSearch(e) {
 
 // Handle add schedule
 function handleAddSchedule() {
-    // Get date from URL if available
     const urlParams = new URLSearchParams(window.location.search);
     const dateParam = urlParams.get('date');
-    
+
     if (window.ScheduleAddModal && window.ScheduleAddModal.open) {
         window.ScheduleAddModal.open(dateParam);
     } else {
-        window.location.href = '/schedule/create/' + (dateParam ? `?date=${dateParam}` : '');
+        window.location.href = `${API_BASE}/create/` + (dateParam ? `?date=${dateParam}` : '');
     }
 }
 
-// Handle Google Calendar connect
 function handleGoogleCalendarConnect() {
     if (window.Modal) {
         window.Modal.open('googleCalendarModal');
+
+        // 모달 열자마자 강제로 캘린더 목록 로드
+        if (window.GoogleCalendarModal && window.GoogleCalendarModal.reload) {
+            window.GoogleCalendarModal.reload();
+        }
     } else {
-        // Fallback: redirect to OAuth flow
-        window.location.href = '/schedule/google-connect/';
+        window.location.href = `${API_BASE}/google/login/`;
     }
 }
 
 // Handle add calendar button click
 function handleAddCalendar() {
-    // Open calendar add modal
     if (window.CalendarAddModal && window.CalendarAddModal.open) {
         window.CalendarAddModal.open();
     } else if (window.Modal) {
@@ -285,8 +350,8 @@ function handleAddCalendar() {
 function handleToday() {
     if (calendar) {
         calendar.today();
-        currentDate = new Date();
-        updateCalendarTitle();
+        currentDate = calendar.getDate(); // ✅ 기준 날짜 갱신
+        updateCalendarTitle();            // ✅ 제목 갱신
     }
 }
 
@@ -294,6 +359,8 @@ function handleToday() {
 function handlePrevious() {
     if (calendar) {
         calendar.prev();
+        currentDate = calendar.getDate();
+        updateCalendarTitle();
     }
 }
 
@@ -301,14 +368,15 @@ function handlePrevious() {
 function handleNext() {
     if (calendar) {
         calendar.next();
+        currentDate = calendar.getDate();
+        updateCalendarTitle();
     }
 }
 
 // Set view mode
 function setViewMode(mode) {
     viewMode = mode;
-    
-    // Update active button
+
     viewModeBtns.forEach(btn => {
         btn.classList.remove('active');
         if (btn.getAttribute('data-view') === mode) {
@@ -316,7 +384,6 @@ function setViewMode(mode) {
         }
     });
 
-    // Change FullCalendar view
     if (calendar) {
         let fullcalendarView;
         switch(mode) {
@@ -332,66 +399,63 @@ function setViewMode(mode) {
                 break;
         }
         calendar.changeView(fullcalendarView);
+        currentDate = calendar.getDate();
         updateCalendarTitle();
     }
 }
 
-// Update calendar title
+// ✅ 수정 핵심: 달력 제목은 "activeStart"가 아니라 "현재 보고 있는 기준 날짜"로 만든다
 function updateCalendarTitle() {
     if (!calendarTitle || !calendar) return;
-    
+
     const view = calendar.view;
-    const start = view.activeStart;
-    const end = view.activeEnd;
-    
+    const base = calendar.getDate(); // ✅ 핵심
+
     if (viewMode === 'day') {
-        const year = start.getFullYear();
-        const month = start.getMonth() + 1;
-        const day = start.getDate();
+        const year = base.getFullYear();
+        const month = base.getMonth() + 1;
+        const day = base.getDate();
         calendarTitle.textContent = `${year}년 ${month}월 ${day}일`;
-    } else if (viewMode === 'week') {
-        const year = start.getFullYear();
-        const month = start.getMonth() + 1;
-        const day = start.getDate();
-        const endDay = end.getDate();
-        calendarTitle.textContent = `${year}년 ${month}월 ${day}일 - ${endDay}일`;
-    } else {
-        const year = start.getFullYear();
-        const month = start.getMonth() + 1;
-        calendarTitle.textContent = `${year}년 ${month}월`;
+        return;
     }
+
+    if (viewMode === 'week') {
+        const start = view.currentStart; // 주 시작
+        const end = new Date(view.currentEnd.getTime() - 24 * 60 * 60 * 1000); // currentEnd는 exclusive라 -1일
+        const sY = start.getFullYear();
+        const sM = start.getMonth() + 1;
+        const sD = start.getDate();
+        const eY = end.getFullYear();
+        const eM = end.getMonth() + 1;
+        const eD = end.getDate();
+
+        if (sY === eY && sM === eM) {
+            calendarTitle.textContent = `${sY}년 ${sM}월 ${sD}일 - ${eD}일`;
+        } else if (sY === eY) {
+            calendarTitle.textContent = `${sY}년 ${sM}월 ${sD}일 - ${eM}월 ${eD}일`;
+        } else {
+            calendarTitle.textContent = `${sY}년 ${sM}월 ${sD}일 - ${eY}년 ${eM}월 ${eD}일`;
+        }
+        return;
+    }
+
+    // month
+    const year = base.getFullYear();
+    const month = base.getMonth() + 1;
+    calendarTitle.textContent = `${year}년 ${month}월`;
 }
 
 // Refresh calendar events
 function refreshCalendar() {
     if (calendar) {
         calendar.refetchEvents();
-        // Force FullCalendar to recalculate height
+
         setTimeout(() => {
             if (calendar) {
                 calendar.updateSize();
             }
         }, 50);
     }
-}
-
-// Removed: renderMonthView, renderWeekView, renderDayView - now handled by FullCalendar
-
-// Get schedules for a specific date
-function getSchedulesForDate(date) {
-    const dateStr = formatDate(date);
-    return schedules.filter(s => {
-        const scheduleDate = new Date(s.start_datetime);
-        return formatDate(scheduleDate) === dateStr;
-    });
-}
-
-// Check if date is today
-function isTodayDate(date) {
-    const today = new Date();
-    return date.getDate() === today.getDate() &&
-           date.getMonth() === today.getMonth() &&
-           date.getFullYear() === today.getFullYear();
 }
 
 // Format date as YYYY-MM-DD
@@ -408,9 +472,8 @@ function renderScheduleList() {
 
     let filteredSchedules = schedules;
 
-    // Filter by search query
     if (scheduleSearchQuery) {
-        filteredSchedules = schedules.filter(s => 
+        filteredSchedules = schedules.filter(s =>
             s.title.toLowerCase().includes(scheduleSearchQuery) ||
             (s.description && s.description.toLowerCase().includes(scheduleSearchQuery))
         );
@@ -421,20 +484,17 @@ function renderScheduleList() {
         return;
     }
 
-    // Sort by start datetime
-    filteredSchedules.sort((a, b) => {
-        return new Date(a.start_datetime) - new Date(b.start_datetime);
-    });
+    filteredSchedules.sort((a, b) => new Date(a.start_datetime) - new Date(b.start_datetime));
 
     scheduleList.innerHTML = filteredSchedules.map(schedule => {
         const startDate = new Date(schedule.start_datetime);
-        const dateStr = startDate.toLocaleDateString('ko-KR', { 
-            year: 'numeric', 
-            month: '2-digit', 
-            day: '2-digit' 
+        const dateStr = startDate.toLocaleDateString('ko-KR', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
         });
-        const timeStr = startDate.toLocaleTimeString('ko-KR', { 
-            hour: '2-digit', 
+        const timeStr = startDate.toLocaleTimeString('ko-KR', {
+            hour: '2-digit',
             minute: '2-digit',
             hour12: false
         });
@@ -463,7 +523,6 @@ function renderScheduleList() {
         `;
     }).join('');
 
-    // Re-attach handlers
     attachScheduleItemHandlers();
     attachStatusChangeHandlers();
 }
@@ -475,8 +534,7 @@ function attachCalendarToggleHandlers() {
         checkbox.addEventListener('change', async (e) => {
             const calendarId = e.target.getAttribute('data-calendar-id');
             const visible = e.target.checked;
-            
-            // Update calendar visibility via API
+
             try {
                 await fetch(`/api/calendars/${calendarId}/`, {
                     method: 'PATCH',
@@ -486,7 +544,7 @@ function attachCalendarToggleHandlers() {
                     },
                     body: JSON.stringify({ visible }),
                 });
-                
+
                 refreshCalendar();
             } catch (error) {
                 console.error('Error updating calendar visibility:', error);
@@ -526,7 +584,6 @@ function attachScheduleItemHandlers() {
     });
 }
 
-
 // Attach status change handlers
 function attachStatusChangeHandlers() {
     const statusSelects = scheduleList?.querySelectorAll('.status-select');
@@ -534,10 +591,9 @@ function attachStatusChangeHandlers() {
         select.addEventListener('change', async (e) => {
             const scheduleId = select.getAttribute('data-schedule-id');
             const newStatus = select.value;
-            
-            // Update status via API
+
             try {
-                const response = await fetch(`/schedule/api/schedules/${scheduleId}/`, {
+                const response = await fetch(`${API_BASE}/api/schedules/${scheduleId}/`, {
                     method: 'PATCH',
                     headers: {
                         'X-CSRFToken': getCsrfToken(),
@@ -547,16 +603,11 @@ function attachStatusChangeHandlers() {
                 });
 
                 if (response.ok) {
-                    // Update local data
-                    const schedule = schedules.find(s => s.id === parseInt(scheduleId));
-                    if (schedule) {
-                        schedule.status = newStatus;
-                    }
-                    
-                    // Update select class
+                    const schedule = schedules.find(s => String(s.id) === String(scheduleId));
+                    if (schedule) schedule.status = newStatus;
+
                     select.className = `status-select status-${newStatus}`;
-                    
-                    // Show success toast
+
                     if (window.notyf) {
                         const statusText = {
                             'scheduled': '예정',
@@ -565,13 +616,10 @@ function attachStatusChangeHandlers() {
                         }[newStatus] || newStatus;
                         window.notyf.success(`일정 상태가 "${statusText}"으로 변경되었습니다.`);
                     }
-                    
+
                     refreshCalendar();
                 } else {
-                    // Show error toast
-                    if (window.notyf) {
-                        window.notyf.error('일정 상태 변경에 실패했습니다.');
-                    }
+                    if (window.notyf) window.notyf.error('일정 상태 변경에 실패했습니다.');
                 }
             } catch (error) {
                 console.error('Error updating schedule status:', error);
@@ -582,21 +630,19 @@ function attachStatusChangeHandlers() {
 
 // Handle schedule click
 function handleScheduleClick(scheduleId) {
-    // Open detail modal instead of navigating
     if (window.ScheduleDetailModal && window.ScheduleDetailModal.open) {
         window.ScheduleDetailModal.open(scheduleId);
     } else {
-        window.location.href = `/schedule/${scheduleId}/`;
+        window.location.href = `${API_BASE}/${scheduleId}/`;
     }
 }
 
 // Handle day click
 function handleDayClick(date) {
-    // Open add modal with pre-filled date
     if (window.ScheduleAddModal && window.ScheduleAddModal.open) {
         window.ScheduleAddModal.open(date);
     } else {
-        window.location.href = `/schedule/create/?date=${date}`;
+        window.location.href = `${API_BASE}/create/?date=${date}`;
     }
 }
 
@@ -605,15 +651,10 @@ function getCsrfToken() {
     const cookies = document.cookie.split(';');
     for (let cookie of cookies) {
         const [name, value] = cookie.trim().split('=');
-        if (name === 'csrftoken') {
-            return value;
-        }
+        if (name === 'csrftoken') return value;
     }
-    // Try to get from meta tag
     const metaTag = document.querySelector('meta[name=csrf-token]');
-    if (metaTag) {
-        return metaTag.getAttribute('content');
-    }
+    if (metaTag) return metaTag.getAttribute('content');
     return '';
 }
 
@@ -641,5 +682,6 @@ if (typeof window !== 'undefined') {
         handleToday,
         handlePrevious,
         handleNext,
+        handleRefreshLatest, // ✅ 추가
     };
 }

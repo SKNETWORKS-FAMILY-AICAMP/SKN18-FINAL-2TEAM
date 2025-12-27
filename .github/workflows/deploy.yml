@@ -1,19 +1,305 @@
-name: Deploy to EC2 (placeholder)
+name: Deploy to AWS
 
 on:
-  # 배포도 아직은 실 구현 전이라 수동 실행만 허용
-  workflow_dispatch:
+  push:
+    branches:
+      - main      # main 브랜치: 빌드 + 배포
+      - develop   # develop 브랜치: 빌드만 (오류 확인)
+  workflow_dispatch:  # 수동 실행
+    inputs:
+      rollback_to:
+        description: 'Rollback to specific image tag (leave empty for new deployment)'
+        required: false
+        type: string
+
+env:
+  AWS_REGION: ap-northeast-2
+  ECR_REPOSITORY: helixops_web
+  DOCKERFILE_PATH: infra/docker/Dockerfile.django
+  STACK_NAME: skn18-final-infra
 
 jobs:
-  deploy_placeholder:
+  build:
     runs-on: ubuntu-latest
-
+    outputs:
+      image-uri: ${{ steps.build-image.outputs.image-uri }}
+      image-tag: ${{ steps.build-image.outputs.image-tag }}
+      should-deploy: ${{ steps.check.outputs.should-deploy }}
+    
     steps:
-      - name: Show placeholder message
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check if rollback
+        id: check
         run: |
-          echo "deploy.yml placeholder workflow"
-          echo "👉 실제 AWS ECR/EC2 배포는 아직 세팅하지 않았습니다."
-          echo "👉 AWS IAM / ECR / EC2 설정이 완료되면 이 파일에"
-          echo "   - docker build & push"
-          echo "   - ssh로 EC2 접속 후 docker-compose up"
-          echo "   같은 진짜 배포 스텝을 추가하세요."
+          if [ -n "${{ github.event.inputs.rollback_to }}" ]; then
+            echo "should-deploy=true" >> $GITHUB_OUTPUT
+            echo "Rollback mode: will use tag ${{ github.event.inputs.rollback_to }}"
+          elif [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            echo "should-deploy=true" >> $GITHUB_OUTPUT
+          else
+            echo "should-deploy=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Configure AWS credentials
+        if: steps.check.outputs.should-deploy == 'true'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        if: steps.check.outputs.should-deploy == 'true'
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push image (or use rollback tag)
+        if: steps.check.outputs.should-deploy == 'true'
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: ${{ env.ECR_REPOSITORY }}
+          ROLLBACK_TAG: ${{ github.event.inputs.rollback_to }}
+        run: |
+          if [ -n "$ROLLBACK_TAG" ]; then
+            # 롤백 모드: 기존 이미지 태그 사용
+            echo "Rollback mode: Using existing image tag $ROLLBACK_TAG"
+            IMAGE_URI="$ECR_REGISTRY/$ECR_REPOSITORY:$ROLLBACK_TAG"
+            IMAGE_TAG="$ROLLBACK_TAG"
+            
+            # 이미지 존재 확인
+            if ! aws ecr describe-images \
+              --repository-name $ECR_REPOSITORY \
+              --image-ids imageTag=$ROLLBACK_TAG \
+              --region ${{ env.AWS_REGION }} > /dev/null 2>&1; then
+              echo "Error: Image tag $ROLLBACK_TAG not found in ECR"
+              exit 1
+            fi
+            
+            # latest 태그를 롤백 태그로 업데이트
+            MANIFEST=$(aws ecr batch-get-image \
+              --repository-name $ECR_REPOSITORY \
+              --image-ids imageTag=$ROLLBACK_TAG \
+              --region ${{ env.AWS_REGION }} \
+              --query 'images[0].imageManifest' \
+              --output text)
+            
+            aws ecr put-image \
+              --repository-name $ECR_REPOSITORY \
+              --image-tag latest \
+              --image-manifest "$MANIFEST" \
+              --region ${{ env.AWS_REGION }}
+          else
+            # 일반 빌드 모드
+            IMAGE_TAG="${{ github.sha }}"
+            IMAGE_URI="$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+            
+            # Docker 빌드
+            docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
+              -t $ECR_REGISTRY/$ECR_REPOSITORY:latest \
+              -f ${{ env.DOCKERFILE_PATH }} .
+            
+            # ECR에 푸시
+            docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+            docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          fi
+          
+          echo "image-uri=$IMAGE_URI" >> $GITHUB_OUTPUT
+          echo "image-tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
+          echo "✓ Image ready: $IMAGE_URI"
+
+  build-check:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build Docker image (test only)
+        run: |
+          docker build -f ${{ env.DOCKERFILE_PATH }} .
+          echo "✓ Build check passed"
+
+  deploy:
+    needs: build
+    if: needs.build.outputs.should-deploy == 'true'
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+        id: login-ecr
+
+      - name: Get App EC2 and ALB Info
+        id: infra-info
+        run: |
+          # App EC2 정보 가져오기 (AppInfraStack에서)
+          INSTANCE_ID=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.STACK_NAME }} \
+            --region ${{ env.AWS_REGION }} \
+            --query 'Stacks[0].Outputs[?OutputKey==`AppInstanceId`].OutputValue' \
+            --output text)
+          
+          PUBLIC_IP=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.STACK_NAME }} \
+            --region ${{ env.AWS_REGION }} \
+            --query 'Stacks[0].Outputs[?OutputKey==`AppPublicIp`].OutputValue' \
+            --output text)
+          
+          ALB_DNS=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.STACK_NAME }} \
+            --region ${{ env.AWS_REGION }} \
+            --query 'Stacks[0].Outputs[?OutputKey==`AlbDnsName`].OutputValue' \
+            --output text)
+          
+          TARGET_GROUP_ARN=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.STACK_NAME }} \
+            --region ${{ env.AWS_REGION }} \
+            --query 'Stacks[0].Outputs[?OutputKey==`AlbTargetGroupArn`].OutputValue' \
+            --output text)
+          
+          if [ -z "$INSTANCE_ID" ] || [ "$INSTANCE_ID" = "None" ]; then
+            echo "Error: App EC2 Instance ID not found in CloudFormation outputs"
+            echo "Make sure AppInfraStack is deployed successfully"
+            exit 1
+          fi
+          
+          echo "instance-id=$INSTANCE_ID" >> $GITHUB_OUTPUT
+          echo "public-ip=$PUBLIC_IP" >> $GITHUB_OUTPUT
+          echo "alb-dns=$ALB_DNS" >> $GITHUB_OUTPUT
+          echo "target-group-arn=$TARGET_GROUP_ARN" >> $GITHUB_OUTPUT
+          
+          echo "App EC2 Instance ID: $INSTANCE_ID"
+          echo "App EC2 Public IP: $PUBLIC_IP"
+          echo "ALB DNS: $ALB_DNS"
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ steps.infra-info.outputs.public-ip }} >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      - name: Deploy to EC2
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: ${{ env.ECR_REPOSITORY }}
+          IMAGE_TAG: ${{ needs.build.outputs.image-tag }}
+          EC2_HOST: ${{ steps.infra-info.outputs.public-ip }}
+          EC2_USER: ec2-user
+          PROJECT_PATH: /home/ec2-user/app
+          TARGET_GROUP_ARN: ${{ steps.infra-info.outputs.target-group-arn }}
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+            $EC2_USER@$EC2_HOST << 'DEPLOY_SCRIPT'
+            set -e
+            
+            # ECR 로그인
+            aws ecr get-login-password --region ${{ env.AWS_REGION }} | \
+              docker login --username AWS --password-stdin $ECR_REGISTRY
+            
+            cd $PROJECT_PATH || { echo "Error: Project directory not found"; exit 1; }
+            
+            # 이전 이미지 태그 저장 (롤백용)
+            PREVIOUS_IMAGE=$(docker-compose -f docker-compose.prod.yml config | grep -A 1 "image:" | grep -v "image:" | tr -d ' ' || echo "")
+            if [ -n "$PREVIOUS_IMAGE" ]; then
+              echo "Previous image: $PREVIOUS_IMAGE"
+              echo "$PREVIOUS_IMAGE" > /tmp/previous_image.txt
+            fi
+            
+            # 환경 변수 설정
+            export ECR_WEB_IMAGE=$ECR_REGISTRY/$ECR_REPOSITORY:latest
+            
+            # docker-compose pull
+            echo "Pulling latest image..."
+            docker-compose -f docker-compose.prod.yml pull web
+            
+            # 기존 컨테이너 중지 (마이그레이션은 새 컨테이너 시작 시 자동 실행)
+            echo "Stopping existing container..."
+            docker-compose -f docker-compose.prod.yml stop web || true
+            
+            # 새 컨테이너 시작 (entrypoint에서 마이그레이션 자동 실행)
+            echo "Starting new container (migrations will run automatically)..."
+            docker-compose -f docker-compose.prod.yml up -d web
+            
+            # 마이그레이션 로그 확인 (최대 2분 대기)
+            echo "Waiting for migrations to complete..."
+            for i in {1..24}; do
+              if docker logs web-app 2>&1 | grep -q "Migrations completed"; then
+                echo "✓ Migrations completed successfully"
+                break
+              fi
+              if docker logs web-app 2>&1 | grep -q "Database is ready - executing migrations"; then
+                echo "Migrations in progress... ($i/24)"
+              fi
+              if [ $i -eq 24 ]; then
+                echo "⚠ Migration timeout - check logs manually"
+                docker logs web-app --tail 50
+              fi
+              sleep 5
+            done
+            
+            # 컨테이너 상태 확인
+            sleep 5
+            if ! docker ps | grep -q web-app; then
+              echo "Error: Container failed to start"
+              docker logs web-app --tail 100
+              exit 1
+            fi
+            
+            # 컨테이너 IP 가져오기
+            CONTAINER_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' web-app 2>/dev/null || echo "")
+            
+            if [ -n "$CONTAINER_IP" ]; then
+              echo "Container IP: $CONTAINER_IP"
+              
+              # ALB Target Group에 등록
+              aws elbv2 register-targets \
+                --target-group-arn $TARGET_GROUP_ARN \
+                --targets Id=$CONTAINER_IP,Port=8000 \
+                --region ${{ env.AWS_REGION }} || echo "Target may already be registered"
+            fi
+            
+            # 배포 확인
+            docker-compose -f docker-compose.prod.yml ps
+            
+            echo "✓ Deployment completed"
+          DEPLOY_SCRIPT
+
+      - name: Health Check
+        run: |
+          ALB_DNS=${{ steps.infra-info.outputs.alb-dns }}
+          echo "Checking ALB health..."
+          
+          for i in {1..30}; do
+            if curl -f -s "http://${ALB_DNS}" > /dev/null 2>&1; then
+              echo "✓ Web service is healthy via ALB"
+              exit 0
+            fi
+            echo "Waiting for service to be ready... ($i/30)"
+            sleep 10
+          done
+          
+          echo "⚠ Health check timeout. Check CloudWatch logs for details."
+          exit 0
+
+      - name: Save deployment info
+        if: always()
+        run: |
+          echo "Deployment completed at $(date)" >> deployment_history.txt
+          echo "Image: ${{ needs.build.outputs.image-uri }}" >> deployment_history.txt
+          echo "Tag: ${{ needs.build.outputs.image-tag }}" >> deployment_history.txt
+          echo "---" >> deployment_history.txt

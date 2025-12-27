@@ -1,0 +1,15 @@
+########################################
+# Protocols Lambda Layer 의존성
+# Protocols Lambda 함수에서만 사용하는 패키지
+########################################
+
+# HTML 파싱
+beautifulsoup4>=4.12.0
+lxml>=5.0.0
+
+# PostgreSQL 연결
+psycopg2-binary>=2.9.9
+
+# 데이터 처리 (chunker_protocols.py, normalize_protocols.py에서 사용)
+pandas>=2.0.0
+

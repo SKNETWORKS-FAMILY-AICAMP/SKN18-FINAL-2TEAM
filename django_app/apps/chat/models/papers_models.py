@@ -26,7 +26,6 @@ class PaperGraph(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True, db_column='created_at')
     created_id = models.CharField(max_length=60, db_column='created_id')
-    updated_id = models.CharField(max_length=60, null=True, blank=True, db_column='updated_id')
     
     class Meta:
         db_table = 't_paper_graph'
@@ -152,6 +151,7 @@ class ChatMessagePaperGraph(models.Model):
     sort_order = models.SmallIntegerField(default=0, db_column='sort_order')
     created_at = models.DateTimeField(auto_now_add=True, db_column='created_at')
     created_id = models.CharField(max_length=60, db_column='created_id')
+    # 필요없는 updated_id 삭제
     
     class Meta:
         db_table = 't_chat_message_paper_graph'

@@ -5,7 +5,15 @@ import json
 from pathlib import Path
 from typing import Any, Dict, List, Sequence
 
+# Django 앱(django_app)보다 한 단계 위에 있는 프로젝트 루트를 파이썬 경로에 추가
+# graph 모듈을 import하기 전에 프로젝트 루트를 sys.path에 추가해야 함
+# services.py -> chat -> apps -> django_app -> PROJECT_ROOT (parents[3])
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from graph.compile import create_workflow
 
 try:
     from django.conf import settings
@@ -14,11 +22,6 @@ except ImportError:  # pragma: no cover - django 미설치 환경
 
 from .llm import get_llm
 from .models import Chat, ChatMessage
-
-# Django 앱(django_app)보다 한 단계 위에 있는 프로젝트 루트를 파이썬 경로에 추가
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.append(str(PROJECT_ROOT))
 
 # try:
 #     from graph.compile import create_medical_rag_workflow
@@ -31,52 +34,143 @@ if str(PROJECT_ROOT) not in sys.path:
 _graph_app: Any | None = None
 
 
-# def _get_graph_app():
-#     """
-#     LangGraph 워크플로우를 지연 로딩하여 재사용
-#     """
-#     global _graph_app
-#     if create_medical_rag_workflow is None:
-#         raise RuntimeError("LangGraph 모듈을 불러올 수 없습니다.") from _GRAPH_IMPORT_ERROR
-#     if _graph_app is None:
-#         _graph_app = create_medical_rag_workflow()
-#     return _graph_app
+def _get_graph_app():
+    """
+    LangGraph 워크플로우를 지연 로딩하여 재사용
+    """
+    global _graph_app
+    if create_workflow is None:
+        raise RuntimeError("LangGraph 모듈을 불러올 수 없습니다.")
+    if _graph_app is None:
+        _graph_app = create_workflow()
+    return _graph_app
 
 
 def _format_citations(raw_result: Dict[str, Any]) -> tuple[List[Dict[str, Any]], str]:
     """
     LangGraph state에서 전달된 reference 정보를 프론트엔드가 기대하는 포맷으로 변환.
+
+    목적: LangGraph의 실제 state 필드(answer_sources, retrieval_results, reranked_results)에서
+          참고문헌 정보를 추출하여 ChatReference 모델에 저장할 수 있는 형식으로 변환
+
+    수정: 이전에는 존재하지 않는 필드(structured_answer.references, sources)를
+          찾고 있어 citations가 빈 배열로 반환되던 문제를 해결
     """
-    structured = raw_result.get("structured_answer") or {}
-    references = structured.get("references") or raw_result.get("sources") or []
-    reference_type = structured.get("type") or raw_result.get("type") or "internal"
+    # answer_sources: 웹 검색 URL이나 출처 리스트
+    answer_sources = raw_result.get("answer_sources") or []
+
+    # retrieval_results: RAG 검색 결과 (metadata 포함)
+    retrieval_results = raw_result.get("retrieval_results") or []
+    reranked_results = raw_result.get("reranked_results") or []
+
+    # selected_chunks: evaluate_chunk에서 선별된 청크 (관련성 있는 것만)
+    selected_chunks = raw_result.get("selected_chunks") or []
+    web_selected_chunks = raw_result.get("web_selected_chunks") or []
+    web_results = raw_result.get("web_results") or []  # 웹 검색 원본 결과 (title 포함)
+
+    # case_type을 reference_type으로 사용
+    case_type = raw_result.get("case_type") or "NO_RELATION"
+
     formatted = []
-    for idx, ref in enumerate(references, 1):
-        if isinstance(ref, dict):
-            formatted.append(
-                {
-                    "id": ref.get("id") or idx,
-                    "title": ref.get("title") or ref.get("c_id") or f"출처 {idx}",
-                    "journal": ref.get("journal") or ref.get("source_spec") or "",
-                    "year": ref.get("year") or ref.get("creation_year") or "",
-                    "doi": ref.get("doi") or "",
-                    "pmid": ref.get("pmid") or ref.get("pubmed") or "",
-                    "authors": ref.get("authors") or "",
-                }
-            )
-        else:
-            formatted.append(
-                {
-                    "id": idx,
-                    "title": str(ref),
+
+    # ⚠️ 중요: selected_chunks가 비어있으면 참고문헌을 생성하지 않음
+    # retrieval_results가 있어도 evaluate_chunk에서 관련성이 없다고 판단되면 selected_chunks가 비어있음
+    if not selected_chunks and not web_selected_chunks:
+        print(f"[DEBUG _format_citations] selected_chunks와 web_selected_chunks가 모두 비어있음 → citations 생성 안 함")
+        return [], case_type
+
+    # retrieval_results에서 메타데이터 추출 (reranked_results 우선)
+    if reranked_results and selected_chunks:
+        for idx, result in enumerate(reranked_results[:5], 1):  # 상위 5개만
+            metadata = result.get("metadata") or {}
+            formatted.append({
+                "id": idx,
+                "title": metadata.get("title") or f"검색 결과 {idx}",
+                "journal": metadata.get("journal") or "",
+                "year": str(metadata.get("year") or ""),
+                "month": metadata.get("month") or "",  # 추가: 월 정보
+                "day": metadata.get("day") or "",      # 추가: 일 정보
+                "doi": metadata.get("doi") or "",
+                "pmid": metadata.get("pmid") or "",
+                "authors": metadata.get("authors") or "",
+                "source_type": metadata.get("source_type") or metadata.get("db") or "",
+                "score": result.get("rerank_score") or result.get("score") or 0.0,
+            })
+    elif retrieval_results and selected_chunks:
+        for idx, result in enumerate(retrieval_results[:5], 1):
+            metadata = result.get("metadata") or {}
+            formatted.append({
+                "id": idx,
+                "title": metadata.get("title") or f"검색 결과 {idx}",
+                "journal": metadata.get("journal") or "",
+                "year": str(metadata.get("year") or ""),
+                "month": metadata.get("month") or "",  # 추가: 월 정보
+                "day": metadata.get("day") or "",      # 추가: 일 정보
+                "doi": metadata.get("doi") or "",
+                "pmid": metadata.get("pmid") or "",
+                "authors": metadata.get("authors") or "",
+                "source_type": metadata.get("source_type") or metadata.get("db") or "",
+                "score": result.get("score") or 0.0,
+            })
+
+    # answer_sources (웹 검색 URL)도 추가 - web_selected_chunks가 있을 때만
+    if web_selected_chunks and web_results:
+        print(f"[DEBUG _format_citations] web_selected_chunks 처리 중: {len(web_selected_chunks)}개")
+
+        # "웹자료 N:" 형식에서 인덱스 추출 (중복 제거)
+        selected_indices = []
+        seen_indices = set()  # 중복 방지용
+        for chunk in web_selected_chunks:
+            try:
+                if chunk.startswith('웹자료') and ':' in chunk:
+                    idx_str = chunk.split(':')[0].replace('웹자료', '').strip()
+                    idx = int(idx_str) - 1  # 0-based index
+                    # 중복 인덱스 제거
+                    if idx not in seen_indices:
+                        selected_indices.append(idx)
+                        seen_indices.add(idx)
+                        print(f"[DEBUG] 웹자료 인덱스 추출: '{chunk[:30]}...' → idx: {idx}")
+                    else:
+                        print(f"[DEBUG] 중복 인덱스 제거: idx={idx}")
+            except Exception as e:
+                print(f"[DEBUG] 웹자료 인덱스 추출 실패: {chunk[:30]}, error: {e}")
+                pass
+
+        print(f"[DEBUG] selected_indices (중복 제거 후): {selected_indices}")
+
+        # 선택된 인덱스의 web_results만 references로 추가
+        for idx in selected_indices:
+            if 0 <= idx < len(web_results):
+                web_result = web_results[idx]
+                result_title = web_result.get("title", "")
+                result_url = web_result.get("url", "")
+                result_snippet = web_result.get("snippet", "")
+
+                # 제목이 없으면 URL에서 도메인 추출
+                if not result_title and result_url:
+                    try:
+                        from urllib.parse import urlparse
+                        parsed = urlparse(result_url)
+                        result_title = parsed.netloc.replace("www.", "")
+                    except:
+                        result_title = "웹 출처"
+
+                formatted.append({
+                    "id": len(formatted) + 1,
+                    "title": result_title or f"웹 자료 {idx + 1}",
                     "journal": "",
                     "year": "",
                     "doi": "",
                     "pmid": "",
                     "authors": "",
-                }
-            )
-    return formatted, reference_type
+                    "source_type": "web",
+                    "url": result_url,
+                    "snippet": result_snippet[:200],  # 200자까지
+                    "score": 0.9,  # 웹서치는 evaluate_web에서 이미 관련성 평가 통과 → 높은 관련성
+                })
+                print(f"[DEBUG] 웹 reference 추가: idx={idx}, title={result_title[:50]}")
+
+    return formatted, case_type
 
 
 def _extract_scores(raw_result: Dict[str, Any]) -> Dict[str, Any]:
@@ -108,40 +202,58 @@ def _build_history(conversation: Chat) -> list:
     return messages
 
 
-# def generate_ai_response(conversation: Chat, prompt: str) -> tuple[str, list, dict, str]:
-#     """
-#     LangGraph RAG 워크플로우를 호출하여 답변과 참고문헌 정보를 생성한다.
-#     """
+def generate_ai_response(conversation: Chat, prompt: str) -> tuple[str, list, dict, str, str]:
+    """
+    LangGraph RAG 워크플로우를 호출하여 답변과 참고문헌 정보를 생성한다.
 
-#     app = _get_graph_app()
-#     payload = {
-#         "question": prompt,
-#         "conversation_id": str(conversation.id),
-#     }
-#     result_state = app.invoke(payload)
-#     structured = result_state.get("structured_answer") or {}
-#     content = (
-#         result_state.get("final_answer")
-#         or structured.get("answer")
-#         or "죄송합니다. 답변을 생성하지 못했습니다."
-#     )
-#     citations, reference_type = _format_citations(result_state)
-#     scores = _extract_scores(result_state)
-#     return content, citations, scores, reference_type
+    Returns:
+        tuple: (content, citations, scores, reference_type, chat_title)
+    """
+
+    app = _get_graph_app() # workflow.compile() 결과
+    payload = {
+        "question": prompt,
+        "conversation_id": str(conversation.chat_sid),  # Chat 모델의 PK (문자열로 전달, memory.py에서 정수 변환)
+        "user_id": str(conversation.created_id),  # User ID 문자열
+    }
+    result_state = app.invoke(payload) # ⭐ 워크플로우 시작!
+    structured = result_state.get("structured_answer") or {}
+    content = (
+        result_state.get("final_answer")
+        or structured.get("answer")
+        or "죄송합니다. 답변을 생성하지 못했습니다."
+    )
+    citations, reference_type = _format_citations(result_state)
+    scores = _extract_scores(result_state)
+
+    # chat_title 추출 (LangGraph에서 생성한 채팅방 제목)
+    chat_title = result_state.get("chat_title") or ""
+
+    return content, citations, scores, reference_type, chat_title
 
 
 def summarize_conversation_title(prompt: str) -> str:
     """
     사용자 첫 메시지를 기반으로 대화 타이틀을 요약한다.
+    GPT-4o-mini 사용 (비용 절감)
     """
-    llm = get_llm()
+    from langchain_openai import ChatOpenAI
+
+    # GPT-4o-mini 사용 (저렴한 모델)
+    llm = ChatOpenAI(
+        model="gpt-4o-mini",
+        temperature=0.3,
+        max_tokens=20
+    )
+
     system_prompt = SystemMessage(
-        content="사용자 메시지를 최대 12자 내에서 요약하여 제목을 만들어 주세요. 구체적이고 간결하게."
+        content="사용자의 첫 질문을 간결하게 요약하여 12자 이내의 채팅방 제목을 만들어주세요. "
+                "핵심 키워드만 사용하고, 구체적이고 명확하게 작성하세요."
     )
     messages = [system_prompt, HumanMessage(content=prompt)]
     response = llm.invoke(messages)
     content = response.content if hasattr(response, "content") else str(response)
-    return content.strip()[:120] or "새로운 대화"
+    return content.strip()[:50] or "새로운 대화"
 
 
 def generate_concept_graph(message: ChatMessage) -> str:

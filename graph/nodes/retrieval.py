@@ -168,49 +168,81 @@ def search_pgvector(query_embedding: List[float], top_k: int = 50, query_text: s
             print(f"[pgvector] 시나리오 3: KaiC 프로토콜 더미 데이터 반환")
             return [
                 {
-                    "content": """[Chunk 1/3] KaiC Protein Purification Protocol - Part 1 (Initial Steps):
+                    "content": """KaiC Protein Purification Protocol - Part 1 (Initial Steps):
 transformation: Transform expression plasmid into competent cells
 pre-culture: Inoculate 5ml LB medium with antibiotics, grow overnight at 37°C
 expression culture: Transfer pre-culture to 500ml LB medium, grow at 37°C to OD600=0.6
 induction of protein expression: Add IPTG to final concentration 0.5mM, continue at 30°C for 4h
 spin down cells: Harvest cells by centrifugation for 10 min at 4°C and 4000g
 enzymatic lysis by lysozyme: Resuspend pellet in lysis buffer with 1mg/ml lysozyme, incubate 30min on ice
-sonication: Sonicate on ice with 10 cycles (30s on, 30s off) at 40% amplitude
-clarification of the lysate: Centrifuge at 20,000g for 30min at 4°C, collect supernatant
-equilibration of glutathione resin: Wash GST resin 3x with PBS buffer
-protein binding: Mix clarified lysate with equilibrated resin, rotate 2h at 4°C""",
-                    "metadata": {"source_type": "protocol", "protein": "KaiC", "step": "1-3", "db": "pgvector"},
+sonication: Sonicate on ice with 10 cycles (30s on, 30s off) at 40% amplitude""",
+                    "metadata": {
+                        "title": "GST-tagged protein purification protocol",
+                        "source_type": "protocol",
+                        "year": 2023,
+                        "month": 5,
+                        "day": 12,
+                        "journal": "Protocol",
+                        "pmid": "",
+                        "authors": "Laboratory Protocol Database",
+                        "doi": "10.17504/protocols.io.kaic001",
+                        "protein": "KaiC",
+                        "step": "1-3",
+                        "db": "pgvector"
+                    },
                     "score": 0.95,
                     "source": "pgvector_dummy"
                 },
                 {
-                    "content": """[Chunk 2/3] KaiC Protein Purification Protocol - Part 2 (Washing & Cleavage):
-spin down glutathione resin: Centrifuge for 4 min at 1500g and 4°C using a swing out rotor
+                    "content": """KaiC Protein Purification Protocol - Part 2 (Washing & Cleavage):
+spin down glutathione resin: Centrifuge for 4 min at 1500g and 4°C
 washing step 1: Wash resin with 10ml PBS, spin down
 washing step 2: Wash resin with 10ml high-salt buffer (PBS + 500mM NaCl), spin down
 washing step 3: Wash resin with 10ml PBS, spin down
 washing step 4: Wash resin with 10ml prescission buffer, spin down
-prescission buffer preparation: Use 1ml ice cold prescission buffer [50mM Tris/HCl (pH8), 150mM NaCl, 1mM EDTA, 1mM DTT, for KaiC: add 5mM MgCl2 and 1mM ATP]
+prescission buffer preparation: Use 1ml ice cold prescission buffer
 transfer resin: Use prescission buffer to transfer pelleted resin to a 2ml reaction tube
-overnight cleavage: Add PreScission protease (1:100 ratio), rotate overnight at 4°C
-elution 1: Spin down resin, collect supernatant (elution 1)
-elution 2-5: Wash resin with 500μl prescission buffer each time, collect each elution""",
-                    "metadata": {"source_type": "protocol", "protein": "KaiC", "step": "4-6", "db": "pgvector"},
+overnight cleavage: Add PreScission protease (1:100 ratio), rotate overnight at 4°C""",
+                    "metadata": {
+                        "title": "PreScission protease cleavage protocol",
+                        "source_type": "protocol",
+                        "year": 2023,
+                        "month": 5,
+                        "day": 12,
+                        "journal": "Protocol",
+                        "pmid": "",
+                        "authors": "Laboratory Protocol Database",
+                        "doi": "10.17504/protocols.io.kaic002",
+                        "protein": "KaiC",
+                        "step": "4-6",
+                        "db": "pgvector"
+                    },
                     "score": 0.93,
                     "source": "pgvector_dummy"
                 },
                 {
-                    "content": """[Chunk 3/3] KaiC Protein Purification Protocol - Part 3 (Final Purification):
-qualitative analysis of elutate fractions: Run SDS-PAGE gel to check protein purity and yield in each elution
+                    "content": """KaiC Protein Purification Protocol - Part 3 (Final Purification):
+qualitative analysis of elutate fractions: Run SDS-PAGE gel to check protein purity
 buffer exchange: Pool fractions with highest purity, dialyze against storage buffer overnight
-set-up of your liquid chromatography system: Prepare FPLC or HPLC system, equilibrate with running buffer
+set-up of your liquid chromatography system: Prepare FPLC or HPLC system
 equilibration of the column: Wash size-exclusion column (Superdex 200) with 2 column volumes of buffer
-optional: If additional purification needed, perform ion-exchange chromatography first
 protein purification: Load concentrated sample onto column, collect fractions at flow rate 0.5ml/min
 qualitative analysis of eluate fractions: Analyze peak fractions by SDS-PAGE, pool pure fractions
-buffer exchange: Dialyze or use desalting column to exchange into final storage buffer [20mM Tris pH 8.0, 150mM NaCl, 5mM MgCl2, 1mM ATP, 10% glycerol]
 final quality control: Measure concentration by Bradford assay, check activity, aliquot and store at -80°C""",
-                    "metadata": {"source_type": "protocol", "protein": "KaiC", "step": "7-9", "db": "pgvector"},
+                    "metadata": {
+                        "title": "Size exclusion chromatography for protein purification",
+                        "source_type": "protocol",
+                        "year": 2023,
+                        "month": 5,
+                        "day": 12,
+                        "journal": "Protocol",
+                        "pmid": "",
+                        "authors": "Laboratory Protocol Database",
+                        "doi": "10.17504/protocols.io.kaic003",
+                        "protein": "KaiC",
+                        "step": "7-9",
+                        "db": "pgvector"
+                    },
                     "score": 0.91,
                     "source": "pgvector_dummy"
                 }
@@ -245,27 +277,88 @@ final quality control: Measure concentration by Bradford assay, check activity, 
             print(f"[pgvector] 시나리오 2-1: 2025년 단백질 변이 논문 더미")
             return [
                 {
-                    "content": "[pgvector dummy] Protein mutation analysis in 2025: Recent advances in understanding missense variants and their effects on protein stability. This comprehensive study examines 1,247 protein mutations across various organisms, revealing novel insights into mutation patterns and structural impacts. The research utilized deep mutational scanning combined with computational modeling to predict stability changes. Published in Nature Structural & Molecular Biology, January 2025.",
-                    "metadata": {"source_type": "paper", "year": 2025, "journal": "Nature Struct Mol Biol", "db": "pgvector"},
+                    "content": "Protein mutation analysis in 2025: Recent advances in understanding missense variants and their effects on protein stability. This comprehensive study examines 1,247 protein mutations across various organisms, revealing novel insights into mutation patterns and structural impacts. The research utilized deep mutational scanning combined with computational modeling to predict stability changes.",
+                    "metadata": {
+                        "title": "The emerging view on the origin and early evolution of eukaryotic cells.",
+                        "source_type": "paper",
+                        "year": 2024,
+                        "month": 9,
+                        "day": 11,
+                        "journal": "Journal",
+                        "pmid": "39261613",
+                        "authors": "Vosseberg J et al.",
+                        "doi": "10.1038/s41594-025-00012",
+                        "db": "pgvector"
+                    },
                     "score": 0.92,
                     "source": "pgvector_dummy"
                 },
                 {
-                    "content": "[pgvector dummy] Deep mutational scanning reveals functional constraints on protein evolution (2025). This paper reports high-throughput analysis of 50,000+ variants in key proteins, identifying critical residues for function. The study provides unprecedented detail on mutation tolerance landscapes and evolutionary constraints. Mutations affecting protein-protein interactions showed the strongest negative selection. Published in Cell, February 2025.",
-                    "metadata": {"source_type": "paper", "year": 2025, "journal": "Cell", "db": "pgvector"},
+                    "content": "Deep mutational scanning reveals functional constraints on protein evolution. This paper reports high-throughput analysis of 50,000+ variants in key proteins, identifying critical residues for function. The study provides unprecedented detail on mutation tolerance landscapes and evolutionary constraints. Mutations affecting protein-protein interactions showed the strongest negative selection.",
+                    "metadata": {
+                        "title": "High-level expression of recombinant proteins in Escherichia coli.",
+                        "source_type": "paper",
+                        "year": 2006,
+                        "month": 6,
+                        "day": 14,
+                        "journal": "Journal",
+                        "pmid": "16754848",
+                        "authors": "Baneyx F et al.",
+                        "doi": "10.1016/j.copbio.2006.04.002",
+                        "db": "pgvector"
+                    },
                     "score": 0.90,
                     "source": "pgvector_dummy"
                 },
                 {
-                    "content": "[pgvector dummy] Computational prediction of pathogenic mutations using machine learning (2025). Novel AI-based approaches achieve 94% accuracy in distinguishing pathogenic from benign variants. The model integrates structural information, evolutionary conservation, and functional annotations. Validated on clinical datasets with superior performance to existing tools. Published in Science, March 2025.",
-                    "metadata": {"source_type": "paper", "year": 2025, "journal": "Science", "db": "pgvector"},
+                    "content": "Computational prediction of pathogenic mutations using machine learning. Novel AI-based approaches achieve 94% accuracy in distinguishing pathogenic from benign variants. The model integrates structural information, evolutionary conservation, and functional annotations. Validated on clinical datasets with superior performance to existing tools.",
+                    "metadata": {
+                        "title": "Eukaryotic cells.",
+                        "source_type": "paper",
+                        "year": 2024,
+                        "month": 3,
+                        "day": 20,
+                        "journal": "Journal",
+                        "pmid": "21592757",
+                        "authors": "Alberts B et al.",
+                        "doi": "10.1038/nature12345",
+                        "db": "pgvector"
+                    },
                     "score": 0.88,
                     "source": "pgvector_dummy"
                 },
                 {
-                    "content": "[pgvector dummy] Systematic characterization of protein variants in human disease (2025). Large-scale study analyzing 10,000+ disease-associated mutations reveals common mechanisms of pathogenicity. Focus on loss-of-function variants in metabolic enzymes. Published in Nature Genetics, March 2025.",
-                    "metadata": {"source_type": "paper", "year": 2025, "journal": "Nature Genetics", "db": "pgvector"},
+                    "content": "Systematic characterization of protein variants in human disease. Large-scale study analyzing 10,000+ disease-associated mutations reveals common mechanisms of pathogenicity. Focus on loss-of-function variants in metabolic enzymes.",
+                    "metadata": {
+                        "title": "Protein folding and misfolding in human diseases.",
+                        "source_type": "paper",
+                        "year": 2023,
+                        "month": 8,
+                        "day": 5,
+                        "journal": "Journal",
+                        "pmid": "18234567",
+                        "authors": "Dobson CM et al.",
+                        "doi": "10.1126/science.abc1234",
+                        "db": "pgvector"
+                    },
                     "score": 0.86,
+                    "source": "pgvector_dummy"
+                },
+                {
+                    "content": "Machine learning approaches for predicting protein structure and function from sequence data. This review discusses recent advances in deep learning methods for protein analysis, including AlphaFold and related technologies.",
+                    "metadata": {
+                        "title": "AlphaFold and the future of structural biology.",
+                        "source_type": "paper",
+                        "year": 2022,
+                        "month": 11,
+                        "day": 30,
+                        "journal": "Journal",
+                        "pmid": "35123456",
+                        "authors": "Jumper J, Hassabis D et al.",
+                        "doi": "10.1038/s41586-021-03819-2",
+                        "db": "pgvector"
+                    },
+                    "score": 0.84,
                     "source": "pgvector_dummy"
                 }
             ]
@@ -421,15 +514,17 @@ def retriever_bio_node(state: Dict[str, Any]) -> Dict[str, Any]:
     BIO_Q 타입 질문용 리트리버
     - OpenAI 임베딩 사용
     - LLM이 pgvector vs neo4j 결정
-    
+    - RAG 결과에서 엔티티 추출 (placeholder - 나중에 RAG 구축 시 구현)
+
     Input:
         - state["question"]: 원본 질문
         - state["rewritten_query"]: 재작성된 쿼리
         - state["case_type"]: "BIO_Q"
-    
+
     Output:
         - state["retrieval_results"]: 검색 결과 리스트
         - state["used_search_db"]: 사용한 DB ("pgvector" 또는 "neo4j")
+        - state["entities"]: RAG 결과에서 추출된 엔티티들
     """
     
     # 노드 진입 로그
@@ -457,14 +552,27 @@ def retriever_bio_node(state: Dict[str, Any]) -> Dict[str, Any]:
     else:
         results = search_pgvector(query_embedding, top_k=50, query_text=query)
     
+    # 4. RAG 결과에서 엔티티 추출 (placeholder)
+    # TODO: 나중에 RAG 구축 시 실제 엔티티 추출 로직 구현
+    print("[BIO Retriever] Step 4: 엔티티 추출 (placeholder)")
+    entities = []
+
+    # Placeholder: 검색 결과의 메타데이터나 내용에서 엔티티 추출
+    # 실제 구현 시 RAG 모듈의 함수를 호출하여 추출
+    # 예: entities = extract_entities_from_rag_results(results)
+
+    # 임시로 빈 리스트 반환 (RAG 구축 전까지)
+    state["entities"] = entities
+
     # State 업데이트
     state["retrieval_results"] = results
     state["used_search_db"] = search_strategy
-    
+
     # 노드 종료 로그
     print(f"\n[RETRIEVER_BIO NODE] 종료")
     print(f"  retrieval_results: {len(results)}개")
     print(f"  used_search_db: {search_strategy}")
+    print(f"  entities: {len(entities)}개 (placeholder)")
     print(f"{'='*60}\n")
     
     return state
@@ -479,17 +587,19 @@ def retriever_protocol_node(state: Dict[str, Any]) -> Dict[str, Any]:
     PROTOCOL_Q 타입 질문용 리트리버
     - 로컬 임베딩 사용 (보안 이슈)
     - LLM이 pgvector vs neo4j 결정
-    
+    - RAG 결과에서 엔티티 추출 (placeholder - 나중에 RAG 구축 시 구현)
+
     Input:
         - state["question"]: 원본 질문
         - state["rewritten_query"]: 재작성된 쿼리
         - state["case_type"]: "PROTOCOL_Q"
-    
+
     Output:
         - state["retrieval_results"]: 검색 결과 리스트
         - state["used_search_db"]: 사용한 DB ("pgvector" 또는 "neo4j")
+        - state["entities"]: RAG 결과에서 추출된 엔티티들
     """
-    
+
     # 노드 진입 로그
     print(f"\n{'='*60}")
     print(f"[RETRIEVER_PROTOCOL NODE] 시작")
@@ -515,14 +625,27 @@ def retriever_protocol_node(state: Dict[str, Any]) -> Dict[str, Any]:
     else:
         results = search_pgvector(query_embedding, top_k=50, query_text=query)
     
+    # 4. RAG 결과에서 엔티티 추출 (placeholder)
+    # TODO: 나중에 RAG 구축 시 실제 엔티티 추출 로직 구현
+    print("[PROTOCOL Retriever] Step 4: 엔티티 추출 (placeholder)")
+    entities = []
+
+    # Placeholder: 검색 결과의 메타데이터나 내용에서 엔티티 추출
+    # 실제 구현 시 RAG 모듈의 함수를 호출하여 추출
+    # 예: entities = extract_entities_from_rag_results(results)
+
+    # 임시로 빈 리스트 반환 (RAG 구축 전까지)
+    state["entities"] = entities
+
     # State 업데이트
     state["retrieval_results"] = results
     state["used_search_db"] = search_strategy
-    
+
     # 노드 종료 로그
     print(f"\n[RETRIEVER_PROTOCOL NODE] 종료")
     print(f"  retrieval_results: {len(results)}개")
     print(f"  used_search_db: {search_strategy}")
+    print(f"  entities: {len(entities)}개 (placeholder)")
     print(f"{'='*60}\n")
     
     return state

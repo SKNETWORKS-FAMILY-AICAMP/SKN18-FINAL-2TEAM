@@ -37,7 +37,16 @@ def evaluate_web_node(state: Dict[str, Any]) -> Dict[str, Any]:
     # 웹 검색 결과가 없는 경우
     if not web_results:
         state["web_selected_chunks"] = []
-        print("[EvaluateWeb] 완료 - 웹 검색 결과 없음")
+
+        # BIO_Q인 경우 조기 종료 메시지 설정
+        case_type = state.get("case_type", "")
+        if case_type == "BIO_Q":
+            state["final_answer"] = "죄송합니다. 요청하신 정보를 찾을 수 없습니다. 다른 질문을 해주시거나, 더 구체적인 정보를 제공해주시면 도움을 드리겠습니다."
+            state["should_skip_generation"] = True
+            print("[EvaluateWeb] BIO_Q - 웹 검색 결과 없음, 조기 종료")
+        else:
+            print("[EvaluateWeb] 완료 - 웹 검색 결과 없음")
+
         return state
     
     # 웹 검색 결과를 컨텍스트로 변환
@@ -61,7 +70,7 @@ def evaluate_web_node(state: Dict[str, Any]) -> Dict[str, Any]:
     context = "\n\n".join(context_parts)
     
     # LLM을 사용하여 관련성 평가 및 정제
-    prompt = f"""다음 웹 검색 결과에서 사용자 질문과 관련된 내용만 선별하여 정제해주세요.
+    prompt = f"""다음 웹 검색 결과에서 사용자 질문과 **직접적으로 관련된** 핵심 정보만 선별해주세요.
 
 사용자 질문: {question}
 
@@ -70,11 +79,14 @@ def evaluate_web_node(state: Dict[str, Any]) -> Dict[str, Any]:
 {context}
 ---
 
-위 웹 검색 결과에서 질문과 관련된 핵심 정보만 추출하여 정리해주세요.
-각 자료별로 관련된 내용이 있으면 간결하게 요약하고, 관련 없는 내용은 제외해주세요.
+**중요 지침:**
+1. 질문과 직접적으로 관련된 웹 자료만 선택하세요 (관련성이 높은 것만)
+2. 최대 3개의 웹 자료만 선택하세요
+3. 각 자료는 한 줄로 핵심만 요약하세요 (최대 100자)
+4. 관련성이 낮거나 부정확한 정보는 제외하세요
 
 출력 형식:
-- 관련 자료가 있으면: "웹자료 N: [요약된 관련 내용]" 형태로 출력
+- 관련 자료가 있으면: "웹자료 N: [핵심 내용 한 줄 요약]" 형태로 최대 3개만 출력
 - 관련 자료가 없으면: "관련 정보 없음" 출력
 """
 
@@ -84,17 +96,34 @@ def evaluate_web_node(state: Dict[str, Any]) -> Dict[str, Any]:
         
         # 결과를 청크 단위로 분리
         web_selected_chunks = []
-        
+
         if "관련 정보 없음" not in result:
             # 결과를 줄 단위로 분리하고 의미있는 내용만 추출
             lines = result.strip().split('\n')
             for line in lines:
                 line = line.strip()
-                if line and ('웹자료' in line or len(line) > 20):  # 의미있는 내용만
+                # "웹자료 N:" 형식의 줄만 추출
+                if line and line.startswith('웹자료') and ':' in line:
                     web_selected_chunks.append(line)
-        
+                    if len(web_selected_chunks) >= 20:  # 최대 20개로 제한
+                        break
+
+        # BIO_Q이고 관련 정보가 없는 경우 조기 종료 (citations 추가하지 않음)
+        if not web_selected_chunks:
+            case_type = state.get("case_type", "")
+            if case_type == "BIO_Q":
+                state["final_answer"] = "죄송합니다. 요청하신 정보를 찾을 수 없습니다. 다른 질문을 해주시거나, 더 구체적인 정보를 제공해주시면 도움을 드리겠습니다."
+                state["should_skip_generation"] = True
+                state["web_selected_chunks"] = []
+                print("[EvaluateWeb] ⚠️ BIO_Q - 관련 정보 없음, GENERATE_ANSWER 건너뛰고 END로 이동")
+                print(f"[EvaluateWeb] should_skip_generation = {state.get('should_skip_generation')}")
+                print(f"[EvaluateWeb] final_answer = {state.get('final_answer')[:50]}...")
+                print(f"[EvaluateWeb] citations = {len(state.get('citations', []))}개 (citations 추가 안 함)")
+                return state
+
+        # web_selected_chunks를 state에 저장 (services.py에서 references 생성 시 사용)
         state["web_selected_chunks"] = web_selected_chunks
-        
+
         print(f"[EvaluateWeb] 완료 - {len(web_selected_chunks)}개 청크 선별")
         
     except Exception as e:

@@ -11,7 +11,7 @@ scipy
 
 # OpenAI API (embedding용)
 openai
-
+FlagEmbedding
 # LangChain (필요시)
 langchain
 langchain-core
@@ -19,6 +19,7 @@ langchain-community
 langchain-openai
 langchain_text_splitters
 tiktoken
+langchain_huggingface
 
 # LangGraph (워크플로우 오케스트레이션)
 langgraph
@@ -70,3 +71,6 @@ notebook
 
 # AWS SDK (Lambda에 기본 포함되지만 명시)
 boto3
+
+# RabbitMQ (Message Queue)
+pika

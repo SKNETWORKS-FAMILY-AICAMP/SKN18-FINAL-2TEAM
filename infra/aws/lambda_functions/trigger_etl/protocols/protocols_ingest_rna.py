@@ -14,7 +14,7 @@ common_path = Path(__file__).parent.parent / "common"
 sys.path.insert(0, str(common_path))
 
 # 숫자로 시작하는 모듈은 importlib로 동적 import
-ingest_module = importlib.import_module("rag.etl.step01_ingest.03_ingest_protocols")
+ingest_module = importlib.import_module("rag.etl.step01_ingest.ingest_protocols")
 run = ingest_module.run
 
 from s3_utils import (

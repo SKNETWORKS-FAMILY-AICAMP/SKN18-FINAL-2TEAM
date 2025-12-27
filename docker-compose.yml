@@ -56,7 +56,32 @@ services:
       - ./infra/neo4j/import:/import
     restart: unless-stopped
 
+  ########################################
+  # RabbitMQ (Message Queue)
+  ########################################
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: rabbitmq-final
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
+    ports:
+      - "5672:5672"      # AMQP 포트
+      - "15672:15672"    # Management UI (개발 모니터링용)
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+      - rabbitmq-logs:/var/log/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
 volumes:
   pgvector-data:
   neo4j-data:
   neo4j-logs:
+  rabbitmq-data:        # RabbitMQ 데이터 영속성
+  rabbitmq-logs:        # RabbitMQ 로그

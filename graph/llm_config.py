@@ -15,47 +15,47 @@ from graph.nodes.call_llm import gpt4_1_nano, gpt4o_mini, gpt5_nano, sllm
 
 
 # ===== guardrail.py =====
-guardrail_check_safety_llm = gpt4o_mini
+guardrail_check_safety_llm = gpt4_1_nano
 
 
 # ===== classifier.py =====
-classifier_is_bio_related_simple_check_llm = gpt5_nano
-classifier_classify_question_node_llm = gpt5_nano
-generate_answer_info_llm = gpt5_nano
+classifier_is_bio_related_simple_check_llm = gpt4_1_nano
+classifier_classify_question_node_llm = gpt4_1_nano
+generate_answer_info_llm = gpt4_1_nano
 
 # ===== memory.py =====
-memory_summarize_tool_llm = gpt4o_mini
+memory_summarize_tool_llm = gpt4_1_nano
 
 
 # ===== keyword_extraction.py =====
-keyword_extraction_node_llm = gpt4o_mini
+keyword_extraction_node_llm = gpt4_1_nano
 
 
 # ===== rewrite_query.py =====
-rewrite_query_normalizer_tool_llm = gpt4o_mini
-rewrite_query_expander_tool_llm = gpt4o_mini
-rewrite_query_simplifier_tool_llm = gpt4o_mini
-rewrite_query_node_llm = gpt4o_mini
+rewrite_query_normalizer_tool_llm = gpt4_1_nano
+rewrite_query_expander_tool_llm = gpt4_1_nano
+rewrite_query_simplifier_tool_llm = gpt4_1_nano
+rewrite_query_node_llm = gpt4_1_nano
 
 
 # ===== retrieval.py =====
-retrieval_decide_search_strategy_llm = gpt4o_mini
+retrieval_decide_search_strategy_llm = gpt4_1_nano
 
 
 # ===== evaluate_web.py =====
-evaluate_web_node_llm = gpt4o_mini
+evaluate_web_node_llm = gpt4_1_nano
 
 
 # ===== evaluate_chunk.py =====
-evaluate_chunk_bio_node_llm = gpt4o_mini
-evaluate_chunk_protocol_node_llm = sllm
+evaluate_chunk_bio_node_llm = gpt4_1_nano
+evaluate_chunk_protocol_node_llm = gpt4_1_nano
 
 
 # ===== generate_answer.py =====
-generate_answer_bio_llm = gpt4o_mini
-generate_answer_simulation_llm = gpt4o_mini
-generate_answer_protocol_llm = sllm
-generate_answer_protocol_fallback_llm = gpt4o_mini
-generate_answer_inference_llm = sllm
-generate_answer_inference_fallback_llm = gpt4o_mini
+generate_answer_bio_llm = gpt4_1_nano
+generate_answer_simulation_llm = gpt4_1_nano
+generate_answer_protocol_llm = gpt4_1_nano
+generate_answer_protocol_fallback_llm = gpt4_1_nano
+generate_answer_inference_llm = gpt4_1_nano
+generate_answer_inference_fallback_llm = gpt4_1_nano
 
