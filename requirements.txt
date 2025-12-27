@@ -71,3 +71,6 @@ notebook
 
 # AWS SDK (Lambda에 기본 포함되지만 명시)
 boto3
+
+# RabbitMQ (Message Queue)
+pika
