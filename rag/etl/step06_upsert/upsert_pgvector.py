@@ -17,8 +17,24 @@ import csv
 from pathlib import Path
 from typing import Set, Dict, Any, Generator, List
 
-import psycopg2
-from psycopg2.extras import execute_batch
+try:
+    import psycopg2  # psycopg2가 설치된 환경(레거시) 우선 사용
+    from psycopg2.extras import execute_batch
+
+    def _pg_connect(**kwargs):
+        return psycopg2.connect(**kwargs)
+
+except ModuleNotFoundError:
+    import psycopg  # psycopg v3 (requirements.txt 에 명시된 기본 드라이버)
+
+    def execute_batch(cur, query: str, rows):
+        """
+        psycopg3에는 execute_batch helper가 없어 executemany로 대체한다.
+        """
+        cur.executemany(query, rows)
+
+    def _pg_connect(**kwargs):
+        return psycopg.connect(**kwargs)
 
 
 # ─────────────────────────────────────
@@ -97,7 +113,7 @@ def get_pg_conn():
     기본값:
       host=localhost, port=5432, db=sknfinaldb, user=root, password=root1234
     """
-    conn = psycopg2.connect(
+    conn = _pg_connect(
         host=os.getenv("POSTGRES_HOST", "localhost"),
         port=int(os.getenv("POSTGRES_PORT", "5432")),
         dbname=os.getenv("POSTGRES_DB", "sknfinaldb"),
