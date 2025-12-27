@@ -1,33 +1,13 @@
 name: SKN18-final-prod
 
 # 주의: 이 docker-compose.prod.yml은 App EC2에서 실행됩니다.
-# PostgreSQL과 Neo4j는 외부 EC2 인스턴스를 사용합니다.
-# .env 파일에서 POSTGRES_HOST와 NEO4J_HOST를 외부 EC2 IP로 설정하세요.
+# PostgreSQL, Neo4j, RabbitMQ는 외부 EC2 인스턴스를 사용합니다.
+# .env 파일에서 다음을 설정하세요:
+#   - POSTGRES_HOST: PostgreSQL EC2 IP
+#   - NEO4J_HOST: Neo4j EC2 IP
+#   - RABBITMQ_HOST: RabbitMQ EC2 IP
 
 services:
-  ########################################
-  # 1) RabbitMQ (Message Queue)
-  ########################################
-  rabbitmq:
-    image: rabbitmq:3.13-management-alpine
-    container_name: rabbitmq-final
-    environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
-    ports:
-      - "5672:5672"      # AMQP 포트
-      - "15672:15672"    # Management UI (운영 모니터링용)
-    volumes:
-      - rabbitmq-data:/var/lib/rabbitmq
-      - rabbitmq-logs:/var/log/rabbitmq
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-    restart: unless-stopped
-
   ########################################
   # 2) Django + LangGraph Web (SSR + API)
   ########################################
@@ -38,16 +18,14 @@ services:
     container_name: web-app
     env_file:
       - .env
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-      # db와 neo4j는 외부 EC2를 사용하므로 depends_on 제거
+    # db, neo4j, rabbitmq는 외부 EC2를 사용하므로 depends_on 제거
     environment:
-      # RabbitMQ 연결 정보
-      RABBITMQ_HOST: rabbitmq
-      RABBITMQ_PORT: 5672
-      RABBITMQ_USER: ${RABBITMQ_USER:-guest}
-      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
+      # RabbitMQ 연결 정보 (외부 EC2 사용)
+      # .env 파일에서 RABBITMQ_HOST를 RabbitMQ EC2 IP로 설정하세요
+      RABBITMQ_HOST: ${RABBITMQ_HOST}
+      RABBITMQ_PORT: ${RABBITMQ_PORT:-5672}
+      RABBITMQ_USER: ${RABBITMQ_USER}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
     # Entrypoint가 마이그레이션을 실행한 후 CMD 실행
     command: >
       gunicorn config.wsgi:application
@@ -78,16 +56,14 @@ services:
     container_name: etl-worker
     env_file:
       - .env
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-      # db는 외부 EC2를 사용하므로 depends_on 제거
+    # db와 rabbitmq는 외부 EC2를 사용하므로 depends_on 제거
     environment:
-      # RabbitMQ 연결 정보
-      RABBITMQ_HOST: rabbitmq
-      RABBITMQ_PORT: 5672
-      RABBITMQ_USER: ${RABBITMQ_USER:-guest}
-      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
+      # RabbitMQ 연결 정보 (외부 EC2 사용)
+      # .env 파일에서 RABBITMQ_HOST를 RabbitMQ EC2 IP로 설정하세요
+      RABBITMQ_HOST: ${RABBITMQ_HOST}
+      RABBITMQ_PORT: ${RABBITMQ_PORT:-5672}
+      RABBITMQ_USER: ${RABBITMQ_USER}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
     # 시뮬레이션 Consumer 실행
     command: ["python", "-m", "messaging.workers.main"]
     restart: unless-stopped
@@ -126,5 +102,4 @@ services:
     restart: unless-stopped
 
 volumes:
-  rabbitmq-data:        # RabbitMQ 데이터 영속성
-  rabbitmq-logs:        # RabbitMQ 로그
+  # RabbitMQ는 외부 EC2에서 실행되므로 볼륨 제거

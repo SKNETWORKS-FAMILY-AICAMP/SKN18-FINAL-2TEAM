@@ -58,6 +58,19 @@ Resources:
         SubnetId: !GetAtt CoreInfraStack.Outputs.SubnetId
 
   # =========================
+  # RabbitMQ Infrastructure Stack
+  # =========================
+  RabbitMQInfraStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: rabbitmq-infra.yaml
+      Parameters:
+        # rabbitmq-infra.yaml에서 Parameter Store를 직접 참조하므로 파라미터 전달 불필요
+        # VpcId를 CoreInfraStack의 VPC를 사용하려면 아래처럼 전달 가능 (선택사항)
+        VpcId: !GetAtt CoreInfraStack.Outputs.VpcId
+        SubnetId: !GetAtt CoreInfraStack.Outputs.SubnetId
+
+  # =========================
   # App Infrastructure Stack (Django + Graph + RAG)
   # =========================
   AppInfraStack:
@@ -163,6 +176,27 @@ Outputs:
   Neo4jConnectionString:
     Description: "Neo4j 접속 예시 (비밀번호는 Parameter Store에서 확인: /skn18/neo4j-password)"
     Value: !GetAtt Neo4jInfraStack.Outputs.ConnectionStringExample
+
+  # RabbitMQ Infrastructure Outputs
+  RabbitMQInstanceId:
+    Description: "RabbitMQ EC2 Instance ID"
+    Value: !GetAtt RabbitMQInfraStack.Outputs.InstanceId
+
+  RabbitMQPublicIp:
+    Description: "RabbitMQ EC2 Public IP"
+    Value: !GetAtt RabbitMQInfraStack.Outputs.PublicIp
+
+  RabbitMQAmqpEndpoint:
+    Description: "RabbitMQ AMQP 접속 엔드포인트"
+    Value: !GetAtt RabbitMQInfraStack.Outputs.AmqpEndpoint
+
+  RabbitMQManagementUiEndpoint:
+    Description: "RabbitMQ Management UI 접속 엔드포인트"
+    Value: !GetAtt RabbitMQInfraStack.Outputs.ManagementUiEndpoint
+
+  RabbitMQConnectionString:
+    Description: "RabbitMQ 접속 예시 (사용자명과 비밀번호는 Parameter Store에서 확인: /skn18/rabbitmq-user, /skn18/rabbitmq-password)"
+    Value: !GetAtt RabbitMQInfraStack.Outputs.ConnectionStringExample
 
   # App Infrastructure Outputs
   AppInstanceId:
