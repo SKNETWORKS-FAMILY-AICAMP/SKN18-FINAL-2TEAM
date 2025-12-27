@@ -193,6 +193,23 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H ${{ steps.infra-info.outputs.public-ip }} >> ~/.ssh/known_hosts 2>/dev/null || true
 
+      - name: Copy docker-compose.prod.yml to EC2
+        env:
+          EC2_HOST: ${{ steps.infra-info.outputs.public-ip }}
+          EC2_USER: ec2-user
+          PROJECT_PATH: /home/ec2-user/app
+        run: |
+          # 프로젝트 디렉토리 생성
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+            $EC2_USER@$EC2_HOST "mkdir -p $PROJECT_PATH"
+          
+          # docker-compose.prod.yml 파일 복사
+          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+            docker-compose.prod.yml \
+            $EC2_USER@$EC2_HOST:$PROJECT_PATH/
+          
+          echo "✓ docker-compose.prod.yml copied to EC2"
+
       - name: Deploy to EC2
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
@@ -234,6 +251,21 @@ jobs:
             echo "✓ ECR login successful"
             
             cd \$PROJECT_PATH || { echo "Error: Project directory not found"; exit 1; }
+            
+            # docker-compose.prod.yml 파일 확인
+            if [ ! -f "docker-compose.prod.yml" ]; then
+              echo "ERROR: docker-compose.prod.yml not found in \$PROJECT_PATH"
+              exit 1
+            fi
+            
+            # docker-compose.prod.yml에서 awslogs-stream-prefix 확인 (오래된 버전 체크)
+            if grep -q "awslogs-stream-prefix" docker-compose.prod.yml; then
+              echo "WARNING: docker-compose.prod.yml contains awslogs-stream-prefix (old version)"
+              echo "This will cause an error. Please ensure the latest version is deployed."
+              # 임시로 수정 (배포 후 수동 확인 필요)
+              sed -i 's/awslogs-stream-prefix.*//g' docker-compose.prod.yml || true
+              echo "Temporarily removed awslogs-stream-prefix from docker-compose.prod.yml"
+            fi
             
             # 이전 이미지 태그 저장 (롤백용)
             PREVIOUS_IMAGE=\$(docker-compose -f docker-compose.prod.yml config | grep -A 1 "image:" | grep -v "image:" | tr -d ' ' || echo "")
