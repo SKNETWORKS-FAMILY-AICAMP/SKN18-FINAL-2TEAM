@@ -205,6 +205,7 @@ check_deployment_status() {
 
 # Step 4: CloudFormation 배포
 cf_deploy() {
+    local auto_yes="${1:-false}"
     echo_info "Step 4: CloudFormation Deploy"
     cd "$CF_DIR"
     
@@ -246,7 +247,12 @@ cf_deploy() {
         echo "  1. Try to deploy anyway (may fail if stack name conflict)"
         echo "  2. Cancel and manually clean up the DELETE_FAILED stack from AWS console"
         echo ""
-        read -p "Continue with deployment? (y/N): " response
+        if [ "$auto_yes" = true ]; then
+            echo "Auto-confirm: Continuing with deployment (--yes flag)"
+            response="y"
+        else
+            read -p "Continue with deployment? (y/N): " response
+        fi
         if [[ ! "$response" =~ ^[Yy]$ ]]; then
             echo "Deployment cancelled."
             echo ""
@@ -258,11 +264,15 @@ cf_deploy() {
             exit 0
         fi
     else
-        echo_warn "This will deploy/update the CloudFormation stack. Continue? (y/N)"
-        read -r response
-        if [[ ! "$response" =~ ^[Yy]$ ]]; then
-            echo "Deployment cancelled."
-            exit 0
+        if [ "$auto_yes" = true ]; then
+            echo "Auto-confirm: Continuing with deployment (--yes flag)"
+        else
+            echo_warn "This will deploy/update the CloudFormation stack. Continue? (y/N)"
+            read -r response
+            if [[ ! "$response" =~ ^[Yy]$ ]]; then
+                echo "Deployment cancelled."
+                exit 0
+            fi
         fi
     fi
     
@@ -378,6 +388,23 @@ cf_deploy() {
 
 # 메인 실행
 main() {
+    # 옵션 파싱
+    AUTO_YES=false
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            -y|--yes)
+                AUTO_YES=true
+                shift
+                ;;
+            *)
+                echo_warn "Unknown option: $1"
+                echo "Usage: $0 [-y|--yes]"
+                echo "  -y, --yes    Skip confirmation prompt"
+                exit 1
+                ;;
+        esac
+    done
+    
     echo ""
     echo "=========================================="
     echo "  CloudFormation Deployment Script"
@@ -386,6 +413,9 @@ main() {
     echo "Project Root: $PROJECT_ROOT"
     echo "Build Dir: $BUILD_DIR"
     echo "CF Dir: $CF_DIR"
+    if [ "$AUTO_YES" = true ]; then
+        echo "Auto-confirm: Enabled (--yes flag)"
+    fi
     echo ""
     
     # Lambda Layer 확인
@@ -401,7 +431,7 @@ main() {
     sam_package
     
     # Step 4: aws cloudformation deploy
-    cf_deploy
+    cf_deploy "$AUTO_YES"
     
     echo ""
     echo_info "All steps completed successfully!"
