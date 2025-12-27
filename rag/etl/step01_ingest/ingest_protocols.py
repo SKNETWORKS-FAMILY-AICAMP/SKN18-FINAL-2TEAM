@@ -325,7 +325,14 @@ def ingest_keyword(search_keyword: str, raw_dir: Path | None = None) -> None:
             ordered_steps = build_ordered_steps(steps_list)
             step_str = ""
 
+            current_section = None
             for s in ordered_steps:
+                section_html = s.get("section") or ""
+                section_text = html_to_text_with_superscript(section_html).strip()
+                if section_text and section_text != current_section:
+                    step_str += f"\n[SECTION] {section_text}\n"
+                    current_section = section_text
+
                 step_html = s.get("step") or ""
                 step_number = s.get("number") or ""
                 
