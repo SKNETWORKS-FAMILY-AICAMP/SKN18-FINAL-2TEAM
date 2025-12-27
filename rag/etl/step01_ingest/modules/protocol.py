@@ -16,12 +16,56 @@ if not is_lambda:
         # dotenv가 설치되지 않은 경우 무시
         pass
 
+# AWS Lambda 환경에서만 boto3 사용 (로컬에서는 Optional)
+try:
+    import boto3  # type: ignore
+    from botocore.exceptions import ClientError  # type: ignore
+    HAS_BOTO3 = True
+except ImportError:  # pragma: no cover
+    boto3 = None  # type: ignore
+    HAS_BOTO3 = False
+
+
+def _get_token_from_parameter_store(
+    parameter_path: str,
+    region: str | None = None,
+) -> str | None:
+    """
+    AWS Parameter Store에서 토큰을 가져온다.
+    
+    Args:
+        parameter_path: Parameter Store 경로
+        region: AWS 리전 (None이면 환경 변수 또는 기본값 사용)
+    
+    Returns:
+        토큰 문자열, 실패 시 None
+    """
+    if not HAS_BOTO3:
+        return None
+    
+    try:
+        if region is None:
+            region = os.getenv("AWS_REGION", os.getenv("AWS_DEFAULT_REGION", "ap-northeast-2"))
+        
+        ssm_client = boto3.client("ssm", region_name=region)
+        response = ssm_client.get_parameter(Name=parameter_path, WithDecryption=True)
+        return response["Parameter"]["Value"]
+    except (ClientError, Exception):
+        return None
+
+
 # 토큰 설정 (발급받은 CLIENT_ACCESS_TOKEN)
-# Lambda 환경: 환경 변수에서 직접 읽음
+# Lambda 환경: Parameter Store 또는 환경 변수에서 읽음
 # 로컬 환경: .env 파일에서 읽음
 CLIENT_ACCESS_TOKEN = os.getenv("CLIENT_ACCESS_TOKEN")
+
+# Lambda 환경에서 토큰이 없으면 Parameter Store에서 가져오기 시도
+if not CLIENT_ACCESS_TOKEN and is_lambda and HAS_BOTO3:
+    parameter_path = os.getenv("CLIENT_ACCESS_TOKEN_PARAMETER_PATH", "/skn18/client-access-token")
+    CLIENT_ACCESS_TOKEN = _get_token_from_parameter_store(parameter_path)
+
 if not CLIENT_ACCESS_TOKEN:
-    env_type = "Lambda environment variables" if is_lambda else ".env file"
+    env_type = "Lambda environment variables or Parameter Store" if is_lambda else ".env file"
     raise RuntimeError(f"CLIENT_ACCESS_TOKEN not found in {env_type}.")
 
 # 공통 헤더 구성

@@ -39,6 +39,11 @@ Parameters:
     Default: 2048
     Description: "Lambda 함수 메모리 크기 (MB, 기본값: 2048)"
 
+  StepFunctionsMaxConcurrency:
+    Type: Number
+    Default: 10
+    Description: "Step Functions Map State 최대 동시 실행 수 (기본값: 10, 최대: 40)"
+
 Resources:
   # =========================
   # Lambda 함수: Protocols ETL (키워드별)
@@ -244,16 +249,65 @@ Resources:
       BuildProperties:
         BuildCommand: *ProtocolsCommonBuild
 
+  # Protocols Embedding Lambda (단일 파일 처리용)
+  ProtocolsEmbedLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: skn18-protocols-embed
+      Runtime: python3.12
+      Handler: infra.aws.lambda_functions.trigger_etl.protocols.protocols_embed.lambda_handler
+      Role: !Ref LambdaExecutionRoleArn
+      Timeout: 900  # 15분 (최대)
+      MemorySize: 3008  # Embedding은 메모리 사용량이 많음
+      Layers:
+        - !Ref CommonLayerArn
+        - !Ref ProtocolsLayerArn
+      Environment:
+        Variables:
+          S3_BUCKET_NAME: !Ref S3BucketName
+          OPENAI_API_KEY_PARAMETER_PATH: "/skn18/openai-api-key"
+      CodeUri: ../lambda_build/protocols
+      Tags:
+        Name: skn18-protocols-embed
+    Metadata:
+      BuildMethod: python3.12
+      BuildProperties:
+        BuildCommand: *ProtocolsCommonBuild
+
+  # Protocols Chunk File List Lambda (S3에서 분할 파일 목록 조회)
+  ProtocolsChunkFileListLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: skn18-protocols-chunk-file-list
+      Runtime: python3.12
+      Handler: infra.aws.lambda_functions.trigger_etl.protocols.protocols_chunk_file_list.lambda_handler
+      Role: !Ref LambdaExecutionRoleArn
+      Timeout: 60
+      MemorySize: 256
+      Layers:
+        - !Ref CommonLayerArn
+        - !Ref ProtocolsLayerArn
+      Environment:
+        Variables:
+          S3_BUCKET_NAME: !Ref S3BucketName
+      CodeUri: ../lambda_build/protocols
+      Tags:
+        Name: skn18-protocols-chunk-file-list
+    Metadata:
+      BuildMethod: python3.12
+      BuildProperties:
+        BuildCommand: *ProtocolsCommonBuild
+
   # =========================
   # EventBridge 규칙: Protocols (키워드별)
   # =========================
-  # Protein 키워드 스케줄
+  # Protein 키워드 스케줄 (매 시간 정각마다 실행: 0시, 1시, 2시...)
   ProtocolsEtlScheduleRuleProtein:
     Type: AWS::Events::Rule
     Properties:
       Name: skn18-protocols-etl-protein-schedule
-      Description: "Protocols ETL 실행 스케줄 - Protein 키워드"
-      ScheduleExpression: "rate(1 day)"
+      Description: "Protocols ETL 실행 스케줄 - Protein 키워드 (매 시간 정각마다: 0시, 1시, 2시...)"
+      ScheduleExpression: "cron(0 * * * ? *)"
       State: ENABLED
       Targets:
         - Arn: !GetAtt ProtocolsEtlLambdaProtein.Arn
@@ -264,13 +318,13 @@ Resources:
               "raw_dir": "data/raw"
             }
 
-  # Cell 키워드 스케줄
+  # Cell 키워드 스케줄 (매 시간 정각마다 실행: 0시, 1시, 2시...)
   ProtocolsEtlScheduleRuleCell:
     Type: AWS::Events::Rule
     Properties:
       Name: skn18-protocols-etl-cell-schedule
-      Description: "Protocols ETL 실행 스케줄 - Cell 키워드"
-      ScheduleExpression: "rate(1 day)"
+      Description: "Protocols ETL 실행 스케줄 - Cell 키워드 (매 시간 정각마다: 0시, 1시, 2시...)"
+      ScheduleExpression: "cron(0 * * * ? *)"
       State: ENABLED
       Targets:
         - Arn: !GetAtt ProtocolsEtlLambdaCell.Arn
@@ -281,13 +335,13 @@ Resources:
               "raw_dir": "data/raw"
             }
 
-  # DNA 키워드 스케줄
+  # DNA 키워드 스케줄 (매 시간 정각마다 실행: 0시, 1시, 2시...)
   ProtocolsEtlScheduleRuleDna:
     Type: AWS::Events::Rule
     Properties:
       Name: skn18-protocols-etl-dna-schedule
-      Description: "Protocols ETL 실행 스케줄 - DNA 키워드"
-      ScheduleExpression: "rate(1 day)"
+      Description: "Protocols ETL 실행 스케줄 - DNA 키워드 (매 시간 정각마다: 0시, 1시, 2시...)"
+      ScheduleExpression: "cron(0 * * * ? *)"
       State: ENABLED
       Targets:
         - Arn: !GetAtt ProtocolsEtlLambdaDna.Arn
@@ -298,13 +352,13 @@ Resources:
               "raw_dir": "data/raw"
             }
 
-  # RNA 키워드 스케줄
+  # RNA 키워드 스케줄 (매 시간 정각마다 실행: 0시, 1시, 2시...)
   ProtocolsEtlScheduleRuleRna:
     Type: AWS::Events::Rule
     Properties:
       Name: skn18-protocols-etl-rna-schedule
-      Description: "Protocols ETL 실행 스케줄 - RNA 키워드"
-      ScheduleExpression: "rate(1 day)"
+      Description: "Protocols ETL 실행 스케줄 - RNA 키워드 (매 시간 정각마다: 0시, 1시, 2시...)"
+      ScheduleExpression: "cron(0 * * * ? *)"
       State: ENABLED
       Targets:
         - Arn: !GetAtt ProtocolsEtlLambdaRna.Arn
@@ -315,13 +369,13 @@ Resources:
               "raw_dir": "data/raw"
             }
 
-  # vivo 키워드 스케줄
+  # vivo 키워드 스케줄 (매 시간 정각마다 실행: 0시, 1시, 2시...)
   ProtocolsEtlScheduleRuleVivo:
     Type: AWS::Events::Rule
     Properties:
       Name: skn18-protocols-etl-vivo-schedule
-      Description: "Protocols ETL 실행 스케줄 - vivo 키워드"
-      ScheduleExpression: "rate(1 day)"
+      Description: "Protocols ETL 실행 스케줄 - vivo 키워드 (매 시간 정각마다: 0시, 1시, 2시...)"
+      ScheduleExpression: "cron(0 * * * ? *)"
       State: ENABLED
       Targets:
         - Arn: !GetAtt ProtocolsEtlLambdaVivo.Arn
@@ -332,13 +386,13 @@ Resources:
               "raw_dir": "data/raw"
             }
 
-  # mouse 키워드 스케줄
+  # mouse 키워드 스케줄 (매 시간 정각마다 실행: 0시, 1시, 2시...)
   ProtocolsEtlScheduleRuleMouse:
     Type: AWS::Events::Rule
     Properties:
       Name: skn18-protocols-etl-mouse-schedule
-      Description: "Protocols ETL 실행 스케줄 - mouse 키워드"
-      ScheduleExpression: "rate(1 day)"
+      Description: "Protocols ETL 실행 스케줄 - mouse 키워드 (매 시간 정각마다: 0시, 1시, 2시...)"
+      ScheduleExpression: "cron(0 * * * ? *)"
       State: ENABLED
       Targets:
         - Arn: !GetAtt ProtocolsEtlLambdaMouse.Arn
@@ -402,6 +456,196 @@ Resources:
       Action: lambda:InvokeFunction
       Principal: events.amazonaws.com
 
+  # =========================
+  # EventBridge 규칙: Protocols Cleansing + Chunking (하루에 한 번)
+  # =========================
+  ProtocolsCleanseChunkScheduleRule:
+    Type: AWS::Events::Rule
+    DependsOn:
+      - ProtocolsCleanseChunkLambda
+      - ProtocolsCleanseChunkLambdaPermission
+    Properties:
+      Name: skn18-protocols-cleanse-chunk-schedule
+      Description: "Protocols Cleansing + Chunking 실행 스케줄 (하루에 한 번, 매일 02:00 UTC)"
+      ScheduleExpression: "cron(0 2 * * ? *)"
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt ProtocolsCleanseChunkLambda.Arn
+          Id: "ProtocolsCleanseChunkTarget"
+
+  ProtocolsEmbedLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ProtocolsEmbedLambda
+      Action: lambda:InvokeFunction
+      Principal: states.amazonaws.com
+
+  ProtocolsChunkFileListLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref ProtocolsChunkFileListLambda
+      Action: lambda:InvokeFunction
+      Principal: states.amazonaws.com
+
+  # =========================
+  # Step Functions IAM 역할
+  # =========================
+  StepFunctionsExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: states.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: StepFunctionsLambdaInvokePolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource:
+                  - !GetAtt ProtocolsChunkFileListLambda.Arn
+                  - !GetAtt ProtocolsEmbedLambda.Arn
+        - PolicyName: StepFunctionsS3AccessPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                  - s3:GetObject
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3BucketName}"
+                  - !Sub "arn:aws:s3:::${S3BucketName}/*"
+
+  # =========================
+  # Step Functions: Protocols Embedding (병렬 처리)
+  # =========================
+  ProtocolsEmbedStepFunction:
+    Type: AWS::StepFunctions::StateMachine
+    DependsOn:
+      - ProtocolsChunkFileListLambda
+      - ProtocolsEmbedLambda
+      - StepFunctionsExecutionRole
+    Properties:
+      StateMachineName: skn18-protocols-embed-parallel
+      RoleArn: !GetAtt StepFunctionsExecutionRole.Arn
+      DefinitionString: !Sub
+        - |
+          {
+            "Comment": "Protocols Embedding - 병렬 처리 (최대 ${MaxConcurrency}개 동시 실행)",
+            "StartAt": "ListChunkFiles",
+            "States": {
+            "ListChunkFiles": {
+              "Type": "Task",
+              "Resource": "${ProtocolsChunkFileListLambdaArn}",
+              "ResultPath": "$.chunkFiles",
+              "Next": "CheckFiles"
+            },
+              "CheckFiles": {
+                "Type": "Choice",
+                "Choices": [
+                  {
+                    "Variable": "$.chunkFiles.files",
+                    "IsPresent": true,
+                    "Next": "ProcessFiles"
+                  }
+                ],
+                "Default": "NoFiles"
+              },
+              "ProcessFiles": {
+                "Type": "Map",
+                "ItemsPath": "$.chunkFiles.files",
+                "MaxConcurrency": ${MaxConcurrency},
+                "Iterator": {
+                  "StartAt": "EmbedChunkFile",
+                  "States": {
+                    "EmbedChunkFile": {
+                      "Type": "Task",
+                      "Resource": "${ProtocolsEmbedLambdaArn}",
+                      "Parameters": {
+                        "chunks_dir": "data/chunks",
+                        "embeddings_dir": "data/embeddings",
+                        "s3_chunks_prefix": "data/chunks/protocols",
+                        "s3_embeddings_prefix": "data/embeddings/protocols",
+                        "chunk_file": "$.s3_key",
+                        "keyword": "$.keyword",
+                        "date_time": "$.date_time"
+                      },
+                      "Retry": [
+                        {
+                          "ErrorEquals": ["States.ALL"],
+                          "IntervalSeconds": 2,
+                          "MaxAttempts": 3,
+                          "BackoffRate": 2.0
+                        }
+                      ],
+                      "End": true
+                    }
+                  }
+                },
+                "ResultPath": "$.results",
+                "End": true
+              },
+              "NoFiles": {
+                "Type": "Pass",
+                "Result": "No chunk files found",
+                "End": true
+              }
+            }
+          }
+        - ProtocolsChunkFileListLambdaArn: !GetAtt ProtocolsChunkFileListLambda.Arn
+          ProtocolsEmbedLambdaArn: !GetAtt ProtocolsEmbedLambda.Arn
+          MaxConcurrency: !Ref StepFunctionsMaxConcurrency
+
+  # =========================
+  # EventBridge Step Function 실행 역할 (embed step function 스케줄용)
+  # =========================
+  EventBridgeStepFunctionRole:
+    Type: AWS::IAM::Role
+    DependsOn:
+      - ProtocolsEmbedStepFunction
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: EventBridgeStepFunctionExecutionPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - states:StartExecution
+                Resource: !GetAtt ProtocolsEmbedStepFunction.Arn
+
+  # =========================
+  # EventBridge 규칙: Protocols Embedding Step Function (하루에 한 번)
+  # =========================
+  ProtocolsEmbedStepFunctionScheduleRule:
+    Type: AWS::Events::Rule
+    DependsOn:
+      - ProtocolsEmbedStepFunction
+      - EventBridgeStepFunctionRole
+    Properties:
+      Name: skn18-protocols-embed-schedule
+      Description: "Protocols Embedding Step Function 실행 스케줄 (하루에 한 번, 매일 04:00 UTC)"
+      ScheduleExpression: "cron(0 4 * * ? *)"
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt ProtocolsEmbedStepFunction.Arn
+          Id: "ProtocolsEmbedStepFunctionTarget"
+          RoleArn: !GetAtt EventBridgeStepFunctionRole.Arn
+
 Outputs:
   ProtocolsLambdaArnProtein:
     Description: "Protocols ETL Lambda 함수 ARN (Protein)"
@@ -444,3 +688,21 @@ Outputs:
     Value: !GetAtt ProtocolsCleanseChunkLambda.Arn
     Export:
       Name: !Sub "${AWS::StackName}-ProtocolsCleanseChunkLambdaArn"
+
+  ProtocolsEmbedLambdaArn:
+    Description: "Protocols Embedding Lambda 함수 ARN"
+    Value: !GetAtt ProtocolsEmbedLambda.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-ProtocolsEmbedLambdaArn"
+
+  ProtocolsChunkFileListLambdaArn:
+    Description: "Protocols Chunk File List Lambda 함수 ARN"
+    Value: !GetAtt ProtocolsChunkFileListLambda.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-ProtocolsChunkFileListLambdaArn"
+
+  ProtocolsEmbedStepFunctionArn:
+    Description: "Protocols Embedding Step Functions State Machine ARN"
+    Value: !Ref ProtocolsEmbedStepFunction
+    Export:
+      Name: !Sub "${AWS::StackName}-ProtocolsEmbedStepFunctionArn"

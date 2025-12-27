@@ -1,0 +1,14 @@
+{
+  "builds": [
+    {
+      "name": "skn18-neo4j",
+      "builder_type": "amazon-ebs",
+      "build_time": 1766731665,
+      "files": null,
+      "artifact_id": "ap-northeast-2:ami-05623d88e3171bd60",
+      "packer_run_uuid": "f6ea4b6d-2656-b805-849f-275766057070",
+      "custom_data": null
+    }
+  ],
+  "last_run_uuid": "f6ea4b6d-2656-b805-849f-275766057070"
+}
