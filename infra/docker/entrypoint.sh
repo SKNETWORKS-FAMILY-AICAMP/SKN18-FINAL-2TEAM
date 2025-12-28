@@ -18,43 +18,55 @@ if command -v aws &> /dev/null; then
   echo "AWS CLI found. Fetching configuration from Parameter Store and CloudFormation..."
   
   # ========================================
-  # 1. CloudFormation에서 PostgreSQL EC2 IP 가져오기
-  # 메인 스택의 PublicIp Output (CoreInfraStack에서 전달됨)
+  # 1. PostgreSQL EC2 IP 가져오기
+  # 우선순위: 환경 변수 > CloudFormation > Parameter Store
   # ========================================
-  POSTGRES_HOST=$(aws cloudformation describe-stacks \
-    --stack-name "$STACK_NAME" \
-    --region "$AWS_REGION" \
-    --query 'Stacks[0].Outputs[?OutputKey==`PublicIp`].OutputValue' \
-    --output text 2>/dev/null || echo "")
-  
-  # CloudFormation에서 가져오지 못한 경우, Parameter Store에서 직접 읽기 시도
   if [ -z "$POSTGRES_HOST" ]; then
-    echo "⚠ Could not get POSTGRES_HOST from CloudFormation, trying Parameter Store..."
-    POSTGRES_HOST=$(aws ssm get-parameter \
-      --name /skn18/postgres-host \
+    # CloudFormation에서 PostgreSQL EC2 IP 가져오기
+    # 메인 스택의 PublicIp Output (CoreInfraStack에서 전달됨)
+    POSTGRES_HOST=$(aws cloudformation describe-stacks \
+      --stack-name "$STACK_NAME" \
       --region "$AWS_REGION" \
-      --query 'Parameter.Value' \
+      --query 'Stacks[0].Outputs[?OutputKey==`PublicIp`].OutputValue' \
       --output text 2>/dev/null || echo "")
+    
+    # CloudFormation에서 가져오지 못한 경우, Parameter Store에서 직접 읽기 시도
+    if [ -z "$POSTGRES_HOST" ] || [ "$POSTGRES_HOST" = "None" ]; then
+      echo "⚠ Could not get POSTGRES_HOST from CloudFormation, trying Parameter Store..."
+      POSTGRES_HOST=$(aws ssm get-parameter \
+        --name /skn18/postgres-host \
+        --region "$AWS_REGION" \
+        --query 'Parameter.Value' \
+        --output text 2>/dev/null || echo "")
+    fi
+  else
+    echo "✓ Using POSTGRES_HOST from environment variable: $POSTGRES_HOST"
   fi
   
   # ========================================
-  # 2. CloudFormation에서 RabbitMQ EC2 IP 가져오기
-  # 메인 스택의 RabbitMQPublicIp Output (RabbitMQInfraStack에서 전달됨)
+  # 2. RabbitMQ EC2 IP 가져오기
+  # 우선순위: 환경 변수 > CloudFormation > Parameter Store
   # ========================================
-  RABBITMQ_HOST=$(aws cloudformation describe-stacks \
-    --stack-name "$STACK_NAME" \
-    --region "$AWS_REGION" \
-    --query 'Stacks[0].Outputs[?OutputKey==`RabbitMQPublicIp`].OutputValue' \
-    --output text 2>/dev/null || echo "")
-  
-  # CloudFormation에서 가져오지 못한 경우, Parameter Store에서 직접 읽기 시도
   if [ -z "$RABBITMQ_HOST" ]; then
-    echo "⚠ Could not get RABBITMQ_HOST from CloudFormation, trying Parameter Store..."
-    RABBITMQ_HOST=$(aws ssm get-parameter \
-      --name /skn18/rabbitmq-host \
+    # CloudFormation에서 RabbitMQ EC2 IP 가져오기
+    # 메인 스택의 RabbitMQPublicIp Output (RabbitMQInfraStack에서 전달됨)
+    RABBITMQ_HOST=$(aws cloudformation describe-stacks \
+      --stack-name "$STACK_NAME" \
       --region "$AWS_REGION" \
-      --query 'Parameter.Value' \
+      --query 'Stacks[0].Outputs[?OutputKey==`RabbitMQPublicIp`].OutputValue' \
       --output text 2>/dev/null || echo "")
+    
+    # CloudFormation에서 가져오지 못한 경우, Parameter Store에서 직접 읽기 시도
+    if [ -z "$RABBITMQ_HOST" ] || [ "$RABBITMQ_HOST" = "None" ]; then
+      echo "⚠ Could not get RABBITMQ_HOST from CloudFormation, trying Parameter Store..."
+      RABBITMQ_HOST=$(aws ssm get-parameter \
+        --name /skn18/rabbitmq-host \
+        --region "$AWS_REGION" \
+        --query 'Parameter.Value' \
+        --output text 2>/dev/null || echo "")
+    fi
+  else
+    echo "✓ Using RABBITMQ_HOST from environment variable: $RABBITMQ_HOST"
   fi
   
   # ========================================

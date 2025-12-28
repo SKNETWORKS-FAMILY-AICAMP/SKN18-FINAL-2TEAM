@@ -22,6 +22,12 @@ services:
       STACK_NAME: ${STACK_NAME:-skn18-final-infra}
       # IAM Role을 사용하기 위해 EC2 메타데이터 서비스 접근 필요
       AWS_CONTAINER_CREDENTIALS_RELATIVE_URI: ""
+      # Parameter Store에서 읽지 못할 경우를 대비한 fallback 값
+      # CloudFormation Outputs에서 확인한 값:
+      # - PublicIp: 43.202.53.52 (PostgreSQL)
+      # - RabbitMQPublicIp: 43.201.55.197
+      POSTGRES_HOST: ${POSTGRES_HOST:-43.202.53.52}
+      RABBITMQ_HOST: ${RABBITMQ_HOST:-43.201.55.197}
     # Entrypoint가 마이그레이션을 실행한 후 CMD 실행
     command: >
       gunicorn config.wsgi:application
