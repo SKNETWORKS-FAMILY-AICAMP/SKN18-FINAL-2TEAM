@@ -288,6 +288,26 @@ jobs:
             echo "  ECR_REGISTRY=\$ECR_REGISTRY"
             echo "  ECR_REPOSITORY=\$ECR_REPOSITORY"
             
+            # Docker 리소스 정리 (디스크 공간 확보)
+            echo "Cleaning up Docker resources to free disk space..."
+            echo "Disk space before cleanup:"
+            df -h
+            
+            # 중지된 컨테이너 제거
+            docker container prune -f || true
+            
+            # 현재 사용하지 않는 이미지 제거 (latest는 유지, 24시간 이상 된 이미지)
+            docker image prune -af --filter "until=24h" || true
+            
+            # 사용하지 않는 볼륨 제거
+            docker volume prune -f || true
+            
+            # 빌드 캐시 정리
+            docker builder prune -af || true
+            
+            echo "Disk space after cleanup:"
+            df -h
+            
             # docker-compose pull (환경 변수 명시적 전달)
             echo "Pulling latest image..."
             if ! ECR_WEB_IMAGE=\$ECR_WEB_IMAGE docker-compose -f docker-compose.prod.yml pull web; then
