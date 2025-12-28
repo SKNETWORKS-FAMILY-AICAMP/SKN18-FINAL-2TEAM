@@ -65,7 +65,7 @@ bash -c 'pip install vllm==0.13.0 --break-system-packages && huggingface-cli log
 ```
 
 ### Gemma 3 12B (양자화 FB8 실패. awq로 양자화 시도도딩문제)
-(양자화 없이하면 성공 예상_-> 단, 비용이슈 있음)
+(양자화 없이하면 성공 예상_-> 단, 비용이슈 있음음)
 
 ```bash
 # RTX 4090 gpu 2장 및 양자화
