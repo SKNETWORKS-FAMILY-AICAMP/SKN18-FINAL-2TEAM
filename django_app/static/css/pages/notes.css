@@ -261,10 +261,13 @@
     font-size: 0.875rem;
     color: #4b5563;
     margin-bottom: 1rem;
+    line-height: 1.4;
+    max-height: calc(1.4em * 3);
     display: -webkit-box;
     -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
+    text-overflow: ellipsis;
     flex: 1;
 }
 
