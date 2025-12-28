@@ -170,14 +170,12 @@ def index(request):
 def experiments_api(request):
     """API endpoint router for experiments (GET /api/experiments/ and POST /api/experiments/)."""
     if request.method == 'GET':
-        return list_experiments_api(request)
+        return _list_experiments_api(request)
     else:  # POST
-        return create_experiment_api(request)
+        return _create_experiment_api(request)
 
 
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def list_experiments_api(request):
+def _list_experiments_api(request):
     """GET /api/experiments/ - 실험 목록 조회."""
     print("=" * 80)
     print("[Experiments API] ====== GET /api/experiments/ ======")
@@ -268,9 +266,7 @@ def list_experiments_api(request):
     }, status=200)
 
 
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def create_experiment_api(request):
+def _create_experiment_api(request):
     """POST /api/experiments/ - 실험 생성."""
     print("=" * 80)
     print("[Experiments API] ====== POST /api/experiments/ ======")
