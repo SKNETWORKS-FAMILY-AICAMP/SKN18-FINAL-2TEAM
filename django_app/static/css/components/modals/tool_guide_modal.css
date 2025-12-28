@@ -1,5 +1,23 @@
 /* Tool Guide Modal Styles */
 
+/* Modal container size adjustments */
+#toolGuideModal.modal-overlay .modal-container.modal-medium {
+    width: 90vw;
+    max-width: 672px; /* max-w-2xl */
+    min-height: 320px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+}
+
+#toolGuideModal .modal-body {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
 .tool-guide-body {
     padding: 1.5rem;
     overflow-y: auto;

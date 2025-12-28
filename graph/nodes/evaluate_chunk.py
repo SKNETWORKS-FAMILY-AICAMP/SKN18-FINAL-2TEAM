@@ -19,6 +19,7 @@ import re
 from graph.llm_config import (
     evaluate_chunk_bio_node_llm,
     evaluate_chunk_protocol_node_llm,
+    get_model_name
 )
 
 
@@ -194,7 +195,11 @@ def bio_evaluate_chunk_node(state: Dict[str, Any]) -> Dict[str, Any]:
     prompt = _build_evaluation_prompt(question or search_query, context, entities)
 
     try:
-        print(f"[BioEvaluate] {llm_model_name} 모델로 평가 호출...")
+        # 사용 모델 확인
+        model_name = get_model_name(evaluate_chunk_bio_node_llm)
+        print(f"[OpenEvaluate] 사용 모델: {model_name}")
+        
+        # LLM을 사용하여 관련성 평가
         result = evaluate_chunk_bio_node_llm(prompt)
         is_relevant, relevance_score, reason = _parse_evaluation_result(result)
 
@@ -305,7 +310,11 @@ def protocol_evaluate_chunk_node(state: Dict[str, Any]) -> Dict[str, Any]:
     prompt = _build_evaluation_prompt(question or search_query, context, entities)
 
     try:
-        print(f"[ProtocolEvaluate] {llm_model_name} 모델로 평가 호출...")
+        # 사용 모델 확인
+        model_name = get_model_name(evaluate_chunk_protocol_node_llm)
+        print(f"[SLLMEvaluate] 사용 모델: {model_name}")
+        
+        # LLM을 사용하여 관련성 평가
         result = evaluate_chunk_protocol_node_llm(prompt)
         is_relevant, relevance_score, reason = _parse_evaluation_result(result)
 

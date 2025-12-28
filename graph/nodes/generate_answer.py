@@ -19,7 +19,8 @@ from graph.llm_config import (
     generate_answer_protocol_llm,
     generate_answer_protocol_fallback_llm,
     generate_answer_inference_llm,
-    generate_answer_inference_fallback_llm
+    generate_answer_inference_fallback_llm,
+    get_model_name
 )
 import json
 
@@ -80,6 +81,10 @@ def _generate_user_info_answer(state: Dict[str, Any]) -> Dict[str, Any]:
     """
     question = state.get("question", "")
     
+    # 사용 모델 확인
+    model_name = get_model_name(generate_answer_info_llm)
+    print(f"[USER_INFO] 사용 모델: {model_name}")
+    
     # 이전 USER_INFO 대화 컨텍스트 구성
     previous_user_info = ""
     relevant_history = state.get("relevant_history", [])
@@ -120,18 +125,10 @@ def _generate_user_info_answer(state: Dict[str, Any]) -> Dict[str, Any]:
 
 답변:"""
 
-    try:
-        # GPT로 답변 생성
-        answer = generate_answer_info_llm(prompt)
-        state["final_answer"] = answer
-        state["final_context"] = f"사용자 정보: {question}\n{previous_user_info}"
-        
-    except Exception as e:
-        # fallback: 기본 메시지
-        if previous_user_info:
-            state["final_answer"] = f"이전에 알려주신 정보는 다음과 같습니다:\n{previous_user_info}"
-        else:
-            state["final_answer"] = "반갑습니다! 생물학 연구와 관련하여 도움이 필요하시면 언제든지 말씀해주세요."
+    # LLM으로 답변 생성 (Pod 비활성화 시 에러 발생)
+    answer = generate_answer_info_llm(prompt)
+    state["final_answer"] = answer
+    state["final_context"] = f"사용자 정보: {question}\n{previous_user_info}"
     
     return state
 
@@ -200,7 +197,11 @@ def _generate_bio_answer(state: Dict[str, Any]) -> Dict[str, Any]:
 답변:"""
 
     try:
-        # GPT-4o-mini로 답변 생성
+        # 사용 모델 확인
+        model_name = get_model_name(generate_answer_bio_llm)
+        print(f"[BIO_Q] 사용 모델: {model_name}")
+        
+        # LLM으로 답변 생성
         answer = generate_answer_bio_llm(prompt)
         state["final_answer"] = answer
         state["final_context"] = final_context
@@ -274,7 +275,11 @@ def _generate_simulation_answer(state: Dict[str, Any]) -> Dict[str, Any]:
 답변:"""
 
     try:
-        # GPT-4o-mini로 답변 생성
+        # 사용 모델 확인
+        model_name = get_model_name(generate_answer_simulation_llm)
+        print(f"[SIMULATION_Q] 사용 모델: {model_name}")
+        
+        # LLM으로 답변 생성
         answer = generate_answer_simulation_llm(prompt)
         state["final_answer"] = answer
         state["final_context"] = simulation_tools_info
@@ -348,14 +353,20 @@ def _generate_protocol_answer(state: Dict[str, Any]) -> Dict[str, Any]:
 답변:"""
 
     try:
-        # sllm (프로토콜 특화 모델) 사용
+        # 사용 모델 확인
+        model_name = get_model_name(generate_answer_protocol_llm)
+        print(f"[PROTOCOL_Q] 사용 모델: {model_name}")
+        
+        # LLM으로 답변 생성
         answer = generate_answer_protocol_llm(prompt)
         state["final_answer"] = answer
         state["final_context"] = final_context
         state["answer_sources"] = answer_sources
         
     except Exception as e:
-        # sllm 실패 시 GPT-4o-mini로 fallback
+        # 실패 시 fallback 모델 사용
+        fallback_model_name = get_model_name(generate_answer_protocol_fallback_llm)
+        print(f"[PROTOCOL_Q] Fallback 모델: {fallback_model_name}")
         try:
             answer = generate_answer_protocol_fallback_llm(prompt)
             state["final_answer"] = answer
@@ -405,13 +416,19 @@ def _generate_inference_answer(state: Dict[str, Any]) -> Dict[str, Any]:
 답변:"""
 
     try:
-        # SLLM (실험 결과 해석 특화 모델) 사용
+        # 사용 모델 확인
+        model_name = get_model_name(generate_answer_inference_llm)
+        print(f"[INFERENCE_Q] 사용 모델: {model_name}")
+        
+        # LLM으로 답변 생성
         answer = generate_answer_inference_llm(prompt)
         state["final_answer"] = answer
         state["final_context"] = f"질문: {question}"
         
     except Exception as e:
-        # SLLM 실패 시 GPT-4o-mini로 fallback
+        # 실패 시 fallback 모델 사용
+        fallback_model_name = get_model_name(generate_answer_inference_fallback_llm)
+        print(f"[INFERENCE_Q] Fallback 모델: {fallback_model_name}")
         try:
             answer = generate_answer_inference_fallback_llm(prompt)
             state["final_answer"] = answer

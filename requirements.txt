@@ -42,6 +42,7 @@ py2neo
 Django>=5.0,<6.0
 django-environ
 djangorestframework
+drf-spectacular
 gunicorn
 django-sass-processor
 libsass

@@ -12,7 +12,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '../../infra/db'))
 from memory_db_stetting import Connect_PostgreSQL
 from memory_db_schema import ConversationMemory
 from datetime import datetime
-from graph.llm_config import memory_summarize_tool_llm
+from graph.llm_config import memory_summarize_tool_llm, get_model_name
 
 
 CONTEXT_WINDOW_MAX = 10
@@ -70,6 +70,8 @@ def summarize_llm_response(question: str, full_response: str, max_length: int = 
 
 요약만 출력하세요:"""
 
+        model_name = get_model_name(memory_summarize_tool_llm)
+        print(f"[Memory] 요약 모델: {model_name}")
         summary = memory_summarize_tool_llm(prompt).strip()
         
         # 길이 초과 시 문장 단위로 자르기
@@ -368,6 +370,8 @@ def memory_write_node(state):
 7. 사용자가 정보를 제공하지 않고 질문만 했다면 빈 문자열 반환
 
 요약만 출력하세요:"""
+                    model_name = get_model_name(memory_summarize_tool_llm)
+                    print(f"[Memory] 요약 모델: {model_name}")
                     summary = memory_summarize_tool_llm(prompt).strip()
                     
                     # 길이 제한
