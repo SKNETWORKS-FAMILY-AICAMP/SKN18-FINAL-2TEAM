@@ -7,11 +7,18 @@ LangGraph Memory Node (Read / Write)
 
 import sys
 import os
-sys.path.append(os.path.join(os.path.dirname(__file__), '../../infra/db'))
-
-from memory_db_stetting import Connect_PostgreSQL
-from memory_db_schema import ConversationMemory
+import django
 from datetime import datetime
+
+# Django 프로젝트 루트를 sys.path에 추가
+DJANGO_PROJECT_ROOT = os.path.join(os.path.dirname(__file__), '../../django_app')
+sys.path.insert(0, DJANGO_PROJECT_ROOT)
+
+# Django 설정 초기화
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
+django.setup()
+
+from apps.chat.models.models import ConversationMemory
 from graph.llm_config import memory_summarize_tool_llm, get_model_name
 
 
@@ -134,32 +141,15 @@ def memory_read_basic_tool(chat_room_id: str, user_id: str = "default") -> dict:
             "has_previous": False
         }
 
-    db = Connect_PostgreSQL()
     try:
-        # 메모리 조회
-        memory = (
-            db.query(ConversationMemory)
-            .filter_by(chat_room_id=chat_room_id_int, user_id=user_id)
-            .first()
-        )
-        
-        if memory is None:
-            return {
-                "last_question": "",
-                "last_summary": "",
-                "last_case_type": "",
-                "last_topic": "",
-                "has_previous": False
-            }
-        
         # chat_room_id로 가장 최근 대화 조회
         latest_conv = (
-            db.query(ConversationMemory)
-            .filter_by(chat_room_id=chat_room_id, user_id=user_id)
-            .order_by(ConversationMemory.created_at.desc())
+            ConversationMemory.objects
+            .filter(chat_room_id=chat_room_id_int, user_id=user_id)
+            .order_by('-created_at')
             .first()
         )
-        
+
         if not latest_conv:
             return {
                 "last_question": "",
@@ -168,11 +158,11 @@ def memory_read_basic_tool(chat_room_id: str, user_id: str = "default") -> dict:
                 "last_topic": "",
                 "has_previous": False
             }
-        
+
         # 케이스 타입과 요약 가져오기
         last_case_type = latest_conv.case_type or ""
         last_summary = latest_conv.summary or ""
-        
+
         return {
             "last_question": latest_conv.original_question or "",
             "last_summary": last_summary,
@@ -180,7 +170,7 @@ def memory_read_basic_tool(chat_room_id: str, user_id: str = "default") -> dict:
             "last_topic": latest_conv.topic or "",
             "has_previous": True
         }
-        
+
     except Exception as e:
         print(f"[memory_read_basic_tool Error] {e}")
         return {
@@ -190,8 +180,6 @@ def memory_read_basic_tool(chat_room_id: str, user_id: str = "default") -> dict:
             "last_topic": "",
             "has_previous": False
         }
-    finally:
-        db.close()
 
 
 # ---------------------------------------------
@@ -222,14 +210,12 @@ def memory_read_node(state):
 
     user_id = state.get("user_id", "default")
 
-    db = Connect_PostgreSQL()
     try:
         # chat_room_id로 모든 대화 조회 (최신순)
-        conversations = (
-            db.query(ConversationMemory)
-            .filter_by(chat_room_id=chat_room_id, user_id=user_id)
-            .order_by(ConversationMemory.created_at.desc())
-            .all()
+        conversations = list(
+            ConversationMemory.objects
+            .filter(chat_room_id=chat_room_id, user_id=user_id)
+            .order_by('-created_at')
         )
         
         # 조회된 대화들의 chat_id 로그
@@ -300,8 +286,16 @@ def memory_read_node(state):
 
         return state
 
-    finally:
-        db.close()
+    except Exception as e:
+        print(f"[MemoryRead Error] {e}")
+        # 에러 발생 시에도 state 반환 (빈 메모리로)
+        state["memory_slot"] = {
+            "last_case": None,
+            "last_summary": None,
+        }
+        state["relevant_history"] = []
+        state["history_source"] = "ERROR"
+        return state
 
 
 # ---------------------------------------------
@@ -334,7 +328,6 @@ def memory_write_node(state):
     user_id = state.get("user_id", "default")
     current_case_type = state.get("case_type", "NO_RELATION")
 
-    db = Connect_PostgreSQL()
     try:
         # NO_RELATION이 아닌 경우에만 저장
         if (state.get("question") and state.get("final_answer")
@@ -401,7 +394,7 @@ def memory_write_node(state):
                 question_text = state.get("question", "")
                 topic = question_text[:50] if question_text else ""  # 질문 앞 50자를 topic으로 사용
 
-                new_memory = ConversationMemory(
+                new_memory = ConversationMemory.objects.create(
                     chat_room_id=chat_room_id,
                     user_id=user_id,
                     original_question=question_text,
@@ -412,9 +405,6 @@ def memory_write_node(state):
                     full_response=full_answer,
                     summary=summary
                 )
-                
-                db.add(new_memory)
-                db.commit()
 
                 print(f"[MemoryWrite] 새 row 생성: chat_sid={new_memory.chat_sid}, case_type={current_case_type}")
                 print(f"[MemoryWrite] 저장 완료:")
@@ -430,8 +420,10 @@ def memory_write_node(state):
         print(f"\n[MEMORY_WRITE NODE] 종료")
         print(f"  저장 완료: case_type={current_case_type}")
         print(f"{'='*60}\n")
-        
+
         return state
 
-    finally:
-        db.close()
+    except Exception as e:
+        print(f"[MemoryWrite Error] {e}")
+        # 에러 발생 시에도 state 반환
+        return state
