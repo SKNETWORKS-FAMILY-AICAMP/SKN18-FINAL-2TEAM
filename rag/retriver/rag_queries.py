@@ -90,7 +90,12 @@ class GraphSchemaQueries:
         "CREATE FULLTEXT INDEX expEquipmentTextIndex IF NOT EXISTS FOR (n:ExpEquipment) ON EACH [n.name];",
         "CREATE FULLTEXT INDEX chunkTextIndex IF NOT EXISTS FOR (n:Chunk) ON EACH [n.text];",
         "CREATE FULLTEXT INDEX protocolChunkTextIndex IF NOT EXISTS FOR (n:ProtocolChunk) ON EACH [n.text];",
-        "CREATE FULLTEXT INDEX clinicalChunkTextIndex IF NOT EXISTS FOR (n:ClinicalChunk) ON EACH [n.text];"
+        "CREATE FULLTEXT INDEX clinicalChunkTextIndex IF NOT EXISTS FOR (n:ClinicalChunk) ON EACH [n.text];",
+        "CREATE FULLTEXT INDEX protocolTextIndex IF NOT EXISTS FOR (n:Protocol) ON EACH [n.title];", 
+        "CREATE FULLTEXT INDEX topicTextIndex IF NOT EXISTS FOR (n:Topic) ON EACH [n.name];",
+        "CREATE FULLTEXT INDEX studyDesignTextIndex IF NOT EXISTS FOR (n:StudyDesign) ON EACH [n.name];",
+        "CREATE FULLTEXT INDEX experimentTextIndex IF NOT EXISTS FOR (n:Experiment) ON EACH [n.method];",
+        "CREATE FULLTEXT INDEX categoryLeafTextIndex IF NOT EXISTS FOR (n:CategoryLeaf) ON EACH [n.name];"
     ]
 
 class GraphSearchQueries:

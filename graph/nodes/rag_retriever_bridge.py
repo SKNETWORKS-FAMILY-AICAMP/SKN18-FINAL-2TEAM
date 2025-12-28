@@ -27,11 +27,11 @@ def run_rag_retrieval_pipeline(question: str) -> Dict[str, Any]:
 
     _ensure_rag_retriver_on_syspath()
 
-    from rag_state import PipelineRAGState
-    from retriever_runner import RetrieverExecutor, make_llm_call
-    from query_rewrite_node import query_rewrite_node
-    from query_router import QueryRoutingNode
-    from embedding_router import EmbeddingRoutingNode
+    from rag.retriver.rag_state import PipelineRAGState
+    from rag.retriver.retriever_runner import RetrieverExecutor, make_llm_call
+    from rag.retriver.query_rewrite_node import query_rewrite_node
+    from rag.retriver.query_router import QueryRoutingNode
+    from rag.retriver.embedding_router import EmbeddingRoutingNode
 
     uri = os.getenv("NEO4J_URI")
     user = os.getenv("NEO4J_USERNAME")

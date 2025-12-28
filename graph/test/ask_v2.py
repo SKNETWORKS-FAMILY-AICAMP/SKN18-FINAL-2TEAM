@@ -32,7 +32,7 @@ for path in {BASE_DIR, ROOT_DIR, INFRA_DB_DIR}:
     if path not in sys.path:
         sys.path.append(path)
 
-from memory_db_stetting import init_db  # noqa: E402
+from infra.db.memory_db_stetting import init_db  # noqa: E402
 from graph.compile import create_workflow  # noqa: E402
 
 
