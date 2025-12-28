@@ -33,6 +33,9 @@ urlpatterns = [
     path("experiments/", include("apps.experiments.urls")),
     path("notes/", include("apps.notes.urls")),
     
+    # API endpoints
+    path("api/", include("apps.experiments.api_urls")),
+    
     # 관리자
     path("admin/", admin.site.urls),
 ]
