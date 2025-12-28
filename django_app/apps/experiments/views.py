@@ -1,6 +1,9 @@
 import json
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
 from .models import ExperimentTool, Experiment
 
 
@@ -82,8 +85,8 @@ def index(request):
     
     # 실험 목록 조회 (사용자별로 필터링)
     # created_id는 user_id (UUID 문자열)를 저장
-    # CustomUser는 user_id를 primary key로 사용하므로 pk 또는 user_id 사용 가능
-    user_identifier = str(request.user.pk)  # pk는 primary key를 반환 (CustomUser의 경우 user_id)
+    # CustomUser는 user_id를 primary key로 사용하므로 user_id 속성 사용
+    user_identifier = str(request.user.user_id) if hasattr(request.user, 'user_id') else str(request.user.pk)
     experiments = Experiment.objects.filter(
         created_id=user_identifier
     ).prefetch_related('tools').order_by('-created_at')[:20]  # 최근 20개만
@@ -94,3 +97,152 @@ def index(request):
     }
     
     return render(request, 'experiments/experiment.html', context)
+
+@csrf_exempt
+@require_http_methods(["GET", "POST"])
+def experiments_api(request):
+    """API endpoint router for experiments (GET /api/experiments/ and POST /api/experiments/)."""
+    if request.method == 'GET':
+        return list_experiments_api(request)
+    else:  # POST
+        return create_experiment_api(request)
+
+
+@login_required
+def list_experiments_api(request):
+    """GET /api/experiments/ - 실험 목록 조회."""
+    print("=" * 80)
+    print("[Experiments API] ====== GET /api/experiments/ ======")
+    print(f"[Experiments API] Request method: {request.method}")
+    print(f"[Experiments API] Request path: {request.path}")
+    print(f"[Experiments API] Request user: {request.user}")
+    print(f"[Experiments API] User authenticated: {request.user.is_authenticated}")
+    print(f"[Experiments API] User pk: {request.user.pk}")
+    print(f"[Experiments API] User pk type: {type(request.user.pk)}")
+    
+    # 실험 목록 조회 (사용자별로 필터링)
+    # CustomUser는 user_id를 primary key로 사용하므로 user_id 속성 사용
+    user_identifier = str(request.user.user_id) if hasattr(request.user, 'user_id') else str(request.user.pk)
+    print(f"[Experiments API] User identifier (string): {user_identifier}")
+    print(f"[Experiments API] User has user_id attr: {hasattr(request.user, 'user_id')}")
+    if hasattr(request.user, 'user_id'):
+        print(f"[Experiments API] User user_id: {request.user.user_id}")
+    print(f"[Experiments API] User pk: {request.user.pk}")
+    
+    # 디버깅: 전체 실험 개수 확인
+    all_experiments_count = Experiment.objects.count()
+    print(f"[Experiments API] Total experiments in DB: {all_experiments_count}")
+    
+    # 디버깅: 사용자별 실험 개수 확인
+    user_experiments_count = Experiment.objects.filter(created_id=user_identifier).count()
+    print(f"[Experiments API] User experiments count (filtered by '{user_identifier}'): {user_experiments_count}")
+    
+    # 디버깅: created_id 값들 확인 (최근 5개)
+    recent_experiments = Experiment.objects.all().order_by('-created_at')[:5]
+    print(f"[Experiments API] Recent experiments created_id values:")
+    for exp in recent_experiments:
+        print(f"  - Experiment {exp.experiment_sid}: created_id='{exp.created_id}' (type: {type(exp.created_id)})")
+    
+    experiments = Experiment.objects.filter(
+        created_id=user_identifier
+    ).prefetch_related('tool_selections__tool').order_by('-created_at')[:20]  # 최근 20개만
+    
+    print(f"[Experiments API] Filtered experiments count: {experiments.count()}")
+    
+    # 실험 데이터 변환
+    experiments_data = []
+    for exp in experiments:
+        # 상태 코드를 한국어로 변환
+        status_map = {
+            'E': '활성',
+            'R': '준비',
+            'P': '진행중',
+            'C': '완료',
+            'F': '실패',
+            'D': '비활성',
+        }
+        status_display = status_map.get(exp.status, exp.status or '준비')
+        
+        # 도구 정보를 이름 배열로 변환
+        # Many-to-Many through 관계이므로 tool_selections를 통해 접근
+        tools_list = []
+        tool_selections = exp.tool_selections.all().select_related('tool').order_by('sort_order')
+        print(f"[Experiments API] Experiment {exp.experiment_sid}: tool_selections count = {tool_selections.count()}")
+        for selection in tool_selections:
+            if selection.tool:
+                tools_list.append(selection.tool.tool_name)
+                print(f"[Experiments API]   - Tool: {selection.tool.tool_name} (tool_sid={selection.tool.tool_sid})")
+        
+        # Fallback: tools.all()도 시도
+        if not tools_list:
+            tools_list = [tool.tool_name for tool in exp.tools.all()]
+            print(f"[Experiments API] Experiment {exp.experiment_sid}: Using exp.tools.all(), found {len(tools_list)} tools")
+        
+        exp_data = {
+            'id': exp.experiment_sid,  # experiment_sid가 primary key
+            'pipeline_name': exp.pipeline_name or 'Unnamed Pipeline',
+            'pipeline': exp.pipeline_name or 'Unnamed Pipeline',  # React 호환성
+            'created_at': exp.created_at.isoformat() if exp.created_at else None,
+            'status': exp.status or 'R',  # 상태 코드
+            'status_display': status_display,  # 한국어 상태
+            'progress': exp.progress if exp.progress is not None else 0,
+            'tools': tools_list,  # 도구 이름 배열
+        }
+        experiments_data.append(exp_data)
+    
+    print(f"[Experiments API] Found {len(experiments_data)} experiments")
+    print("[Experiments API] ====== End of request log ======")
+    print("=" * 80)
+    
+    return JsonResponse({
+        'status': 'success',
+        'results': experiments_data,
+    }, status=200)
+
+
+@csrf_exempt
+def create_experiment_api(request):
+    """POST /api/experiments/ - 실험 생성."""
+    print("=" * 80)
+    print("[Experiments API] ====== POST /api/experiments/ ======")
+    print(f"[Experiments API] Request method: {request.method}")
+    print(f"[Experiments API] Request path: {request.path}")
+    print(f"[Experiments API] Request user: {request.user}")
+    print(f"[Experiments API] User authenticated: {request.user.is_authenticated}")
+    
+    # Parse request body
+    try:
+        body = json.loads(request.body)
+        print(f"[Experiments API] Request body (parsed): {json.dumps(body, indent=2, ensure_ascii=False)}")
+    except json.JSONDecodeError as e:
+        print(f"[Experiments API] Error parsing JSON: {e}")
+        print(f"[Experiments API] Raw request body: {request.body}")
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+    
+    # Log request data
+    print(f"[Experiments API] Tools: {body.get('tools', [])}")
+    print(f"[Experiments API] Protein sequence length: {len(body.get('protein_sequence', ''))}")
+    print(f"[Experiments API] Pipeline name: {body.get('pipeline_name', 'N/A')}")
+    
+    # Log headers
+    print(f"[Experiments API] Content-Type: {request.content_type}")
+    print(f"[Experiments API] CSRF Token: {request.headers.get('X-CSRFToken', 'Not provided')}")
+    
+    # Log request metadata
+    print(f"[Experiments API] Request META keys: {list(request.META.keys())}")
+    print(f"[Experiments API] Remote address: {request.META.get('REMOTE_ADDR', 'N/A')}")
+    print(f"[Experiments API] User agent: {request.META.get('HTTP_USER_AGENT', 'N/A')}")
+    
+    print("[Experiments API] ====== End of request log ======")
+    print("=" * 80)
+    
+    # Return success response (no actual processing)
+    return JsonResponse({
+        'status': 'success',
+        'message': 'Experiment creation request received',
+        'data': {
+            'tools_count': len(body.get('tools', [])),
+            'sequence_length': len(body.get('protein_sequence', '')),
+            'pipeline_name': body.get('pipeline_name', ''),
+        }
+    }, status=200)
