@@ -490,7 +490,12 @@ def decide_search_strategy(query: str, case_type: str) -> str:
 
 반드시 "pgvector" 또는 "neo4j" 중 하나만 출력하세요:"""
 
+    from graph.llm_config import get_model_name
+    
     try:
+        model_name = get_model_name(retrieval_decide_search_strategy_llm)
+        print(f"[Search Strategy] 사용 모델: {model_name}")
+        
         response = retrieval_decide_search_strategy_llm(prompt).strip().lower()
         
         if "neo4j" in response:

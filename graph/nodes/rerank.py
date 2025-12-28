@@ -10,15 +10,26 @@ Query 임베딩, Document 임베딩 -> 이 두 개를 교차(cross) 시켜서 �
 
 📌 사용 중인 모델 (변경 시 아래 상수 수정):
     - Cross-Encoder: cross-encoder/ms-marco-MiniLM-L-6-v2 (가볍고 빠름)
-    
+
     [다른 옵션]
     - cross-encoder/ms-marco-TinyBERT-L-2-v2 (더 빠름, 성능 약간 낮음)
     - cross-encoder/ms-marco-electra-base (더 정확함, 느림)
     - cross-encoder/ms-marco-MiniLM-L-12-v2 (가장 정확함, 가장 느림)
+
+📁 모델 저장 위치:
+    - 기본: ~/.cache/huggingface/hub/
+    - 커스텀: graph/models/ (프로젝트 내부)
 """
 
+import os
 from typing import Dict, Any, List
 from sentence_transformers import CrossEncoder
+
+# 모델 저장 경로 설정 (프로젝트 내부 graph/models 폴더)
+MODELS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "models")
+os.makedirs(MODELS_DIR, exist_ok=True)
+os.environ["SENTENCE_TRANSFORMERS_HOME"] = MODELS_DIR
+os.environ["HF_HOME"] = MODELS_DIR
 
 
 # ============================================
@@ -39,18 +50,20 @@ _cross_encoder_model = None
 def get_cross_encoder_model():
     """
     Cross-Encoder 모델 로드 (한번만 로드되도록 캐싱)
+    모델은 graph/models 폴더에 저장됩니다.
     """
     global _cross_encoder_model
-    
+
     if _cross_encoder_model is None:
         try:
             print(f"[CrossEncoder] 모델 로딩 중: {CROSS_ENCODER_MODEL}")
-            _cross_encoder_model = CrossEncoder(CROSS_ENCODER_MODEL)  # 상수 사용
+            print(f"[CrossEncoder] 저장 경로: {MODELS_DIR}")
+            _cross_encoder_model = CrossEncoder(CROSS_ENCODER_MODEL, cache_folder=MODELS_DIR)
             print(f"[CrossEncoder] {CROSS_ENCODER_MODEL} 모델 로드 완료")
         except Exception as e:
             print(f"[CrossEncoder] 모델 로드 실패: {e}")
             _cross_encoder_model = None
-    
+
     return _cross_encoder_model
 
 

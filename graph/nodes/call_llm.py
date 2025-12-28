@@ -1,16 +1,15 @@
 """
-call_llm.py
---------------------
-각 모델(gpt-4o-mini, gpt-5-nano, SLLM, Local LLM - Gemini는 비활성화)을
+각 모델(gpt-4o-mini, gpt-5-nano, SLLM, Local LLM을 호출하는 함수를 제공.
 함수 형태로 호출하도록 통합 래퍼 제공.
 
 사용 예:
-    from call_llm import gpt4o_mini
+    from call_llm import gpt4o_mini, sllm
     response = gpt4o_mini("Hello!")
+    response = sllm("Hello!")
 
 .env 예시:
     OPENAI_API_KEY=xxxx
-    GEMINI_API_KEY=xxxx
+    SLLM_BASE_URL=https://podid-7860.proxy.runpod.net/v1  # SLLM 서버 URL
 """
 
 import os
@@ -29,22 +28,26 @@ from openai import OpenAI
 load_dotenv()
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-# GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-
 if not OPENAI_API_KEY:
     raise ValueError("❌ OPENAI_API_KEY not found in .env")
 
-# if not GEMINI_API_KEY:
-#     raise ValueError("❌ GEMINI_API_KEY not found in .env")
+SLLM_BASE_URL = os.getenv("SLLM_BASE_URL")
+if not SLLM_BASE_URL:
+    raise ValueError("❌ SLLM_BASE_URL not found in .env")
+
+RUNPOD_API_KEY = os.getenv("RUNPOD_API_KEY")
+if not RUNPOD_API_KEY:
+    raise ValueError("❌ RUNPOD_API_KEY not found in .env")
+
+MODEL_NAME = os.getenv("MODEL_NAME")
+if not MODEL_NAME:
+    raise ValueError("❌ MODEL_NAME not found in .env")
 
 
 # -----------------------------------------
 # 2) 클라이언트 초기화
 # -----------------------------------------
 openai_client = OpenAI(api_key=OPENAI_API_KEY)
-
-# genai.configure(api_key=GEMINI_API_KEY)
-# gemini_model = genai.GenerativeModel(model_name="gemini-1.5-flash")
 
 
 # -----------------------------------------
@@ -90,30 +93,69 @@ def gpt5_nano(prompt: str):
     )
     return _parse_openai_response(resp)
 
-
-# def gemini_llm(prompt: str):
-#     """Google Gemini Flash 호출"""
-#     resp = gemini_model.generate_content(prompt)
-#     return resp.text
-
-
 # -----------------------------------------
-# 5) SLLM 호출 (너희 실험결과해석 모델)
+# 5) SLLM 호출 (실험결과해석 모델)
 # -----------------------------------------
-def sllm(prompt: str):
+def sllm(prompt: str, temperature: float = 0.7, max_tokens: int = 1024):
     """
-    내부 구축한 작은 SLLM 호출
-    — REST API 서버를 만들었다고 가정.
+    SLLM 모델 호출 (RunPod 프록시 사용)
+
+    Args:
+        prompt: 입력 프롬프트
+        temperature: 생성 온도 (기본값: 0.7)
+        max_tokens: 최대 토큰 수 (기본값: 1024)
+
+    Returns:
+        모델 응답 텍스트
+
+    Raises:
+        Exception: Pod가 비활성화되었거나 연결 오류가 발생한 경우
     """
-    import requests
-    url = "http://localhost:8001/sllm"   # 네 서버 엔드포인트로 변경
-    data = {"prompt": prompt}
+    from openai import OpenAI
+    import time
+
+    print(f"\n{'='*60}")
+    print(f"[SLLM] 호출 시작")
+    print(f"  Model: {MODEL_NAME}")
+    print(f"  Base URL: {SLLM_BASE_URL}")
+    print(f"  Temperature: {temperature}")
+    print(f"  Max Tokens: {max_tokens}")
+    print(f"  Prompt Length: {len(prompt)} chars")
+    print(f"  Prompt Preview: {prompt[:100]}...")
+    print(f"{'='*60}\n")
+
+    sllm_client = OpenAI(
+        base_url=SLLM_BASE_URL,
+        api_key=RUNPOD_API_KEY,
+        timeout=60.0  # 60초 타임아웃
+    )
 
     try:
-        resp = requests.post(url, json=data, timeout=10)
-        return resp.json().get("response")
+        start_time = time.time()
+
+        resp = sllm_client.chat.completions.create(
+            model=MODEL_NAME,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=temperature,
+            max_tokens=max_tokens
+        )
+
+        elapsed = time.time() - start_time
+        response_text = _parse_openai_response(resp)
+
+        print(f"\n{'='*60}")
+        print(f"[SLLM] 응답 성공")
+        print(f"  Elapsed Time: {elapsed:.2f}s")
+        print(f"  Response Length: {len(response_text)} chars")
+        print(f"  Response Preview: {response_text[:100]}...")
+        print(f"{'='*60}\n")
+
+        return response_text
+
     except Exception as e:
-        return f"[SLLM ERROR] {e}"
+        error_msg = f"[SLLM ERROR] Pod가 비활성화되었거나 연결할 수 없습니다: {str(e)}"
+        print(error_msg)
+        raise RuntimeError(error_msg) from e
 
 
 # -----------------------------------------
