@@ -421,6 +421,9 @@ infra/neo4j/plugins/**
 # End of https://www.toptal.com/developers/gitignore/api/python,django,windows,macos,jupyternotebooks
 
 *__init__.py
-*graph\models\*
+
+# ML 모델 파일 (용량이 크므로 Git에 포함하지 않음)
+graph/models/
+
 # Fine-tuning data directory
 .fine-tuning/data/
