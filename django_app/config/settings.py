@@ -54,6 +54,10 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    
+    # Swagger/OpenAPI
+    "rest_framework",
+    "drf_spectacular",
 ]
 
 MIDDLEWARE = [
@@ -193,3 +197,63 @@ GOOGLE_CALENDAR_SCOPE = os.getenv(
     "GOOGLE_CALENDAR_SCOPE",
     "https://www.googleapis.com/auth/calendar",
 )
+
+# ───────────────────────────────────
+# REST Framework & Swagger/OpenAPI
+# ───────────────────────────────────
+REST_FRAMEWORK = {
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.SessionAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+}
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'HelixOps AI Platform API',
+    'DESCRIPTION': 'HelixOps AI Platform API Documentation',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'COMPONENT_SPLIT_REQUEST': True,
+    'AUTHENTICATION_WHITELIST': [
+        'rest_framework.authentication.SessionAuthentication',
+    ],
+    # Swagger UI 설정
+    'SWAGGER_UI_SETTINGS': {
+        'deepLinking': True,
+        'persistAuthorization': True,
+        'displayOperationId': False,
+        'defaultModelsExpandDepth': 1,
+        'defaultModelExpandDepth': 1,
+        'docExpansion': 'none',
+        'filter': True,
+        'showExtensions': True,
+        'showCommonExtensions': True,
+        'tryItOutEnabled': True,
+        # 세션 쿠키 자동 전달
+        'withCredentials': True,
+    },
+    # 세션 인증을 위한 설정
+    'APPEND_COMPONENTS': {
+        'securitySchemes': {
+            'sessionAuth': {
+                'type': 'apiKey',
+                'in': 'cookie',
+                'name': 'sessionid',
+                'description': 'Django session cookie. 로그인 후 브라우저가 자동으로 전달합니다. Swagger UI에서 테스트하려면 먼저 로그인하세요.',
+            },
+            'csrftoken': {
+                'type': 'apiKey',
+                'in': 'cookie',
+                'name': 'csrftoken',
+                'description': 'CSRF 토큰. 세션 인증과 함께 자동으로 전달됩니다.',
+            }
+        }
+    },
+    'SECURITY': [
+        {'sessionAuth': []},
+        {'csrftoken': []},
+    ],
+}

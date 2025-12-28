@@ -4,6 +4,10 @@ from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from drf_spectacular.utils import extend_schema, OpenApiParameter
 from .models import ExperimentTool, Experiment
 
 
@@ -98,8 +102,71 @@ def index(request):
     
     return render(request, 'experiments/experiment.html', context)
 
-@csrf_exempt
-@require_http_methods(["GET", "POST"])
+@extend_schema(
+    summary="실험 목록 조회 또는 실험 생성",
+    description="GET: 실험 목록을 조회합니다. POST: 새로운 실험을 생성합니다.",
+    tags=["Experiments"],
+    methods=['GET'],
+    responses={
+        200: {
+            'type': 'object',
+            'properties': {
+                'status': {'type': 'string', 'example': 'success'},
+                'results': {
+                    'type': 'array',
+                    'items': {
+                        'type': 'object',
+                        'properties': {
+                            'id': {'type': 'string'},
+                            'pipeline_name': {'type': 'string'},
+                            'pipeline': {'type': 'string'},
+                            'created_at': {'type': 'string', 'format': 'date-time'},
+                            'status': {'type': 'string'},
+                            'status_display': {'type': 'string'},
+                            'progress': {'type': 'integer'},
+                            'tools': {'type': 'array', 'items': {'type': 'string'}},
+                        }
+                    }
+                }
+            }
+        }
+    }
+)
+@extend_schema(
+    summary="실험 생성",
+    description="새로운 실험을 생성합니다.",
+    tags=["Experiments"],
+    methods=['POST'],
+    request={
+        'application/json': {
+            'type': 'object',
+            'properties': {
+                'tools': {'type': 'array', 'items': {'type': 'string'}},
+                'protein_sequence': {'type': 'string'},
+                'pipeline_name': {'type': 'string'},
+            }
+        }
+    },
+    responses={
+        200: {
+            'type': 'object',
+            'properties': {
+                'status': {'type': 'string', 'example': 'success'},
+                'message': {'type': 'string'},
+                'data': {
+                    'type': 'object',
+                    'properties': {
+                        'tools_count': {'type': 'integer'},
+                        'sequence_length': {'type': 'integer'},
+                        'pipeline_name': {'type': 'string'},
+                    }
+                }
+            }
+        }
+    }
+)
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
 def experiments_api(request):
     """API endpoint router for experiments (GET /api/experiments/ and POST /api/experiments/)."""
     if request.method == 'GET':
@@ -108,7 +175,8 @@ def experiments_api(request):
         return create_experiment_api(request)
 
 
-@login_required
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def list_experiments_api(request):
     """GET /api/experiments/ - 실험 목록 조회."""
     print("=" * 80)
@@ -194,13 +262,14 @@ def list_experiments_api(request):
     print("[Experiments API] ====== End of request log ======")
     print("=" * 80)
     
-    return JsonResponse({
+    return Response({
         'status': 'success',
         'results': experiments_data,
     }, status=200)
 
 
-@csrf_exempt
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def create_experiment_api(request):
     """POST /api/experiments/ - 실험 생성."""
     print("=" * 80)
@@ -212,12 +281,12 @@ def create_experiment_api(request):
     
     # Parse request body
     try:
-        body = json.loads(request.body)
+        body = request.data if hasattr(request, 'data') else json.loads(request.body)
         print(f"[Experiments API] Request body (parsed): {json.dumps(body, indent=2, ensure_ascii=False)}")
-    except json.JSONDecodeError as e:
+    except (json.JSONDecodeError, AttributeError) as e:
         print(f"[Experiments API] Error parsing JSON: {e}")
         print(f"[Experiments API] Raw request body: {request.body}")
-        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+        return Response({'error': 'Invalid JSON'}, status=400)
     
     # Log request data
     print(f"[Experiments API] Tools: {body.get('tools', [])}")
@@ -237,7 +306,7 @@ def create_experiment_api(request):
     print("=" * 80)
     
     # Return success response (no actual processing)
-    return JsonResponse({
+    return Response({
         'status': 'success',
         'message': 'Experiment creation request received',
         'data': {

@@ -3,6 +3,10 @@ from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET
 from django.db.models import Count
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from drf_spectacular.utils import extend_schema
 
 from .models import Note
 
@@ -37,8 +41,36 @@ def note_editor(request):
     return render(request, 'note/note_editor.html', context)
 
 
-@login_required
-@require_GET
+@extend_schema(
+    summary="노트 목록 조회",
+    description="사용자의 노트 목록을 반환합니다.",
+    tags=["Notes"],
+    responses={
+        200: {
+            'type': 'object',
+            'properties': {
+                'status': {'type': 'string', 'example': 'success'},
+                'results': {
+                    'type': 'array',
+                    'items': {
+                        'type': 'object',
+                        'properties': {
+                            'id': {'type': 'string'},
+                            'title': {'type': 'string'},
+                            'content': {'type': 'string'},
+                            'date': {'type': 'string', 'format': 'date'},
+                            'shared': {'type': 'integer'},
+                            'comments': {'type': 'integer'},
+                            'tags': {'type': 'array', 'items': {'type': 'string'}},
+                        }
+                    }
+                }
+            }
+        }
+    }
+)
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def notes_list_api(request):
     """노트 목록을 JSON으로 반환."""
     user_identifier = str(request.user.user_id) if hasattr(request.user, 'user_id') else str(request.user.pk)
@@ -66,7 +98,7 @@ def notes_list_api(request):
             'tags': tags,
         })
     
-    return JsonResponse({
+    return Response({
         'status': 'success',
         'results': results,
     })

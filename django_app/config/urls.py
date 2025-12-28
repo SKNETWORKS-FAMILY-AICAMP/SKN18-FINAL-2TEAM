@@ -17,7 +17,13 @@ Including another URLconf
 
 from django.contrib import admin
 from django.urls import include, path
+from django.views.decorators.csrf import csrf_exempt
 from apps.account.views import index as root_index
+from drf_spectacular.views import (
+    SpectacularAPIView,
+    SpectacularRedocView,
+    SpectacularSwaggerView,
+)
 
 urlpatterns = [
     # 루트 URL - 인증 상태에 따라 리디렉트
@@ -36,6 +42,11 @@ urlpatterns = [
     # API endpoints
     path("api/experiments/", include("apps.experiments.api_urls")),
     path("api/notes/", include("apps.notes.api_urls")),
+    
+    # Swagger/OpenAPI (인증 없이 접근 가능)
+    path("api/schema/", csrf_exempt(SpectacularAPIView.as_view()), name="schema"),
+    path("api/docs/", csrf_exempt(SpectacularSwaggerView.as_view(url_name="schema")), name="swagger-ui"),
+    path("api/redoc/", csrf_exempt(SpectacularRedocView.as_view(url_name="schema")), name="redoc"),
     
     # 관리자
     path("admin/", admin.site.urls),
