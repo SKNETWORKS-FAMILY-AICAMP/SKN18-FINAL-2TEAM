@@ -63,4 +63,4 @@ generate_answer_protocol_llm = sllm
 generate_answer_protocol_fallback_llm = gpt4_1_nano
 generate_answer_inference_llm = sllm
 generate_answer_inference_fallback_llm = gpt4_1_nano
-generate_answer_info_llm = sllm
+generate_answer_info_llm = gpt4_1_nano

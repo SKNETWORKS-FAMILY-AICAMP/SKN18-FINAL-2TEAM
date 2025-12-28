@@ -90,4 +90,5 @@ class BioRAGState(TypedDict, total=False):
     final_answer: str                                   # 최종 답변(평문)
     answer_sources: Annotated[List[str], operator.add] # 출처 리스트 - rag, web 모두 누적 입력
     chat_title: NotRequired[str]                        # 채팅방 제목용 1줄 요약 (Django 전달용)
+    should_skip_generation: NotRequired[bool]           # evaluate_web에서 조기 종료 여부 결정 (BIO_Q 전용)
 

@@ -48,7 +48,7 @@ Answer: [YES/NO]
 """
 
 
-def _build_evaluation_prompt(question: str, context: str) -> str:
+def _build_evaluation_prompt(question: str, context: str, entities: List[str] = None) -> str:
     """
     평가 프롬프트 생성 (개선된 템플릿)
 
