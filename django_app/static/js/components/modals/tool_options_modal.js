@@ -1,18 +1,38 @@
 // Tool Options Modal JavaScript
 
+(function() {
+    'use strict';
+
 const modalId = 'toolOptionsModal';
 let currentTool = null;
 let toolOptions = {};
 
-// DOM elements
-const modal = document.getElementById(modalId);
-const modalTitle = document.getElementById('toolOptionsModalTitle');
-const optionsContent = document.getElementById('toolOptionsContent');
-const saveBtn = document.getElementById('toolOptionsSaveBtn');
+// DOM elements (will be initialized when DOM is ready)
+let modal = null;
+let modalTitle = null;
+let optionsContent = null;
+let saveBtn = null;
+
+// Initialize DOM elements
+function initDOMElements() {
+    modal = document.getElementById(modalId);
+    modalTitle = document.getElementById('toolOptionsModalTitle');
+    optionsContent = document.getElementById('toolOptionsContent');
+    saveBtn = document.getElementById('toolOptionsSaveBtn');
+    
+    return !!modal; // Return true if modal was found
+}
 
 // Initialize modal
 function initToolOptionsModal() {
-    if (!modal) return;
+    // Initialize DOM elements if not already done
+    if (!modal) {
+        initDOMElements();
+    }
+    if (!modal) {
+        console.warn('[ToolOptionsModal] Modal element not found in initToolOptionsModal');
+        return false;
+    }
 
     // Close button
     const closeBtn = modal.querySelector('.modal-close-btn');
@@ -31,11 +51,20 @@ function initToolOptionsModal() {
 
     // Save button
     saveBtn?.addEventListener('click', handleSaveOptions);
+    
+    return true;
 }
 
 // Open modal
 function openToolOptionsModal(tool) {
-    if (!modal || !tool) return;
+    // Ensure DOM elements are initialized
+    if (!modal) {
+        initDOMElements();
+    }
+    if (!modal || !tool) {
+        console.error('[ToolOptionsModal] Modal or tool not available');
+        return;
+    }
 
     currentTool = tool;
 
@@ -177,18 +206,32 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-// Initialize when DOM is ready
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initToolOptionsModal);
-} else {
-    initToolOptionsModal();
-}
-
-// Export for use in other modules
-if (typeof window !== 'undefined') {
+    // Export to window immediately
     window.ToolOptionsModal = {
         open: openToolOptionsModal,
         close: closeModal,
         init: initToolOptionsModal,
+        initDOMElements: initDOMElements,
     };
-}
+    
+    // Initialize when DOM is ready
+    function tryInit() {
+        if (initDOMElements() && initToolOptionsModal()) {
+            return true;
+        }
+        return false;
+    }
+    
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() {
+            if (!tryInit()) {
+                setTimeout(tryInit, 100);
+            }
+        });
+    } else {
+        // DOM already ready
+        if (!tryInit()) {
+            setTimeout(tryInit, 100);
+        }
+    }
+})();

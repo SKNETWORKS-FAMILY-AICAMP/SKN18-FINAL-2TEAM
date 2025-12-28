@@ -27,6 +27,152 @@ INSERT INTO t_recommended_question (question_text, question_category, sort_order
 ('생물정보학 분석 결과를 논문에 표현하는 방법은?', 'R', 4, 'E', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
 ('차등 발현 유전자 분석 결과를 해석하는 방법을 알려주세요', 'R', 5, 'E', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
+-- t_note 테이블 더미 데이터 삽입
+-- status: E(사용)
+-- created_id / updated_id는 임시 사용자 'note_admin'으로 지정
+
+INSERT INTO t_note (note_sid, title, content, status, created_at, created_id, updated_at, updated_id) VALUES
+(1,
+'CRISPR-Cas9 유전자 가위 기술을 활용한 유전자 편집 실험 결과 분석 및 차세대 치료법 개발을 위한 종합적인 연구 보고서',
+$$Eukaryotic cell(진핵세포)는 분명한 막으로 둘러싸인 핵과 다양한 세포 소기관을 지니는 진핵생물을 구성하는 기본 단위입니다. 진핵세포는 박테리아 및 고세균과 같은 원핵세포(prokaryote)와 구별되며, 동물, 식물, 곰팡이, 그리고 많은 단세포 생물이 이에 해당합니다.
+
+**1. 진핵세포란 무엇인가?**
+
+핵심 정의:
+진핵세포는 유전물질(DNA)이 핵막으로 둘러싸인 '핵' 내에 저장되어 있는 세포입니다. 이 점이 원핵세포와의 가장 큰 차별점이며, 동물, 식물, 곰팡이, 해조류 등 모든 다세포 생물을 포함한 생명체의 기본 구조입니다.
+
+이름 유래:
+'Eukaryote'는 그리스어 'eu(좋은, 참된)' + 'karyon(견과, 핵)'에서 유래되었습니다. 즉, '참된 핵을 가진 세포'를 뜻합니다.
+
+**2. 주요 구조적 특징**
+
+핵(Nucleus):
+이중막(핵막)으로 둘러싸여 있으며, 유전정보(염색체)가 저장 및 관리됩니다. 핵막에는 핵공(구멍)이 있어 물질이 출입할 수 있습니다.
+
+세포 소기관(Organelles, 막으로 경계됨):
+• 미토콘드리아: "세포 발전소"로 불리며, 산소를 사용해 에너지원(ATP) 생성.
+• 골지체(Golgi apparatus): 단백질을 변형, 분류, 수송.
+• 소포체(Endoplasmic Reticulum, ER): 단백질 및 지질 합성, 운반.
+• 리소좀: 분해효소 보유, 세포 내 대사 및 청소 담당.
+• 엽록체(Chloroplast): 식물/일부 조류에서 발견, 광합성 담당(내부 DNA 보유).
+
+세포골격(Cytoskeleton):
+액틴 마이크로필라멘트, 미세소관 등으로 복잡하게 구성되어 세포 형태 유지, 이동, 내부 운송, 세포분열에 기여.
+
+생식 및 분열:
+• 유성 생식: 감수분열 및 배우자(난자·정자) 융합을 통해 유전적 다양성 확보.
+• 무성 분열: 체세포분열(유사분열, mitosis)을 통해 새로운 개체 생성.
+
+**3. 진핵세포의 다양성과 진화**
+
+생물 다양성:
+가장 거대한 청목균류(glaucophytes)부터 블루웰, 거대나무에 이르기까지 단세포부터 다세포에 이르기까지 다양한 생명체를 구성합니다. 단세포 진핵생물(예: 원생생물)과 다세포 진핵생물(동물, 식물, 곰팡이 등) 모두 포함합니다.
+
+기원 및 진화:
+진핵세포는 약 16~28억 년 전, 고세균(특히 Promethearchaeota) 조상과 산소흡성 세균이 내공생(symbiogenesis)을 통해 탄생했다고 추정됩니다. 이 내공생 과정은 미토콘드리아(산소호흡), 아울러 식물에서는 시아노박테리아의 추가 내공생으로 엽록체(광합성)가 유래하였습니다.
+
+다세포성 및 계통 분화:
+복잡한 다세포 생명체는 진핵생물 내에서 반복적으로 독립적으로 진화하였으며, 진핵세포의 크기는 원핵세포의 약 10,000배에 달할 정도로 큽니다.
+
+**4. 진핵세포의 기능적 특징**
+
+세포 내 수송/물질대사:
+내부 막구조(소포, 소포체, 골지체 등)와 소기관 간의 복잡한 분자 수송, 에너지 대사, 단백질 가공 및 분해 과정이 발달되어 있습니다.
+
+세포골격 및 이동:
+액틴, 마이오신, 튜불린 등으로 구성된 세포골격을 활용하여 세포 움직임, 구조유지, 분열 및 내·외부 물질 운반에 관여합니다.
+
+유전 및 생식:
+유성(감수분열, 배우자 융합) 및 무성(유사분열) 생식을 통한 유전자 재조합 및 다양성 부여.
+
+**5. 진핵세포와 원핵세포의 주요 차이**
+
+| 특징 | 진핵세포 | 원핵세포 |
+|------|---------|---------|
+| 핵 구조 | 핵막으로 둘러싼 핵 존재 | 핵 없음(유전물질 노출) |
+| 소기관 | 다양한 막성 소기관 있음 | 없음 |
+| 크기 | 대체로 큼(10,000배 이상) | 대체로 작음 |
+| 세포골격 | 잘 발달함 | 발달 미약 또는 없음 |
+| 분열 방식 | 유사/감수분열 | 이분법적 분열 |
+| 생식 방법 | 유성 및 무성 생식 | 주로 무성 생식 |
+
+**6. 최근 과학적 연구 동향**
+
+진핵세포 기원의 분자생물학적, 구조생물학적 증거(예: 고세균에서 진핵세포형 세포골격 확인 등)가 꾸준히 축적되고 있습니다. 고해상도 이미징(크라이오전자현미경 등)을 통한 세포 구조 연구가 활성화되어 세포의 미세환경 이해가 증진되고 있습니다.$$,
+'E',
+TIMESTAMP '2025-11-30 09:00:00',
+'note_admin',
+TIMESTAMP '2025-11-30 09:00:00',
+'note_admin'),
+(2,
+'단백질 구조 예측 모델 비교',
+'AlphaFold2와 RoseTTAFold를 비교 분석한 결과, AlphaFold2가 더 높은 정확도를 보였습니다...',
+'E',
+TIMESTAMP '2025-11-29 09:00:00',
+'note_admin',
+TIMESTAMP '2025-11-29 09:00:00',
+'note_admin'),
+(3,
+'mRNA 백신 안정성 연구',
+'다양한 온도 조건에서 mRNA 백신의 안정성을 테스트했습니다. -80°C에서 가장 안정적이었으며...',
+'E',
+TIMESTAMP '2025-11-28 09:00:00',
+'note_admin',
+TIMESTAMP '2025-11-28 09:00:00',
+'note_admin'),
+(4,
+'암세포 증식 억제 메커니즘',
+'신규 화합물이 암세포의 증식을 억제하는 메커니즘을 규명했습니다. p53 경로의 활성화가 주요 기전으로...',
+'E',
+TIMESTAMP '2025-11-27 09:00:00',
+'note_admin',
+TIMESTAMP '2025-11-27 09:00:00',
+'note_admin'),
+(5,
+'면역 반응 분석 프로토콜',
+'Flow cytometry를 이용한 T cell 활성화 분석 프로토콜을 최적화했습니다...',
+'E',
+TIMESTAMP '2025-11-26 09:00:00',
+'note_admin',
+TIMESTAMP '2025-11-26 09:00:00',
+'note_admin');
+
+-- t_note_tag 테이블 더미 데이터 삽입
+INSERT INTO t_note_tag (note_sid, tag_name, sort_order, created_at, created_id) VALUES
+(1, 'CRISPR', 1, TIMESTAMP '2025-11-30 09:05:00', 'note_admin'),
+(1, '유전자편집', 2, TIMESTAMP '2025-11-30 09:05:10', 'note_admin'),
+(1, '실험결과', 3, TIMESTAMP '2025-11-30 09:05:20', 'note_admin'),
+(1, '차세대치료', 4, TIMESTAMP '2025-11-30 09:05:30', 'note_admin'),
+(1, '연구보고서', 5, TIMESTAMP '2025-11-30 09:05:40', 'note_admin'),
+(2, '단백질', 1, TIMESTAMP '2025-11-29 09:05:00', 'note_admin'),
+(2, 'AI', 2, TIMESTAMP '2025-11-29 09:05:10', 'note_admin'),
+(2, '구조예측', 3, TIMESTAMP '2025-11-29 09:05:20', 'note_admin'),
+(2, 'AlphaFold2', 4, TIMESTAMP '2025-11-29 09:05:30', 'note_admin'),
+(2, 'RoseTTAFold', 5, TIMESTAMP '2025-11-29 09:05:40', 'note_admin'),
+(3, 'mRNA', 1, TIMESTAMP '2025-11-28 09:05:00', 'note_admin'),
+(3, '백신', 2, TIMESTAMP '2025-11-28 09:05:10', 'note_admin'),
+(3, '안정성', 3, TIMESTAMP '2025-11-28 09:05:20', 'note_admin'),
+(3, '저온보관', 4, TIMESTAMP '2025-11-28 09:05:30', 'note_admin'),
+(3, '실험데이터', 5, TIMESTAMP '2025-11-28 09:05:40', 'note_admin'),
+(4, '암', 1, TIMESTAMP '2025-11-27 09:05:00', 'note_admin'),
+(4, '세포생물학', 2, TIMESTAMP '2025-11-27 09:05:10', 'note_admin'),
+(4, 'p53', 3, TIMESTAMP '2025-11-27 09:05:20', 'note_admin'),
+(4, '증식억제', 4, TIMESTAMP '2025-11-27 09:05:30', 'note_admin'),
+(4, '신규화합물', 5, TIMESTAMP '2025-11-27 09:05:40', 'note_admin'),
+(5, '면역학', 1, TIMESTAMP '2025-11-26 09:05:00', 'note_admin'),
+(5, '프로토콜', 2, TIMESTAMP '2025-11-26 09:05:10', 'note_admin'),
+(5, 'FlowCytometry', 3, TIMESTAMP '2025-11-26 09:05:20', 'note_admin'),
+(5, 'T세포', 4, TIMESTAMP '2025-11-26 09:05:30', 'note_admin'),
+(5, '분석가이드', 5, TIMESTAMP '2025-11-26 09:05:40', 'note_admin');
+
+-- t_note_comment 테이블 더미 데이터 삽입
+INSERT INTO t_note_comment (note_sid, highlighted_text, comment_text, position_top, created_at, created_id, updated_at, updated_id) VALUES
+(1, 'CRISPR-Cas9 유전자 가위 기술', '이 결과를 바탕으로 추가 실험 설계를 진행해보죠.', 120, TIMESTAMP '2025-11-30 10:00:00', 'note_reviewer', TIMESTAMP '2025-11-30 10:00:00', 'note_reviewer'),
+(2, 'AlphaFold2', '다음 버전 모델도 비교 리스트에 넣어주세요.', 90, TIMESTAMP '2025-11-29 10:00:00', 'note_reviewer', TIMESTAMP '2025-11-29 10:00:00', 'note_reviewer'),
+(3, 'mRNA 백신의 안정성', '온도별 변화를 그래프로 정리하면 좋겠습니다.', 150, TIMESTAMP '2025-11-28 10:00:00', 'note_reviewer', TIMESTAMP '2025-11-28 10:00:00', 'note_reviewer'),
+(4, 'p53 경로의 활성화', '메커니즘을 도식화해서 첨부 부탁드립니다.', 110, TIMESTAMP '2025-11-27 10:00:00', 'note_reviewer', TIMESTAMP '2025-11-27 10:00:00', 'note_reviewer'),
+(5, 'T cell 활성화 분석 프로토콜', '검증 데이터를 한 세트 더 추가합시다.', 130, TIMESTAMP '2025-11-26 10:00:00', 'note_reviewer', TIMESTAMP '2025-11-26 10:00:00', 'note_reviewer');
+
 -- t_chat 테이블 더미 데이터 삽입
 -- 상태: E(사용), D(Disabled), R(Removed)
 -- pinned: Y(고정), N(일반)
@@ -428,3 +574,87 @@ INSERT INTO t_user_calendar (calendar_name, color, is_visible, sort_order, creat
 ('실험 일정', '#3b82f6', 1, 1, 'user001', 'user001', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
 ('미팅 일정', '#8b5cf6', 1, 2, 'user001', 'user001', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
 ('개인 일정', '#10b981', 1, 3, 'user001', 'user001', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+
+-- ============================================
+-- t_experiment 테이블 더미 데이터 삽입
+-- ============================================
+-- status: E(Enabled), R(Ready), P(In Progress), C(Completed), F(Failed), D(Disabled)
+-- progress: 0-100 (진행률)
+-- created_id, updated_id: 사용자 ID (예: 'user001')
+
+-- 실험 데이터 삽입
+INSERT INTO t_experiment (pipeline_name, status, progress, protein_sequence, protein_name, created_id, updated_id, created_at, updated_at) VALUES
+-- Customer Support Assistant - 진행중 (65%)
+('Customer Support Assistant', 'P', 65, NULL, NULL, 'user001', 'user001', CURRENT_TIMESTAMP - INTERVAL '2 days', CURRENT_TIMESTAMP - INTERVAL '2 days'),
+-- Legal Document Analyzer - 준비 (25%)
+('Legal Document Analyzer', 'R', 25, NULL, NULL, 'user001', 'user001', CURRENT_TIMESTAMP - INTERVAL '1 day', CURRENT_TIMESTAMP - INTERVAL '1 day'),
+-- Medical Diagnosis Helper - 완료 (100%)
+('Medical Diagnosis Helper', 'C', 100, NULL, NULL, 'user001', 'user001', CURRENT_TIMESTAMP - INTERVAL '12 hours', CURRENT_TIMESTAMP - INTERVAL '12 hours');
+
+-- ============================================
+-- t_experiment_tool_selection 테이블 더미 데이터 삽입
+-- ============================================
+-- 실험과 도구를 연결하는 중간 테이블
+-- 도구 이름으로 tool_sid를 찾아서 연결
+-- user001 대신 내 아이디 입력
+
+-- Customer Support Assistant: RFdiffusion, ProteinMPNN
+INSERT INTO t_experiment_tool_selection (experiment_sid, tool_sid, sort_order, tool_options_json, created_id, updated_id, created_at, updated_at)
+SELECT 
+    e.experiment_sid,
+    t.tool_sid,
+    CASE 
+        WHEN t.tool_name = 'RFdiffusion' THEN 1
+        WHEN t.tool_name = 'ProteinMPNN' THEN 2
+        ELSE 0
+    END as sort_order,
+    NULL as tool_options_json,
+    'user001' as created_id,
+    'user001' as updated_id,
+    e.created_at,
+    e.created_at
+FROM t_experiment e
+CROSS JOIN t_experiment_tool t
+WHERE e.pipeline_name = 'Customer Support Assistant'
+  AND t.tool_name IN ('RFdiffusion', 'ProteinMPNN');
+
+-- Legal Document Analyzer: AlphaFold, ColabFold, DiffDock
+INSERT INTO t_experiment_tool_selection (experiment_sid, tool_sid, sort_order, tool_options_json, created_id, updated_id, created_at, updated_at)
+SELECT 
+    e.experiment_sid,
+    t.tool_sid,
+    CASE 
+        WHEN t.tool_name = 'AlphaFold2' OR t.tool_name = 'AlphaFold' THEN 1
+        WHEN t.tool_name = 'ColabFold' THEN 2
+        WHEN t.tool_name = 'DiffDock' THEN 3
+        ELSE 0
+    END as sort_order,
+    NULL as tool_options_json,
+    'user001' as created_id,
+    'user001' as updated_id,
+    e.created_at,
+    e.created_at
+FROM t_experiment e
+CROSS JOIN t_experiment_tool t
+WHERE e.pipeline_name = 'Legal Document Analyzer'
+  AND (t.tool_name IN ('AlphaFold2', 'AlphaFold', 'ColabFold', 'DiffDock'));
+
+-- Medical Diagnosis Helper: ProteinMPNN, AlphaFold
+INSERT INTO t_experiment_tool_selection (experiment_sid, tool_sid, sort_order, tool_options_json, created_id, updated_id, created_at, updated_at)
+SELECT 
+    e.experiment_sid,
+    t.tool_sid,
+    CASE 
+        WHEN t.tool_name = 'ProteinMPNN' THEN 1
+        WHEN t.tool_name = 'AlphaFold2' OR t.tool_name = 'AlphaFold' THEN 2
+        ELSE 0
+    END as sort_order,
+    NULL as tool_options_json,
+    'user001' as created_id,
+    'user001' as updated_id,
+    e.created_at,
+    e.created_at
+FROM t_experiment e
+CROSS JOIN t_experiment_tool t
+WHERE e.pipeline_name = 'Medical Diagnosis Helper'
+  AND (t.tool_name IN ('ProteinMPNN', 'AlphaFold2', 'AlphaFold'));

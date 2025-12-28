@@ -12,29 +12,32 @@
         </div>
         
         <div class="modal-body">
-            <div class="form-group">
-                <label for="simulationTitleInput">시뮬레이션 타이틀</label>
-                <input
-                    type="text"
-                    id="simulationTitleInput"
-                    placeholder="시뮬레이션 이름을 입력하세요"
-                    class="form-input"
-                />
-            </div>
-
-            <!-- Protein Sequence Display -->
-            <div class="form-group" id="simulationProteinSequenceContainer" style="display: none;">
-                <label>단백질 서열</label>
-                <div class="sequence-preview" id="simulationProteinSequence">
-                    <!-- Sequence will be displayed here -->
+            <div class="simulation-modal-content">
+                <!-- Simulation Title Input -->
+                <div class="simulation-form-field">
+                    <label for="simulationTitleInput" class="simulation-label">시뮬레이션 타이틀</label>
+                    <input
+                        type="text"
+                        id="simulationTitleInput"
+                        placeholder="시뮬레이션 이름을 입력하세요"
+                        class="simulation-title-input"
+                    />
                 </div>
-            </div>
 
-            <!-- Selected Tools -->
-            <div class="form-group">
-                <h3 class="form-group-title">선택된 도구</h3>
-                <div class="selected-tools-list" id="simulationSelectedToolsList">
-                    <!-- Selected tools will be rendered here -->
+                <!-- Protein Sequence Display -->
+                <div class="simulation-form-field" id="simulationProteinSequenceContainer" style="display: none;">
+                    <label class="simulation-label">단백질 서열</label>
+                    <div class="simulation-sequence-preview" id="simulationProteinSequence">
+                        <!-- Sequence will be displayed here -->
+                    </div>
+                </div>
+
+                <!-- Selected Tools -->
+                <div class="simulation-form-field">
+                    <h3 class="simulation-tools-title">선택된 도구</h3>
+                    <div class="simulation-selected-tools-list" id="simulationSelectedToolsList">
+                        <!-- Selected tools will be rendered here -->
+                    </div>
                 </div>
             </div>
         </div>
