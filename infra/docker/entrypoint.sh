@@ -10,8 +10,8 @@ echo "Loading configuration from Parameter Store..."
 AWS_REGION="${AWS_REGION:-$(curl -s --max-time 5 http://169.254.169.254/latest/meta-data/placement/region 2>/dev/null || echo 'ap-northeast-2')}"
 
 # CloudFormation 스택 이름 (환경 변수 또는 기본값)
+# 메인 스택 이름 (중첩 스택 구조)
 STACK_NAME="${STACK_NAME:-skn18-final-infra}"
-RABBITMQ_STACK_NAME="${RABBITMQ_STACK_NAME:-skn18-rabbitmq-infra}"
 
 # AWS CLI가 설치되어 있고 IAM Role이 있는지 확인
 if command -v aws &> /dev/null; then
@@ -19,6 +19,7 @@ if command -v aws &> /dev/null; then
   
   # ========================================
   # 1. CloudFormation에서 PostgreSQL EC2 IP 가져오기
+  # 메인 스택의 PublicIp Output (CoreInfraStack에서 전달됨)
   # ========================================
   POSTGRES_HOST=$(aws cloudformation describe-stacks \
     --stack-name "$STACK_NAME" \
@@ -38,9 +39,10 @@ if command -v aws &> /dev/null; then
   
   # ========================================
   # 2. CloudFormation에서 RabbitMQ EC2 IP 가져오기
+  # 메인 스택의 RabbitMQPublicIp Output (RabbitMQInfraStack에서 전달됨)
   # ========================================
   RABBITMQ_HOST=$(aws cloudformation describe-stacks \
-    --stack-name "$RABBITMQ_STACK_NAME" \
+    --stack-name "$STACK_NAME" \
     --region "$AWS_REGION" \
     --query 'Stacks[0].Outputs[?OutputKey==`RabbitMQPublicIp`].OutputValue' \
     --output text 2>/dev/null || echo "")
