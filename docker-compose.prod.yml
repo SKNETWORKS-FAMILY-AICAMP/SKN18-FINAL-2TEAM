@@ -16,18 +16,29 @@ services:
     # env_file 제거 - Parameter Store에서 모든 설정을 읽어옴
     # db, neo4j, rabbitmq는 외부 EC2를 사용하므로 depends_on 제거
     environment:
-      # PostgreSQL과 RabbitMQ 설정은 entrypoint.sh에서 Parameter Store에서 자동으로 읽음
-      # 환경 변수가 이미 설정되어 있으면 그 값을 사용 (덮어쓰지 않음)
+      # 모든 설정은 GitHub Actions 배포 시 Parameter Store에서 읽어서 환경변수로 주입됨
+      # .env 파일 없이 SSM만으로 배포 (방식 A)
       AWS_REGION: ${AWS_REGION:-ap-northeast-2}
       STACK_NAME: ${STACK_NAME:-skn18-final-infra}
-      # IAM Role을 사용하기 위해 EC2 메타데이터 서비스 접근 필요
-      AWS_CONTAINER_CREDENTIALS_RELATIVE_URI: ""
-      # Parameter Store에서 읽지 못할 경우를 대비한 fallback 값
-      # CloudFormation Outputs에서 확인한 값:
-      # - PublicIp: 43.202.53.52 (PostgreSQL)
-      # - RabbitMQPublicIp: 43.201.55.197
-      POSTGRES_HOST: ${POSTGRES_HOST:-43.202.53.52}
-      RABBITMQ_HOST: ${RABBITMQ_HOST:-43.201.55.197}
+      # PostgreSQL 설정 (SSM에서 주입)
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      # Neo4j 설정 (SSM에서 주입)
+      NEO4J_BOLT_HOST: ${NEO4J_BOLT_HOST}
+      NEO4J_BOLT_PORT: ${NEO4J_BOLT_PORT:-7687}
+      NEO4J_USER: ${NEO4J_USER:-neo4j}
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD}
+      # RabbitMQ 설정 (SSM에서 주입)
+      RABBITMQ_HOST: ${RABBITMQ_HOST}
+      RABBITMQ_PORT: ${RABBITMQ_PORT:-5672}
+      RABBITMQ_USER: ${RABBITMQ_USER}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+      # Django 설정 (SSM에서 주입, 옵션)
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
     # Entrypoint가 마이그레이션을 실행한 후 CMD 실행
     command: >
       gunicorn config.wsgi:application
