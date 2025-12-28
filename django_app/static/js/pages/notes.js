@@ -19,54 +19,9 @@ let btnDateFilter, dateFilterText, dateFilterPopover, dateFilterCalendar, dateFi
 let btnResetSearch, btnSearch;
 // window.airDatepickerInstance는 window 객체에 저장 (중복 초기화 방지 및 디버깅용)
 
-// Mock data
-const notes = [
-    {
-        id: 1,
-        title: 'CRISPR-Cas9 유전자 가위 기술을 활용한 유전자 편집 실험 결과 분석 및 차세대 치료법 개발을 위한 종합적인 연구 보고서',
-        date: '2025-11-30',
-        content: `Eukaryotic cell(진핵세포)는 분명한 막으로 둘러싸인 핵과 다양한 세포 소기관을 지니는 진핵생물을 구성하는 기본 단위입니다.`,
-        shared: 3,
-        comments: 5,
-        tags: ['CRISPR', '유전자편집']
-    },
-    {
-        id: 2,
-        title: '단백질 구조 예측 모델 비교',
-        date: '2025-11-29',
-        content: 'AlphaFold2와 RoseTTAFold를 비교 분석한 결과, AlphaFold2가 더 높은 정확도를 보였습니다...',
-        shared: 2,
-        comments: 3,
-        tags: ['단백질', 'AI', '구조예측']
-    },
-    {
-        id: 3,
-        title: 'mRNA 백신 안정성 연구',
-        date: '2025-11-28',
-        content: '다양한 온도 조건에서 mRNA 백신의 안정성을 테스트했습니다. -80°C에서 가장 안정적이었으며...',
-        shared: 5,
-        comments: 8,
-        tags: ['mRNA', '백신', '안정성']
-    },
-    {
-        id: 4,
-        title: '암세포 증식 억제 메커니즘',
-        date: '2025-11-27',
-        content: '신규 화합물이 암세포의 증식을 억제하는 메커니즘을 규명했습니다. p53 경로의 활성화가 주요 기전으로...',
-        shared: 1,
-        comments: 2,
-        tags: ['암', '세포생물학']
-    },
-    {
-        id: 5,
-        title: '면역 반응 분석 프로토콜',
-        date: '2025-11-26',
-        content: 'Flow cytometry를 이용한 T cell 활성화 분석 프로토콜을 최적화했습니다...',
-        shared: 4,
-        comments: 6,
-        tags: ['면역학', '프로토콜']
-    }
-];
+// Notes data state
+let notes = [];
+let isLoadingNotes = false;
 
 // Initialize
 function initNotes() {
@@ -120,6 +75,50 @@ function initNotes() {
     // Render initial state
     renderNotesList();
     renderPagination();
+
+    // Load notes from API
+    loadNotesFromApi();
+}
+
+// Load notes via API
+async function loadNotesFromApi() {
+    if (isLoadingNotes) return;
+    isLoadingNotes = true;
+    
+    try {
+        const response = await fetch('/api/notes/', {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+            },
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Failed to load notes: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        const apiNotes = Array.isArray(data?.results) ? data.results : (Array.isArray(data) ? data : []);
+        notes = apiNotes.map(normalizeApiNote);
+    } catch (error) {
+        console.error('Error loading notes:', error);
+    } finally {
+        isLoadingNotes = false;
+        renderNotesList();
+        renderPagination();
+    }
+}
+
+function normalizeApiNote(note) {
+    return {
+        id: note?.id ?? null,
+        title: note?.title || '제목 없음',
+        content: note?.content || '',
+        date: note?.date || '',
+        shared: typeof note?.shared === 'number' ? note.shared : 0,
+        comments: typeof note?.comments === 'number' ? note.comments : 0,
+        tags: Array.isArray(note?.tags) ? note.tags : [],
+    };
 }
 
 // Handle create note - redirect to editor page
@@ -333,10 +332,12 @@ function renderCardView(currentNotes) {
         return;
     }
 
-    notesGrid.innerHTML = currentNotes.map(note => `
+    notesGrid.innerHTML = currentNotes.map(note => {
+        const previewContent = getNoteContentPreview(note.content);
+        return `
         <div class="note-card" data-note-id="${note.id}">
             <h3 class="note-title">${escapeHtml(note.title)}</h3>
-            <p class="note-content">${escapeHtml(note.content)}</p>
+            <p class="note-content">${escapeHtml(previewContent)}</p>
             <div class="note-tags">
                 ${note.tags.map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join('')}
             </div>
@@ -354,7 +355,8 @@ function renderCardView(currentNotes) {
                 </div>
             </div>
         </div>
-    `).join('');
+    `;
+    }).join('');
 
     // Attach click listeners
     const noteCards = notesGrid.querySelectorAll('.note-card');
@@ -548,6 +550,32 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+function getNoteContentPreview(content) {
+    if (!content) return '';
+    const normalized = content.replace(/\r\n/g, '\n').trim();
+    if (!normalized) return '';
+    
+    const lines = normalized.split('\n').filter(line => line.trim() !== '');
+    const previewLines = [];
+    for (const line of lines) {
+        previewLines.push(line.trim());
+        if (previewLines.length >= 3) {
+            break;
+        }
+    }
+    
+    let preview = previewLines.join(' ');
+    if (lines.length > 3 || normalized.length > preview.length) {
+        preview = `${preview} ...`;
+    }
+    
+    if (preview.length > 350) {
+        preview = `${preview.slice(0, 350)} ...`;
+    }
+    
+    return preview;
 }
 
 // Initialize on DOM ready
