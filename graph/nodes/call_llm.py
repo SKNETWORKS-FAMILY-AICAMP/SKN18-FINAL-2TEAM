@@ -99,30 +99,59 @@ def gpt5_nano(prompt: str):
 def sllm(prompt: str, temperature: float = 0.7, max_tokens: int = 1024):
     """
     SLLM 모델 호출 (RunPod 프록시 사용)
-    
+
     Args:
         prompt: 입력 프롬프트
         temperature: 생성 온도 (기본값: 0.7)
         max_tokens: 최대 토큰 수 (기본값: 1024)
-    
+
     Returns:
         모델 응답 텍스트
-    
+
     Raises:
         Exception: Pod가 비활성화되었거나 연결 오류가 발생한 경우
     """
     from openai import OpenAI
-    
-    sllm_client = OpenAI(model=MODEL_NAME, base_url=SLLM_BASE_URL, api_key=RUNPOD_API_KEY)
-    
+    import time
+
+    print(f"\n{'='*60}")
+    print(f"[SLLM] 호출 시작")
+    print(f"  Model: {MODEL_NAME}")
+    print(f"  Base URL: {SLLM_BASE_URL}")
+    print(f"  Temperature: {temperature}")
+    print(f"  Max Tokens: {max_tokens}")
+    print(f"  Prompt Length: {len(prompt)} chars")
+    print(f"  Prompt Preview: {prompt[:100]}...")
+    print(f"{'='*60}\n")
+
+    sllm_client = OpenAI(
+        base_url=SLLM_BASE_URL,
+        api_key=RUNPOD_API_KEY,
+        timeout=60.0  # 60초 타임아웃
+    )
+
     try:
+        start_time = time.time()
+
         resp = sllm_client.chat.completions.create(
-            model=MODEL_NAME,  # 모델 이름은 서버 설정에 따라 조정 가능
+            model=MODEL_NAME,
             messages=[{"role": "user", "content": prompt}],
             temperature=temperature,
             max_tokens=max_tokens
         )
-        return _parse_openai_response(resp)
+
+        elapsed = time.time() - start_time
+        response_text = _parse_openai_response(resp)
+
+        print(f"\n{'='*60}")
+        print(f"[SLLM] 응답 성공")
+        print(f"  Elapsed Time: {elapsed:.2f}s")
+        print(f"  Response Length: {len(response_text)} chars")
+        print(f"  Response Preview: {response_text[:100]}...")
+        print(f"{'='*60}\n")
+
+        return response_text
+
     except Exception as e:
         error_msg = f"[SLLM ERROR] Pod가 비활성화되었거나 연결할 수 없습니다: {str(e)}"
         print(error_msg)
