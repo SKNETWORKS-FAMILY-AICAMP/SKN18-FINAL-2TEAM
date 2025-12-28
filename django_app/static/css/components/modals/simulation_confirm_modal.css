@@ -1,5 +1,23 @@
 /* Simulation Confirm Modal Styles */
 
+/* Modal container size adjustments */
+#simulationConfirmModal.modal-overlay .modal-container.modal-medium {
+    width: 90vw;
+    max-width: 672px; /* max-w-2xl */
+    min-height: 320px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+}
+
+#simulationConfirmModal .modal-body {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
 .sequence-preview {
     height: 130px;
     overflow-y: auto;

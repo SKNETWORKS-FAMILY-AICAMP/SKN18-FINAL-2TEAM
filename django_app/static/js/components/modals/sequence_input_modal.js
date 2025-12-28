@@ -1,18 +1,41 @@
 // Sequence Input Modal JavaScript
 
+(function() {
+    'use strict';
+    
+    console.log('[SequenceInputModal] IIFE starting...');
+
 const modalId = 'sequenceInputModal';
 let currentSequence = '';
 
-// DOM elements
-const modal = document.getElementById(modalId);
-const sequenceTextarea = document.getElementById('sequenceInputTextarea');
-const charCount = document.getElementById('sequenceInputCharCount');
-const applyBtn = document.getElementById('sequenceInputApplyBtn');
-const infoBox = document.getElementById('sequenceInputInfo');
+// DOM elements (will be initialized when DOM is ready)
+let modal = null;
+let sequenceTextarea = null;
+let charCount = null;
+let applyBtn = null;
+let infoBox = null;
+
+// Initialize DOM elements
+function initDOMElements() {
+    modal = document.getElementById(modalId);
+    sequenceTextarea = document.getElementById('sequenceInputModalTextarea');
+    charCount = document.getElementById('sequenceInputModalCharCount');
+    applyBtn = document.getElementById('sequenceInputModalApplyBtn');
+    infoBox = document.getElementById('sequenceInputModalInfo');
+    
+    return !!modal; // Return true if modal was found
+}
 
 // Initialize modal
 function initSequenceInputModal() {
-    if (!modal) return;
+    // Initialize DOM elements if not already done
+    if (!modal) {
+        initDOMElements();
+    }
+    if (!modal) {
+        console.warn('[SequenceInputModal] Modal element not found in initSequenceInputModal');
+        return false;
+    }
 
     // Close button
     const closeBtn = modal.querySelector('.modal-close-btn');
@@ -36,16 +59,35 @@ function initSequenceInputModal() {
 
     // Apply button
     applyBtn?.addEventListener('click', handleApply);
+    
+    return true;
 }
 
 // Open modal
 function openSequenceInputModal(initialSequence = '') {
-    if (!modal) return;
+    console.log('[SequenceInputModal] ====== openSequenceInputModal called ======');
+    console.log('[SequenceInputModal] initialSequence:', initialSequence);
+    
+    // Ensure DOM elements are initialized
+    if (!modal) {
+        console.log('[SequenceInputModal] Modal not found, initializing DOM elements...');
+        initDOMElements();
+    }
+    if (!modal) {
+        console.error('[SequenceInputModal] Modal not found after initialization');
+        return;
+    }
+    
+    console.log('[SequenceInputModal] Modal found:', modal);
+    console.log('[SequenceInputModal] Modal current display:', window.getComputedStyle(modal).display);
 
     currentSequence = initialSequence;
     
     if (sequenceTextarea) {
         sequenceTextarea.value = initialSequence;
+        console.log('[SequenceInputModal] Textarea value set:', sequenceTextarea.value);
+    } else {
+        console.warn('[SequenceInputModal] sequenceTextarea not found');
     }
 
     updateCharCount();
@@ -53,18 +95,50 @@ function openSequenceInputModal(initialSequence = '') {
     updateInfoBox();
 
     modal.style.display = 'flex';
+    modal.classList.add('active'); // Add active class for CSS
     document.body.style.overflow = 'hidden';
+    
+    // Check modal visibility after setting display
+    setTimeout(() => {
+        const computedStyle = window.getComputedStyle(modal);
+        const rect = modal.getBoundingClientRect();
+        console.log('[SequenceInputModal] Modal visibility check:', {
+            display: computedStyle.display,
+            visibility: computedStyle.visibility,
+            opacity: computedStyle.opacity,
+            zIndex: computedStyle.zIndex,
+            position: computedStyle.position,
+            width: rect.width,
+            height: rect.height,
+            top: rect.top,
+            left: rect.left,
+            isVisible: rect.width > 0 && rect.height > 0 && computedStyle.display !== 'none'
+        });
+        
+        if (rect.width === 0 || rect.height === 0) {
+            console.warn('[SequenceInputModal] WARNING: Modal has zero dimensions!');
+        }
+    }, 50);
+    
+    console.log('[SequenceInputModal] Modal display set to flex');
+    console.log('[SequenceInputModal] Modal computed display:', window.getComputedStyle(modal).display);
     
     // Focus textarea
     if (sequenceTextarea) {
-        setTimeout(() => sequenceTextarea.focus(), 100);
+        setTimeout(() => {
+            sequenceTextarea.focus();
+            console.log('[SequenceInputModal] Textarea focused');
+        }, 100);
     }
+    
+    console.log('[SequenceInputModal] ====== Modal opened ======');
 }
 
 // Close modal
 function closeModal() {
     if (!modal) return;
     modal.style.display = 'none';
+    modal.classList.remove('active'); // Remove active class
     document.body.style.overflow = '';
     
     // Reset
@@ -101,7 +175,7 @@ function updateApplyButton() {
 // Update info box
 function updateInfoBox() {
     if (!infoBox) return;
-    infoBox.style.display = currentSequence.length > 0 ? 'block' : 'none';
+    infoBox.style.display = currentSequence.length > 0 ? 'flex' : 'none';
 }
 
 // Handle apply
@@ -127,19 +201,21 @@ function handleApply() {
     });
     document.dispatchEvent(event);
 
-    // Update experiment page sequence
+    // Update experiment page sequence via ExperimentPage API (not direct DOM manipulation)
+    // Note: Do NOT update proteinSequenceInput field - modal should be independent
     if (window.ExperimentPage) {
+        // Update sequence query
         if (window.ExperimentPage.sequenceQuery !== undefined) {
             window.ExperimentPage.sequenceQuery = currentSequence;
         }
+        
+        // Update selected protein
         if (window.ExperimentPage.selectedProtein !== undefined) {
             window.ExperimentPage.selectedProtein = customProtein;
         }
         
-        const proteinInput = document.getElementById('proteinSequenceInput');
-        if (proteinInput) {
-            proteinInput.value = currentSequence;
-        }
+        // Do NOT update proteinSequenceInput field - keep modal independent
+        // The sequence is stored in sequenceQuery and selectedProtein, which is sufficient
 
         // Update pipeline visualization
         if (window.ExperimentPage.updatePipelineSection) {
@@ -154,18 +230,37 @@ function handleApply() {
     closeModal();
 }
 
-// Initialize when DOM is ready
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initSequenceInputModal);
-} else {
-    initSequenceInputModal();
-}
-
-// Export for use in other modules
-if (typeof window !== 'undefined') {
+    // Export to window immediately
+    console.log('[SequenceInputModal] Assigning window.SequenceInputModal...');
     window.SequenceInputModal = {
         open: openSequenceInputModal,
         close: closeModal,
         init: initSequenceInputModal,
+        initDOMElements: initDOMElements,
     };
-}
+    console.log('[SequenceInputModal] window.SequenceInputModal assigned:', window.SequenceInputModal);
+    
+    // Initialize when DOM is ready
+    function tryInit() {
+        if (initDOMElements() && initSequenceInputModal()) {
+            console.log('[SequenceInputModal] Initialized successfully');
+            return true;
+        }
+        return false;
+    }
+    
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() {
+            if (!tryInit()) {
+                setTimeout(tryInit, 100);
+            }
+        });
+    } else {
+        // DOM already ready
+        if (!tryInit()) {
+            setTimeout(tryInit, 100);
+        }
+    }
+    
+    console.log('[SequenceInputModal] Script loaded, window.SequenceInputModal available');
+})();

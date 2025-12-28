@@ -1,20 +1,42 @@
 // Simulation Confirm Modal JavaScript
 
+(function() {
+    'use strict';
+
 const modalId = 'simulationConfirmModal';
 let selectedToolsData = [];
 let currentSequence = '';
 
-// DOM elements
-const modal = document.getElementById(modalId);
-const titleInput = document.getElementById('simulationTitleInput');
-const sequenceContainer = document.getElementById('simulationProteinSequenceContainer');
-const sequenceDisplay = document.getElementById('simulationProteinSequence');
-const toolsList = document.getElementById('simulationSelectedToolsList');
-const runBtn = document.getElementById('simulationConfirmRunBtn');
+// DOM elements (will be initialized when DOM is ready)
+let modal = null;
+let titleInput = null;
+let sequenceContainer = null;
+let sequenceDisplay = null;
+let toolsList = null;
+let runBtn = null;
+
+// Initialize DOM elements
+function initDOMElements() {
+    modal = document.getElementById(modalId);
+    titleInput = document.getElementById('simulationTitleInput');
+    sequenceContainer = document.getElementById('simulationProteinSequenceContainer');
+    sequenceDisplay = document.getElementById('simulationProteinSequence');
+    toolsList = document.getElementById('simulationSelectedToolsList');
+    runBtn = document.getElementById('simulationConfirmRunBtn');
+    
+    return !!modal; // Return true if modal was found
+}
 
 // Initialize modal
 function initSimulationConfirmModal() {
-    if (!modal) return;
+    // Initialize DOM elements if not already done
+    if (!modal) {
+        initDOMElements();
+    }
+    if (!modal) {
+        console.warn('[SimulationConfirmModal] Modal element not found in initSimulationConfirmModal');
+        return false;
+    }
 
     // Close button
     const closeBtn = modal.querySelector('.modal-close-btn');
@@ -33,11 +55,20 @@ function initSimulationConfirmModal() {
 
     // Run button
     runBtn?.addEventListener('click', handleRunSimulation);
+    
+    return true;
 }
 
 // Open modal
 function openSimulationConfirmModal(tools, sequence) {
-    if (!modal || !tools || tools.length === 0) return;
+    // Ensure DOM elements are initialized
+    if (!modal) {
+        initDOMElements();
+    }
+    if (!modal || !tools || tools.length === 0) {
+        console.error('[SimulationConfirmModal] Modal or tools not available');
+        return;
+    }
 
     selectedToolsData = tools;
     currentSequence = sequence || '';
@@ -120,18 +151,32 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-// Initialize when DOM is ready
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initSimulationConfirmModal);
-} else {
-    initSimulationConfirmModal();
-}
-
-// Export for use in other modules
-if (typeof window !== 'undefined') {
+    // Export to window immediately
     window.SimulationConfirmModal = {
         open: openSimulationConfirmModal,
         close: closeModal,
         init: initSimulationConfirmModal,
+        initDOMElements: initDOMElements,
     };
-}
+    
+    // Initialize when DOM is ready
+    function tryInit() {
+        if (initDOMElements() && initSimulationConfirmModal()) {
+            return true;
+        }
+        return false;
+    }
+    
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() {
+            if (!tryInit()) {
+                setTimeout(tryInit, 100);
+            }
+        });
+    } else {
+        // DOM already ready
+        if (!tryInit()) {
+            setTimeout(tryInit, 100);
+        }
+    }
+})();
