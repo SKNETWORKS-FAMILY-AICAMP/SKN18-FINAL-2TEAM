@@ -203,7 +203,7 @@ class GraphSearchQueries:
         min(row.r_ft)      AS r_ft,
         rrf_k0, must_terms, must_not_terms
     WITH chunk_id, vec_score, ft_score, r_vec, r_ft,
-        ( coalesce(1.0 / (rrf_k0 + r_vec), 0.0) + coalesce(1.0 / (rrf_k0 + r_ft), 0.0) ) AS hy_score,
+        (coalesce(vec_score, 0.0) + coalesce(ft_score, 0.0)) AS hy_score,
         must_terms, must_not_terms
     MATCH (c:Chunk {chunk_id: chunk_id})
     WHERE
@@ -212,7 +212,7 @@ class GraphSearchQueries:
     none(t IN must_not_terms WHERE toLower(coalesce(c.text, '')) CONTAINS t)
     RETURN c.chunk_id AS chunk_id, hy_score, vec_score, ft_score
     ORDER BY hy_score DESC
-    LIMIT coalesce($k, 80)
+    LIMIT coalesce($k, 120)
     """
 
     # ==========================================================================
@@ -284,7 +284,7 @@ class GraphSearchQueries:
         min(row.r_ft)      AS r_ft,
         rrf_k0, must_terms, must_not_terms
     WITH chunk_id, vec_score, ft_score, r_vec, r_ft,
-        ( coalesce(1.0 / (rrf_k0 + r_vec), 0.0) + coalesce(1.0 / (rrf_k0 + r_ft), 0.0) ) AS hy_score,
+        (coalesce(vec_score, 0.0) + coalesce(ft_score, 0.0)) AS hy_score,
         must_terms, must_not_terms
     MATCH (pc:ProtocolChunk {chunking_id: chunk_id})
     WHERE
@@ -293,7 +293,7 @@ class GraphSearchQueries:
     none(t IN must_not_terms WHERE toLower(coalesce(pc.text, '')) CONTAINS t)
     RETURN pc.chunking_id AS protocol_chunk_id, hy_score, vec_score, ft_score
     ORDER BY hy_score DESC
-    LIMIT coalesce($k, 80)
+    LIMIT coalesce($k, 120)
     """
 
     # ==========================================================================
@@ -362,7 +362,7 @@ class GraphSearchQueries:
         min(row.r_ft)      AS r_ft,
         rrf_k0, must_terms, must_not_terms
     WITH chunk_id, vec_score, ft_score, r_vec, r_ft,
-        ( coalesce(1.0 / (rrf_k0 + r_vec), 0.0) + coalesce(1.0 / (rrf_k0 + r_ft), 0.0) ) AS hy_score,
+        (coalesce(vec_score, 0.0) + coalesce(ft_score, 0.0)) AS hy_score,
         must_terms, must_not_terms
     MATCH (cc:ClinicalChunk {chunk_id: chunk_id})
     WHERE
@@ -371,7 +371,7 @@ class GraphSearchQueries:
     none(t IN must_not_terms WHERE toLower(coalesce(cc.text, '')) CONTAINS t)
     RETURN cc.chunk_id AS clinical_chunk_id, hy_score, vec_score, ft_score
     ORDER BY hy_score DESC
-    LIMIT coalesce($k, 80)
+    LIMIT coalesce($k, 120)
     """
 
     # ==========================================================================
