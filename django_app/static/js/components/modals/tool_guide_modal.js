@@ -369,10 +369,11 @@ function handleAddToPipeline() {
             window.ExperimentPage.toggleToolSelection(toolToAdd.id);
             
             // Verify the tool was added and show notification
-            Promise.resolve().then(() => {
+            // Use a longer delay to ensure toggleToolSelection has completed
+            setTimeout(() => {
                 let isNowSelected = false;
                 
-                // Check window.ExperimentPage.selectedTools
+                // Check window.ExperimentPage.selectedTools (now using getter)
                 if (window.ExperimentPage && window.ExperimentPage.selectedTools) {
                     isNowSelected = window.ExperimentPage.selectedTools.includes(toolToAdd.id);
                 }
@@ -382,11 +383,11 @@ function handleAddToPipeline() {
                     if (isNowSelected) {
                         window.notyf.success(`${toolToAdd.name}이(가) 파이프라인에 추가되었습니다.`);
                     } else {
-                        console.warn('[ToolGuideModal] Tool was not added');
+                        console.warn('[ToolGuideModal] Tool was not added. Current selectedTools:', window.ExperimentPage?.selectedTools);
                         window.notyf.error(`${toolToAdd.name}을(를) 파이프라인에 추가하는데 실패했습니다.`);
                     }
                 }
-            });
+            }, 50); // Additional delay to ensure state is updated
         }, 100); // Small delay to ensure modal is closed
     } else {
         console.error('[ToolGuideModal] ExperimentPage.toggleToolSelection not available!');

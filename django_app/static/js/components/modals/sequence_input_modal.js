@@ -204,14 +204,14 @@ function handleApply() {
     // Update experiment page sequence via ExperimentPage API (not direct DOM manipulation)
     // Note: Do NOT update proteinSequenceInput field - modal should be independent
     if (window.ExperimentPage) {
-        // Update sequence query
-        if (window.ExperimentPage.sequenceQuery !== undefined) {
-            window.ExperimentPage.sequenceQuery = currentSequence;
+        // Update sequence query using setter method
+        if (window.ExperimentPage.setSequenceQuery) {
+            window.ExperimentPage.setSequenceQuery(currentSequence);
         }
         
-        // Update selected protein
-        if (window.ExperimentPage.selectedProtein !== undefined) {
-            window.ExperimentPage.selectedProtein = customProtein;
+        // Update selected protein using setter method
+        if (window.ExperimentPage.setSelectedProtein) {
+            window.ExperimentPage.setSelectedProtein(customProtein);
         }
         
         // Do NOT update proteinSequenceInput field - keep modal independent

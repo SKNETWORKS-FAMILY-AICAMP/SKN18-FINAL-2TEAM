@@ -320,9 +320,9 @@ async function handleSearch() {
     
     if (!sequenceQuery) {
         if (window.notyf) {
-            window.notyf.error('단백질 서열을 입력해주세요.');
+            window.notyf.error('검색어를 입력해주세요.');
         } else {
-            alert('단백질 서열을 입력해주세요.');
+            alert('검색어를 입력해주세요.');
         }
         return;
     }
@@ -1144,12 +1144,12 @@ function attachPipelineHandlers() {
         
         const openModal = () => {
             console.log('[ExperimentPage] openModal function called');
-            if (window.SequenceInputModal && window.SequenceInputModal.open) {
-                const initialSequence = selectedProtein?.sequence || sequenceQuery || '';
+        if (window.SequenceInputModal && window.SequenceInputModal.open) {
+            const initialSequence = selectedProtein?.sequence || sequenceQuery || '';
                 console.log('[ExperimentPage] Opening SequenceInputModal with initialSequence:', initialSequence);
                 console.log('[ExperimentPage] selectedProtein:', selectedProtein);
                 console.log('[ExperimentPage] sequenceQuery:', sequenceQuery);
-                window.SequenceInputModal.open(initialSequence);
+            window.SequenceInputModal.open(initialSequence);
                 console.log('[ExperimentPage] SequenceInputModal.open called');
             } else {
                 console.error('[ExperimentPage] SequenceInputModal not available in openModal');
@@ -1193,9 +1193,67 @@ function attachPipelineHandlers() {
         handleClearPipeline();
     });
 
-    // Run pipeline button
-    pipelineRunBtn?.addEventListener('click', () => {
+    // Run pipeline button - opens simulation confirm modal
+    pipelineRunBtn?.addEventListener('click', (e) => {
+        console.log('[ExperimentPage] ====== pipelineRunBtn CLICKED ======');
+        console.log('[ExperimentPage] window.SimulationConfirmModal:', window.SimulationConfirmModal);
+        
+        const openModal = () => {
+            if (selectedTools.length === 0) {
+                if (window.notyf) {
+                    window.notyf.error('최소 하나의 도구를 선택해주세요.');
+                }
+                return;
+            }
+
+            if (!sequenceQuery && !proteinSequenceInput?.value.trim()) {
+                if (window.notyf) {
+                    window.notyf.error('단백질 서열을 입력해주세요.');
+                }
+                return;
+            }
+
+            const sequence = selectedProtein?.sequence || proteinSequenceInput?.value.trim() || sequenceQuery;
+            const selectedToolsData = availableTools.filter(t => selectedTools.includes(t.id));
+            
+            console.log('[ExperimentPage] Opening SimulationConfirmModal');
+            console.log('[ExperimentPage] Selected tools:', selectedToolsData);
+            console.log('[ExperimentPage] Sequence:', sequence);
+            
+            if (window.SimulationConfirmModal && window.SimulationConfirmModal.open) {
+                window.SimulationConfirmModal.open(selectedToolsData, sequence);
+            } else {
+                console.error('[ExperimentPage] SimulationConfirmModal not available in openModal');
+                if (window.notyf) {
+                    window.notyf.error('시뮬레이션 확인 모달을 불러올 수 없습니다.');
+                }
+            }
+        };
+        
+        // Try to open immediately
+        if (window.SimulationConfirmModal && window.SimulationConfirmModal.open) {
+            console.log('[ExperimentPage] SimulationConfirmModal available, opening immediately');
+            openModal();
+        } else {
+            console.log('[ExperimentPage] SimulationConfirmModal not available, waiting...');
+            // Wait for SimulationConfirmModal to be available
+            let attempts = 0;
+            const maxAttempts = 20;
+            const checkInterval = setInterval(() => {
+                attempts++;
+                console.log(`[ExperimentPage] Checking SimulationConfirmModal (attempt ${attempts}/${maxAttempts})`);
+                if (window.SimulationConfirmModal && window.SimulationConfirmModal.open) {
+                    clearInterval(checkInterval);
+                    console.log('[ExperimentPage] SimulationConfirmModal now available, opening');
+                    openModal();
+                } else if (attempts >= maxAttempts) {
+                    clearInterval(checkInterval);
+                    console.error('[ExperimentPage] SimulationConfirmModal not available after waiting');
+                    // Fallback: use handleRunSimulation which has its own fallback
         handleRunSimulation();
+                }
+            }, 50);
+        }
     });
 }
 
@@ -1276,6 +1334,7 @@ async function executeSimulation(sequence = null, title = null) {
     const finalSequence = sequence || selectedProtein?.sequence || sequenceQuery || proteinSequenceInput?.value.trim() || '';
     
     if (!finalSequence) {
+        console.log('[ExperimentPage] executeSimulation: No sequence provided');
         if (window.notyf) {
             window.notyf.error('단백질 서열을 입력해주세요.');
         } else {
@@ -1284,6 +1343,18 @@ async function executeSimulation(sequence = null, title = null) {
         return;
     }
 
+    const requestData = {
+        tools: selectedTools,
+        protein_sequence: finalSequence,
+        pipeline_name: title || `Pipeline ${new Date().toLocaleString('ko-KR')}`,
+    };
+    
+    console.log('[ExperimentPage] ====== executeSimulation called ======');
+    console.log('[ExperimentPage] Request URL: /api/experiments/');
+    console.log('[ExperimentPage] Request method: POST');
+    console.log('[ExperimentPage] Request data:', requestData);
+    console.log('[ExperimentPage] CSRF Token:', getCsrfToken() ? 'Present' : 'Missing');
+
     try {
         const response = await fetch('/api/experiments/', {
             method: 'POST',
@@ -1291,15 +1362,32 @@ async function executeSimulation(sequence = null, title = null) {
                 'X-CSRFToken': getCsrfToken(),
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-                tools: selectedTools,
-                protein_sequence: finalSequence,
-                pipeline_name: title || `Pipeline ${new Date().toLocaleString('ko-KR')}`,
-            }),
+            body: JSON.stringify(requestData),
         });
 
+        console.log('[ExperimentPage] Response status:', response.status);
+        console.log('[ExperimentPage] Response statusText:', response.statusText);
+        console.log('[ExperimentPage] Response headers:', {
+            'content-type': response.headers.get('content-type'),
+            'content-length': response.headers.get('content-length'),
+        });
+
+        // Check if response is JSON before parsing
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            const text = await response.text();
+            console.warn('[ExperimentPage] API returned non-JSON response');
+            console.warn('[ExperimentPage] Response content (first 500 chars):', text.substring(0, 500));
+            console.warn('[ExperimentPage] Response URL:', response.url);
+            console.warn('[ExperimentPage] Response status:', response.status, response.statusText);
+            // Don't show error to user, just log
+            return;
+        }
+
         if (response.ok) {
+            try {
             const data = await response.json();
+                console.log('[ExperimentPage] API response (success):', data);
             
             // Show success message
             if (window.notyf) {
@@ -1313,22 +1401,42 @@ async function executeSimulation(sequence = null, title = null) {
             selectedTools = [];
             updateToolCards();
             updatePipelineActions();
-        } else {
-            const error = await response.json();
+            } catch (jsonError) {
+                console.error('[ExperimentPage] Error parsing JSON response:', jsonError);
+                console.error('[ExperimentPage] JSON parse error details:', {
+                    name: jsonError.name,
+                    message: jsonError.message,
+                });
             if (window.notyf) {
-                window.notyf.error(error.detail || '시뮬레이션 실행에 실패했습니다.');
-            } else {
-                alert(error.detail || '시뮬레이션 실행에 실패했습니다.');
+                    window.notyf.error('응답 데이터를 파싱하는데 실패했습니다.');
+            }
+        }
+        } else {
+            // Try to parse error response as JSON
+            try {
+                const error = await response.json();
+                console.warn('[ExperimentPage] API error response:', error);
+                // Don't show error to user, just log
+            } catch (jsonError) {
+                // If error response is not JSON, log status text
+                const text = await response.text().catch(() => '');
+                console.warn('[ExperimentPage] Error response is not JSON');
+                console.warn('[ExperimentPage] Status:', response.status, response.statusText);
+                console.warn('[ExperimentPage] Response content (first 500 chars):', text.substring(0, 500));
+                // Don't show error to user, just log
             }
         }
     } catch (error) {
-        console.error('Error running simulation:', error);
-        if (window.notyf) {
-            window.notyf.error('시뮬레이션 실행 중 오류가 발생했습니다.');
-        } else {
-            alert('시뮬레이션 실행 중 오류가 발생했습니다.');
-        }
+        console.error('[ExperimentPage] Error running simulation:', error);
+        console.error('[ExperimentPage] Error details:', {
+            name: error.name,
+            message: error.message,
+            stack: error.stack,
+        });
+        // Don't show error to user, just log
     }
+    
+    console.log('[ExperimentPage] ====== executeSimulation completed ======');
 }
 
 // Handle clear pipeline
@@ -1416,8 +1524,10 @@ function renderExperimentTable(experiments) {
     if (experiments.length === 0) {
         experimentTableBody.innerHTML = `
             <tr>
-                <td colspan="4" class="empty-state">
-                    <p class="empty-message">실험을 진행하시겠습니까?</p>
+                <td colspan="4" class="empty-state-cell">
+                    <div class="empty-state">
+                        <p class="empty-message">상단의 시뮬레이션 실험을 진행하시면 진행상태를 확인할 수 있습니다</p>
+                    </div>
                 </td>
             </tr>
         `;
@@ -1425,58 +1535,67 @@ function renderExperimentTable(experiments) {
     }
 
     experimentTableBody.innerHTML = experiments.map(experiment => {
+        // 도구 정보 처리 - API에서 도구 이름 배열로 반환됨
         const tools = experiment.tools || [];
-        // React uses tools as string array, so extract tool names
         const toolsHtml = tools.map(tool => {
-            const toolName = typeof tool === 'string' ? tool : (tool.name || tool);
+            const toolName = typeof tool === 'string' ? tool : (tool.name || tool.tool_name || tool);
             return `<span class="tool-tag">${escapeHtml(toolName)}</span>`;
         }).join('');
 
-        const status = experiment.status || 'ready';
-        // React uses Korean status strings directly
-        const statusDisplay = status === '완료' || status === 'completed' ? '완료' :
-                            status === '진행중' || status === 'in_progress' ? '진행중' :
-                            status === '준비' || status === 'ready' ? '준비' : status;
+        // 상태 처리 - API에서 status_display를 제공하거나 상태 코드를 변환
+        const statusCode = experiment.status || 'R';
+        const statusDisplay = experiment.status_display || 
+                            (statusCode === 'C' ? '완료' :
+                             statusCode === 'P' ? '진행중' :
+                             statusCode === 'R' ? '준비' :
+                             statusCode === 'F' ? '실패' :
+                             statusCode === 'E' ? '활성' :
+                             statusCode === 'D' ? '비활성' : statusCode);
 
+        // 생성일 처리
         const createdAgo = experiment.created_at ? 
             formatTimeAgo(new Date(experiment.created_at)) : 
             (experiment.created || '알 수 없음');
 
-        // Calculate progress (mock or from API) - React uses progress directly
+        // 진행률 처리 - API에서 직접 제공
         const progress = experiment.progress !== undefined ? experiment.progress : 
-                        (status === 'completed' || status === '완료' ? 100 : 
-                        status === 'in_progress' || status === '진행중' ? 65 : 
-                        status === 'ready' || status === '준비' ? 25 : 0);
+                        (statusCode === 'C' ? 100 : 
+                        statusCode === 'P' ? 65 : 
+                        statusCode === 'R' ? 25 : 0);
 
-        // React uses 'pipeline' field, but Django might use 'pipeline_name'
-        const pipelineName = experiment.pipeline || experiment.pipeline_name || 'Unnamed Pipeline';
+        // 파이프라인 이름 처리
+        const pipelineName = experiment.pipeline || experiment.pipeline_name || experiment.name || 'Unnamed Pipeline';
 
-        // Determine status class based on statusDisplay (React uses Korean strings)
+        // 상태 클래스 결정
         const statusClass = statusDisplay === '완료' ? 'status-완료 status-completed' :
                            statusDisplay === '진행중' ? 'status-진행중 status-progress' :
+                           statusDisplay === '준비' ? 'status-준비 status-ready' :
+                           statusDisplay === '실패' ? 'status-실패 status-failed' :
                            'status-준비 status-ready';
         
         const statusDotClass = statusDisplay === '완료' ? 'status-dot-완료 status-dot-completed' :
                               statusDisplay === '진행중' ? 'status-dot-진행중 status-dot-progress' :
+                              statusDisplay === '준비' ? 'status-dot-준비 status-dot-ready' :
+                              statusDisplay === '실패' ? 'status-dot-실패 status-dot-failed' :
                               'status-dot-준비 status-dot-ready';
 
         return `
-            <tr data-experiment-id="${experiment.id}" data-experiment-progress="${progress}">
-                <td>
+            <tr data-experiment-id="${experiment.id}" data-experiment-progress="${progress}" class="status-table-row">
+                <td class="status-td-pipeline">
                     <p class="text-sm text-gray-900">${escapeHtml(pipelineName)}</p>
                 </td>
-                <td>
+                <td class="status-td-tools">
                     <div class="tool-tags">
                         ${toolsHtml}
                     </div>
                 </td>
-                <td>
+                <td class="status-td-status">
                     <span class="status-badge ${statusClass}">
                         <span class="status-dot ${statusDotClass}"></span>
                         ${statusDisplay}
                     </span>
                 </td>
-                <td class="text-gray-600 text-sm whitespace-nowrap">${escapeHtml(createdAgo)}</td>
+                <td class="status-td-created text-gray-600 text-sm whitespace-nowrap">${escapeHtml(createdAgo)}</td>
             </tr>
         `;
     }).join('');
@@ -1627,13 +1746,38 @@ function renderExperimentResult(experiment) {
         }
     }
 
-    // Status - React uses Korean status strings directly
+    // Status - Convert status code to Korean
     if (experimentResultStatus) {
-        const status = experiment.status || experiment.status_display || 'ready';
-        // If status is already in Korean, use it directly; otherwise convert
-        const statusDisplay = status === '완료' || status === 'completed' ? '완료' :
-                            status === '진행중' || status === 'in_progress' ? '진행중' :
-                            status === '준비' || status === 'ready' ? '준비' : status;
+        const status = experiment.status || experiment.status_display || 'R';
+        
+        // Convert status code to Korean
+        let statusDisplay = '';
+        if (typeof status === 'string') {
+            // Check if already in Korean
+            if (status === '완료' || status === '진행중' || status === '준비' || status === '실패' || status === '활성' || status === '비활성') {
+                statusDisplay = status;
+            }
+            // Check English status strings
+            else if (status === 'completed' || status === 'C') {
+                statusDisplay = '완료';
+            } else if (status === 'in_progress' || status === 'P') {
+                statusDisplay = '진행중';
+            } else if (status === 'ready' || status === 'R') {
+                statusDisplay = '준비';
+            } else if (status === 'failed' || status === 'F') {
+                statusDisplay = '실패';
+            } else if (status === 'enabled' || status === 'E') {
+                statusDisplay = '활성';
+            } else if (status === 'disabled' || status === 'D') {
+                statusDisplay = '비활성';
+            } else {
+                // Unknown status, use as-is
+                statusDisplay = status;
+            }
+        } else {
+            statusDisplay = '알 수 없음';
+        }
+        
         experimentResultStatus.textContent = statusDisplay;
     }
 
@@ -1641,14 +1785,18 @@ function renderExperimentResult(experiment) {
     // React uses progress directly from selectedExperiment.progress
     let progress = experiment.progress;
     if (progress === undefined || progress === null) {
-        const status = experiment.status || experiment.status_display || 'ready';
-        // React uses Korean status strings, so check both
-        if (status === 'completed' || status === '완료') {
+        const status = experiment.status || experiment.status_display || 'R';
+        // Convert status code to determine progress
+        if (status === 'completed' || status === '완료' || status === 'C') {
             progress = 100;
-        } else if (status === 'in_progress' || status === '진행중') {
+        } else if (status === 'in_progress' || status === '진행중' || status === 'P') {
             progress = 65; // Default progress for in_progress (matching React mock data)
-        } else {
+        } else if (status === 'ready' || status === '준비' || status === 'R') {
             progress = 25; // Default progress for ready (matching React mock data)
+        } else if (status === 'failed' || status === '실패' || status === 'F') {
+            progress = 0; // Failed experiments have 0% progress
+        } else {
+            progress = 0; // Default for unknown status
         }
     }
     
@@ -1690,10 +1838,31 @@ async function renderExperimentResultFiles(experiment) {
     }
 
     // Fallback: Use mock files based on status (React uses Korean status strings)
-    const statusDisplay = experiment.status_display || experiment.status || 'ready';
-    // Convert to Korean if needed
-    const statusKorean = statusDisplay === '완료' || statusDisplay === 'completed' ? '완료' :
-                        statusDisplay === '진행중' || statusDisplay === 'in_progress' ? '진행중' : statusDisplay;
+    const status = experiment.status || experiment.status_display || 'R';
+    
+    // Convert status code to Korean
+    let statusKorean = '';
+    if (typeof status === 'string') {
+        // Check if already in Korean
+        if (status === '완료' || status === '진행중' || status === '준비' || status === '실패') {
+            statusKorean = status;
+        }
+        // Check English status strings and codes
+        else if (status === 'completed' || status === 'C') {
+            statusKorean = '완료';
+        } else if (status === 'in_progress' || status === 'P') {
+            statusKorean = '진행중';
+        } else if (status === 'ready' || status === 'R') {
+            statusKorean = '준비';
+        } else if (status === 'failed' || status === 'F') {
+            statusKorean = '실패';
+        } else {
+            statusKorean = '준비'; // Default
+        }
+    } else {
+        statusKorean = '준비'; // Default
+    }
+    
     const mockFiles = generateMockResultFiles(statusKorean);
     renderResultFilesList(mockFiles, experiment.id);
 }
@@ -1701,9 +1870,28 @@ async function renderExperimentResultFiles(experiment) {
 // Generate mock result files based on status
 // React uses Korean status strings: "완료", "진행중", etc.
 function generateMockResultFiles(status) {
-    // Convert English status to Korean for comparison
-    const statusKorean = status === 'completed' || status === '완료' ? '완료' :
-                        status === 'in_progress' || status === '진행중' ? '진행중' : status;
+    // Convert status code/English to Korean for comparison
+    let statusKorean = '';
+    if (typeof status === 'string') {
+        // Check if already in Korean
+        if (status === '완료' || status === '진행중' || status === '준비' || status === '실패') {
+            statusKorean = status;
+        }
+        // Check English status strings and codes
+        else if (status === 'completed' || status === 'C') {
+            statusKorean = '완료';
+        } else if (status === 'in_progress' || status === 'P') {
+            statusKorean = '진행중';
+        } else if (status === 'ready' || status === 'R') {
+            statusKorean = '준비';
+        } else if (status === 'failed' || status === 'F') {
+            statusKorean = '실패';
+        } else {
+            statusKorean = '준비'; // Default
+        }
+    } else {
+        statusKorean = '준비'; // Default
+    }
     
     if (statusKorean === '완료') {
         return [
@@ -1716,7 +1904,12 @@ function generateMockResultFiles(status) {
             { id: 1, name: '중간 결과 1', type: 'TXT', size: '89 KB', date: '30분 전', url: '/api/experiments/files/1/' },
             { id: 2, name: '로그 파일', type: 'LOG', size: '234 KB', date: '15분 전', url: '/api/experiments/files/2/' },
         ];
+    } else if (statusKorean === '실패') {
+        return [
+            { id: 1, name: '에러 로그', type: 'LOG', size: '45 KB', date: '1시간 전', url: '/api/experiments/files/1/' },
+        ];
     } else {
+        // 준비 상태 또는 기타
         return [
             { id: 1, name: '입력 데이터', type: 'CSV', size: '512 KB', date: '1일 전', url: '/api/experiments/files/1/' },
         ];
@@ -2051,6 +2244,25 @@ function updateProteinSequenceInput(sequence) {
     }
 }
 
+// Setter methods for updating state from external modules
+function setSequenceQuery(value) {
+    sequenceQuery = value;
+}
+
+function setSelectedProtein(value) {
+    selectedProtein = value;
+}
+
+function setToolOptions(value) {
+    toolOptions = value;
+}
+
+function setSelectedTools(value) {
+    selectedTools = Array.isArray(value) ? [...value] : [];
+    updateToolCards();
+    updatePipelineActions();
+}
+
 // Export for use in other modules
 if (typeof window !== 'undefined') {
     window.ExperimentPage = {
@@ -2074,10 +2286,16 @@ if (typeof window !== 'undefined') {
         openExperimentResultSidebar,
         closeExperimentResultSidebar,
         updateProteinSequenceInput, // Add method for modals to update input field
-        selectedTools,
-        availableTools,
-        sequenceQuery,
-        toolOptions,
-        selectedProtein,
+        // Setter methods for updating state
+        setSequenceQuery,
+        setSelectedProtein,
+        setToolOptions,
+        setSelectedTools,
+        // Use getters to always return current values
+        get selectedTools() { return selectedTools; },
+        get availableTools() { return availableTools; },
+        get sequenceQuery() { return sequenceQuery; },
+        get toolOptions() { return toolOptions; },
+        get selectedProtein() { return selectedProtein; },
     };
 }

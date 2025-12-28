@@ -652,7 +652,8 @@
 }
 
 .status-header {
-    padding: 1rem 1.5rem; /* px-6 pt-4 */
+    padding: 1rem 1.5rem; /* px-6 */
+    padding-top: 1rem; /* pt-4 */
     padding-bottom: 1.875rem; /* pb-[30px] */
     display: flex;
     align-items: center;
@@ -707,20 +708,20 @@
     color: #4b5563; /* text-gray-600 */
 }
 
-.status-table th:nth-child(1) {
-    width: 22%;
+.status-th-pipeline {
+    width: 22%; /* w-[22%] */
 }
 
-.status-table th:nth-child(2) {
-    width: 40%;
+.status-th-tools {
+    width: 40%; /* w-[40%] */
 }
 
-.status-table th:nth-child(3) {
-    width: 18%;
+.status-th-status {
+    width: 18%; /* w-[18%] */
 }
 
-.status-table th:nth-child(4) {
-    width: 20%;
+.status-th-created {
+    width: 20%; /* w-[20%] */
 }
 
 .status-table tbody {
@@ -731,6 +732,16 @@
     border-bottom: 1px solid #f3f4f6; /* divide-y divide-gray-100 */
     cursor: pointer;
     transition: background-color 0.2s;
+}
+
+.status-table-row {
+    border-bottom: 1px solid #f3f4f6; /* divide-y divide-gray-100 */
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.status-table-row:hover {
+    background: #f9fafb; /* hover:bg-gray-50 */
 }
 
 .status-table tbody tr:hover {
@@ -748,25 +759,39 @@
     vertical-align: middle;
 }
 
-.status-table td:nth-child(1) {
-    width: 22%;
+.status-td-pipeline {
+    width: 22%; /* w-[22%] */
+    padding: 1rem; /* px-4 py-4 */
 }
 
-.status-table td:nth-child(2) {
-    width: 40%;
+.status-td-tools {
+    width: 40%; /* w-[40%] */
+    padding: 1rem; /* px-4 py-4 */
 }
 
-.status-table td:nth-child(3) {
-    width: 18%;
+.status-td-status {
+    width: 18%; /* w-[18%] */
+    padding: 1rem; /* px-4 py-4 */
 }
 
-.status-table td:nth-child(4) {
-    width: 20%;
+.status-td-created {
+    width: 20%; /* w-[20%] */
+    padding: 1rem; /* px-4 py-4 */
     color: #6b7280; /* text-gray-600 */
     white-space: nowrap;
 }
 
 .tool-tags {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem; /* gap-2 */
+    flex-wrap: wrap;
+    max-height: 3.5rem; /* max-h-[3.5rem] */
+    overflow: hidden;
+}
+
+/* React: flex items-center gap-2 flex-wrap max-h-[3.5rem] overflow-hidden */
+.status-td-tools .tool-tags {
     display: flex;
     align-items: center;
     gap: 0.5rem; /* gap-2 */
@@ -810,6 +835,29 @@
     margin: 0;
 }
 
+/* Empty state cell in status table */
+.empty-state-cell {
+    width: 100%;
+    padding: 0 !important;
+    height: 100%;
+}
+
+.empty-state-cell .empty-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 300px; /* Ensure enough height */
+    width: 100%;
+    padding: 2rem;
+}
+
+.empty-state-cell .empty-message {
+    font-size: 0.875rem; /* text-sm */
+    color: #9ca3af; /* text-gray-400 */
+    margin: 0;
+    text-align: center;
+}
+
 /* Protein Tags - Hashtag Style */
 .protein-tag {
     color: #2563eb;
@@ -850,6 +898,12 @@
     color: #065f46; /* text-green-700 */
 }
 
+.status-failed,
+.status-실패 {
+    background: #fee2e2; /* bg-red-100 */
+    color: #991b1b; /* text-red-700 */
+}
+
 .status-dot {
     width: 0.5rem; /* w-2 */
     height: 0.5rem; /* h-2 */
@@ -873,6 +927,11 @@
 .status-dot-completed,
 .status-dot-완료 {
     background: #059669; /* bg-green-600 */
+}
+
+.status-dot-failed,
+.status-dot-실패 {
+    background: #dc2626; /* bg-red-600 */
 }
 
 @keyframes shadow-pulse {
@@ -1156,6 +1215,9 @@
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
+    border: 1px solid #eee;
+    padding: 10px 20px;
+    border-radius: 10px;
 }
 
 .pipeline-tool-options-title {

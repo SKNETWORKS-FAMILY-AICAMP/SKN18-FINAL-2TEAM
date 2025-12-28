@@ -54,7 +54,7 @@
                     <input
                         type="text"
                         id="proteinSequenceInput"
-                        placeholder="예: MKTAYIAKQRQISFVKSHFSRQLEERLGLIEVQAPILSRVGDGTQDNLSGAEKAVQVKVKALPDAQFEVVHSLAKWKRQTLGQHDFSAGEGLYTHMKALRPDEDRLSPLHSVYVDQWDWERVMGDGERQFSTLKSTVEAIWAGIKATEAAVSEEFGLAPFLPDQIHFVHSQELLSRYPDLDAKGRERAIAKDLGAVFLVGIGGKLSDGHRHDVRAPDYDDWSTPSELGHAGLNGDILVWNPVLEDAFELSSMGIRVDADTLKHQLALTGDEDRLELEWHQALLRGEMPQTIGGGIGQSRLTMLLLQLPHIGQVQAGVWPAAVRESVPSLL"
+                        placeholder="예: Insulin, APP, Human, P05067, organism_id:9606"
                         class="search-input"
                     />
                 </div>
@@ -108,36 +108,47 @@
                 <table class="status-table">
                     <thead>
                         <tr>
-                            <th>파이프라인</th>
-                            <th>툴</th>
-                            <th>상태</th>
-                            <th>생성일</th>
+                            <th class="status-th-pipeline">파이프라인</th>
+                            <th class="status-th-tools">툴</th>
+                            <th class="status-th-status">상태</th>
+                            <th class="status-th-created">생성일</th>
                         </tr>
                     </thead>
                     <tbody id="experimentTableBody">
                         {% for experiment in experiments %}
-                        <tr data-experiment-id="{{ experiment.experiment_sid }}">
-                            <td>
+                        <tr data-experiment-id="{{ experiment.experiment_sid }}" data-experiment-progress="{{ experiment.progress|default:0 }}" class="status-table-row">
+                            <td class="status-td-pipeline">
                                 <p class="text-sm text-gray-900">{{ experiment.pipeline_name }}</p>
                             </td>
-                            <td>
+                            <td class="status-td-tools">
                                 <div class="tool-tags">
                                     {% for tool in experiment.tools.all %}
-                                    <span class="tool-tag">{{ tool.name }}</span>
+                                    <span class="tool-tag">{{ tool.tool_name }}</span>
+                                    {% empty %}
+                                    <span class="tool-tag">도구 없음</span>
                                     {% endfor %}
                                 </div>
                             </td>
-                            <td>
-                                {% with status_display=experiment.get_status_display %}
-                                {% if status_display == "완료" or experiment.status == "completed" %}
+                            <td class="status-td-status">
+                                {% if experiment.status == "C" or experiment.get_status_display == "Completed" %}
                                     <span class="status-badge status-완료 status-completed">
                                         <span class="status-dot status-dot-완료 status-dot-completed"></span>
                                         완료
                                     </span>
-                                {% elif status_display == "진행중" or experiment.status == "in_progress" %}
+                                {% elif experiment.status == "P" or experiment.get_status_display == "In Progress" %}
                                     <span class="status-badge status-진행중 status-progress">
                                         <span class="status-dot status-dot-진행중 status-dot-progress"></span>
                                         진행중
+                                    </span>
+                                {% elif experiment.status == "R" or experiment.get_status_display == "Ready" %}
+                                    <span class="status-badge status-준비 status-ready">
+                                        <span class="status-dot status-dot-준비 status-dot-ready"></span>
+                                        준비
+                                    </span>
+                                {% elif experiment.status == "F" or experiment.get_status_display == "Failed" %}
+                                    <span class="status-badge status-실패 status-failed">
+                                        <span class="status-dot status-dot-실패 status-dot-failed"></span>
+                                        실패
                                     </span>
                                 {% else %}
                                     <span class="status-badge status-준비 status-ready">
@@ -145,14 +156,15 @@
                                         준비
                                     </span>
                                 {% endif %}
-                                {% endwith %}
                             </td>
-                            <td class="text-gray-600 text-sm whitespace-nowrap">{{ experiment.created_at|timesince }} 전</td>
+                            <td class="status-td-created text-gray-600 text-sm whitespace-nowrap">{{ experiment.created_at|timesince }} 전</td>
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="4" class="empty-state">
-                                <p class="empty-message">실험을 진행하시겠습니까?</p>
+                            <td colspan="4" class="empty-state-cell">
+                                <div class="empty-state">
+                                    <p class="empty-message">상단의 시뮬레이션 실험을 진행하시면 진행상태를 확인할 수 있습니다</p>
+                                </div>
                             </td>
                         </tr>
                         {% endfor %}
