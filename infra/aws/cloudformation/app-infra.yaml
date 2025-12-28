@@ -1,0 +1,409 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: "App EC2 Infrastructure - Django + Graph + RAG Web Service"
+
+Parameters:
+  # Parameter Store에서 값을 읽어오는 파라미터들
+  KeyName:
+    Type: "AWS::SSM::Parameter::Value<String>"
+    Default: "/skn18/key-name"
+    Description: "EC2 SSH KeyPair 이름 (Parameter Store: /skn18/key-name)"
+
+  InstanceType:
+    Type: "AWS::SSM::Parameter::Value<String>"
+    Default: "/skn18/app-instance-type"
+    Description: "App EC2 인스턴스 타입 (Parameter Store: /skn18/app-instance-type, 예: t3.medium)"
+
+  AllowedCidr:
+    Type: "AWS::SSM::Parameter::Value<String>"
+    Default: "/skn18/allowed-cidr"
+    Description: "웹 서비스에 접근 가능한 CIDR (Parameter Store: /skn18/allowed-cidr)"
+
+  # App EC2는 AWS 기본 AMI + UserData로 Docker 설치
+  # SSM Parameter Store의 공용 AMI 경로 사용 (최신 Amazon Linux 2023 AMI)
+  # 또는 직접 AMI ID 지정 가능
+  AppAmiId:
+    Type: "AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>"
+    Default: "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64"
+    Description: "AMI ID for App EC2 instance (기본값: 최신 Amazon Linux 2023 AMI)"
+
+  # CoreInfraStack에서 전달받는 파라미터
+  VpcId:
+    Type: "String"
+    Description: "VPC ID from CoreInfraStack"
+    Default: ""
+
+  SubnetId:
+    Type: "String"
+    Description: "Subnet ID from CoreInfraStack (첫 번째 서브넷)"
+    Default: ""
+
+  SubnetId2:
+    Type: "String"
+    Description: "Subnet ID from CoreInfraStack (두 번째 서브넷, ALB용)"
+    Default: ""
+
+Resources:
+  # =========================
+  # ECR 리포지토리
+  # =========================
+  WebEcrRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: helixops_web
+      ImageScanningConfiguration:
+        ScanOnPush: true
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {
+            "rules": [
+              {
+                "rulePriority": 1,
+                "description": "Keep last 10 images for rollback",
+                "selection": {
+                  "tagStatus": "any",
+                  "countType": "imageCountMoreThan",
+                  "countNumber": 10
+                },
+                "action": {
+                  "type": "expire"
+                }
+              }
+            ]
+          }
+      Tags:
+        - Key: Name
+          Value: helixops-web-ecr
+
+  # =========================
+  # 보안 그룹
+  # =========================
+  # 웹 서비스 전용 보안 그룹 (EC2 내부용)
+  WebServiceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Security group for web service on EC2 (internal only)"
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        # ALB에서만 접근 허용
+        - IpProtocol: tcp
+          FromPort: 8000
+          ToPort: 8000
+          SourceSecurityGroupId: !Ref AlbSecurityGroup
+        # SSH 접근 (관리용)
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref AllowedCidr
+      Tags:
+        - Key: Name
+          Value: "skn18-web-service-sg"
+
+  # ALB 보안 그룹
+  AlbSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Security group for Application Load Balancer"
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        # HTTP (나중에 HTTPS로 변경 가능)
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: "skn18-alb-sg"
+
+  # =========================
+  # Application Load Balancer
+  # =========================
+  WebTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: skn18-web-tg
+      Port: 8000
+      Protocol: HTTP
+      VpcId: !Ref VpcId
+      TargetType: ip  # Docker 컨테이너 IP 사용
+      HealthCheckPath: /
+      HealthCheckProtocol: HTTP
+      HealthCheckIntervalSeconds: 30
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 3
+      Matcher:
+        HttpCode: "200"
+      Tags:
+        - Key: Name
+          Value: "skn18-web-target-group"
+
+  WebApplicationLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: skn18-web-alb
+      Type: application
+      Scheme: internet-facing
+      IpAddressType: ipv4
+      Subnets:
+        - !Ref SubnetId
+        - !Ref SubnetId2
+      SecurityGroups:
+        - !Ref AlbSecurityGroup
+      Tags:
+        - Key: Name
+          Value: "skn18-web-alb"
+
+  AlbHttpListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref WebTargetGroup
+      LoadBalancerArn: !Ref WebApplicationLoadBalancer
+      Port: 80
+      Protocol: HTTP
+
+  # =========================
+  # CloudWatch Logs 및 Alarms
+  # =========================
+  WebServiceLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /ec2/skn18/web-service
+      RetentionInDays: 30
+      Tags:
+        - Key: Name
+          Value: "skn18-web-service-logs"
+
+  Alb5xxErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: skn18-alb-5xx-errors
+      AlarmDescription: "Alert when ALB returns 5xx errors"
+      MetricName: HTTPCode_Target_5XX_Count
+      Namespace: AWS/ApplicationELB
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 10
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: LoadBalancer
+          Value: !GetAtt WebApplicationLoadBalancer.LoadBalancerFullName
+      TreatMissingData: notBreaching
+
+  TargetUnhealthyAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: skn18-target-unhealthy
+      AlarmDescription: "Alert when target becomes unhealthy"
+      MetricName: UnHealthyHostCount
+      Namespace: AWS/ApplicationELB
+      Statistic: Average
+      Period: 60
+      EvaluationPeriods: 2
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: TargetGroup
+          Value: !GetAtt WebTargetGroup.TargetGroupFullName
+        - Name: LoadBalancer
+          Value: !GetAtt WebApplicationLoadBalancer.LoadBalancerFullName
+      TreatMissingData: notBreaching
+
+  AlbResponseTimeAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: skn18-alb-response-time
+      AlarmDescription: "Alert when response time is high"
+      MetricName: TargetResponseTime
+      Namespace: AWS/ApplicationELB
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 5.0
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: LoadBalancer
+          Value: !GetAtt WebApplicationLoadBalancer.LoadBalancerFullName
+      TreatMissingData: notBreaching
+
+  # =========================
+  # EC2 IAM 역할
+  # =========================
+  AppEc2Role:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+        - arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy  # CloudWatch 로그 전송
+      Policies:
+        - PolicyName: ParameterStoreAccessPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ssm:GetParameter
+                  - ssm:GetParameters
+                Resource: !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/skn18/*"
+        # ECR 접근 권한
+        - PolicyName: EcrAccessPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ecr:GetAuthorizationToken
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:BatchGetImage
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - ecr:DescribeRepositories
+                  - ecr:ListImages
+                Resource: !Sub "arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/helixops_web"
+        # CloudWatch Logs 전송 권한
+        - PolicyName: CloudWatchLogsPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:DescribeLogStreams
+                Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/ec2/skn18/*"
+        # ALB Target Group 등록 권한
+        - PolicyName: ElbTargetRegistrationPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - elasticloadbalancing:RegisterTargets
+                  - elasticloadbalancing:DeregisterTargets
+                  - elasticloadbalancing:DescribeTargetHealth
+                Resource: !Ref WebTargetGroup
+
+  AppEc2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref AppEc2Role
+
+  # =========================
+  # EC2 인스턴스
+  # =========================
+  AppInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: !Ref InstanceType
+      ImageId: !Ref AppAmiId
+      KeyName: !Ref KeyName
+      IamInstanceProfile: !Ref AppEc2InstanceProfile
+      SubnetId: !Ref SubnetId
+      SecurityGroupIds:
+        - !Ref WebServiceSecurityGroup
+      Tags:
+        - Key: Name
+          Value: "skn18-app-ec2"
+      BlockDeviceMappings:
+        - DeviceName: "/dev/xvda"
+          Ebs:
+            VolumeSize: 30
+            VolumeType: gp3
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          set -xe
+
+          # ========================================
+          # Docker 설치 (AWS 기본 AMI에는 Docker가 없음)
+          # ========================================
+          echo "Installing Docker..."
+          
+          # Amazon Linux 2023용 Docker 설치
+          sudo yum update -y
+          sudo yum install -y docker
+          
+          # Docker 서비스 시작 및 활성화
+          sudo systemctl start docker
+          sudo systemctl enable docker
+          
+          # ec2-user를 docker 그룹에 추가 (sudo 없이 docker 명령어 사용)
+          sudo usermod -aG docker ec2-user
+          
+          # Docker Compose 설치
+          echo "Installing Docker Compose..."
+          sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" \
+            -o /usr/local/bin/docker-compose
+          sudo chmod +x /usr/local/bin/docker-compose
+          
+          # 프로젝트 디렉토리 생성
+          mkdir -p /home/ec2-user/app
+          chown ec2-user:ec2-user /home/ec2-user/app
+
+          echo "=== App EC2 initialization completed ==="
+
+Outputs:
+  InstanceId:
+    Description: "App EC2 Instance ID"
+    Value: !Ref AppInstance
+    Export:
+      Name: !Sub "${AWS::StackName}-InstanceId"
+
+  PublicIp:
+    Description: "App EC2 Public IP"
+    Value: !GetAtt AppInstance.PublicIp
+    Export:
+      Name: !Sub "${AWS::StackName}-PublicIp"
+
+  # ECR 리포지토리 정보
+  EcrRepositoryUri:
+    Description: "ECR Repository URI for helixops_web"
+    Value: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/helixops_web"
+    Export:
+      Name: !Sub "${AWS::StackName}-EcrRepositoryUri"
+
+  EcrRepositoryName:
+    Description: "ECR Repository Name"
+    Value: helixops_web
+    Export:
+      Name: !Sub "${AWS::StackName}-EcrRepositoryName"
+
+  # ALB 정보
+  AlbDnsName:
+    Description: "ALB DNS Name"
+    Value: !GetAtt WebApplicationLoadBalancer.DNSName
+    Export:
+      Name: !Sub "${AWS::StackName}-AlbDnsName"
+
+  AlbTargetGroupArn:
+    Description: "ALB Target Group ARN"
+    Value: !Ref WebTargetGroup
+    Export:
+      Name: !Sub "${AWS::StackName}-AlbTargetGroupArn"
+
+  # CloudWatch 정보
+  WebServiceLogGroup:
+    Description: "CloudWatch Log Group for web service"
+    Value: !Ref WebServiceLogGroup
+    Export:
+      Name: !Sub "${AWS::StackName}-WebServiceLogGroup"
+
+  SecurityGroupId:
+    Description: "Web Service Security Group ID"
+    Value: !Ref WebServiceSecurityGroup
+    Export:
+      Name: !Sub "${AWS::StackName}-SecurityGroupId"
+

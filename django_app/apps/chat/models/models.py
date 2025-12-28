@@ -286,3 +286,38 @@ class ChatMessageFeedback(models.Model):
     
     def __str__(self):
         return f"Feedback {self.feedback_sid} ({self.get_feedback_type_display()})"
+
+
+class ConversationMemory(models.Model):
+    """
+    대화 메모리 모델
+    각 질문-답변을 개별 row로 저장하는 테이블.
+    chat_room_id는 채팅방을 구분하고, 각 질문마다 새 row 생성.
+    case_type으로 데이터 타입 구분, full_response와 summary에 답변 저장.
+    """
+    
+    chat_sid = models.AutoField(primary_key=True, db_column='chat_sid')
+    chat_room_id = models.IntegerField(db_index=True, db_column='chat_room_id')  # 채팅방 아이디
+    user_id = models.CharField(max_length=60, db_column='user_id')  # 유저 아이디
+    case_type = models.CharField(max_length=50, db_index=True, db_column='case_type')  # 질문유형 (SIMULATION_Q, INFERENCE_Q, BIO_Q, PROTOCOL_Q)
+    original_question = models.TextField(null=True, blank=True, db_column='original_question')  # 질문 원문
+    full_response = models.TextField(null=True, blank=True, db_column='full_response')  # 원본 답변 전체
+    summary = models.TextField(null=True, blank=True, db_column='summary')  # 질문과 답변 요약
+    topic = models.CharField(max_length=500, null=True, blank=True, db_column='topic')  # 1줄 주제 요약
+    referenced_memory_count = models.IntegerField(default=0, db_column='referenced_memory_count')  # 참고한 이전 대화 개수
+    entities = models.JSONField(default=list, db_column='entities')  # retrieval에서 추출된 엔티티들
+    created_at = models.DateTimeField(auto_now_add=True, db_column='created_at')  # 생성시간
+    updated_at = models.DateTimeField(auto_now=True, db_column='updated_at')  # 수정시간
+    
+    class Meta:
+        db_table = 't_memory'
+        ordering = ['-created_at']
+        verbose_name = '대화 메모리'
+        verbose_name_plural = '대화 메모리들'
+        indexes = [
+            models.Index(fields=['chat_room_id']),
+            models.Index(fields=['case_type']),
+        ]
+    
+    def __str__(self):
+        return f"ConversationMemory(chat_sid={self.chat_sid}, chat_room_id={self.chat_room_id}, user_id={self.user_id})"

@@ -20,9 +20,12 @@
   /skn18/s3-bucket-name
 ``` 
 
-**2. lambdas-protocols.yaml (Protocols Lambda 7개)**
+**2. lambdas-protocols.yaml (Protocols Lambda 7개 + Step Function)**
 - Lambda 함수 7개 (Protein, Cell, DNA, RNA, vivo, mouse, cleanse-chunk)
-- EventBridge Rules 7개
+- Step Function State Machine 1개 (6개 Ingest Lambda 병렬 실행)
+- Step Function 실행 역할 (IAM Role) 1개
+- EventBridge Step Function 실행 역할 (IAM Role) 1개
+- EventBridge Rule 1개 (Step Function 실행, 기존 6개 Rule은 비활성화)
 - Lambda Permissions 7개
 - Parameters: Core에서 받을 값들 (BucketName, RoleArn, DB 정보 등)
 - ClientAccessToken, LambdaTimeout, LambdaMemorySize를 Parameter Store에서 읽도록 변경
@@ -235,7 +238,41 @@ infra/aws/lambda_layers/
 ---
 
 ## StepFunction 추가
-- lambda 먼저 StepFunction으로 연결
+
+### 개요
+Protocols Ingest Lambda 6개(Cell, DNA, Mouse, Protein, RNA, Vivo)를 병렬로 실행하기 위해 Step Function을 사용합니다.
+
+### 구조
+- **Step Function State Machine**: `skn18-protocols-ingest-parallel`
+  - 6개 Lambda 함수를 `Parallel` 상태로 병렬 실행
+  - 각 Lambda는 독립적으로 실행되며 서로 영향을 주지 않음
+- **EventBridge Rule**: 하루에 한 번 Step Function 실행
+  - 기존 6개 개별 EventBridge Rule은 `DISABLED` 상태로 유지 (백업용)
+- **IAM 역할**:
+  - `StepFunctionExecutionRole`: Step Function이 Lambda 함수를 호출할 수 있는 권한
+  - `EventBridgeStepFunctionRole`: EventBridge가 Step Function을 실행할 수 있는 권한
+
+### 장점
+1. **병렬 실행**: 6개 Lambda가 동시에 실행되어 처리 시간 단축
+2. **중앙 관리**: 하나의 EventBridge Rule로 모든 Ingest Lambda 관리
+3. **실행 추적**: Step Function 콘솔에서 전체 실행 상태 모니터링 가능
+4. **에러 처리**: Step Function에서 각 Lambda의 성공/실패 상태 추적 가능
+
+### 배포 후 확인
+```bash
+# Step Function State Machine 확인
+aws stepfunctions list-state-machines \
+  --region ap-northeast-2 \
+  --query 'stateMachines[?starts_with(name, `skn18-`)].name' \
+  --output table
+
+# EventBridge Rule 확인
+aws events list-rules \
+  --region ap-northeast-2 \
+  --name-prefix skn18-protocols-ingest \
+  --query 'Rules[*].[Name,State]' \
+  --output table
+```
 
 ## 실행
 
@@ -356,8 +393,19 @@ aws cloudformation describe-stacks \
   --output table
 ```
 
-### 5. EC2 SSH 접속 및 PostgreSQL 확인
+### 5. EC2 SSH 접속 및 데이터베이스 확인
+
+#### PostgreSQL 확인
 ```bash
 # 상세 가이드 참고
 # [EC2_SSH_AND_POSTGRES.md](./EC2_SSH_AND_POSTGRES.md)
+```
+
+#### Neo4j 확인
+```bash
+# 상세 가이드 참고
+# [EC2_SSH_AND_NEO4J.md](./EC2_SSH_AND_NEO4J.md)
+
+# 자동 설치 문제 해결
+# [NEO4J_TROUBLESHOOTING.md](./NEO4J_TROUBLESHOOTING.md)
 ```

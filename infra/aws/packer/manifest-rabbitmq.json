@@ -1,0 +1,14 @@
+{
+  "builds": [
+    {
+      "name": "skn18-rabbitmq",
+      "builder_type": "amazon-ebs",
+      "build_time": 1766837786,
+      "files": null,
+      "artifact_id": "ap-northeast-2:ami-030cde072ba09828c",
+      "packer_run_uuid": "4c30c8b1-6056-8f51-9270-9ea29a83031f",
+      "custom_data": null
+    }
+  ],
+  "last_run_uuid": "4c30c8b1-6056-8f51-9270-9ea29a83031f"
+}

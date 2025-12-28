@@ -83,7 +83,18 @@ Resources:
       AvailabilityZone: !Select [0, !GetAZs ""]
       Tags:
         - Key: Name
-          Value: "skn18-public-subnet"
+          Value: "skn18-public-subnet-1"
+
+  AppPublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref AppVPC
+      CidrBlock: "10.0.2.0/24"
+      MapPublicIpOnLaunch: true
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      Tags:
+        - Key: Name
+          Value: "skn18-public-subnet-2"
 
   AppPublicRouteTable:
     Type: AWS::EC2::RouteTable
@@ -107,6 +118,12 @@ Resources:
       SubnetId: !Ref AppPublicSubnet
       RouteTableId: !Ref AppPublicRouteTable
 
+  AppPublicSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref AppPublicSubnet2
+      RouteTableId: !Ref AppPublicRouteTable
+
   # =========================
   # S3 버킷 (ETL 데이터 저장소)
   # =========================
@@ -124,6 +141,84 @@ Resources:
       Tags:
         - Key: Name
           Value: "skn18-etl-data"
+
+  # =========================
+  # S3 버킷 폴더 생성 (Neo4j 데이터용) - Custom Resource 사용
+  # =========================
+  S3FolderCreationRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: S3FolderCreationPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:PutObjectTagging
+                Resource: !Sub "arn:aws:s3:::${S3BucketName}/neo4j-data/*"
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                Resource: !Sub "arn:aws:s3:::${S3BucketName}"
+
+  CreateNeo4jDataFolder:
+    Type: AWS::CloudFormation::CustomResource
+    DependsOn: EtlDataBucket
+    Properties:
+      ServiceToken: !GetAtt CreateS3FolderFunction.Arn
+      BucketName: !Ref EtlDataBucket
+      FolderName: "neo4j-data"
+
+  CreateS3FolderFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-create-s3-folder"
+      Runtime: python3.12
+      Handler: index.handler
+      Role: !GetAtt S3FolderCreationRole.Arn
+      Timeout: 30
+      Code:
+        ZipFile: |
+          import boto3
+          import cfnresponse
+
+          def handler(event, context):
+              s3 = boto3.client('s3')
+              response_data = {}
+              
+              try:
+                  if event['RequestType'] == 'Delete':
+                      # 폴더 삭제는 필요 없음 (버킷 삭제 시 자동 삭제)
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, response_data)
+                      return
+                  
+                  bucket_name = event['ResourceProperties']['BucketName']
+                  folder_name = event['ResourceProperties']['FolderName']
+                  
+                  # 빈 객체를 업로드하여 폴더 생성
+                  s3.put_object(
+                      Bucket=bucket_name,
+                      Key=f"{folder_name}/",
+                      ServerSideEncryption='AES256'
+                  )
+                  
+                  response_data['Message'] = f"Folder {folder_name}/ created successfully"
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, response_data)
+                  
+              except Exception as e:
+                  response_data['Error'] = str(e)
+                  cfnresponse.send(event, context, cfnresponse.FAILED, response_data)
 
   # =========================
   # 보안 그룹
@@ -311,6 +406,16 @@ Resources:
                 Action:
                   - lambda:InvokeFunction
                 Resource: !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:skn18-*"
+        # Parameter Store 접근 권한 추가 (PostgreSQL 비밀번호 가져오기용)
+        - PolicyName: ParameterStoreAccessPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ssm:GetParameter
+                  - ssm:GetParameters
+                Resource: !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/skn18/*"
 
   # =========================
   # Lambda Layers
@@ -408,10 +513,22 @@ Outputs:
       Name: !Sub "${AWS::StackName}-VpcId"
 
   SubnetId:
-    Description: "생성된 Public Subnet ID"
+    Description: "생성된 Public Subnet ID (첫 번째)"
     Value: !Ref AppPublicSubnet
     Export:
       Name: !Sub "${AWS::StackName}-SubnetId"
+
+  SubnetId2:
+    Description: "생성된 Public Subnet ID (두 번째)"
+    Value: !Ref AppPublicSubnet2
+    Export:
+      Name: !Sub "${AWS::StackName}-SubnetId2"
+
+  SubnetIds:
+    Description: "모든 Public Subnet IDs (ALB용, comma-separated)"
+    Value: !Join [",", [!Ref AppPublicSubnet, !Ref AppPublicSubnet2]]
+    Export:
+      Name: !Sub "${AWS::StackName}-SubnetIds"
 
   SecurityGroupId:
     Description: "Security Group ID"

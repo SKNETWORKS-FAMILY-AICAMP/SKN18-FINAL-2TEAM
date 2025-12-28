@@ -1,19 +1,612 @@
-name: Deploy to EC2 (placeholder)
+name: Deploy to AWS
 
 on:
-  # 배포도 아직은 실 구현 전이라 수동 실행만 허용
-  workflow_dispatch:
+  push:
+    branches:
+      - main      # main 브랜치: 빌드 + 배포
+      - develop   # develop 브랜치: 빌드만 (오류 확인)
+  workflow_dispatch:  # 수동 실행
+    inputs:
+      rollback_to:
+        description: 'Rollback to specific image tag (leave empty for new deployment)'
+        required: false
+        type: string
+
+env:
+  AWS_REGION: ap-northeast-2
+  ECR_REPOSITORY: helixops_web
+  DOCKERFILE_PATH: infra/docker/Dockerfile.django
+  STACK_NAME: skn18-final-infra
 
 jobs:
-  deploy_placeholder:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      image-uri: ${{ steps.build-image.outputs.image-uri }}
+      image-tag: ${{ steps.build-image.outputs.image-tag }}
+      should-deploy: ${{ steps.check.outputs.should-deploy }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check if rollback
+        id: check
+        run: |
+          if [ -n "${{ github.event.inputs.rollback_to }}" ]; then
+            echo "should-deploy=true" >> $GITHUB_OUTPUT
+            echo "Rollback mode: will use tag ${{ github.event.inputs.rollback_to }}"
+          elif [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            echo "should-deploy=true" >> $GITHUB_OUTPUT
+          else
+            echo "should-deploy=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Configure AWS credentials
+        if: steps.check.outputs.should-deploy == 'true'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        if: steps.check.outputs.should-deploy == 'true'
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push image (or use rollback tag)
+        if: steps.check.outputs.should-deploy == 'true'
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: ${{ env.ECR_REPOSITORY }}
+          ROLLBACK_TAG: ${{ github.event.inputs.rollback_to }}
+        run: |
+          if [ -n "$ROLLBACK_TAG" ]; then
+            # 롤백 모드: 기존 이미지 태그 사용
+            echo "Rollback mode: Using existing image tag $ROLLBACK_TAG"
+            IMAGE_URI="$ECR_REGISTRY/$ECR_REPOSITORY:$ROLLBACK_TAG"
+            IMAGE_TAG="$ROLLBACK_TAG"
+            
+            # 이미지 존재 확인
+            if ! aws ecr describe-images \
+              --repository-name $ECR_REPOSITORY \
+              --image-ids imageTag=$ROLLBACK_TAG \
+              --region ${{ env.AWS_REGION }} > /dev/null 2>&1; then
+              echo "Error: Image tag $ROLLBACK_TAG not found in ECR"
+              exit 1
+            fi
+            
+            # latest 태그를 롤백 태그로 업데이트
+            MANIFEST=$(aws ecr batch-get-image \
+              --repository-name $ECR_REPOSITORY \
+              --image-ids imageTag=$ROLLBACK_TAG \
+              --region ${{ env.AWS_REGION }} \
+              --query 'images[0].imageManifest' \
+              --output text)
+            
+            aws ecr put-image \
+              --repository-name $ECR_REPOSITORY \
+              --image-tag latest \
+              --image-manifest "$MANIFEST" \
+              --region ${{ env.AWS_REGION }}
+          else
+            # 일반 빌드 모드
+            IMAGE_TAG="${{ github.sha }}"
+            IMAGE_URI="$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+            
+            # Docker 빌드
+            docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
+              -t $ECR_REGISTRY/$ECR_REPOSITORY:latest \
+              -f ${{ env.DOCKERFILE_PATH }} .
+            
+            # ECR에 푸시
+            docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+            docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          fi
+          
+          echo "image-uri=$IMAGE_URI" >> $GITHUB_OUTPUT
+          echo "image-tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
+          echo "✓ Image ready: $IMAGE_URI"
+
+  build-check:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build Docker image (test only)
+        run: |
+          docker build -f ${{ env.DOCKERFILE_PATH }} .
+          echo "✓ Build check passed"
+
+  deploy:
+    needs: build
+    if: needs.build.outputs.should-deploy == 'true'
     runs-on: ubuntu-latest
 
     steps:
-      - name: Show placeholder message
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+        id: login-ecr
+
+      - name: Get App EC2 and ALB Info
+        id: infra-info
         run: |
-          echo "deploy.yml placeholder workflow"
-          echo "👉 실제 AWS ECR/EC2 배포는 아직 세팅하지 않았습니다."
-          echo "👉 AWS IAM / ECR / EC2 설정이 완료되면 이 파일에"
-          echo "   - docker build & push"
-          echo "   - ssh로 EC2 접속 후 docker-compose up"
-          echo "   같은 진짜 배포 스텝을 추가하세요."
+          # App EC2 정보 가져오기 (AppInfraStack에서)
+          INSTANCE_ID=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.STACK_NAME }} \
+            --region ${{ env.AWS_REGION }} \
+            --query 'Stacks[0].Outputs[?OutputKey==`AppInstanceId`].OutputValue' \
+            --output text)
+          
+          PUBLIC_IP=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.STACK_NAME }} \
+            --region ${{ env.AWS_REGION }} \
+            --query 'Stacks[0].Outputs[?OutputKey==`AppPublicIp`].OutputValue' \
+            --output text)
+          
+          ALB_DNS=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.STACK_NAME }} \
+            --region ${{ env.AWS_REGION }} \
+            --query 'Stacks[0].Outputs[?OutputKey==`AlbDnsName`].OutputValue' \
+            --output text)
+          
+          TARGET_GROUP_ARN=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.STACK_NAME }} \
+            --region ${{ env.AWS_REGION }} \
+            --query 'Stacks[0].Outputs[?OutputKey==`AlbTargetGroupArn`].OutputValue' \
+            --output text)
+          
+          if [ -z "$INSTANCE_ID" ] || [ "$INSTANCE_ID" = "None" ]; then
+            echo "Error: App EC2 Instance ID not found in CloudFormation outputs"
+            echo "Make sure AppInfraStack is deployed successfully"
+            exit 1
+          fi
+          
+          echo "instance-id=$INSTANCE_ID" >> $GITHUB_OUTPUT
+          echo "public-ip=$PUBLIC_IP" >> $GITHUB_OUTPUT
+          echo "alb-dns=$ALB_DNS" >> $GITHUB_OUTPUT
+          echo "target-group-arn=$TARGET_GROUP_ARN" >> $GITHUB_OUTPUT
+          
+          echo "App EC2 Instance ID: $INSTANCE_ID"
+          echo "App EC2 Public IP: $PUBLIC_IP"
+          echo "ALB DNS: $ALB_DNS"
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ steps.infra-info.outputs.public-ip }} >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      - name: Copy docker-compose.prod.yml to EC2
+        env:
+          EC2_HOST: ${{ steps.infra-info.outputs.public-ip }}
+          EC2_USER: ec2-user
+          PROJECT_PATH: /home/ec2-user/app
+        run: |
+          # 프로젝트 디렉토리 생성
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+            $EC2_USER@$EC2_HOST "mkdir -p $PROJECT_PATH"
+          
+          # docker-compose.prod.yml 파일 복사
+          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+            docker-compose.prod.yml \
+            $EC2_USER@$EC2_HOST:$PROJECT_PATH/
+          
+          echo "✓ docker-compose.prod.yml copied to EC2"
+
+      - name: Deploy to EC2
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: ${{ env.ECR_REPOSITORY }}
+          IMAGE_TAG: ${{ needs.build.outputs.image-tag }}
+          EC2_HOST: ${{ steps.infra-info.outputs.public-ip }}
+          EC2_USER: ec2-user
+          PROJECT_PATH: /home/ec2-user/app
+          TARGET_GROUP_ARN: ${{ steps.infra-info.outputs.target-group-arn }}
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+            $EC2_USER@$EC2_HOST bash -s << EOF
+            set -e
+            
+            # 환경 변수 설정 (GitHub Actions에서 전달)
+            export ECR_REGISTRY="$ECR_REGISTRY"
+            export ECR_REPOSITORY="$ECR_REPOSITORY"
+            export AWS_REGION="${{ env.AWS_REGION }}"
+            export PROJECT_PATH="$PROJECT_PATH"
+            export TARGET_GROUP_ARN="$TARGET_GROUP_ARN"
+            
+            echo "=== Deployment Script ==="
+            echo "ECR Registry: \$ECR_REGISTRY"
+            echo "ECR Repository: \$ECR_REPOSITORY"
+            echo "AWS Region: \$AWS_REGION"
+            echo "Project Path: \$PROJECT_PATH"
+            echo "Target Group ARN: \$TARGET_GROUP_ARN"
+            
+            # ECR 로그인
+            echo "Logging in to ECR..."
+            if ! aws ecr get-login-password --region \$AWS_REGION | \
+              docker login --username AWS --password-stdin \$ECR_REGISTRY; then
+              echo "ERROR: ECR login failed"
+              echo "Checking AWS credentials..."
+              aws sts get-caller-identity || echo "AWS credentials check failed"
+              exit 1
+            fi
+            
+            echo "✓ ECR login successful"
+            
+            cd \$PROJECT_PATH || { echo "Error: Project directory not found"; exit 1; }
+            
+            # docker-compose.prod.yml 파일 확인
+            if [ ! -f "docker-compose.prod.yml" ]; then
+              echo "ERROR: docker-compose.prod.yml not found in \$PROJECT_PATH"
+              exit 1
+            fi
+            
+            # docker-compose.prod.yml에서 awslogs-stream-prefix 확인 (오래된 버전 체크)
+            if grep -q "awslogs-stream-prefix" docker-compose.prod.yml; then
+              echo "WARNING: docker-compose.prod.yml contains awslogs-stream-prefix (old version)"
+              echo "This will cause an error. Please ensure the latest version is deployed."
+              # 임시로 수정 (배포 후 수동 확인 필요)
+              sed -i 's/awslogs-stream-prefix.*//g' docker-compose.prod.yml || true
+              echo "Temporarily removed awslogs-stream-prefix from docker-compose.prod.yml"
+            fi
+            
+            # 이전 이미지 태그 저장 (롤백용)
+            PREVIOUS_IMAGE=\$(docker-compose -f docker-compose.prod.yml config | grep -A 1 "image:" | grep -v "image:" | tr -d ' ' || echo "")
+            if [ -n "\$PREVIOUS_IMAGE" ]; then
+              echo "Previous image: \$PREVIOUS_IMAGE"
+              echo "\$PREVIOUS_IMAGE" > /tmp/previous_image.txt
+            fi
+            
+            # 환경 변수 설정 (docker-compose에서 사용)
+            export ECR_WEB_IMAGE=\$ECR_REGISTRY/\$ECR_REPOSITORY:latest
+            echo "Image to pull: \$ECR_WEB_IMAGE"
+            
+            # docker-compose config로 이미지 확인
+            echo "Checking docker-compose configuration..."
+            docker-compose -f docker-compose.prod.yml config | grep -A 2 "image:" || echo "Image configuration not found"
+            
+            # Parameter Store에서 모든 설정 값 읽어오기
+            echo "Loading configuration from Parameter Store..."
+            
+            # PostgreSQL 설정
+            POSTGRES_HOST=\$(aws ssm get-parameter \
+              --name /skn18/postgres-host \
+              --region \$AWS_REGION \
+              --query 'Parameter.Value' \
+              --output text 2>/dev/null || echo "")
+            
+            POSTGRES_DB=\$(aws ssm get-parameter \
+              --name /skn18/postgres-db-name \
+              --region \$AWS_REGION \
+              --query 'Parameter.Value' \
+              --output text 2>/dev/null || echo "")
+            
+            POSTGRES_USER=\$(aws ssm get-parameter \
+              --name /skn18/postgres-user \
+              --region \$AWS_REGION \
+              --query 'Parameter.Value' \
+              --output text 2>/dev/null || echo "")
+            
+            POSTGRES_PASSWORD=\$(aws ssm get-parameter \
+              --name /skn18/postgres-password \
+              --with-decryption \
+              --region \$AWS_REGION \
+              --query 'Parameter.Value' \
+              --output text 2>/dev/null || echo "")
+            
+            POSTGRES_PORT=\$(aws ssm get-parameter \
+              --name /skn18/postgres-port \
+              --region \$AWS_REGION \
+              --query 'Parameter.Value' \
+              --output text 2>/dev/null || echo "5432")
+            
+            # Neo4j 설정
+            NEO4J_HOST=\$(aws ssm get-parameter \
+              --name /skn18/neo4j-host \
+              --region \$AWS_REGION \
+              --query 'Parameter.Value' \
+              --output text 2>/dev/null || echo "")
+            
+            NEO4J_PASSWORD=\$(aws ssm get-parameter \
+              --name /skn18/neo4j-password \
+              --with-decryption \
+              --region \$AWS_REGION \
+              --query 'Parameter.Value' \
+              --output text 2>/dev/null || echo "")
+            
+            # RabbitMQ 설정
+            RABBITMQ_HOST=\$(aws ssm get-parameter \
+              --name /skn18/rabbitmq-host \
+              --region \$AWS_REGION \
+              --query 'Parameter.Value' \
+              --output text 2>/dev/null || echo "")
+            
+            RABBITMQ_USER=\$(aws ssm get-parameter \
+              --name /skn18/rabbitmq-user \
+              --region \$AWS_REGION \
+              --query 'Parameter.Value' \
+              --output text 2>/dev/null || echo "guest")
+            
+            RABBITMQ_PASSWORD=\$(aws ssm get-parameter \
+              --name /skn18/rabbitmq-password \
+              --with-decryption \
+              --region \$AWS_REGION \
+              --query 'Parameter.Value' \
+              --output text 2>/dev/null || echo "")
+            
+            # Django 설정 (옵션)
+            DJANGO_SECRET_KEY=\$(aws ssm get-parameter \
+              --name /skn18/django-secret-key \
+              --with-decryption \
+              --region \$AWS_REGION \
+              --query 'Parameter.Value' \
+              --output text 2>/dev/null || echo "")
+            
+            OPENAI_API_KEY=\$(aws ssm get-parameter \
+              --name /skn18/openai-api-key \
+              --with-decryption \
+              --region \$AWS_REGION \
+              --query 'Parameter.Value' \
+              --output text 2>/dev/null || echo "")
+            
+            # 환경 변수 export (docker-compose에서 사용)
+            export POSTGRES_HOST=\$POSTGRES_HOST
+            export POSTGRES_DB=\$POSTGRES_DB
+            export POSTGRES_USER=\$POSTGRES_USER
+            export POSTGRES_PASSWORD=\$POSTGRES_PASSWORD
+            export POSTGRES_PORT=\$POSTGRES_PORT
+            export NEO4J_BOLT_HOST=\$NEO4J_HOST
+            export NEO4J_BOLT_PORT=7687
+            export NEO4J_USER=neo4j
+            export NEO4J_PASSWORD=\$NEO4J_PASSWORD
+            export RABBITMQ_HOST=\$RABBITMQ_HOST
+            export RABBITMQ_PORT=5672
+            export RABBITMQ_USER=\$RABBITMQ_USER
+            export RABBITMQ_PASSWORD=\$RABBITMQ_PASSWORD
+            export DJANGO_SECRET_KEY=\$DJANGO_SECRET_KEY
+            export OPENAI_API_KEY=\$OPENAI_API_KEY
+            
+            # 환경 변수 확인 (비밀번호 제외)
+            echo "Configuration loaded from Parameter Store:"
+            echo "  POSTGRES_HOST: \${POSTGRES_HOST:-❌ NOT SET}"
+            echo "  POSTGRES_DB: \${POSTGRES_DB:-❌ NOT SET}"
+            echo "  POSTGRES_USER: \${POSTGRES_USER:-❌ NOT SET}"
+            echo "  POSTGRES_PASSWORD: \${POSTGRES_PASSWORD:+✓ SET (hidden)}"
+            echo "  POSTGRES_PORT: \${POSTGRES_PORT}"
+            echo "  NEO4J_BOLT_HOST: \${NEO4J_HOST:-❌ NOT SET}"
+            echo "  NEO4J_PASSWORD: \${NEO4J_PASSWORD:+✓ SET (hidden)}"
+            echo "  RABBITMQ_HOST: \${RABBITMQ_HOST:-❌ NOT SET}"
+            echo "  RABBITMQ_USER: \${RABBITMQ_USER}"
+            echo "  RABBITMQ_PASSWORD: \${RABBITMQ_PASSWORD:+✓ SET (hidden)}"
+            echo ""
+            
+            # 필수 값 확인
+            if [ -z "\$POSTGRES_HOST" ] || [ -z "\$POSTGRES_DB" ] || [ -z "\$POSTGRES_USER" ] || [ -z "\$POSTGRES_PASSWORD" ]; then
+              echo "ERROR: PostgreSQL configuration is incomplete!"
+              echo "  POSTGRES_HOST: \${POSTGRES_HOST:-❌ NOT SET}"
+              echo "  POSTGRES_DB: \${POSTGRES_DB:-❌ NOT SET}"
+              echo "  POSTGRES_USER: \${POSTGRES_USER:-❌ NOT SET}"
+              echo "  POSTGRES_PASSWORD: \${POSTGRES_PASSWORD:+✓ SET}"
+              exit 1
+            fi
+            
+            if [ -z "\$RABBITMQ_HOST" ]; then
+              echo "WARNING: RABBITMQ_HOST is not set in Parameter Store"
+            fi
+            
+            # 환경 변수 확인
+            echo "Docker Compose environment variables:"
+            echo "  ECR_WEB_IMAGE=\$ECR_WEB_IMAGE"
+            echo "  ECR_REGISTRY=\$ECR_REGISTRY"
+            echo "  ECR_REPOSITORY=\$ECR_REPOSITORY"
+            
+            # Docker 리소스 정리 (디스크 공간 확보)
+            echo "Cleaning up Docker resources to free disk space..."
+            echo "Disk space before cleanup:"
+            df -h
+            
+            # 현재 실행 중인 컨테이너의 이미지 ID 저장 (유지해야 할 이미지)
+            RUNNING_IMAGE_IDS=\$(docker ps --format "{{.Image}}" | xargs -I {} docker inspect --format='{{.Id}}' {} 2>/dev/null || echo "")
+            
+            # 기존 컨테이너 중지 (이미지 제거를 위해)
+            echo "Stopping existing containers..."
+            docker-compose -f docker-compose.prod.yml stop web || true
+            
+            # 중지된 컨테이너 제거
+            docker container prune -f || true
+            
+            # 모든 미사용 이미지 제거 (필터 없이, 더 적극적으로)
+            echo "Removing all unused images..."
+            docker image prune -af || true
+            
+            # 특정 레지스트리의 모든 오래된 이미지 제거 (현재 pull할 이미지 제외)
+            echo "Removing old ECR images..."
+            docker images --format "{{.Repository}}:{{.Tag}} {{.ID}}" | \
+              grep "\$ECR_REGISTRY/\$ECR_REPOSITORY" | \
+              grep -v "latest" | \
+              awk '{print \$2}' | \
+              xargs -r docker rmi -f || true
+            
+            # 사용하지 않는 볼륨 제거
+            docker volume prune -f || true
+            
+            # 빌드 캐시 정리
+            docker builder prune -af || true
+            
+            # 시스템 전체 정리 (더 강력한 정리)
+            docker system prune -af --volumes || true
+            
+            echo "Disk space after cleanup:"
+            df -h
+            
+            # docker-compose pull (환경 변수 명시적 전달)
+            echo "Pulling latest image..."
+            PULL_RETRIES=3
+            PULL_SUCCESS=false
+            
+            for i in \$(seq 1 \$PULL_RETRIES); do
+              if ECR_WEB_IMAGE=\$ECR_WEB_IMAGE \
+                 POSTGRES_HOST=\$POSTGRES_HOST \
+                 POSTGRES_DB=\$POSTGRES_DB \
+                 POSTGRES_USER=\$POSTGRES_USER \
+                 POSTGRES_PASSWORD=\$POSTGRES_PASSWORD \
+                 POSTGRES_PORT=\$POSTGRES_PORT \
+                 NEO4J_BOLT_HOST=\$NEO4J_BOLT_HOST \
+                 NEO4J_PASSWORD=\$NEO4J_PASSWORD \
+                 RABBITMQ_HOST=\$RABBITMQ_HOST \
+                 RABBITMQ_USER=\$RABBITMQ_USER \
+                 RABBITMQ_PASSWORD=\$RABBITMQ_PASSWORD \
+                 docker-compose -f docker-compose.prod.yml pull web; then
+                PULL_SUCCESS=true
+                break
+              else
+                echo "Pull attempt \$i failed. Retrying..."
+                if [ \$i -lt \$PULL_RETRIES ]; then
+                  echo "Additional cleanup before retry..."
+                  docker system prune -af --volumes || true
+                  sleep 5
+                fi
+              fi
+            done
+            
+            if [ "\$PULL_SUCCESS" != "true" ]; then
+              echo "ERROR: Failed to pull image after \$PULL_RETRIES attempts"
+              echo "Final disk space:"
+              df -h
+              echo "Docker disk usage:"
+              docker system df
+              echo "Checking ECR repository..."
+              aws ecr describe-repositories --repository-names \$ECR_REPOSITORY --region \$AWS_REGION || echo "ECR repository check failed"
+              echo "Checking image tags..."
+              aws ecr list-images --repository-name \$ECR_REPOSITORY --region \$AWS_REGION --query 'imageIds[*].imageTag' --output table || echo "Image list check failed"
+              exit 1
+            fi
+            
+            echo "✓ Image pulled successfully"
+            
+            # 새 컨테이너 시작 (entrypoint에서 마이그레이션 자동 실행)
+            # (컨테이너는 이미 디스크 정리 단계에서 중지됨)
+            echo "Starting new container (migrations will run automatically)..."
+            # CloudWatch 로그 드라이버가 없을 경우를 대비해 로깅 설정 확인
+            if docker info | grep -q "Logging Driver.*awslogs"; then
+              echo "CloudWatch logs driver is available"
+            else
+              echo "Warning: CloudWatch logs driver may not be available, using default logging"
+            fi
+            # 환경변수를 명시적으로 전달하여 docker-compose 실행
+            ECR_WEB_IMAGE=\$ECR_WEB_IMAGE \
+            POSTGRES_HOST=\$POSTGRES_HOST \
+            POSTGRES_DB=\$POSTGRES_DB \
+            POSTGRES_USER=\$POSTGRES_USER \
+            POSTGRES_PASSWORD=\$POSTGRES_PASSWORD \
+            POSTGRES_PORT=\$POSTGRES_PORT \
+            NEO4J_BOLT_HOST=\$NEO4J_BOLT_HOST \
+            NEO4J_BOLT_PORT=\$NEO4J_BOLT_PORT \
+            NEO4J_USER=\$NEO4J_USER \
+            NEO4J_PASSWORD=\$NEO4J_PASSWORD \
+            RABBITMQ_HOST=\$RABBITMQ_HOST \
+            RABBITMQ_PORT=\$RABBITMQ_PORT \
+            RABBITMQ_USER=\$RABBITMQ_USER \
+            RABBITMQ_PASSWORD=\$RABBITMQ_PASSWORD \
+            DJANGO_SECRET_KEY=\$DJANGO_SECRET_KEY \
+            OPENAI_API_KEY=\$OPENAI_API_KEY \
+            AWS_REGION=\$AWS_REGION \
+            STACK_NAME=\$STACK_NAME \
+            docker-compose -f docker-compose.prod.yml up -d web
+            
+            # 마이그레이션 로그 확인 (최대 2분 대기)
+            echo "Waiting for migrations to complete..."
+            for i in {1..24}; do
+              if docker logs web-app 2>&1 | grep -q "Migrations completed"; then
+                echo "✓ Migrations completed successfully"
+                break
+              fi
+              if docker logs web-app 2>&1 | grep -q "Database is ready - executing migrations"; then
+                echo "Migrations in progress... (\$i/24)"
+              fi
+              if [ \$i -eq 24 ]; then
+                echo "⚠ Migration timeout - check logs manually"
+                docker logs web-app --tail 50
+              fi
+              sleep 5
+            done
+            
+            # 컨테이너 상태 확인
+            sleep 5
+            if ! docker ps | grep -q web-app; then
+              echo "Error: Container failed to start"
+              docker logs web-app --tail 100
+              exit 1
+            fi
+            
+            # EC2 인스턴스 ID 가져오기 (ALB Target Group 등록용)
+            INSTANCE_ID=\$(aws cloudformation describe-stacks \
+              --stack-name \$STACK_NAME \
+              --region \$AWS_REGION \
+              --query 'Stacks[0].Outputs[?OutputKey==`AppInstanceId`].OutputValue' \
+              --output text 2>/dev/null || echo "")
+            
+            if [ -n "\$INSTANCE_ID" ] && [ -n "\$TARGET_GROUP_ARN" ]; then
+              echo "EC2 Instance ID: \$INSTANCE_ID"
+              echo "Registering instance to ALB Target Group..."
+              
+              # ALB Target Group에 EC2 인스턴스 등록
+              aws elbv2 register-targets \
+                --target-group-arn \$TARGET_GROUP_ARN \
+                --targets Id=\$INSTANCE_ID,Port=8000 \
+                --region \$AWS_REGION || echo "Target may already be registered"
+              
+              echo "✓ Instance registered to ALB Target Group"
+            else
+              echo "WARNING: Cannot register to ALB Target Group"
+              echo "  INSTANCE_ID: \${INSTANCE_ID:-NOT FOUND}"
+              echo "  TARGET_GROUP_ARN: \${TARGET_GROUP_ARN:-NOT FOUND}"
+            fi
+            
+            # 배포 확인
+            docker-compose -f docker-compose.prod.yml ps
+            
+            echo "✓ Deployment completed"
+          EOF
+
+      - name: Health Check
+        run: |
+          ALB_DNS=${{ steps.infra-info.outputs.alb-dns }}
+          echo "Checking ALB health..."
+          
+          for i in {1..30}; do
+            if curl -f -s "http://${ALB_DNS}" > /dev/null 2>&1; then
+              echo "✓ Web service is healthy via ALB"
+              exit 0
+            fi
+            echo "Waiting for service to be ready... ($i/30)"
+            sleep 10
+          done
+          
+          echo "⚠ Health check timeout. Check CloudWatch logs for details."
+          exit 0
+
+      - name: Save deployment info
+        if: always()
+        run: |
+          echo "Deployment completed at $(date)" >> deployment_history.txt
+          echo "Image: ${{ needs.build.outputs.image-uri }}" >> deployment_history.txt
+          echo "Tag: ${{ needs.build.outputs.image-tag }}" >> deployment_history.txt
+          echo "---" >> deployment_history.txt
