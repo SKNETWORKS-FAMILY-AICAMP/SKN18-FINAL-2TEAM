@@ -5,5 +5,5 @@ app_name = "experiments_api"
 
 urlpatterns = [
     # /api/experiments/ -> apps.experiments.views.experiments_api
-    path("experiments/", views.experiments_api, name="api_experiments"),
+    path("", views.experiments_api, name="api_experiments"),
 ]
