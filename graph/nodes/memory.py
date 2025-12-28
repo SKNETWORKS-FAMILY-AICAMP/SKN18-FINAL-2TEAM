@@ -332,6 +332,12 @@ def memory_write_node(state):
     user_id = state.get("user_id", "default")
     current_case_type = state.get("case_type", "NO_RELATION")
 
+    # 테스트/시뮬레이션 환경 보호: chat_room_id가 없으면 DB 저장 스킵
+    if chat_room_id is None:
+        print("[MemoryWrite] Warning: chat_room_id가 None 입니다. DB 저장을 건너뜁니다.")
+        print("[MemoryWrite] (테스트 환경이거나 conversation_id가 설정되지 않았을 수 있습니다.)")
+        return state
+
     db = Connect_PostgreSQL()
     try:
         # NO_RELATION이 아닌 경우에만 저장
