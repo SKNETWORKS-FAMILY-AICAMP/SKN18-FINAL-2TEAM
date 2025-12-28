@@ -282,8 +282,137 @@ jobs:
             echo "Checking docker-compose configuration..."
             docker-compose -f docker-compose.prod.yml config | grep -A 2 "image:" || echo "Image configuration not found"
             
+            # Parameter Store에서 모든 설정 값 읽어오기
+            echo "Loading configuration from Parameter Store..."
+            
+            # PostgreSQL 설정
+            POSTGRES_HOST=\$(aws ssm get-parameter \
+              --name /skn18/postgres-host \
+              --region \$AWS_REGION \
+              --query 'Parameter.Value' \
+              --output text 2>/dev/null || echo "")
+            
+            POSTGRES_DB=\$(aws ssm get-parameter \
+              --name /skn18/postgres-db-name \
+              --region \$AWS_REGION \
+              --query 'Parameter.Value' \
+              --output text 2>/dev/null || echo "")
+            
+            POSTGRES_USER=\$(aws ssm get-parameter \
+              --name /skn18/postgres-user \
+              --region \$AWS_REGION \
+              --query 'Parameter.Value' \
+              --output text 2>/dev/null || echo "")
+            
+            POSTGRES_PASSWORD=\$(aws ssm get-parameter \
+              --name /skn18/postgres-password \
+              --with-decryption \
+              --region \$AWS_REGION \
+              --query 'Parameter.Value' \
+              --output text 2>/dev/null || echo "")
+            
+            POSTGRES_PORT=\$(aws ssm get-parameter \
+              --name /skn18/postgres-port \
+              --region \$AWS_REGION \
+              --query 'Parameter.Value' \
+              --output text 2>/dev/null || echo "5432")
+            
+            # Neo4j 설정
+            NEO4J_HOST=\$(aws ssm get-parameter \
+              --name /skn18/neo4j-host \
+              --region \$AWS_REGION \
+              --query 'Parameter.Value' \
+              --output text 2>/dev/null || echo "")
+            
+            NEO4J_PASSWORD=\$(aws ssm get-parameter \
+              --name /skn18/neo4j-password \
+              --with-decryption \
+              --region \$AWS_REGION \
+              --query 'Parameter.Value' \
+              --output text 2>/dev/null || echo "")
+            
+            # RabbitMQ 설정
+            RABBITMQ_HOST=\$(aws ssm get-parameter \
+              --name /skn18/rabbitmq-host \
+              --region \$AWS_REGION \
+              --query 'Parameter.Value' \
+              --output text 2>/dev/null || echo "")
+            
+            RABBITMQ_USER=\$(aws ssm get-parameter \
+              --name /skn18/rabbitmq-user \
+              --region \$AWS_REGION \
+              --query 'Parameter.Value' \
+              --output text 2>/dev/null || echo "guest")
+            
+            RABBITMQ_PASSWORD=\$(aws ssm get-parameter \
+              --name /skn18/rabbitmq-password \
+              --with-decryption \
+              --region \$AWS_REGION \
+              --query 'Parameter.Value' \
+              --output text 2>/dev/null || echo "")
+            
+            # Django 설정 (옵션)
+            DJANGO_SECRET_KEY=\$(aws ssm get-parameter \
+              --name /skn18/django-secret-key \
+              --with-decryption \
+              --region \$AWS_REGION \
+              --query 'Parameter.Value' \
+              --output text 2>/dev/null || echo "")
+            
+            OPENAI_API_KEY=\$(aws ssm get-parameter \
+              --name /skn18/openai-api-key \
+              --with-decryption \
+              --region \$AWS_REGION \
+              --query 'Parameter.Value' \
+              --output text 2>/dev/null || echo "")
+            
+            # 환경 변수 export (docker-compose에서 사용)
+            export POSTGRES_HOST=\$POSTGRES_HOST
+            export POSTGRES_DB=\$POSTGRES_DB
+            export POSTGRES_USER=\$POSTGRES_USER
+            export POSTGRES_PASSWORD=\$POSTGRES_PASSWORD
+            export POSTGRES_PORT=\$POSTGRES_PORT
+            export NEO4J_BOLT_HOST=\$NEO4J_HOST
+            export NEO4J_BOLT_PORT=7687
+            export NEO4J_USER=neo4j
+            export NEO4J_PASSWORD=\$NEO4J_PASSWORD
+            export RABBITMQ_HOST=\$RABBITMQ_HOST
+            export RABBITMQ_PORT=5672
+            export RABBITMQ_USER=\$RABBITMQ_USER
+            export RABBITMQ_PASSWORD=\$RABBITMQ_PASSWORD
+            export DJANGO_SECRET_KEY=\$DJANGO_SECRET_KEY
+            export OPENAI_API_KEY=\$OPENAI_API_KEY
+            
+            # 환경 변수 확인 (비밀번호 제외)
+            echo "Configuration loaded from Parameter Store:"
+            echo "  POSTGRES_HOST: \${POSTGRES_HOST:-❌ NOT SET}"
+            echo "  POSTGRES_DB: \${POSTGRES_DB:-❌ NOT SET}"
+            echo "  POSTGRES_USER: \${POSTGRES_USER:-❌ NOT SET}"
+            echo "  POSTGRES_PASSWORD: \${POSTGRES_PASSWORD:+✓ SET (hidden)}"
+            echo "  POSTGRES_PORT: \${POSTGRES_PORT}"
+            echo "  NEO4J_BOLT_HOST: \${NEO4J_HOST:-❌ NOT SET}"
+            echo "  NEO4J_PASSWORD: \${NEO4J_PASSWORD:+✓ SET (hidden)}"
+            echo "  RABBITMQ_HOST: \${RABBITMQ_HOST:-❌ NOT SET}"
+            echo "  RABBITMQ_USER: \${RABBITMQ_USER}"
+            echo "  RABBITMQ_PASSWORD: \${RABBITMQ_PASSWORD:+✓ SET (hidden)}"
+            echo ""
+            
+            # 필수 값 확인
+            if [ -z "\$POSTGRES_HOST" ] || [ -z "\$POSTGRES_DB" ] || [ -z "\$POSTGRES_USER" ] || [ -z "\$POSTGRES_PASSWORD" ]; then
+              echo "ERROR: PostgreSQL configuration is incomplete!"
+              echo "  POSTGRES_HOST: \${POSTGRES_HOST:-❌ NOT SET}"
+              echo "  POSTGRES_DB: \${POSTGRES_DB:-❌ NOT SET}"
+              echo "  POSTGRES_USER: \${POSTGRES_USER:-❌ NOT SET}"
+              echo "  POSTGRES_PASSWORD: \${POSTGRES_PASSWORD:+✓ SET}"
+              exit 1
+            fi
+            
+            if [ -z "\$RABBITMQ_HOST" ]; then
+              echo "WARNING: RABBITMQ_HOST is not set in Parameter Store"
+            fi
+            
             # 환경 변수 확인
-            echo "Environment variables:"
+            echo "Docker Compose environment variables:"
             echo "  ECR_WEB_IMAGE=\$ECR_WEB_IMAGE"
             echo "  ECR_REGISTRY=\$ECR_REGISTRY"
             echo "  ECR_REPOSITORY=\$ECR_REPOSITORY"
@@ -333,7 +462,18 @@ jobs:
             PULL_SUCCESS=false
             
             for i in \$(seq 1 \$PULL_RETRIES); do
-              if ECR_WEB_IMAGE=\$ECR_WEB_IMAGE docker-compose -f docker-compose.prod.yml pull web; then
+              if ECR_WEB_IMAGE=\$ECR_WEB_IMAGE \
+                 POSTGRES_HOST=\$POSTGRES_HOST \
+                 POSTGRES_DB=\$POSTGRES_DB \
+                 POSTGRES_USER=\$POSTGRES_USER \
+                 POSTGRES_PASSWORD=\$POSTGRES_PASSWORD \
+                 POSTGRES_PORT=\$POSTGRES_PORT \
+                 NEO4J_BOLT_HOST=\$NEO4J_BOLT_HOST \
+                 NEO4J_PASSWORD=\$NEO4J_PASSWORD \
+                 RABBITMQ_HOST=\$RABBITMQ_HOST \
+                 RABBITMQ_USER=\$RABBITMQ_USER \
+                 RABBITMQ_PASSWORD=\$RABBITMQ_PASSWORD \
+                 docker-compose -f docker-compose.prod.yml pull web; then
                 PULL_SUCCESS=true
                 break
               else
@@ -370,6 +510,25 @@ jobs:
             else
               echo "Warning: CloudWatch logs driver may not be available, using default logging"
             fi
+            # 환경변수를 명시적으로 전달하여 docker-compose 실행
+            ECR_WEB_IMAGE=\$ECR_WEB_IMAGE \
+            POSTGRES_HOST=\$POSTGRES_HOST \
+            POSTGRES_DB=\$POSTGRES_DB \
+            POSTGRES_USER=\$POSTGRES_USER \
+            POSTGRES_PASSWORD=\$POSTGRES_PASSWORD \
+            POSTGRES_PORT=\$POSTGRES_PORT \
+            NEO4J_BOLT_HOST=\$NEO4J_BOLT_HOST \
+            NEO4J_BOLT_PORT=\$NEO4J_BOLT_PORT \
+            NEO4J_USER=\$NEO4J_USER \
+            NEO4J_PASSWORD=\$NEO4J_PASSWORD \
+            RABBITMQ_HOST=\$RABBITMQ_HOST \
+            RABBITMQ_PORT=\$RABBITMQ_PORT \
+            RABBITMQ_USER=\$RABBITMQ_USER \
+            RABBITMQ_PASSWORD=\$RABBITMQ_PASSWORD \
+            DJANGO_SECRET_KEY=\$DJANGO_SECRET_KEY \
+            OPENAI_API_KEY=\$OPENAI_API_KEY \
+            AWS_REGION=\$AWS_REGION \
+            STACK_NAME=\$STACK_NAME \
             docker-compose -f docker-compose.prod.yml up -d web
             
             # 마이그레이션 로그 확인 (최대 2분 대기)
@@ -397,17 +556,28 @@ jobs:
               exit 1
             fi
             
-            # 컨테이너 IP 가져오기
-            CONTAINER_IP=\$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' web-app 2>/dev/null || echo "")
+            # EC2 인스턴스 ID 가져오기 (ALB Target Group 등록용)
+            INSTANCE_ID=\$(aws cloudformation describe-stacks \
+              --stack-name \$STACK_NAME \
+              --region \$AWS_REGION \
+              --query 'Stacks[0].Outputs[?OutputKey==`AppInstanceId`].OutputValue' \
+              --output text 2>/dev/null || echo "")
             
-            if [ -n "\$CONTAINER_IP" ]; then
-              echo "Container IP: \$CONTAINER_IP"
+            if [ -n "\$INSTANCE_ID" ] && [ -n "\$TARGET_GROUP_ARN" ]; then
+              echo "EC2 Instance ID: \$INSTANCE_ID"
+              echo "Registering instance to ALB Target Group..."
               
-              # ALB Target Group에 등록
+              # ALB Target Group에 EC2 인스턴스 등록
               aws elbv2 register-targets \
                 --target-group-arn \$TARGET_GROUP_ARN \
-                --targets Id=\$CONTAINER_IP,Port=8000 \
+                --targets Id=\$INSTANCE_ID,Port=8000 \
                 --region \$AWS_REGION || echo "Target may already be registered"
+              
+              echo "✓ Instance registered to ALB Target Group"
+            else
+              echo "WARNING: Cannot register to ALB Target Group"
+              echo "  INSTANCE_ID: \${INSTANCE_ID:-NOT FOUND}"
+              echo "  TARGET_GROUP_ARN: \${TARGET_GROUP_ARN:-NOT FOUND}"
             fi
             
             # 배포 확인
