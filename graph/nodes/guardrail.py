@@ -13,7 +13,7 @@ guardrail.py
 """
 
 from typing import Dict, Any
-from graph.llm_config import guardrail_check_safety_llm
+from graph.llm_config import guardrail_check_safety_llm, get_model_name
 
 
 def _check_harmful_content(question: str) -> Dict[str, Any]:
@@ -75,6 +75,8 @@ def _check_harmful_content(question: str) -> Dict[str, Any]:
 JSON만 출력하고 다른 텍스트는 포함하지 마세요."""
 
     try:
+        model_name = get_model_name(guardrail_check_safety_llm)
+        print(f"[Guardrail] 안전 검사 모델: {model_name}")
         response = guardrail_check_safety_llm(prompt).strip()
         
         # JSON 파싱

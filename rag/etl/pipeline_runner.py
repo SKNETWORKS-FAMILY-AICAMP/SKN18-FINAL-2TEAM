@@ -100,11 +100,9 @@ def run_ingest(source: SourceType, cfg: PipelineConfig, limit: int | None = None
             mod.run(raw_dir=cfg.raw_dir, limit=limit)
         elif s == "protocols":
             mod = import_module("rag.etl.step01_ingest.ingest_protocols")
-            # protocols는 main() 함수만 있음
-            if hasattr(mod, 'run'):
-                mod.run(raw_dir=cfg.raw_dir, limit=limit)
-            else:
-                mod.main()
+            # protocols는 로컬에서 실행 시 main() 함수 사용 (모든 키워드 병렬 처리)
+            # run() 함수는 Lambda에서 단일 keyword 처리용이므로 로컬에서는 사용하지 않음
+            mod.main(raw_dir=cfg.raw_dir)
         else:
             raise ValueError(f"Unknown source: {s}")
 

@@ -1,141 +1,93 @@
 name: SKN18-final-prod
 
+# 주의: 이 docker-compose.prod.yml은 App EC2에서 실행됩니다.
+# PostgreSQL, Neo4j, RabbitMQ는 외부 EC2 인스턴스를 사용합니다.
+# 모든 설정은 Parameter Store에서 entrypoint.sh가 자동으로 읽어옵니다.
+
 services:
   ########################################
-  # 1) PostgreSQL + pgvector (RDB + 벡터DB)
-  ########################################
-  db:
-    image: pgvector/pgvector:pg18
-    container_name: pg-db
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB:-sknfinaldb}
-      POSTGRES_USER: ${POSTGRES_USER:-root}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-root1234}
-    ports:
-      # prod에서 외부에서 직접 DB 붙을 일 없으면 이 라인 지워도 됨
-      - "${POSTGRES_PORT:-5432}:5432"
-    volumes:
-      - pgvector-data:/var/lib/postgresql/data
-      # 초기 스키마 + pgvector extension
-      - ./infra/db/init.sql:/docker-entrypoint-initdb.d/init.sql
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -d ${POSTGRES_DB:-sknfinaldb} -U ${POSTGRES_USER:-root}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-    restart: unless-stopped
-
-  ########################################
-  # 2) Neo4j (Knowledge Graph)
-  ########################################
-  neo4j:
-    image: neo4j:5.26.17-community
-    container_name: neo4j-final
-    environment:
-      # 계정/비밀번호: neo4j / neo4jpass
-      NEO4J_AUTH: neo4j/neo4jpass
-      # 필요시 메모리/튜닝 옵션 추가 가능
-      # NEO4J_dbms_memory_pagecache_size: 2G
-      # NEO4J_dbms_memory_heap_max__size: 2G
-    ports:
-      - "7474:7474"  # Neo4j Browser
-      - "7687:7687"  # Bolt
-    volumes:
-      - neo4j-data:/data
-      - neo4j-logs:/logs
-      - ./infra/neo4j/neo4j.conf:/config/neo4j.conf
-      - ./infra/neo4j/init.cypher:/docker-entrypoint-initdb.d/init.cypher
-    restart: unless-stopped
-
-  ########################################
-  # 3) RabbitMQ (Message Queue)
-  ########################################
-  rabbitmq:
-    image: rabbitmq:3.13-management-alpine
-    container_name: rabbitmq-final
-    environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
-    ports:
-      - "5672:5672"      # AMQP 포트
-      - "15672:15672"    # Management UI (운영 모니터링용)
-    volumes:
-      - rabbitmq-data:/var/lib/rabbitmq
-      - rabbitmq-logs:/var/log/rabbitmq
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-    restart: unless-stopped
-
-  ########################################
-  # 4) Django + LangGraph Web (SSR + API)
+  # 2) Django + LangGraph Web (SSR + API)
   ########################################
   web:
     # CI/CD에서 ECR에 푸시한 이미지 사용
-    # ex) 123456789012.dkr.ecr.ap-northeast-2.amazonaws.com/skn18-final-web:latest
-    image: ${ECR_WEB_IMAGE:-skn18-final-web:latest}
+    # ex) 123456789012.dkr.ecr.ap-northeast-2.amazonaws.com/helixops_web:latest
+    image: ${ECR_WEB_IMAGE:-helixops_web:latest}
     container_name: web-app
-    env_file:
-      - .env
-    depends_on:
-      db:
-        condition: service_healthy
-      neo4j:
-        condition: service_started
-      rabbitmq:
-        condition: service_healthy
+    # env_file 제거 - Parameter Store에서 모든 설정을 읽어옴
+    # db, neo4j, rabbitmq는 외부 EC2를 사용하므로 depends_on 제거
     environment:
-      # RabbitMQ 연결 정보
-      RABBITMQ_HOST: rabbitmq
-      RABBITMQ_PORT: 5672
-      RABBITMQ_USER: ${RABBITMQ_USER:-guest}
-      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
+      # 모든 설정은 GitHub Actions 배포 시 Parameter Store에서 읽어서 환경변수로 주입됨
+      # .env 파일 없이 SSM만으로 배포 (방식 A)
+      AWS_REGION: ${AWS_REGION:-ap-northeast-2}
+      STACK_NAME: ${STACK_NAME:-skn18-final-infra}
+      # PostgreSQL 설정 (SSM에서 주입)
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      # Neo4j 설정 (SSM에서 주입)
+      NEO4J_BOLT_HOST: ${NEO4J_BOLT_HOST}
+      NEO4J_BOLT_PORT: ${NEO4J_BOLT_PORT:-7687}
+      NEO4J_USER: ${NEO4J_USER:-neo4j}
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD}
+      # RabbitMQ 설정 (SSM에서 주입)
+      RABBITMQ_HOST: ${RABBITMQ_HOST}
+      RABBITMQ_PORT: ${RABBITMQ_PORT:-5672}
+      RABBITMQ_USER: ${RABBITMQ_USER}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+      # Django 설정 (SSM에서 주입, 옵션)
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+    # Entrypoint가 마이그레이션을 실행한 후 CMD 실행
     command: >
       gunicorn config.wsgi:application
       --bind 0.0.0.0:8000
       --workers 3
+      --access-logfile -
+      --error-logfile -
+      --log-level info
+    # CloudWatch 로그 드라이버 사용 (AWS 환경에서만 동작)
+    # 주의: EC2에 CloudWatch 로그 드라이버가 설치되어 있어야 함
+    # awslogs-stream-prefix는 일부 Docker 버전에서 지원되지 않을 수 있으므로 제거
+    logging:
+      driver: awslogs
+      options:
+        awslogs-group: /ec2/skn18/web-service
+        awslogs-region: ap-northeast-2
     ports:
-      # Nginx 앞단 붙이면 8000 포트는 내부용으로만 써도 됨
+      # ALB를 통해 접근하므로 내부용으로만 사용
       - "8000:8000"
     restart: unless-stopped
+    network_mode: bridge
 
   ########################################
-  # 5) Worker (ETL / 배치 / Consumer)
+  # 3) Worker (ETL / 배치 / Consumer)
   ########################################
   worker:
     # CI/CD에서 따로 빌드한 worker 이미지
     image: ${ECR_WORKER_IMAGE:-skn18-final-worker:latest}
     container_name: etl-worker
-    env_file:
-      - .env
-    depends_on:
-      db:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
+    # env_file 제거 - Parameter Store에서 모든 설정을 읽어옴
+    # db와 rabbitmq는 외부 EC2를 사용하므로 depends_on 제거
     environment:
-      # RabbitMQ 연결 정보
-      RABBITMQ_HOST: rabbitmq
-      RABBITMQ_PORT: 5672
-      RABBITMQ_USER: ${RABBITMQ_USER:-guest}
-      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
+      # RabbitMQ 연결 정보는 entrypoint.sh에서 Parameter Store에서 읽어옴
+      AWS_REGION: ${AWS_REGION:-ap-northeast-2}
+      STACK_NAME: ${STACK_NAME:-skn18-final-infra}
     # 시뮬레이션 Consumer 실행
     command: ["python", "-m", "messaging.workers.main"]
     restart: unless-stopped
 
   ########################################
-  # 6) sLLM 서버 (옵션: vLLM/Ollama 등)
+  # 4) sLLM 서버 (옵션: vLLM/Ollama 등)
   ########################################
   sllm-server:
     # 로컬 sLLM 서버를 ECR에 올린 경우 사용
     image: ${ECR_SLLM_IMAGE:-skn18-final-sllm-server:latest}
     container_name: sllm-server
-    env_file:
-      - .env
+    # env_file 제거
+    environment:
+      AWS_REGION: ${AWS_REGION:-ap-northeast-2}
     ports:
       - "8001:8001"
     restart: unless-stopped
@@ -147,7 +99,7 @@ services:
     #         - capabilities: ["gpu"]
 
   ########################################
-  # 7) Nginx (옵션: 프록시/도메인 붙일 때)
+  # 5) Nginx (옵션: 프록시/도메인 붙일 때)
   ########################################
   nginx:
     image: nginx:1.27-alpine
@@ -160,9 +112,6 @@ services:
       - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     restart: unless-stopped
 
-volumes:
-  pgvector-data:
-  neo4j-data:
-  neo4j-logs:
-  rabbitmq-data:        # RabbitMQ 데이터 영속성
-  rabbitmq-logs:        # RabbitMQ 로그
+# volumes:
+# RabbitMQ는 외부 EC2에서 실행되므로 볼륨이 필요 없음
+# (필요시 위 주석을 해제하고 볼륨 정의 추가)

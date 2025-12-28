@@ -1,11 +1,315 @@
+import json
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.authentication import SessionAuthentication
+from rest_framework.views import APIView
+from drf_spectacular.utils import extend_schema, OpenApiParameter
+from .models import ExperimentTool, Experiment
 
 
 @login_required
 def index(request):
     """Experiments page view (인증 필수)."""
+    # 활성화된 실험 도구 조회 (옵션 필드 포함)
+    available_tools = ExperimentTool.objects.filter(
+        status='E'
+    ).prefetch_related('options').order_by('tool_name')
+    
+    # 템플릿에서 사용할 수 있도록 도구 데이터 변환
+    tools_data = []
+    for tool in available_tools:
+        # 옵션 필드 변환
+        option_fields = []
+        for option in tool.options.all():
+            option_field = {
+                'name': option.field_name,
+                'label': option.field_label,
+                'type': option.field_type,
+                'default': option.default_value or '',
+            }
+            
+            # 필드 타입별 추가 속성
+            if option.field_type == 'number':
+                # 소수점 값 처리: 데이터베이스에 SMALLINT로 저장되므로
+                # 소수점 값은 10배로 저장됨 (예: 0.1 -> 1, 2.0 -> 20, 7.5 -> 75)
+                # 프론트엔드에서 사용할 수 있도록 원래 값으로 변환
+                # 단, 10 이상의 값은 정수로 저장된 것으로 간주
+                if option.min_value < 10 and option.min_value > 0:
+                    option_field['min'] = option.min_value / 10.0
+                else:
+                    option_field['min'] = float(option.min_value)
+                
+                if option.max_value <= 100 and option.max_value > 0:
+                    option_field['max'] = option.max_value / 10.0
+                else:
+                    option_field['max'] = float(option.max_value)
+                
+                if option.step_value < 10 and option.step_value > 0:
+                    option_field['step'] = option.step_value / 10.0
+                else:
+                    option_field['step'] = float(option.step_value)
+            elif option.field_type == 'select':
+                # JSON 문자열 파싱
+                if option.options_json:
+                    try:
+                        option_field['options'] = json.loads(option.options_json)
+                    except json.JSONDecodeError:
+                        option_field['options'] = []
+                else:
+                    option_field['options'] = []
+            
+            option_fields.append(option_field)
+        
+        # Guide 정보 변환
+        guide_usage = []
+        if tool.guide_usage:
+            try:
+                guide_usage = json.loads(tool.guide_usage)
+            except json.JSONDecodeError:
+                guide_usage = []
+        
+        tool_data = {
+            'id': tool.tool_sid,
+            'name': tool.tool_name,
+            'category': tool.category,
+            'description': tool.description or '',
+            'icon': tool.icon_name or 'fa-solid fa-cog',
+            'optionFields': option_fields,
+            'guide': {
+                'overview': tool.guide_overview or '',
+                'usage': guide_usage,
+                'tips': tool.guide_tips or '',
+            },
+        }
+        tools_data.append(tool_data)
+    
+    # 실험 목록 조회 (사용자별로 필터링)
+    # created_id는 user_id (UUID 문자열)를 저장
+    # CustomUser는 user_id를 primary key로 사용하므로 user_id 속성 사용
+    user_identifier = str(request.user.user_id) if hasattr(request.user, 'user_id') else str(request.user.pk)
+    experiments = Experiment.objects.filter(
+        created_id=user_identifier
+    ).prefetch_related('tools').order_by('-created_at')[:20]  # 최근 20개만
+    
     context = {
-        # 필요한 컨텍스트 데이터 추가
+        'available_tools': tools_data,
+        'experiments': experiments,
     }
+    
     return render(request, 'experiments/experiment.html', context)
+
+@extend_schema(
+    summary="실험 목록 조회 또는 실험 생성",
+    description="GET: 실험 목록을 조회합니다. POST: 새로운 실험을 생성합니다.",
+    tags=["Experiments"],
+    methods=['GET'],
+    responses={
+        200: {
+            'type': 'object',
+            'properties': {
+                'status': {'type': 'string', 'example': 'success'},
+                'results': {
+                    'type': 'array',
+                    'items': {
+                        'type': 'object',
+                        'properties': {
+                            'id': {'type': 'string'},
+                            'pipeline_name': {'type': 'string'},
+                            'pipeline': {'type': 'string'},
+                            'created_at': {'type': 'string', 'format': 'date-time'},
+                            'status': {'type': 'string'},
+                            'status_display': {'type': 'string'},
+                            'progress': {'type': 'integer'},
+                            'tools': {'type': 'array', 'items': {'type': 'string'}},
+                        }
+                    }
+                }
+            }
+        }
+    }
+)
+@extend_schema(
+    summary="실험 생성",
+    description="새로운 실험을 생성합니다.",
+    tags=["Experiments"],
+    methods=['POST'],
+    request={
+        'application/json': {
+            'type': 'object',
+            'properties': {
+                'tools': {'type': 'array', 'items': {'type': 'string'}},
+                'protein_sequence': {'type': 'string'},
+                'pipeline_name': {'type': 'string'},
+            }
+        }
+    },
+    responses={
+        200: {
+            'type': 'object',
+            'properties': {
+                'status': {'type': 'string', 'example': 'success'},
+                'message': {'type': 'string'},
+                'data': {
+                    'type': 'object',
+                    'properties': {
+                        'tools_count': {'type': 'integer'},
+                        'sequence_length': {'type': 'integer'},
+                        'pipeline_name': {'type': 'string'},
+                    }
+                }
+            }
+        }
+    }
+)
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def experiments_api(request):
+    """API endpoint router for experiments (GET /api/experiments/ and POST /api/experiments/)."""
+    if request.method == 'GET':
+        return _list_experiments_api(request)
+    else:  # POST
+        return _create_experiment_api(request)
+
+
+def _list_experiments_api(request):
+    """GET /api/experiments/ - 실험 목록 조회."""
+    print("=" * 80)
+    print("[Experiments API] ====== GET /api/experiments/ ======")
+    print(f"[Experiments API] Request method: {request.method}")
+    print(f"[Experiments API] Request path: {request.path}")
+    print(f"[Experiments API] Request user: {request.user}")
+    print(f"[Experiments API] User authenticated: {request.user.is_authenticated}")
+    print(f"[Experiments API] User pk: {request.user.pk}")
+    print(f"[Experiments API] User pk type: {type(request.user.pk)}")
+    
+    # 실험 목록 조회 (사용자별로 필터링)
+    # CustomUser는 user_id를 primary key로 사용하므로 user_id 속성 사용
+    user_identifier = str(request.user.user_id) if hasattr(request.user, 'user_id') else str(request.user.pk)
+    print(f"[Experiments API] User identifier (string): {user_identifier}")
+    print(f"[Experiments API] User has user_id attr: {hasattr(request.user, 'user_id')}")
+    if hasattr(request.user, 'user_id'):
+        print(f"[Experiments API] User user_id: {request.user.user_id}")
+    print(f"[Experiments API] User pk: {request.user.pk}")
+    
+    # 디버깅: 전체 실험 개수 확인
+    all_experiments_count = Experiment.objects.count()
+    print(f"[Experiments API] Total experiments in DB: {all_experiments_count}")
+    
+    # 디버깅: 사용자별 실험 개수 확인
+    user_experiments_count = Experiment.objects.filter(created_id=user_identifier).count()
+    print(f"[Experiments API] User experiments count (filtered by '{user_identifier}'): {user_experiments_count}")
+    
+    # 디버깅: created_id 값들 확인 (최근 5개)
+    recent_experiments = Experiment.objects.all().order_by('-created_at')[:5]
+    print(f"[Experiments API] Recent experiments created_id values:")
+    for exp in recent_experiments:
+        print(f"  - Experiment {exp.experiment_sid}: created_id='{exp.created_id}' (type: {type(exp.created_id)})")
+    
+    experiments = Experiment.objects.filter(
+        created_id=user_identifier
+    ).prefetch_related('tool_selections__tool').order_by('-created_at')[:20]  # 최근 20개만
+    
+    print(f"[Experiments API] Filtered experiments count: {experiments.count()}")
+    
+    # 실험 데이터 변환
+    experiments_data = []
+    for exp in experiments:
+        # 상태 코드를 한국어로 변환
+        status_map = {
+            'E': '활성',
+            'R': '준비',
+            'P': '진행중',
+            'C': '완료',
+            'F': '실패',
+            'D': '비활성',
+        }
+        status_display = status_map.get(exp.status, exp.status or '준비')
+        
+        # 도구 정보를 이름 배열로 변환
+        # Many-to-Many through 관계이므로 tool_selections를 통해 접근
+        tools_list = []
+        tool_selections = exp.tool_selections.all().select_related('tool').order_by('sort_order')
+        print(f"[Experiments API] Experiment {exp.experiment_sid}: tool_selections count = {tool_selections.count()}")
+        for selection in tool_selections:
+            if selection.tool:
+                tools_list.append(selection.tool.tool_name)
+                print(f"[Experiments API]   - Tool: {selection.tool.tool_name} (tool_sid={selection.tool.tool_sid})")
+        
+        # Fallback: tools.all()도 시도
+        if not tools_list:
+            tools_list = [tool.tool_name for tool in exp.tools.all()]
+            print(f"[Experiments API] Experiment {exp.experiment_sid}: Using exp.tools.all(), found {len(tools_list)} tools")
+        
+        exp_data = {
+            'id': exp.experiment_sid,  # experiment_sid가 primary key
+            'pipeline_name': exp.pipeline_name or 'Unnamed Pipeline',
+            'pipeline': exp.pipeline_name or 'Unnamed Pipeline',  # React 호환성
+            'created_at': exp.created_at.isoformat() if exp.created_at else None,
+            'status': exp.status or 'R',  # 상태 코드
+            'status_display': status_display,  # 한국어 상태
+            'progress': exp.progress if exp.progress is not None else 0,
+            'tools': tools_list,  # 도구 이름 배열
+        }
+        experiments_data.append(exp_data)
+    
+    print(f"[Experiments API] Found {len(experiments_data)} experiments")
+    print("[Experiments API] ====== End of request log ======")
+    print("=" * 80)
+    
+    return Response({
+        'status': 'success',
+        'results': experiments_data,
+    }, status=200)
+
+
+def _create_experiment_api(request):
+    """POST /api/experiments/ - 실험 생성."""
+    print("=" * 80)
+    print("[Experiments API] ====== POST /api/experiments/ ======")
+    print(f"[Experiments API] Request method: {request.method}")
+    print(f"[Experiments API] Request path: {request.path}")
+    print(f"[Experiments API] Request user: {request.user}")
+    print(f"[Experiments API] User authenticated: {request.user.is_authenticated}")
+    
+    # Parse request body
+    try:
+        body = request.data if hasattr(request, 'data') else json.loads(request.body)
+        print(f"[Experiments API] Request body (parsed): {json.dumps(body, indent=2, ensure_ascii=False)}")
+    except (json.JSONDecodeError, AttributeError) as e:
+        print(f"[Experiments API] Error parsing JSON: {e}")
+        print(f"[Experiments API] Raw request body: {request.body}")
+        return Response({'error': 'Invalid JSON'}, status=400)
+    
+    # Log request data
+    print(f"[Experiments API] Tools: {body.get('tools', [])}")
+    print(f"[Experiments API] Protein sequence length: {len(body.get('protein_sequence', ''))}")
+    print(f"[Experiments API] Pipeline name: {body.get('pipeline_name', 'N/A')}")
+    
+    # Log headers
+    print(f"[Experiments API] Content-Type: {request.content_type}")
+    print(f"[Experiments API] CSRF Token: {request.headers.get('X-CSRFToken', 'Not provided')}")
+    
+    # Log request metadata
+    print(f"[Experiments API] Request META keys: {list(request.META.keys())}")
+    print(f"[Experiments API] Remote address: {request.META.get('REMOTE_ADDR', 'N/A')}")
+    print(f"[Experiments API] User agent: {request.META.get('HTTP_USER_AGENT', 'N/A')}")
+    
+    print("[Experiments API] ====== End of request log ======")
+    print("=" * 80)
+    
+    # Return success response (no actual processing)
+    return Response({
+        'status': 'success',
+        'message': 'Experiment creation request received',
+        'data': {
+            'tools_count': len(body.get('tools', [])),
+            'sequence_length': len(body.get('protein_sequence', '')),
+            'pipeline_name': body.get('pipeline_name', ''),
+        }
+    }, status=200)

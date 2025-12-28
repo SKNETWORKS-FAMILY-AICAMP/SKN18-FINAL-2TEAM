@@ -1,7 +1,8 @@
 from typing import Dict, Any
 from graph.llm_config import (
     classifier_is_bio_related_simple_check_llm,
-    classifier_classify_question_node_llm
+    classifier_classify_question_node_llm,
+    get_model_name
 )
 from graph.nodes.memory import memory_read_basic_tool
 
@@ -29,6 +30,8 @@ def _check_needs_previous_context(q: str) -> bool:
 반드시 "YES" 또는 "NO"만 출력하세요:"""
 
     try:
+        model_name = get_model_name(classifier_is_bio_related_simple_check_llm)
+        print(f"[Classifier] 이전 대화 참조 판단 모델: {model_name}")
         response = classifier_is_bio_related_simple_check_llm(prompt).strip().upper()
         return response == "YES"
     except Exception as e:
@@ -140,7 +143,11 @@ def _classify_with_llm(q: str, chat_room_id: str = None, user_id: str = "default
     user_prompt = f"질문: {q}"
 
     try:
-        # GPT-5-nano를 사용하여 질문을 분류합니다
+        # 사용 모델 확인
+        model_name = get_model_name(classifier_classify_question_node_llm)
+        print(f"[Classifier] 질문 분류 모델: {model_name}")
+        
+        # LLM을 사용하여 질문을 분류합니다
         # 전체 프롬프트를 하나로 합쳐서 전달합니다
         full_prompt = f"{system_prompt}\n\n{user_prompt}"
         response = classifier_classify_question_node_llm(full_prompt)

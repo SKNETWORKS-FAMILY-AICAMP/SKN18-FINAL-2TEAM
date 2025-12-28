@@ -39,7 +39,10 @@ function initProteinDetailModal() {
 
 // Open modal
 function openProteinDetailModal(protein) {
-    if (!modal || !protein) return;
+    if (!modal || !protein) {
+        console.error('Modal or protein data not available', { modal, protein });
+        return;
+    }
 
     currentProtein = protein;
     
@@ -54,12 +57,15 @@ function openProteinDetailModal(protein) {
     // Update UniProt link
     if (uniProtLink && protein.proteinId) {
         uniProtLink.href = `https://www.uniprot.org/uniprotkb/${protein.proteinId}/entry`;
+    } else if (uniProtLink) {
+        uniProtLink.href = '#';
     }
 
     // Render protein details
     renderProteinDetails(protein);
 
-    // Show modal
+    // Show modal - use both class and inline style for compatibility
+    modal.classList.add('active');
     modal.style.display = 'flex';
     document.body.style.overflow = 'hidden';
 }
@@ -67,6 +73,9 @@ function openProteinDetailModal(protein) {
 // Close modal
 function closeModal() {
     if (!modal) return;
+    
+    // Remove active class and hide modal
+    modal.classList.remove('active');
     modal.style.display = 'none';
     document.body.style.overflow = '';
     currentProtein = null;

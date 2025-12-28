@@ -35,20 +35,10 @@
         </div>
 
         <div class="tool-list" id="toolList">
-            {% for tool in available_tools %}
-            <div class="tool-item" data-tool-id="{{ tool.id }}" data-tool-name="{{ tool.name }}">
-                <div class="tool-header">
-                    <p>{{ tool.name }}</p>
-                    <i class="fa-solid fa-book" data-tool-id="{{ tool.id }}"></i>
-                </div>
-                <p class="tool-description">{{ tool.description }}</p>
-                <span class="tool-category">{{ tool.category }}</span>
-            </div>
-            {% empty %}
+            <!-- Tool list will be rendered by JavaScript -->
             <div class="empty-state">
-                <p>사용 가능한 도구가 없습니다.</p>
+                <p>도구를 불러오는 중...</p>
             </div>
-            {% endfor %}
         </div>
     </aside>
 
@@ -56,121 +46,130 @@
     <div class="experiment-main">
         <!-- Protein Sequence Search -->
         <div class="search-section">
-            <div class="card">
-                {% include 'components/card_header.html' with title="단백질 서열 검색" %}
-                <div class="card-content">
-                    <p class="section-description">검색하려는 단백질 서열을 입력하세요</p>
-                    <div class="search-controls">
-                        <div class="search-input-wrapper">
-                            <i class="fa-solid fa-search"></i>
-                            <input
-                                type="text"
-                                id="proteinSequenceInput"
-                                placeholder="예: MKTAYIAKQRQISFVKSHFSRQLEERLGLIEVQAPILSRVGDGTQDNLSGAEKAVQVKVKALPDAQFEVVHSLAKWKRQTLGQHDFSAGEGLYTHMKALRPDEDRLSPLHSVYVDQWDWERVMGDGERQFSTLKSTVEAIWAGIKATEAAVSEEFGLAPFLPDQIHFVHSQELLSRYPDLDAKGRERAIAKDLGAVFLVGIGGKLSDGHRHDVRAPDYDDWSTPSELGHAGLNGDILVWNPVLEDAFELSSMGIRVDADTLKHQLALTGDEDRLELEWHQALLRGEMPQTIGGGIGQSRLTMLLLQLPHIGQVQAGVWPAAVRESVPSLL"
-                                class="search-input"
-                            />
-                        </div>
-                        <button class="btn-primary" id="searchBtn">검색</button>
-                        <button class="btn-secondary" id="clearBtn">초기화</button>
+            <h3 class="section-title">단백질 검색</h3>
+            <p class="section-description">검색하려는 단백질 종류를 입력하세요</p>
+            <div class="search-controls">
+                <div class="search-input-wrapper">
+                    <i class="fa-solid fa-search"></i>
+                    <input
+                        type="text"
+                        id="proteinSequenceInput"
+                        placeholder="예: Insulin, APP, Human, P05067, organism_id:9606"
+                        class="search-input"
+                    />
+                </div>
+                <button class="btn-primary" id="searchBtn">검색</button>
+                <button class="btn-secondary" id="clearBtn">초기화</button>
+            </div>
+            
+            <!-- Search Results -->
+            <div id="searchResultsContainer" style="display: none;">
+                <h4 class="search-results-title">
+                    검색 결과 (<span id="searchResultsCount">0</span>건)
+                </h4>
+                <div class="search-results-list" id="searchResultsList">
+                    <!-- 검색 결과가 여기에 표시됩니다 -->
+                </div>
+                
+                <!-- Pagination -->
+                <div class="search-results-pagination" id="searchResultsPagination" style="display: none;">
+                    <div class="pagination-controls">
+                        <button class="pagination-btn" id="prevPageBtn" disabled>
+                            <i class="fa-solid fa-chevron-left"></i>
+                        </button>
+                        <span class="pagination-info">
+                            <span id="currentPage">1</span> / <span id="totalPages">1</span>
+                        </span>
+                        <button class="pagination-btn" id="nextPageBtn" disabled>
+                            <i class="fa-solid fa-chevron-right"></i>
+                        </button>
                     </div>
-                    
-                    <!-- Search Results -->
-                    <div id="searchResultsContainer" style="display: none;">
-                        <h4 class="search-results-title">
-                            검색 결과 (<span id="searchResultsCount">0</span>건)
-                        </h4>
-                        <div class="search-results-list" id="searchResultsList">
-                            <!-- 검색 결과가 여기에 표시됩니다 -->
-                        </div>
-                        
-                        <!-- Pagination -->
-                        <div class="search-results-pagination" id="searchResultsPagination" style="display: none;">
-                            <div class="pagination-controls">
-                                <button class="pagination-btn" id="prevPageBtn" disabled>
-                                    <i class="fa-solid fa-chevron-left"></i>
-                                </button>
-                                <span class="pagination-info">
-                                    <span id="currentPage">1</span> / <span id="totalPages">1</span>
-                                </span>
-                                <button class="pagination-btn" id="nextPageBtn" disabled>
-                                    <i class="fa-solid fa-chevron-right"></i>
-                                </button>
-                            </div>
-                            <button class="btn-secondary btn-sm" id="closeResultsBtn">닫기</button>
-                        </div>
-                    </div>
+                    <button class="btn-secondary btn-sm" id="closeResultsBtn">닫기</button>
                 </div>
             </div>
         </div>
 
         <!-- Simulation Tools Section -->
         <div class="tools-section">
-            <div class="card">
-                {% include 'components/card_header.html' with title="시뮬레이션" %}
-                <div class="card-content">
-                    <p class="section-description">도구를 선택해서 파이프라인을 구성하세요</p>
-                    
-                    <div class="tools-grid" id="toolsGrid">
-                        {% for tool in available_tools %}
-                        <div class="tool-card" data-tool-id="{{ tool.id }}">
-                            <div class="tool-icon">
-                                <i class="fa-solid fa-circle-check"></i>
-                            </div>
-                            <p class="tool-name">{{ tool.name }}</p>
-                            <p class="tool-desc">{{ tool.description }}</p>
-                            <div class="tool-status">대기</div>
-                        </div>
-                        {% endfor %}
-                    </div>
-
-                    <div class="pipeline-actions" id="pipelineActions" style="display: none;">
-                        <button class="btn-primary" id="runSimulationBtn">시뮬레이션 실행</button>
-                        <button class="btn-secondary" id="clearPipelineBtn">파이프라인 초기화</button>
-                    </div>
-                </div>
+            <h2 class="section-title">시뮬레이션</h2>
+            <p class="section-description">도구를 선택해서 파이프라인을 구성하세요</p>
+            
+            <div class="tools-grid" id="toolsGrid">
+                <!-- Tools grid will be rendered by JavaScript -->
             </div>
         </div>
 
         <!-- Experiment Status Section -->
         <div class="status-section">
-            <div class="card">
-                {% include 'components/card_header.html' with title="실험 현황" %}
-                <div class="card-content">
-                    <table class="status-table">
-                        <thead>
-                            <tr>
-                                <th>파이프라인</th>
-                                <th>툴</th>
-                                <th>상태</th>
-                                <th>생성일</th>
-                            </tr>
-                        </thead>
-                        <tbody id="experimentTableBody">
-                            {% for experiment in experiments %}
-                            <tr data-experiment-id="{{ experiment.id }}">
-                                <td>{{ experiment.pipeline_name }}</td>
-                                <td>
-                                    <div class="tool-tags">
-                                        {% for tool in experiment.tools.all %}
-                                        <span class="tool-tag">{{ tool.name }}</span>
-                                        {% endfor %}
-                                    </div>
-                                </td>
-                                <td>
-                                    {% include 'components/status_badge.html' with status=experiment.status|lower status_display=experiment.get_status_display show_dot=True %}
-                                </td>
-                                <td>{{ experiment.created_at|timesince }} 전</td>
-                            </tr>
-                            {% empty %}
-                            <tr>
-                                <td colspan="4" class="empty-state">
-                                    <p class="empty-message">실험을 진행하시겠습니까?</p>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
+            <div class="status-header">
+                <h3>실험 현황</h3>
+            </div>
+            <div class="status-content">
+                <table class="status-table">
+                    <thead>
+                        <tr>
+                            <th class="status-th-pipeline">파이프라인</th>
+                            <th class="status-th-tools">툴</th>
+                            <th class="status-th-status">상태</th>
+                            <th class="status-th-created">생성일</th>
+                        </tr>
+                    </thead>
+                    <tbody id="experimentTableBody">
+                        {% for experiment in experiments %}
+                        <tr data-experiment-id="{{ experiment.experiment_sid }}" data-experiment-progress="{{ experiment.progress|default:0 }}" class="status-table-row">
+                            <td class="status-td-pipeline">
+                                <p class="text-sm text-gray-900">{{ experiment.pipeline_name }}</p>
+                            </td>
+                            <td class="status-td-tools">
+                                <div class="tool-tags">
+                                    {% for tool in experiment.tools.all %}
+                                    <span class="tool-tag">{{ tool.tool_name }}</span>
+                                    {% empty %}
+                                    <span class="tool-tag">도구 없음</span>
+                                    {% endfor %}
+                                </div>
+                            </td>
+                            <td class="status-td-status">
+                                {% if experiment.status == "C" or experiment.get_status_display == "Completed" %}
+                                    <span class="status-badge status-완료 status-completed">
+                                        <span class="status-dot status-dot-완료 status-dot-completed"></span>
+                                        완료
+                                    </span>
+                                {% elif experiment.status == "P" or experiment.get_status_display == "In Progress" %}
+                                    <span class="status-badge status-진행중 status-progress">
+                                        <span class="status-dot status-dot-진행중 status-dot-progress"></span>
+                                        진행중
+                                    </span>
+                                {% elif experiment.status == "R" or experiment.get_status_display == "Ready" %}
+                                    <span class="status-badge status-준비 status-ready">
+                                        <span class="status-dot status-dot-준비 status-dot-ready"></span>
+                                        준비
+                                    </span>
+                                {% elif experiment.status == "F" or experiment.get_status_display == "Failed" %}
+                                    <span class="status-badge status-실패 status-failed">
+                                        <span class="status-dot status-dot-실패 status-dot-failed"></span>
+                                        실패
+                                    </span>
+                                {% else %}
+                                    <span class="status-badge status-준비 status-ready">
+                                        <span class="status-dot status-dot-준비 status-dot-ready"></span>
+                                        준비
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td class="status-td-created text-gray-600 text-sm whitespace-nowrap">{{ experiment.created_at|timesince }} 전</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="empty-state-cell">
+                                <div class="empty-state">
+                                    <p class="empty-message">상단의 시뮬레이션 실험을 진행하시면 진행상태를 확인할 수 있습니다</p>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
@@ -277,11 +276,73 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/pages/experiment.js' %}"></script>
+{{ available_tools|json_script:"experiment-tools-data" }}
+<script>
+    // Load available tools data from Django template
+    const toolsDataElement = document.getElementById('experiment-tools-data');
+    if (toolsDataElement) {
+        try {
+            window.EXPERIMENT_TOOLS = JSON.parse(toolsDataElement.textContent);
+        } catch (e) {
+            console.error('Error parsing experiment tools data:', e);
+            window.EXPERIMENT_TOOLS = [];
+        }
+    } else {
+        window.EXPERIMENT_TOOLS = [];
+    }
+</script>
+<!-- Load modal scripts sequentially to ensure proper loading order -->
 <script src="{% static 'js/components/modals/protein_detail_modal.js' %}"></script>
 <script src="{% static 'js/components/modals/sequence_input_modal.js' %}"></script>
 <script src="{% static 'js/components/modals/tool_guide_modal.js' %}"></script>
 <script src="{% static 'js/components/modals/simulation_confirm_modal.js' %}"></script>
 <script src="{% static 'js/components/modals/tool_options_modal.js' %}"></script>
 <script src="{% static 'js/components/modals/save_to_note_modal.js' %}"></script>
+<!-- Load main experiment script after modals are loaded -->
+<script>
+    // Function to load experiment.js after ensuring all modals are ready
+    function loadExperimentScript() {
+        // Wait for ToolGuideModal to be available
+        let attempts = 0;
+        const maxAttempts = 50; // Increased attempts
+        const checkInterval = setInterval(() => {
+            attempts++;
+            if (window.ToolGuideModal && typeof window.ToolGuideModal.open === 'function') {
+                clearInterval(checkInterval);
+                console.log('ToolGuideModal confirmed available, loading experiment.js');
+                // Load experiment.js after DOM is ready and modals are loaded
+                const script = document.createElement('script');
+                script.src = "{% static 'js/pages/experiment.js' %}";
+                script.onload = function() {
+                    console.log('Experiment.js loaded successfully');
+                };
+                script.onerror = function() {
+                    console.error('Failed to load experiment.js');
+                };
+                document.body.appendChild(script);
+            } else if (attempts >= maxAttempts) {
+                clearInterval(checkInterval);
+                console.error('ToolGuideModal not found after waiting. Loading experiment.js anyway...');
+                // Load experiment.js anyway (it has fallback handling)
+                const script = document.createElement('script');
+                script.src = "{% static 'js/pages/experiment.js' %}";
+                script.onload = function() {
+                    console.log('Experiment.js loaded (with fallback)');
+                };
+                script.onerror = function() {
+                    console.error('Failed to load experiment.js');
+                };
+                document.body.appendChild(script);
+            }
+        }, 50); // Check every 50ms
+    }
+    
+    // Start loading check when DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', loadExperimentScript);
+    } else {
+        // DOM already loaded, start checking immediately
+        loadExperimentScript();
+    }
+</script>
 {% endblock %}
