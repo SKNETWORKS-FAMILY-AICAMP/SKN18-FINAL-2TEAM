@@ -15,6 +15,7 @@ from pathlib import Path
 from config.env import env
 
 import os
+from rest_framework.authentication import SessionAuthentication
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -201,13 +202,24 @@ GOOGLE_CALENDAR_SCOPE = os.getenv(
 # ───────────────────────────────────
 # REST Framework & Swagger/OpenAPI
 # ───────────────────────────────────
+# DRF SessionAuthentication에서 CSRF 우회를 위한 커스텀 인증 클래스
+class CsrfExemptSessionAuthentication(SessionAuthentication):
+    def enforce_csrf(self, request):
+        # API 경로에서는 CSRF 검증을 우회
+        if request.path.startswith('/api/'):
+            return
+        return super().enforce_csrf(request)
+
 REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.SessionAuthentication',
+        'config.settings.CsrfExemptSessionAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
+    ],
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',
     ],
 }
 
