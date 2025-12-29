@@ -63,6 +63,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",  # 정적 파일 서빙 (SecurityMiddleware 바로 다음)
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -156,6 +157,9 @@ STATICFILES_FINDERS = [
     'sass_processor.finders.CssFinder',
 ]
 SASS_PROCESSOR_ROOT = BASE_DIR / 'static'
+
+# WhiteNoise 설정 (정적 파일 서빙 및 압축)
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'uploads'

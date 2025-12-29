@@ -46,6 +46,7 @@ drf-spectacular
 gunicorn
 django-sass-processor
 libsass
+whitenoise  # 정적 파일 서빙 (프로덕션 환경)
 
 # ETL / Parsing
 requests
