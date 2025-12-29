@@ -23,16 +23,14 @@ import traceback
 from datetime import datetime
 from typing import Any, Dict, List, Tuple
 
-# 프로젝트 루트 및 DB 모듈 경로 설정
+# 프로젝트 루트 경로 설정
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))  # .../graph
 ROOT_DIR = os.path.dirname(BASE_DIR)                   # 프로젝트 루트
-INFRA_DB_DIR = os.path.join(ROOT_DIR, "infra", "db")
 
-for path in {BASE_DIR, ROOT_DIR, INFRA_DB_DIR}:
+for path in {BASE_DIR, ROOT_DIR}:
     if path not in sys.path:
         sys.path.append(path)
 
-from infra.db.memory_db_stetting import init_db  # noqa: E402
 from graph.compile import create_workflow  # noqa: E402
 
 
@@ -67,19 +65,6 @@ def print_banner() -> None:
     print("=" * 80)
 
 
-def initialize_db() -> bool:
-    """DB 스키마 초기화 (메모리 DB)."""
-    try:
-        print("\n[DB] 초기화 시도 중...")
-        init_db()
-        print("[DB] 초기화 완료")
-        return True
-    except Exception as exc:
-        print(f"[DB] 초기화 실패: {exc}")
-        print("      기존 DB 설정으로 계속 진행합니다.")
-        return False
-
-
 def test_graph_compilation():
     """그래프 컴파일 및 앱 객체 생성."""
     print("\n[GRAPH] 워크플로 컴파일 테스트 중...")
@@ -94,7 +79,7 @@ def test_graph_compilation():
         return None
 
 
-def create_test_state(question: str, conversation_id: str = "test_room_001") -> dict:
+def create_test_state(question: str, conversation_id: int = 1) -> dict:
     """최초 호출에 사용할 BioRAGState 형태의 기본 state."""
     return {
         "question": question,
@@ -260,9 +245,6 @@ def run_workflow_test(app, question: str) -> Tuple[bool, Dict[str, Any] | None]:
 
 def main() -> None:
     print_banner()
-
-    # DB 초기화 (환경에 따라 실패해도 계속 진행)
-    initialize_db()
 
     # 그래프 컴파일 테스트
     app = test_graph_compilation()
