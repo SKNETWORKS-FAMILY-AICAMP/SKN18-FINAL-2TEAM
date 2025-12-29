@@ -1,17 +1,16 @@
+from pathlib import Path
 import pandas as pd
 import os
 
 # ==========================================
 # [설정] 파일 경로
 # ==========================================
-# 1. 방금 업로드하신 섹션별 키워드 파일
-SECTION_FILE = 'section_keywords_v2.csv' 
+ROOT_DIR = Path(__file__).resolve().parents[4]
+ENT_DIR = ROOT_DIR / "data" / "entities" / "pubmed"
 
-# 2. 앞서 Gilda로 만든 매핑 파일 (이 파일이 있어야 합니다!)
-MAPPING_FILE = 'entities_all_dbs.csv' 
-
-# 3. 최종 결과 파일
-OUTPUT_FILE = 'section_keywords_primekg.csv'
+SECTION_FILE = ENT_DIR / "ts_section_keywords.csv"
+MAPPING_FILE = ENT_DIR / "ts_entity_master.csv"
+OUTPUT_FILE  = ENT_DIR / "ts_section_keywords_primekg.csv"
 
 # ==========================================
 # [로직] ID 갈아끼우기
@@ -33,22 +32,31 @@ def main():
     merged_df = pd.merge(df_sec, df_map, on='normalized_entity', how='left')
 
     # 3. 최종 KG ID 결정 로직 (Cascade Strategy)
+        # 3. 최종 KG ID 결정 로직 (Cascade Strategy)
     def get_final_id(row):
-        # [Priority 1] Mutation은 텍스트 유지 (PrimeKG에 없음)
-        if row['umls_cui_x'] == 'MUTATION_NODE': # _x는 section 파일의 컬럼
-            return row['normalized_entity']
-        
-        # [Priority 2] Gilda 매핑 성공 & 점수 양호 -> PrimeKG ID 사용!
-        # mapped_id가 있고, 점수가 0.65 이상이면 채택
-        if pd.notnull(row['mapped_id']) and row['match_score'] >= 0.65:
-            return f"{row['mapped_db']}:{row['mapped_id']}"
-        
-        # [Priority 3] UMLS CUI라도 있으면 사용
-        if pd.notnull(row['umls_cui_x']) and row['umls_cui_x'] != "N/A":
+        # [Priority 1] Mutation인 텍스트 (PrimeKG에 없음)
+        if row.get("umls_cui_x") == "MUTATION_NODE":  # _x는 section 파일 쪽 컬럼
+            return row["normalized_entity"]
+
+        # [Priority 2] Gilda 매핑 + 점수 기준 -> PrimeKG ID 사용
+        # pmc_entity_gilda_mappiing.py에서 생성한 컬럼 사용:
+        #   - primekg_source_db, primekg_source_id, match_score
+        if (
+            "primekg_source_id" in row
+            and "primekg_source_db" in row
+            and "match_score" in row
+            and pd.notnull(row["primekg_source_id"])
+            and pd.notnull(row["primekg_source_db"])
+            and row["match_score"] >= 0.65
+        ):
+            return f"{row['primekg_source_db']}:{row['primekg_source_id']}"
+
+        # [Priority 3] UMLS CUI가 있으면 사용
+        if "umls_cui_x" in row and pd.notnull(row["umls_cui_x"]) and row["umls_cui_x"] != "N/A":
             return f"UMLS:{row['umls_cui_x']}"
-            
-        # [Priority 4] 다 없으면 텍스트 유지
-        return row['normalized_entity']
+
+        # [Priority 4] 아무 것도 없으면 텍스트 자체 사용
+        return row["normalized_entity"]
 
     print("🔄 KG ID 변환 중...")
     merged_df['kg_node_id'] = merged_df.apply(get_final_id, axis=1)
