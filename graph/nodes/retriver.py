@@ -77,6 +77,9 @@ def retriever_bio_node(state: Dict[str, Any]) -> Dict[str, Any]:
     contexts: List[Dict[str, Any]] = rag_state.get("contexts") or []
     state["contexts"] = contexts
     state["contexts_count"] = int(rag_state.get("contexts_count", len(contexts)))
+    # 그래프 컨텍스트 / PrimeKG 인사이트 전달
+    state["graph_contexts"] = rag_state.get("graph_contexts") or []
+    state["primekg_insights"] = rag_state.get("primekg_insights") or []
 
     # 3) Cross-Encoder 기반 rerank (retrieval 단계에서 수행)
     try:
@@ -151,6 +154,9 @@ def retriever_protocol_node(state: Dict[str, Any]) -> Dict[str, Any]:
     contexts: List[Dict[str, Any]] = rag_state.get("contexts") or []
     state["contexts"] = contexts
     state["contexts_count"] = int(rag_state.get("contexts_count", len(contexts)))
+    # 그래프 컨텍스트 / PrimeKG 인사이트 전달
+    state["graph_contexts"] = rag_state.get("graph_contexts") or []
+    state["primekg_insights"] = rag_state.get("primekg_insights") or []
 
     # PROTOCOL 도 retrieval 시점에 Cross-Encoder rerank 적용
     try:

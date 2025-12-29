@@ -5,7 +5,7 @@ LangGraph의 StateGraph를 사용해 전체 BioRAG 파이프라인을 구성한�
 
 from langgraph.graph import END, StateGraph
 
-from graph.state_origin import BioRAGState
+from graph.state import BioRAGState
 from graph.nodes.guardrail import guardrail_input_node
 from graph.nodes.memory import memory_read_node, memory_write_node
 from graph.nodes.classifier import classify_agent_node
