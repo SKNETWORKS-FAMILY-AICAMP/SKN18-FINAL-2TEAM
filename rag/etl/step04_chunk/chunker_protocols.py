@@ -381,49 +381,77 @@ def build_output_path(keyword: str, status: str) -> Path:
     return path
 
 
-def chunk_dataframe(df: pd.DataFrame, keyword: str) -> pd.DataFrame:
-    df["abstract"] = df["abstract"].fillna("").astype(str)
-    df["step_content"] = df["step_content"].fillna("").astype(str)
-    df["guidelines"] = df.get("guidelines", "").fillna("").astype(str)
-    # 🔹 url과 title 컬럼 추가 처리
-    df["url"] = df.get("url", "").fillna("").astype(str)
-    df["title"] = df.get("title", "").fillna("").astype(str)
+def chunk_dataframe(
+    df: pd.DataFrame,
+    keyword: str,
+    max_tokens: int = 500,
+) -> tuple[pd.DataFrame, list[dict]]:
 
     output_rows = []
-    filename = f"protocol_chunked_{keyword}"
+    table_metadata_all = []
 
     for _, row in df.iterrows():
-        protocol_id = str(row["protocol_id"]).strip()
-        url = str(row["url"]).strip()
-        
-        # URL 기반 고유 ID 생성 (같은 URL은 항상 같은 해시값)
-        url_hash = hashlib.md5(url.encode()).hexdigest()[:12] if url else "no_url"
+        protocol_id = str(row.get("protocol_id", ""))
+        url = str(row.get("url", ""))
+        title = str(row.get("title", ""))
 
-        combined_text = row["cleaned_text"]
-
-        # 1) 문장 단위 split
-        sentences = split_into_sentences(combined_text)
-
-        # 2) 문장 기반 chunk + 최소 길이 적용
-        chunks = create_sentence_chunks(
-            sentences,
-            chunk_size=400,
-            chunk_overlap=100,
-            min_chunk_size=300
+        url_hash = (
+            hashlib.md5(url.encode()).hexdigest()[:12]
+            if url else "no_url"
         )
 
-        # 3) CSV 저장용 구조
-        # chunking_id에 URL 해시 사용하여 날짜와 무관하게 고유성 보장
-        for idx, chunk in enumerate(chunks):
-            output_rows.append({
-                "protocol_id": f"{protocol_id}",
-                "url": row["url"],
-                "title": row["title"],
-                "chunking_id": f"{filename}_{url_hash}_chunk_{idx}",
-                "text": chunk.replace(" ,", "")
-            })
+        base_id = f"{keyword}_{url_hash}"
 
-    return pd.DataFrame(output_rows)
+        # 1️⃣ sentence split (기존 로직 그대로 사용)
+        sentences = split_into_sentences(row["cleaned_text"])
+
+        # 2️⃣ sentence → chunk
+        chunks = create_sentence_chunks(
+            sentences,
+            chunk_size=max_tokens,
+            chunk_overlap=100,
+            min_chunk_size=300,
+        )
+
+        for idx, chunk_text in enumerate(chunks):
+            chunk_id = f"{base_id}_chunk_{idx}"
+
+            # 3️⃣ chunk 단위 table 탐지
+            cleaned_chunk_text, table_blocks = protect_table_blocks(
+                chunk_text
+            )
+
+            # 4️⃣ chunk row 생성
+            output_rows.append(
+                {
+                    "chunking_id": chunk_id,
+                    "protocol_id": protocol_id,
+                    "url": url,
+                    "title": title,
+                    "content": cleaned_chunk_text,
+                    "keyword": keyword,
+                }
+            )
+
+            # 5️⃣ table metadata 생성 (⭐ 위치 정확)
+            for t_idx, table_text in enumerate(table_blocks):
+                table_id = f"table_{chunk_id}_{t_idx}"
+
+                table_meta = table_to_json(
+                    table_text=table_text,
+                    table_id=table_id,
+                    chunk_id=chunk_id,
+                    keyword=keyword,
+                    protocol_id=protocol_id,
+                    url=url,
+                    title=title,
+                )
+
+                if table_meta:
+                    table_metadata_all.append(table_meta)
+
+    chunks_df = pd.DataFrame(output_rows)
+    return chunks_df, table_metadata_all
 
 
 def load_existing_urls(csv_path: Path) -> set[str]:
@@ -550,204 +578,105 @@ def split_chunk_file(chunk_file: Path, keyword: str, rows_per_file: int = SPLIT_
 def process_file(csv_path: Path) -> None:
     """
     Incremental 처리 방식으로 cleaned CSV 파일을 chunked CSV로 변환.
-    
-    주의사항:
-    1. 기존 파일이 있으면 URL Set만 로드하여 메모리 효율성 확보
-    2. 새 데이터만 필터링하여 처리 시간 단축
-    3. 병합 후 chunking_id 기반 중복 제거로 안전장치 제공
+
+    역할:
+    - URL 단위 중복 제거
+    - cleaned_text 준비
+    - chunking 실행
+    - chunk CSV + table metadata CSV 저장
     """
     keyword = csv_path.stem.replace("protocol_cleaned_", "")
     status = "success"
 
-    table_metadata_all = []  # ⭐ table metadata 누적
-    
     try:
         out_path = build_output_path(keyword, status)
         table_out_path = build_table_output_path(keyword, status)
-        
-        # 1. 기존 chunked 파일에서 URL Set만 로드 (메모리 효율적)
+
+        # 1. 기존 chunked 파일에서 URL Set만 로드
         existing_urls = load_existing_urls(out_path)
-        
-        # 2. 새 cleaned 데이터 읽기
+
+        # 2. cleaned CSV 로드
         cleaned_df = pd.read_csv(csv_path)
         total_rows = len(cleaned_df)
-        
-        # 3. 중복 제거: 기존에 없는 URL만 필터링
+
+        # 3. URL 중복 제거
         new_cleaned_df = cleaned_df[
             ~cleaned_df["url"].astype(str).str.strip().isin(existing_urls)
         ]
-        
-        if len(new_cleaned_df) == 0:
+
+        if new_cleaned_df.empty:
             print(
                 f"[CHUNK][Protocol.io][{keyword}] 새 데이터 없음 "
                 f"(전체 {total_rows}개 모두 중복)",
                 flush=True,
             )
-            # 새 데이터가 없어도 기존 청크 파일이 있으면 분할 실행
-            # 오늘 날짜의 청크 파일이 없으면 모든 날짜에서 찾기
-            chunk_file_to_split = None
-            if out_path.exists():
-                chunk_file_to_split = out_path
-            else:
-                # 모든 날짜의 청크 파일 검색
-                chunk_files = sorted(OUTPUT_ROOT.glob(f"**/stage=chunked/protocol_chunked_{keyword}.csv"))
-                if chunk_files:
-                    # 가장 최근 파일 사용
-                    chunk_file_to_split = chunk_files[-1]
-                    print(
-                        f"[CHUNK][Protocol.io][{keyword}] 오늘 날짜 청크 파일 없음. "
-                        f"최근 청크 파일 사용: {chunk_file_to_split}",
-                        flush=True,
-                    )
-            
-            if chunk_file_to_split and chunk_file_to_split.exists():
-                print(f"[CHUNK][Protocol.io][{keyword}] 기존 청크 파일 분할 시작: {chunk_file_to_split}", flush=True)
-                split_files = split_chunk_file(chunk_file_to_split, keyword, rows_per_file=SPLIT_ROWS_PER_FILE)
-                if split_files:
-                    # 저장 위치 출력 (날짜_시분 디렉토리 포함)
-                    now = datetime.now()
-                    date_str = now.strftime("%Y%m%d")
-                    time_str = now.strftime("%H%M")
-                    date_time_dir = f"{date_str}_{time_str}"
-                    print(
-                        f"[CHUNK][Protocol.io][{keyword}] 분할 완료: {len(split_files)}개 파일 생성 "
-                        f"(저장 위치: {CHUNKS_SPLIT_ROOT / date_time_dir / keyword})",
-                        flush=True,
-                    )
-            else:
-                print(
-                    f"[CHUNK][Protocol.io][{keyword}] 분할할 청크 파일이 없습니다.",
-                    flush=True,
-                )
             return
-        
-        duplicate_count = total_rows - len(new_cleaned_df)
+
         print(
             f"[CHUNK][Protocol.io][{keyword}] 새 데이터 {len(new_cleaned_df)}개 "
-            f"(전체 {total_rows}개, 중복 {duplicate_count}개)",
+            f"(전체 {total_rows}개)",
             flush=True,
         )
 
-        cleaned_texts = []
-
-        # ⭐ row 단위로 table 추출
-        for _, row in new_cleaned_df.iterrows():
-            protocol_id = str(row.get("protocol_id", ""))
-            url = str(row.get("url", ""))
-            title = str(row.get("title", ""))
-
-            # URL hash (table_id 안정성 확보)
-            url_hash = hashlib.md5(url.encode()).hexdigest()[:12] if url else "no_url"
-
-            # 문서 단위 text 결합
-            combined_text = (
-                "<abstract>\n" + str(row.get("abstract", "")) + "\n"
-                "<step_content>\n" + str(row.get("step_content", "")) + "\n"
-                "<guidelines>\n" + str(row.get("guidelines", ""))
-            )
-
-            # 1️⃣ table 보호 + 분리
-            cleaned_text, table_blocks = protect_table_blocks(combined_text)
-
-            cleaned_texts.append(cleaned_text)
-
-            # 2️⃣ table → json
-            for t_idx, table_text in enumerate(table_blocks):
-                table_id = f"table_{keyword}_{url_hash}_{t_idx}"
-
-                table_meta = table_to_json(
-                    table_text=table_text,
-                    table_id=table_id,
-                    chunk_id=f"{keyword}_{url_hash}",  # table anchor
-                    keyword=keyword,
-                    protocol_id=protocol_id,
-                    url=url,
-                    title=title,
-                )
-
-                if table_meta:
-                    table_metadata_all.append(table_meta)
-
+        # 4. cleaned_text 생성 (table 고려 안 함)
         new_cleaned_df = new_cleaned_df.copy()
-        new_cleaned_df["cleaned_text"] = cleaned_texts
+        new_cleaned_df["cleaned_text"] = (
+            "<abstract>\n" + new_cleaned_df["abstract"].fillna("").astype(str)
+            + "\n<step_content>\n" + new_cleaned_df["step_content"].fillna("").astype(str)
+            + "\n<guidelines>\n" + new_cleaned_df["guidelines"].fillna("").astype(str)
+        )
 
-        # ⭐ table → json 수집 완료 직후
+        # 5. chunking + table 추출은 chunk 단계에서 수행
+        new_chunks_df, table_metadata_all = chunk_dataframe(
+            new_cleaned_df,
+            keyword
+        )
+
+        if new_chunks_df.empty:
+            raise ValueError("생성된 chunk 데이터가 없습니다.")
+
+        # 6. 기존 chunk CSV와 병합
+        if out_path.exists() and existing_urls:
+            existing_chunks_df = pd.read_csv(out_path)
+            combined_chunks_df = pd.concat(
+                [existing_chunks_df, new_chunks_df],
+                ignore_index=True,
+            ).drop_duplicates(
+                subset="chunking_id",
+                keep="first",
+            )
+        else:
+            combined_chunks_df = new_chunks_df
+
+        # 7. chunk CSV 저장
+        combined_chunks_df.to_csv(out_path, index=False)
+
+        print(
+            f"[CHUNK][Protocol.io][{keyword}] 저장 완료: "
+            f"{len(combined_chunks_df)} chunks",
+            flush=True,
+        )
+
+        # 8. table metadata CSV 저장 (⭐ 여기서만)
         if table_metadata_all:
             write_table_metadata_csv(
                 table_metadata_all,
                 table_out_path
             )
-        
-        # 4. 새 데이터만 chunking
-        new_chunks_df = chunk_dataframe(new_cleaned_df, keyword)
-        
-        if new_chunks_df.empty:
-            raise ValueError("생성된 chunk 데이터가 없습니다.")
-        
-        # 5. 기존 chunks와 병합 (메모리 효율적으로 처리)
-        if out_path.exists() and len(existing_urls) > 0:
-            # 기존 파일이 있으면 읽어서 병합
-            try:
-                existing_chunks_df = pd.read_csv(out_path)
-                # 병합
-                combined_chunks_df = pd.concat(
-                    [existing_chunks_df, new_chunks_df], ignore_index=True
-                )
-                # 안전장치: chunking_id 기반 중복 제거 (병합 과정에서 중복 발생 가능)
-                before_dedup = len(combined_chunks_df)
-                combined_chunks_df = combined_chunks_df.drop_duplicates(
-                    subset="chunking_id", keep="first"
-                )
-                after_dedup = len(combined_chunks_df)
-                
-                if before_dedup != after_dedup:
-                    print(
-                        f"[CHUNK][Protocol.io][{keyword}] 병합 후 중복 제거: "
-                        f"{before_dedup}개 → {after_dedup}개 chunks",
-                        flush=True,
-                    )
-            except Exception as e:
-                print(
-                    f"[CHUNK][Protocol.io][{keyword}] 기존 파일 읽기 실패: {e}. "
-                    f"새 데이터만 저장합니다.",
-                    flush=True,
-                )
-                combined_chunks_df = new_chunks_df
-        else:
-            # 기존 파일이 없으면 새 데이터만 저장
-            combined_chunks_df = new_chunks_df
-        
-        # 6. 저장
-        combined_chunks_df.to_csv(out_path, index=False)
-        print(
-            f"[CHUNK][Protocol.io][{keyword}] 저장 완료: 총 {len(combined_chunks_df)}개 chunks "
-            f"(기존 {len(existing_urls)}개 URL의 chunks + 새 {len(new_chunks_df)}개 chunks)",
-            flush=True,
-        )
-        
-        # 7. 청크 파일을 300개 단위로 분할하여 data/chunks/protocols/{날짜}_{시분}/{keyword}에 저장
-        print(f"[CHUNK][Protocol.io][{keyword}] 청크 파일 분할 시작...", flush=True)
-        split_files = split_chunk_file(out_path, keyword, rows_per_file=SPLIT_ROWS_PER_FILE)
-        if split_files:
-            # 저장 위치 출력 (날짜_시분 디렉토리 포함)
-            now = datetime.now()
-            date_str = now.strftime("%Y%m%d")
-            time_str = now.strftime("%H%M")
-            date_time_dir = f"{date_str}_{time_str}"
             print(
-                f"[CHUNK][Protocol.io][{keyword}] 분할 완료: {len(split_files)}개 파일 생성 "
-                f"(저장 위치: {CHUNKS_SPLIT_ROOT / date_time_dir / keyword})",
+                f"[CHUNK][Protocol.io][{keyword}] table metadata 저장: "
+                f"{len(table_metadata_all)} tables",
                 flush=True,
             )
-        
+
     except Exception as exc:
         status = "fail"
         out_path = build_output_path(keyword, status)
-        output_df = pd.DataFrame([{"error": str(exc)}])
-        output_df.to_csv(out_path, index=False)
-
-        print(f"[CHUNK][Protocol.io][{keyword}] 실패: {exc}", flush=True)
-
+        pd.DataFrame([{"error": str(exc)}]).to_csv(out_path, index=False)
+        print(
+            f"[CHUNK][Protocol.io][{keyword}] 실패: {exc}",
+            flush=True,
+        )
 
 def main() -> None:
     start_time = datetime.now()
