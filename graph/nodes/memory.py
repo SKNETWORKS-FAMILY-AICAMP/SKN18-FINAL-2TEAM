@@ -9,8 +9,8 @@ import os
 import json
 from datetime import datetime
 from typing import Optional
-from psycopg2.extras import RealDictCursor
-from psycopg2.pool import SimpleConnectionPool
+from psycopg.rows import dict_row
+from psycopg_pool import ConnectionPool
 from dotenv import load_dotenv
 
 from graph.llm_config import memory_summarize_tool_llm, get_model_name
@@ -19,20 +19,17 @@ from graph.llm_config import memory_summarize_tool_llm, get_model_name
 load_dotenv()
 
 # PostgreSQL 연결 풀 생성
-_connection_pool: Optional[SimpleConnectionPool] = None
+_connection_pool: Optional[ConnectionPool] = None
 
 def get_db_pool():
     """PostgreSQL 연결 풀 반환 (싱글톤)"""
     global _connection_pool
     if _connection_pool is None:
-        _connection_pool = SimpleConnectionPool(
-            minconn=1,
-            maxconn=10,
-            host=os.getenv("POSTGRES_HOST"),
-            port=os.getenv("POSTGRES_PORT"),
-            database=os.getenv("POSTGRES_DB"),
-            user=os.getenv("POSTGRES_USER"),
-            password=os.getenv("POSTGRES_PASSWORD")
+        conninfo = f"host={os.getenv('POSTGRES_HOST')} port={os.getenv('POSTGRES_PORT')} dbname={os.getenv('POSTGRES_DB')} user={os.getenv('POSTGRES_USER')} password={os.getenv('POSTGRES_PASSWORD')}"
+        _connection_pool = ConnectionPool(
+            conninfo=conninfo,
+            min_size=1,
+            max_size=10
         )
     return _connection_pool
 
@@ -169,7 +166,7 @@ def memory_read_basic_tool(chat_room_id: str, user_id: str = "default") -> dict:
     conn = None
     try:
         conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cursor = conn.cursor(row_factory=dict_row)
 
         # chat_room_id로 가장 최근 대화 조회
         query = """
@@ -245,7 +242,7 @@ def memory_read_node(state):
     conn = None
     try:
         conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        cursor = conn.cursor(row_factory=dict_row)
 
         # chat_room_id로 모든 대화 조회 (최신순)
         query = """

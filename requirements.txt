@@ -28,7 +28,6 @@ dateparser # 날짜 파싱 - 리라이트쿼리 tool
 
 # Database
 psycopg[binary, pool]
-psycopg2
 pgvector
 sqlalchemy
 
