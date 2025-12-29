@@ -96,8 +96,8 @@ output = {
     "Temporal dynamics beyond the tested conditions are not assessed."
   ],
   "suggested_next_steps": [
-    "Map ubiquitination sites on GPX4 mediated by RC3H1.",
-    "Test whether other E3 ligases compensate for RC3H1 loss."
+  "Suggest follow-up experiments WITHOUT proposing mechanisms.",
+  "Experiments should aim to reproduce, validate, or test generality of the observed effects only."
   ]
 }
 
@@ -133,82 +133,106 @@ client = OpenAI()
 
 
 SYSTEM_PROMPT = """
-You are an expert scientific information extractor and interpreter.
+You are a scientific Results-section data extractor.
 
-Your task is to extract structured, evidence-grounded data from the given Results-section text
-and provide a comprehensive interpretation with clear boundaries.
+Your role is NOT to explain mechanisms or propose hypotheses.
+Your role is to strictly separate:
+1) experimentally observed facts
+2) minimal, non-mechanistic effect-level summaries
 
-Rules:
-- Use ONLY information explicitly supported by the text.
-- Do NOT speculate beyond experimental evidence.
-- Extract observations (experimental findings) separately from interpretations.
-- Provide detailed interpretation with multiple perspectives:
-  * Main interpretations directly supported by data
-  * Limitations of interpretations (what cannot be concluded)
-  * Experimental/methodological cautions
-  * Suggested next research steps based on current findings
-- Clearly define what CAN and CANNOT be concluded from the data.
+CRITICAL RULES (VIOLATION = FAILURE):
+- NEVER propose or imply molecular, structural, catalytic, or mechanistic explanations.
+- NEVER use words such as:
+  "mechanism", "mechanistic", "likely", "suggest", "indicate", 
+  "facilitate", "contribute", "due to", "because", "implies", "potential".
+- If a causal or mechanistic explanation is not explicitly proven in the Results text,
+  it MUST be treated as NOT CONCLUDABLE.
 
-Output must be valid JSON and follow the provided schema exactly.
+Your output will be used for small language model training.
+Over-interpretation is considered a critical error.
+If you are unsure whether a statement is interpretive, DO NOT include it.
+Silence is preferred over over-interpretation.
+
 """
 
 
 
 def build_user_prompt(result_text: str) -> str:
     return f"""
-From the following Results-section text, extract a structured dataset with comprehensive interpretation.
+From the following Results-section text, extract a STRICTLY LIMITED dataset.
 
 Results text:
 \"\"\"
 {result_text}
 \"\"\"
 
-Output JSON schema:
+IMPORTANT GOAL:
+This task evaluates whether you can STOP at the level of experimental evidence.
+Any mechanistic or causal reasoning is a FAILURE.
+
+CRITICAL: Remove any sentences that have Methods, Review, or Introduction characteristics.
+- Methods: descriptions of procedures, protocols, experimental setups
+- Review: background information, literature references, general knowledge
+- Introduction: context-setting, hypothesis statements, research questions
+- Keep ONLY Results-section content: experimental findings and data.
+
+Output JSON schema (MUST FOLLOW EXACTLY):
+
 {{
   "observations": [
-    "List of experimentally observed findings only (factual data from experiments)"
+    "ONLY experimentally observed facts directly stated in the Results section.",
+    "MUST contain: numbers, comparisons, increase/decrease indicators, OR accessibility indicators.",
+    "If an observation lacks ALL of these, DELETE it.",
+    "NO background knowledge.",
+    "NO explanations.",
+    "NO causes.",
+    "NO textbook statements."
   ],
-  "question": "ONE core mechanistic or meaning-focused question addressed by these results",
+
+  "question": "ONE neutral comparison statement describing the experimental contrast (X vs Y), without asking why or how. MUST end with a question mark (?)."
+
   "conclusion": {{
     "interpretation": [
-      "Main interpretations/conclusions directly supported by the experimental data",
-      "Include 2-4 key interpretations"
+      "Effect-level summaries ONLY.",
+      "Describe WHAT changed, increased, decreased, differed, or was associated.",
+      "NEVER use verbs: restrict, promote, enhance, reduce (or variants). Rewrite if found.",
+      "Use neutral verbs: changed, differed, was associated with, showed, exhibited.",
+      "NO mechanisms, NO hypotheses, NO causal language.",
+      "If unsure, restate the observation in compact form."
     ],
     "interpretation_limits": [
-      "What cannot be concluded from this data",
-      "Gaps in current understanding",
-      "Include 2-3 limitations"
+      State ONLY absences of measurements or comparisons explicitly mentioned in the Results text.
+      Do NOT name any untested concept categories (e.g., mechanism, structure, pathway).      Do NOT name or describe any possible mechanisms.
+      "List limitations of the experimental evidence."
     ],
     "cautions": [
-      "Experimental or methodological limitations",
-      "Context-specific constraints (e.g., in vitro vs in vivo, cell type specificity)",
-      "Include 2-3 cautions"
+      "Highlight experimental context and limitations.",
+      "Note any constraints on generalizability."
     ],
     "suggested_next_steps": [
-      "Logical next research steps based on current findings",
-      "Follow-up experiments to address limitations",
-      "Include 2-3 suggestions"
-    ]
+      "Suggest ONLY follow-up experiments that repeat, replicate, or extend the same comparison under controlled variations (e.g., different concentrations, temperatures, or time points).",
+      "Do NOT introduce new variables or explanatory factors."
+  ]
   }},
+
   "interpretation_boundary": {{
     "can_conclude": [
-      "Statements directly supported by the data (2-4 items)"
+      "Statements that are DIRECT restatements of observed effects."
     ],
     "cannot_conclude": [
-      "Statements NOT supported or not tested in the text (2-4 items)"
+      "ANY molecular, structural, catalytic, physiological, or clinical explanations.",
+      "ANY causal or mechanistic claims not explicitly demonstrated.",
+      "Paraphrasing is allowed ONLY if numerical or directional meaning is preserved.",
+      "No abstraction beyond the observed comparison is allowed."
     ]
   }}
 }}
 
-Important constraints:
-- observations: ONLY factual experimental findings, no interpretations
-- question: Must be mechanistic or explanatory (how/why), not descriptive
-- conclusion.interpretation: Clear, evidence-based interpretations
-- conclusion.interpretation_limits: Be honest about what the data does NOT show
-- conclusion.cautions: Highlight experimental context and limitations
-- conclusion.suggested_next_steps: Propose logical follow-up research
-- Do NOT include methods unless they directly support an observation
-- Do NOT include clinical implications unless explicitly tested
+HARD CONSTRAINTS:
+- conclusion.interpretation MUST NOT explain WHY something happens.
+- conclusion.interpretation MUST be compatible with interpretation_boundary.cannot_conclude.
+- If a sentence could appear in a Discussion section, it MUST NOT appear in conclusion.interpretation.
+
 """
 
 
