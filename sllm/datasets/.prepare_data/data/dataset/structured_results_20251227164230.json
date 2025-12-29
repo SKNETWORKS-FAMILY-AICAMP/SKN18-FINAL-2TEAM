@@ -1,0 +1,1601 @@
+[
+  {
+    "fig_id": "38598310_fig5",
+    "experimental_context": {
+      "model": "not stated",
+      "assay / measurement method": "MD simulations"
+    },
+    "observation": {
+      "what was measured": "molecular flexibility and accessible conformers of PreD",
+      "direction of change": "not stated",
+      "approximate magnitude or qualitative description": "unrestricted molecular flexibility in free scenario; restricted torsional movement in encapsulated system"
+    },
+    "comparison": {
+      "treatment vs control": "encapsulated vs free PreD",
+      "group vs group": "not stated",
+      "time or dose comparison": "not stated"
+    },
+    "temporal_or_dose_dimension": {
+      "time point(s)": "not stated",
+      "dose / concentration": "not stated"
+    },
+    "statistical_claim": {
+      "significant": "not stated",
+      "not significant": "not stated",
+      "trend": "not stated",
+      "not stated": "not stated"
+    },
+    "interpretation_boundary": {
+      "what can be concluded based ONLY on this result": "the β-CD dimer cavity restricts the torsional movement of PreD, leading to a limited number of accessible conformers",
+      "what cannot be concluded based on this result": "the exact rate constant of the thermal sigmatropic reaction or the specific dynamics of the reaction pathway"
+    }
+  },
+  {
+    "fig_id": "38598310_fig6",
+    "experimental_context": {
+      "model": "not stated",
+      "assay / measurement method": "not stated"
+    },
+    "observation": {
+      "what was measured": "energy barrier (V_0)",
+      "direction of change": "increase",
+      "approximate magnitude or qualitative description": "from 27.40 to 27.88 kcal/mol"
+    },
+    "comparison": {
+      "treatment vs control": "encapsulation vs no encapsulation",
+      "group vs group": "not stated",
+      "time or dose comparison": "not stated"
+    },
+    "temporal_or_dose_dimension": {
+      "time point(s)": "not stated",
+      "dose / concentration": "not stated"
+    },
+    "statistical_claim": {
+      "significant": "not stated",
+      "not significant": "not stated",
+      "trend": "not stated",
+      "not stated": "not stated"
+    },
+    "interpretation_boundary": {
+      "what can be concluded based ONLY on this result": "encapsulation increases the energy barrier",
+      "what cannot be concluded based on this result": "the primary catalytic effect is due to energy barrier alterations"
+    }
+  },
+  {
+    "fig_id": "38598310_fig7",
+    "experimental_context": {
+      "model": "not stated",
+      "assay / measurement method": "not stated"
+    },
+    "observation": {
+      "what was measured": "energy barrier (V_0)",
+      "direction of change": "increase",
+      "approximate magnitude or qualitative description": "from 27.40 to 27.88 kcal/mol"
+    },
+    "comparison": {
+      "treatment vs control": "encapsulation vs no encapsulation",
+      "group vs group": "not stated",
+      "time or dose comparison": "not stated"
+    },
+    "temporal_or_dose_dimension": {
+      "time point(s)": "not stated",
+      "dose / concentration": "not stated"
+    },
+    "statistical_claim": {
+      "significant": "not stated",
+      "not significant": "not stated",
+      "trend": "not stated",
+      "not stated": "not stated"
+    },
+    "interpretation_boundary": {
+      "what can be concluded based ONLY on this result": "encapsulation increases the energy barrier",
+      "what cannot be concluded based on this result": "the primary catalytic effect is due to energy barrier alterations"
+    }
+  },
+  {
+    "fig_id": "39739814_fig1",
+    "experimental_context": {
+      "model": "HCC tissues, Huh7, SK-Hep1, PLC/PRF/5, Hep3B cells",
+      "assay / measurement method": "not stated"
+    },
+    "observation": {
+      "what was measured": "GPX4 mRNA and protein levels",
+      "direction of change": "increase / decrease",
+      "approximate magnitude or qualitative description": "significant upregulation in tumor tissues; 40 to 50% reduction in GPX4 mRNA levels in MALT1-knockout cells"
+    },
+    "comparison": {
+      "treatment vs control": "MALT1-knockout vs control cells",
+      "group vs group": "tumor tissues vs adjacent nontumor tissues",
+      "time or dose comparison": "not stated"
+    },
+    "temporal_or_dose_dimension": {
+      "time point(s)": "not stated",
+      "dose / concentration": "not stated"
+    },
+    "statistical_claim": {
+      "significant": "significant",
+      "not significant": "not stated",
+      "trend": "not stated",
+      "not stated": "not stated"
+    },
+    "interpretation_boundary": {
+      "what can be concluded based ONLY on this result": "MALT1 regulates GPX4 protein stability and may influence susceptibility to ferroptosis in liver cancer cells.",
+      "what cannot be concluded based on this result": "The exact mechanism of how MALT1 regulates GPX4 expression and its role in ferroptosis."
+    }
+  },
+  {
+    "fig_id": "39739814_fig2",
+    "experimental_context": {
+      "model": "PLC/PRF/5 cells",
+      "assay / measurement method": "proteomic analysis, FACS screening, coimmunoprecipitation"
+    },
+    "observation": {
+      "what was measured": "RC3H1 protein expression, GPX4 protein levels, GPX4 ubiquitination",
+      "direction of change": {
+        "RC3H1 protein expression": "increase",
+        "GPX4 protein levels": "increase",
+        "GPX4 ubiquitination": "decrease"
+      },
+      "approximate magnitude or qualitative description": "not stated"
+    },
+    "comparison": {
+      "treatment vs control": {
+        "MALT1 ablation vs control": "increase in RC3H1 expression, decrease in RC3H1 cleavage",
+        "RC3H1 knockdown vs control": "increase in GPX4 protein levels, decrease in GPX4 ubiquitination",
+        "RC3H1 overexpression vs control": "enhanced degradation of GPX4"
+      },
+      "group vs group": "not stated",
+      "time or dose comparison": "not stated"
+    },
+    "temporal_or_dose_dimension": {
+      "time point(s)": "not stated",
+      "dose / concentration": "not stated"
+    },
+    "statistical_claim": "not stated",
+    "interpretation_boundary": {
+      "what can be concluded based ONLY on this result": "MALT1 regulates GPX4 degradation through RC3H1",
+      "what cannot be concluded based on this result": "the specific mechanisms of how MALT1 regulates GPX4 degradation"
+    }
+  },
+  {
+    "fig_id": "39739814_fig4",
+    "experimental_context": {
+      "model": "liver cancer cells",
+      "assay / measurement method": "quantitative proteomics analysis"
+    },
+    "observation": {
+      "what was measured": "GPX4 protein levels",
+      "direction of change": "decrease",
+      "approximate magnitude or qualitative description": "not stated"
+    },
+    "comparison": {
+      "treatment vs control": "MI-2-treated cells vs control cells",
+      "group vs group": "not stated",
+      "time or dose comparison": "not stated"
+    },
+    "temporal_or_dose_dimension": {
+      "time point(s)": "not stated",
+      "dose / concentration": "not stated"
+    },
+    "statistical_claim": "not stated",
+    "interpretation_boundary": {
+      "what can be concluded based ONLY on this result": "MALT1 inhibition reduces GPX4 protein levels in liver cancer cells.",
+      "what cannot be concluded based on this result": "The specific mechanism of GPX4 downregulation or the broader implications for liver cancer treatment."
+    }
+  },
+  {
+    "fig_id": "39739814_fig5",
+    "experimental_context": {
+      "model": "liver cancer cell lines (Hep3B, SNU449, MHCC97H)",
+      "assay / measurement method": "not stated"
+    },
+    "observation": {
+      "what was measured": "GPX4 protein levels",
+      "direction of change": "decrease",
+      "approximate magnitude or qualitative description": "not stated"
+    },
+    "comparison": {
+      "treatment vs control": "MI-2 vs control",
+      "group vs group": "not stated",
+      "time or dose comparison": "not stated"
+    },
+    "temporal_or_dose_dimension": {
+      "time point(s)": "not stated",
+      "dose / concentration": "not stated"
+    },
+    "statistical_claim": {
+      "significant": "not stated",
+      "not significant": "not stated",
+      "trend": "not stated",
+      "not stated": "not stated"
+    },
+    "interpretation_boundary": {
+      "what can be concluded based ONLY on this result": "MI-2 reduces GPX4 protein levels in liver cancer cell lines",
+      "what cannot be concluded based on this result": "the specific mechanisms or effects of combination treatments with other drugs"
+    }
+  },
+  {
+    "fig_id": "39795995_fig8",
+    "experimental_context": {
+      "model": "mouse",
+      "assay / measurement method": "real-time PCR"
+    },
+    "observation": {
+      "what was measured": "mRNA expression of α-SMA and collagen type I",
+      "direction of change": "decrease",
+      "approximate magnitude or qualitative description": "most pronounced effect with R31-G176K-V231C/Y250C"
+    },
+    "comparison": {
+      "treatment vs control": "fusion proteins vs untreated HSCs",
+      "group vs group": "not stated",
+      "time or dose comparison": "not stated"
+    },
+    "temporal_or_dose_dimension": {
+      "time point(s)": "not stated",
+      "dose / concentration": "not stated"
+    },
+    "statistical_claim": "not stated",
+    "interpretation_boundary": {
+      "what can be concluded based ONLY on this result": "the fusion proteins reduce mRNA expression of α-SMA and collagen type I in activated HSCs",
+      "what cannot be concluded based on this result": "the specific mechanisms of action or long-term effects of the fusion proteins"
+    }
+  },
+  {
+    "fig_id": "39744090_fig4",
+    "experimental_context": {
+      "model": "not stated",
+      "assay / measurement method": "MD simulations"
+    },
+    "observation": {
+      "what was measured": [
+        "RMSF",
+        "average number of random coils",
+        "average SASA",
+        "Rg",
+        "number of hydrogen bonds",
+        "number of salt bridges",
+        "van der Waals potential energy"
+      ],
+      "direction of change": [
+        "decrease",
+        "decrease",
+        "decrease",
+        "decrease",
+        "decrease",
+        "no change",
+        "decrease"
+      ],
+      "approximate magnitude or qualitative description": [
+        "lower RMSF in 13M4 than WT",
+        "lower average number of random coils in 13M4 than WT",
+        "lower average SASA in 13M4 than WT",
+        "lower Rg in 13M4 than WT",
+        "decreased number of hydrogen bonds in 13M4 compared to WT",
+        "number of salt bridges remained largely unchanged",
+        "decreased van der Waals potential energy in 13M4"
+      ]
+    },
+    "comparison": {
+      "treatment vs control": "not stated",
+      "group vs group": "13M4 vs WT",
+      "time or dose comparison": "100 ns MD simulations at 62°C"
+    },
+    "temporal_or_dose_dimension": {
+      "time point(s)": "100 ns",
+      "dose / concentration": "62°C"
+    },
+    "statistical_claim": {
+      "significant": "not stated",
+      "not significant": "not stated",
+      "trend": "not stated",
+      "not stated": "not stated"
+    },
+    "interpretation_boundary": {
+      "what can be concluded based ONLY on this result": "Mutant 13M4 exhibits increased rigidity and compactness compared to WT, contributing to enhanced thermal stability.",
+      "what cannot be concluded based on this result": "The specific mechanisms by which mutations enhance stability or the overall biological implications of these changes."
+    }
+  },
+  {
+    "fig_id": "39744090_fig5",
+    "experimental_context": {
+      "model": "not stated",
+      "assay / measurement method": "MD simulations"
+    },
+    "observation": {
+      "what was measured": [
+        "RMSF",
+        "average number of random coils",
+        "average SASA",
+        "Rg"
+      ],
+      "direction of change": [
+        "decrease",
+        "decrease",
+        "decrease",
+        "decrease"
+      ],
+      "approximate magnitude or qualitative description": [
+        "lower in 13M4 than in WT",
+        "lower in 13M4 than in WT",
+        "lower in 13M4 than in WT",
+        "lower in 13M4 than in WT"
+      ]
+    },
+    "comparison": {
+      "treatment vs control": "13M4 vs WT",
+      "group vs group": "not stated",
+      "time or dose comparison": "not stated"
+    },
+    "temporal_or_dose_dimension": {
+      "time point(s)": "100 ns",
+      "dose / concentration": "62°C"
+    },
+    "statistical_claim": {
+      "significant": "significant",
+      "not significant": "not stated",
+      "trend": "not stated",
+      "not stated": "not stated"
+    },
+    "interpretation_boundary": {
+      "what can be concluded based ONLY on this result": "Mutant 13M4 exhibits increased rigidity and compactness compared to WT.",
+      "what cannot be concluded based on this result": "The specific mechanisms behind the increased stability or the overall biological implications of these changes."
+    }
+  },
+  {
+    "fig_id": "39744090_fig6",
+    "experimental_context": {
+      "model": "not stated",
+      "assay / measurement method": "not stated"
+    },
+    "observation": {
+      "what was measured": "frequency of mutations, T_m values, RMSF",
+      "direction of change": "increase / decrease",
+      "approximate magnitude or qualitative description": "K351E frequency increased significantly; D17V/I149V frequency increased steadily; RMSF increased indicating greater instability"
+    },
+    "comparison": {
+      "treatment vs control": "K351E mutation in WT background vs higher-order mutants",
+      "group vs group": "D17V/I149V vs other mutations",
+      "time or dose comparison": "not stated"
+    },
+    "temporal_or_dose_dimension": {
+      "time point(s)": "initial data set, first and second rounds of prediction results",
+      "dose / concentration": "not stated"
+    },
+    "statistical_claim": {
+      "significant": "significant",
+      "not significant": "not stated",
+      "trend": "not stated",
+      "not stated": "not stated"
+    },
+    "interpretation_boundary": {
+      "what can be concluded based ONLY on this result": "mutations can affect local stability and influence other regions through interactions",
+      "what cannot be concluded based on this result": "specific mechanisms of epistasis or the exact nature of interactions"
+    }
+  },
+  {
+    "fig_id": "39725033_fig5",
+    "experimental_context": {
+      "model": "not stated",
+      "assay": "dot blot assay, western blots"
+    },
+    "observation": {
+      "what_was_measured": "amount of soluble SF3B1",
+      "direction_of_change": "increase",
+      "approximate_magnitude_or_qualitative_description": "robustly increased"
+    },
+    "comparison": {
+      "treatment_vs_control": "WX- vs control (no effect)",
+      "group_vs_group": "not stated",
+      "time_or_dose_comparison": "50 and 54 °C"
+    },
+    "temporal_or_dose_dimension": {
+      "time_point": "not stated",
+      "dose_concentration": "50 and 54 °C"
+    },
+    "statistical_claim": "not significant",
+    "interpretation_boundary": {
+      "what_can_be_concluded": "WX- increases the amount of soluble SF3B1 at certain temperatures",
+      "what_cannot_be_concluded": "the exact mechanism of interaction with SF3B1 or its effect on DDX42 thermostability"
+    }
+  },
+  {
+    "fig_id": "39769378_fig1",
+    "experimental_context": {
+      "model": "sunflower",
+      "assay / measurement method": "nanopore sequencing"
+    },
+    "observation": {
+      "what was measured": "number of reads obtained for T7-treated samples",
+      "direction of change": "increase",
+      "approximate magnitude or qualitative description": "significantly higher"
+    },
+    "comparison": {
+      "treatment vs control": "T7 treatment vs no T7 treatment",
+      "group vs group": "PS+ vs PS−",
+      "time or dose comparison": "not stated"
+    },
+    "temporal_or_dose_dimension": {
+      "time point(s)": "not stated",
+      "dose / concentration": "not stated"
+    },
+    "statistical_claim": {
+      "significant": "significant"
+    },
+    "interpretation_boundary": {
+      "what can be concluded based ONLY on this result": "T7 treatment significantly increased the nanopore sequencing output of the RCA products.",
+      "what cannot be concluded based on this result": "The specific mechanisms or reasons for the increase in sequencing output."
+    }
+  },
+  {
+    "fig_id": "39769378_fig2",
+    "experimental_context": {
+      "model": "not stated",
+      "assay / measurement method": "phylogenetic analysis"
+    },
+    "observation": {
+      "what was measured": "classification of active RTEs",
+      "direction of change": "not stated",
+      "approximate magnitude or qualitative description": "vast majority belong to Gypsy superfamily, only six classified as Copia elements"
+    },
+    "comparison": {
+      "treatment vs control": "not stated",
+      "group vs group": "Gypsy vs Copia elements",
+      "time or dose comparison": "not stated"
+    },
+    "temporal_or_dose_dimension": {
+      "time point(s)": "not stated",
+      "dose / concentration": "not stated"
+    },
+    "statistical_claim": {
+      "significant": "not stated",
+      "not significant": "not stated",
+      "trend": "not stated",
+      "not stated": "not stated"
+    },
+    "interpretation_boundary": {
+      "what can be concluded based ONLY on this result": "active sunflower RTEs are structurally heterogeneous and phylogenetically different",
+      "what cannot be concluded based on this result": "specific functional roles or mechanisms of RTEs"
+    }
+  },
+  {
+    "fig_id": "39764114_fig3",
+    "experimental_context": {
+      "model": "not stated",
+      "assay / measurement method": "molecular dynamics simulations"
+    },
+    "observation": {
+      "what was measured": "structural dynamics, melting temperature, -helix content, radius of gyration",
+      "direction of change": "increase / decrease",
+      "approximate magnitude or qualitative description": "R1020S mutant showed greater structural heterogeneity and reduced thermal stability"
+    },
+    "comparison": {
+      "treatment vs control": "R1020S mutant vs WT protein",
+      "group vs group": "not stated",
+      "time or dose comparison": "temperature dependence"
+    },
+    "temporal_or_dose_dimension": {
+      "time point(s)": "not stated",
+      "dose / concentration": "temperature range (300 K, 320 K, 380 K)"
+    },
+    "statistical_claim": {
+      "significant": "significant",
+      "not significant": "not stated",
+      "trend": "not stated",
+      "not stated": "not stated"
+    },
+    "interpretation_boundary": {
+      "what can be concluded based ONLY on this result": "R1020S mutation destabilizes ARID1A, increasing structural heterogeneity and reducing thermal stability",
+      "what cannot be concluded based on this result": "not stated"
+    }
+  },
+  {
+    "fig_id": "39764114_fig4",
+    "experimental_context": {
+      "model": "not stated",
+      "assay / measurement method": "intrinsic fluorescence measurement"
+    },
+    "observation": {
+      "what was measured": "fluorescence intensity and emission wavelength",
+      "direction of change": "decrease",
+      "approximate magnitude or qualitative description": "less fluorescence recovery compared to WT"
+    },
+    "comparison": {
+      "treatment vs control": "R1020S mutant vs WT",
+      "group vs group": "not stated",
+      "time or dose comparison": "not stated"
+    },
+    "temporal_or_dose_dimension": {
+      "time point(s)": "not stated",
+      "dose / concentration": "not stated"
+    },
+    "statistical_claim": {
+      "significant": "significant",
+      "not significant": "not stated",
+      "trend": "not stated",
+      "not stated": "not stated"
+    },
+    "interpretation_boundary": {
+      "what can be concluded based ONLY on this result": "R1020S mutation significantly destabilizes the protein's stability",
+      "what cannot be concluded based on this result": "the exact mechanism of destabilization or effects of other mutations"
+    }
+  },
+  {
+    "fig_id": "39700257_fig3",
+    "experimental_context": {
+      "model": "not stated",
+      "assay": "not stated"
+    },
+    "observation": {
+      "what_was_measured": "overall variation of the split population",
+      "direction_of_change": "increase",
+      "approximate_magnitude_or_qualitative_description": "significantly more than the non-split population"
+    },
+    "comparison": {
+      "treatment_vs_control": "population splitting vs non-split population",
+      "group_vs_group": "not stated",
+      "time_or_dose_comparison": "not stated"
+    },
+    "temporal_or_dose_dimension": {
+      "time_point": "final timepoint",
+      "dose_concentration": "not stated"
+    },
+    "statistical_claim": {
+      "significant": "significant"
+    },
+    "interpretation_boundary": {
+      "what_can_be_concluded": "population splitting increases overall variation",
+      "what_cannot_be_concluded": "specific mechanisms or effects of population size on performance"
+    }
+  },
+  {
+    "fig_id": "39700257_fig5",
+    "experimental_context": {
+      "model": "not stated",
+      "assay / measurement method": "not stated"
+    },
+    "observation": {
+      "what was measured": "performance of strategies in directed evolution",
+      "direction of change": "increase",
+      "approximate magnitude or qualitative description": "19-fold improvement in reaching global optimum with combined splitting and base chance approach"
+    },
+    "comparison": {
+      "treatment vs control": "optimal combined strategy vs strategy with neither base chance nor splitting",
+      "group vs group": "GB1 vs TrpB",
+      "time or dose comparison": "not stated"
+    },
+    "temporal_or_dose_dimension": {
+      "time point(s)": "not stated",
+      "dose / concentration": "not stated"
+    },
+    "statistical_claim": {
+      "significant": "not stated",
+      "not significant": "not stated",
+      "trend": "not stated",
+      "not stated": "not stated"
+    },
+    "interpretation_boundary": {
+      "what can be concluded based ONLY on this result": "a combination of base chance and population splitting improves the likelihood of reaching the global optimum in directed evolution",
+      "what cannot be concluded based on this result": "the absolute optimal strategy or the performance of strategies in all contexts"
+    }
+  },
+  {
+    "fig_id": "39868219_fig1",
+    "experimental_context": {
+      "model": "not stated",
+      "assay / measurement method": "far-UV circular dichroism spectroscopy, tryptophan fluorescence emission spectroscopy, protease digestion"
+    },
+    "observation": {
+      "what was measured": "folding and unfolding kinetics of PCt and P.69T",
+      "direction of change": "not stated",
+      "approximate magnitude or qualitative description": "PCt refolding was complete after 24 h; PCt unfolding took longer than 6 months"
+    },
+    "comparison": {
+      "treatment vs control": "not stated",
+      "group vs group": "PCt vs P.69T-Ct, PCt vs PFS",
+      "time or dose comparison": "not stated"
+    },
+    "temporal_or_dose_dimension": {
+      "time point(s)": "24 h for refolding, >6 months for unfolding",
+      "dose / concentration": "4 M GdmCl"
+    },
+    "statistical_claim": {
+      "significant": "not stated",
+      "not significant": "not stated",
+      "trend": "not stated",
+      "not stated": "not stated"
+    },
+    "interpretation_boundary": {
+      "what can be concluded based ONLY on this result": "PCt adopts a conformation that is thermodynamically comparable to the Ct segment of native P.69T",
+      "what cannot be concluded based on this result": "the existence of an on-pathway intermediate with a PCt-like Ct"
+    }
+  },
+  {
+    "fig_id": "39868219_fig2",
+    "experimental_context": {
+      "model": "not stated",
+      "assay": "tryptophan fluorescence emission spectroscopy"
+    },
+    "observation": {
+      "what_was_measured": "PCt folding and unfolding kinetics",
+      "direction_of_change": "not stated",
+      "approximate_magnitude_or_qualitative_description": "PCt refolding was complete after 24 h; PCt unfolding took longer than 6 months"
+    },
+    "comparison": {
+      "treatment_vs_control": "not stated",
+      "group_vs_group": "PCt vs native P.69T",
+      "time_or_dose_comparison": "PCt unfolding vs P.69T unfolding"
+    },
+    "temporal_or_dose_dimension": {
+      "time_point": "24 h for refolding; >1 month for unfolding",
+      "dose_concentration": "4 M GdmCl"
+    },
+    "statistical_claim": "not stated",
+    "interpretation_boundary": {
+      "what_can_be_concluded": "PCt adopts a conformation comparable to the Ct segment of native P.69T but with a different kinetic pathway for unfolding",
+      "what_cannot_be_concluded": "the presence of an on-pathway intermediate with a PCt-like Ct"
+    }
+  },
+  {
+    "fig_id": "39670334_fig3",
+    "experimental_context": {
+      "model": "P. pastoris",
+      "assay / measurement method": "not stated"
+    },
+    "observation": {
+      "what was measured": "expression yield",
+      "direction of change": "increase",
+      "approximate magnitude or qualitative description": "up to ∼160 mg/L, c.a. 16-fold higher than E. coli"
+    },
+    "comparison": {
+      "treatment vs control": "M-RQW in P. pastoris vs M-RQW in E. coli",
+      "group vs group": "not stated",
+      "time or dose comparison": "not stated"
+    },
+    "temporal_or_dose_dimension": {
+      "time point(s)": "not stated",
+      "dose / concentration": "not stated"
+    },
+    "statistical_claim": {
+      "significant": "not stated",
+      "not significant": "not stated",
+      "trend": "not stated",
+      "not stated": "not stated"
+    },
+    "interpretation_boundary": {
+      "what can be concluded based ONLY on this result": "M-RQW expression yield is significantly higher in P. pastoris compared to E. coli",
+      "what cannot be concluded based on this result": "the specific mechanisms or reasons for the increased yield"
+    }
+  },
+  {
+    "fig_id": "39728798_fig7",
+    "experimental_context": {
+      "model": "not stated",
+      "assay / measurement method": "HPLC"
+    },
+    "observation": {
+      "what was measured": "ZEA concentration",
+      "direction of change": "increase",
+      "approximate magnitude or qualitative description": "1.3 times higher activity for T216K at pH 7.0 compared to wild-type at pH 8.0"
+    },
+    "comparison": {
+      "treatment vs control": "T216K vs wild-type",
+      "group vs group": "not stated",
+      "time or dose comparison": "not stated"
+    },
+    "temporal_or_dose_dimension": {
+      "time point(s)": "not stated",
+      "dose / concentration": "5 μg/mL"
+    },
+    "statistical_claim": {
+      "significant": "not stated",
+      "not significant": "not stated",
+      "trend": "not stated",
+      "not stated": "not stated"
+    },
+    "interpretation_boundary": {
+      "what can be concluded based ONLY on this result": "T216K variant has improved activity at acidic pH compared to wild-type",
+      "what cannot be concluded based on this result": "Mechanisms of action or broader implications for enzyme function"
+    }
+  },
+  {
+    "fig_id": "39726963_fig1",
+    "experimental_context": {
+      "model": "Escherichia coli",
+      "assay / measurement method": "spectrophotometric assays"
+    },
+    "observation": {
+      "what was measured": "NADH-oxidation rates",
+      "direction of change": "increase",
+      "approximate magnitude or qualitative description": "2.4–3.2-fold higher"
+    },
+    "comparison": {
+      "treatment vs control": "O. parapolymorpha NDH-2 vs parental E. coli strain",
+      "group vs group": "not stated",
+      "time or dose comparison": "not stated"
+    },
+    "temporal_or_dose_dimension": {
+      "time point(s)": "not stated",
+      "dose / concentration": "not stated"
+    },
+    "statistical_claim": {
+      "significant": "not significant",
+      "not significant": "not stated",
+      "trend": "not stated",
+      "not stated": "not stated"
+    },
+    "interpretation_boundary": {
+      "what can be concluded based ONLY on this result": "The three NDH2s from O. parapolymorpha can efficiently oxidize NADH in E. coli membranes.",
+      "what cannot be concluded based on this result": "The three NDH2s can catalyze the oxidation of NADPH."
+    }
+  },
+  {
+    "fig_id": "39658648_fig1",
+    "experimental_context": {
+      "model": "PDAC TMA",
+      "assay / measurement method": "IHC/TSA staining"
+    },
+    "observation": {
+      "what was measured": "TF expression level",
+      "direction of change": "not stated",
+      "approximate magnitude or qualitative description": "TF-high patients accounted for 68.75% of total cases"
+    },
+    "comparison": {
+      "treatment vs control": "TF-H vs TF-L",
+      "group vs group": "TF-H tumors vs TF-L tumors",
+      "time or dose comparison": "not stated"
+    },
+    "temporal_or_dose_dimension": {
+      "time point(s)": "not stated",
+      "dose / concentration": "not stated"
+    },
+    "statistical_claim": {
+      "significant": "significant",
+      "not significant": "not stated",
+      "trend": "not stated"
+    },
+    "interpretation_boundary": {
+      "what can be concluded based ONLY on this result": "TF-high expression is associated with worse prognosis and higher TNM stages",
+      "what cannot be concluded based on this result": "the specific mechanisms by which TF affects prognosis"
+    }
+  },
+  {
+    "fig_id": "39658648_fig2",
+    "experimental_context": {
+      "model": "mouse KPC cells",
+      "assay": "immunoblotting, DNA sequencing, IHC/TSA, qRT-PCR, RNA-seq"
+    },
+    "observation": {
+      "what_was_measured": "Ki67^+ and TUNEL^+ apoptotic tumor cells, levels of P-AKT, P-ERK, P-TBK1, P-STAT1, P-IRF3, CCL4, CCL5, CXCL9-11 mRNA levels, ISGs and chemokine genes",
+      "direction_of_change": {
+        "Ki67^+": "decrease",
+        "TUNEL^+": "increase",
+        "P-AKT": "decrease",
+        "P-ERK": "decrease",
+        "P-TBK1": "increase",
+        "P-STAT1": "increase",
+        "P-IRF3": "increase",
+        "CCL4": "increase",
+        "CCL5": "increase",
+        "CXCL9-11": "increase",
+        "ISGs and chemokine genes": "increase"
+      },
+      "approximate_magnitude_or_qualitative_description": {
+        "Ki67^+": "drastic reduction",
+        "TUNEL^+": "increase",
+        "P-AKT": "markedly decreased",
+        "P-ERK": "markedly decreased",
+        "P-TBK1": "substantially increased",
+        "P-STAT1": "substantially increased",
+        "P-IRF3": "substantially increased",
+        "CCL4": "increase",
+        "CCL5": "increase",
+        "CXCL9-11": "increase",
+        "ISGs and chemokine genes": "coordinated increase"
+      }
+    },
+    "comparison": {
+      "treatment_vs_control": "TF-KO vs KPC-scramble",
+      "group_vs_group": "TF-KO-1 vs TF-KO-2",
+      "time_or_dose_comparison": "not stated"
+    },
+    "temporal_or_dose_dimension": {
+      "time_point": "not stated",
+      "dose_concentration": "not stated"
+    },
+    "statistical_claim": "not stated",
+    "interpretation_boundary": {
+      "what_can_be_concluded": "TF is a negative regulator of STING pathway activity in KPC cells.",
+      "what_cannot_be_concluded": "The specific mechanisms by which TF-KO affects tumor growth and immune environment are not detailed."
+    }
+  },
+  {
+    "fig_id": "39658648_fig8",
+    "experimental_context": {
+      "model": "nude mice",
+      "assay / measurement method": "not stated"
+    },
+    "observation": {
+      "what was measured": "tumor inhibition, levels of P-TBK1, NCR1 ^{+} NK and CD86 ^{+} immune cells, secretion levels of CXCL10 and IFN-γ, proportions of viable MDA-231, HPAF-II, BxPC3 and HCC1806 cells, IC _{50} values",
+      "direction of change": "increase, decrease",
+      "approximate magnitude or qualitative description": "profound tumor inhibition, most abundant levels, significantly increased, decreased EC _{50} values, 1700-fold and >2000-fold more potent, reduced by several to hundreds and thousands fold"
+    },
+    "comparison": {
+      "treatment vs control": "HuSC1-39-AN014 vs HuSC1-39 and AN014",
+      "group vs group": "not stated",
+      "time or dose comparison": "5 mg/kg HuSC1-39-AN014 vs 5 mg/kg HuSC1-39 or 2 mg/kg AN014"
+    },
+    "temporal_or_dose_dimension": {
+      "time point(s)": "not stated",
+      "dose / concentration": "5 mg/kg, 2 mg/kg, 0.16 mg/kg"
+    },
+    "statistical_claim": {
+      "significant": "not stated",
+      "not significant": "not stated",
+      "trend": "not stated",
+      "not stated": "not stated"
+    },
+    "interpretation_boundary": {
+      "what can be concluded based ONLY on this result": "HuSC1-39-AN014 exhibits profound tumor inhibition and enhances immune response in vivo.",
+      "what cannot be concluded based on this result": "The specific mechanisms of action or long-term efficacy of HuSC1-39-AN014."
+    }
+  },
+  {
+    "fig_id": "39768998_fig5",
+    "experimental_context": {
+      "model": "hyrax BLVRB, human BLVRB",
+      "assay / measurement method": "UV kinetics"
+    },
+    "observation": {
+      "what was measured": "catalytic turnover rate (k_cat)",
+      "direction of change": "decrease",
+      "approximate magnitude or qualitative description": "higher k_cat for human BLVRB compared to hyrax BLVRB"
+    },
+    "comparison": {
+      "treatment vs control": "not stated",
+      "group vs group": "human BLVRB vs hyrax BLVRB",
+      "time or dose comparison": "not stated"
+    },
+    "temporal_or_dose_dimension": {
+      "time point(s)": "not stated",
+      "dose / concentration": "higher FAD concentrations"
+    },
+    "statistical_claim": "not stated",
+    "interpretation_boundary": {
+      "what can be concluded based ONLY on this result": "human BLVRB has a higher catalytic turnover rate than hyrax BLVRB",
+      "what cannot be concluded based on this result": "the exact mechanism of the rate-limiting step or the effect of position 164 mutations on catalytic efficiency"
+    }
+  },
+  {
+    "fig_id": "39768998_fig7",
+    "experimental_context": {
+      "model": "hyrax BLVRB",
+      "assay / measurement method": "R2-CPMG dispersion"
+    },
+    "observation": {
+      "what was measured": "R2 relaxation rates",
+      "direction of change": "decrease",
+      "approximate magnitude or qualitative description": "partially diminished in holo forms"
+    },
+    "comparison": {
+      "treatment vs control": "holo form vs apo form",
+      "group vs group": "hyrax BLVRB vs human BLVRB",
+      "time or dose comparison": "not stated"
+    },
+    "temporal_or_dose_dimension": {
+      "time point(s)": "20 °C",
+      "dose / concentration": "not stated"
+    },
+    "statistical_claim": "not stated",
+    "interpretation_boundary": {
+      "what can be concluded based ONLY on this result": "hyrax BLVRB exhibits distinct dynamic behavior compared to human BLVRB",
+      "what cannot be concluded based on this result": "the specific mechanisms underlying the differences in dynamics"
+    }
+  },
+  {
+    "fig_id": "39811667_fig5",
+    "experimental_context": {
+      "model": "HEK293T cells",
+      "assay / measurement method": "not stated"
+    },
+    "observation": {
+      "what was measured": "reporter expression",
+      "direction of change": "increase",
+      "approximate magnitude or qualitative description": "3- to 4-fold higher"
+    },
+    "comparison": {
+      "treatment vs control": "engineered variants (v433 and v443) vs WT",
+      "group vs group": "not stated",
+      "time or dose comparison": "not stated"
+    },
+    "temporal_or_dose_dimension": {
+      "time point(s)": "not stated",
+      "dose / concentration": "not stated"
+    },
+    "statistical_claim": {
+      "significant": "not stated",
+      "not significant": "not stated",
+      "trend": "not stated",
+      "not stated": "not stated"
+    },
+    "interpretation_boundary": {
+      "what can be concluded based ONLY on this result": "engineered variants demonstrate enhanced performance in HEK293T cells",
+      "what cannot be concluded based on this result": "specific mechanisms of action or performance in other eukaryotic systems"
+    }
+  },
+  {
+    "fig_id": "39684743_fig3",
+    "experimental_context": {
+      "model": "not stated",
+      "assay / measurement method": "not stated"
+    },
+    "observation": {
+      "what was measured": "MSE and model accuracy",
+      "direction of change": "not stated",
+      "approximate magnitude or qualitative description": {
+        "RNN training MSE": 13.98,
+        "RNN model accuracy": 93.01,
+        "validation MSE": "elevated",
+        "CNN performance": "marginally better on test set"
+      }
+    },
+    "comparison": {
+      "treatment vs control": "not stated",
+      "group vs group": "RNN vs CNN",
+      "time or dose comparison": "not stated"
+    },
+    "temporal_or_dose_dimension": {
+      "time point(s)": "not stated",
+      "dose / concentration": "not stated"
+    },
+    "statistical_claim": {
+      "significant": "not stated",
+      "not significant": "not stated",
+      "trend": "not stated",
+      "not stated": "not stated"
+    },
+    "interpretation_boundary": {
+      "what can be concluded based ONLY on this result": "The RNN model shows a strong training fit but suggests overfitting; the CNN may capture broader patterns.",
+      "what cannot be concluded based on this result": "The results do not confirm the robustness of predictions across various datasets or the effectiveness of the models without further refinement."
+    }
+  },
+  {
+    "fig_id": "39684743_fig4",
+    "experimental_context": {
+      "model": "not stated",
+      "assay / measurement method": "not stated"
+    },
+    "observation": {
+      "what was measured": "MSE and model accuracy",
+      "direction of change": "not stated",
+      "approximate magnitude or qualitative description": {
+        "RNN training MSE": 13.98,
+        "RNN model accuracy": 93.01,
+        "validation MSE": "elevated",
+        "CNN performance": "marginally better on test set"
+      }
+    },
+    "comparison": {
+      "treatment vs control": "not stated",
+      "group vs group": "RNN vs CNN",
+      "time or dose comparison": "not stated"
+    },
+    "temporal_or_dose_dimension": {
+      "time point(s)": "not stated",
+      "dose / concentration": "not stated"
+    },
+    "statistical_claim": {
+      "significant": "not stated",
+      "not significant": "not stated",
+      "trend": "not stated",
+      "not stated": "not stated"
+    },
+    "interpretation_boundary": {
+      "what can be concluded based ONLY on this result": "The RNN model shows a strong training fit but suggests overfitting; the CNN may capture broader patterns.",
+      "what cannot be concluded based on this result": "The results do not confirm the robustness of predictions across various datasets or the effectiveness of the models without further refinement."
+    }
+  },
+  {
+    "fig_id": "39617781_fig3",
+    "experimental_context": {
+      "model": "not stated",
+      "assay / measurement method": "sequence analysis"
+    },
+    "observation": {
+      "what was measured": "number of new variants and types of mutations",
+      "direction of change": "increase",
+      "approximate magnitude or qualitative description": {
+        "POE": "1282 new variants (66%)",
+        "SNE": "not stated",
+        "average mutations": {
+          "POE": "7.09",
+          "SNE": "3.57"
+        },
+        "conservative mutations": "≈ 25%"
+      }
+    },
+    "comparison": {
+      "treatment vs control": "not stated",
+      "group vs group": "POE vs SNE",
+      "time or dose comparison": "not stated"
+    },
+    "temporal_or_dose_dimension": {
+      "time point(s)": "not stated",
+      "dose / concentration": "not stated"
+    },
+    "statistical_claim": "not stated",
+    "interpretation_boundary": {
+      "what can be concluded based ONLY on this result": "PREVENT can generate highly diverse protein variants with both conservative and non-conservative mutations.",
+      "what cannot be concluded based on this result": "The specific evolutionary advantages or functional implications of the mutations."
+    }
+  },
+  {
+    "fig_id": "39617781_fig4",
+    "experimental_context": {
+      "model": "not stated",
+      "assay / measurement method": "not stated"
+    },
+    "observation": {
+      "what was measured": "free energy, structural properties, dynamics",
+      "direction of change": "not stated",
+      "approximate magnitude or qualitative description": {
+        "free energy": {
+          "SNE group": "-29.8 kcal/mol",
+          "SNL group": "-18 kcal/mol",
+          "mutations": {
+            "SNE group": "6.8",
+            "SNL group": "1"
+          }
+        },
+        "pLDDT": "89.64",
+        "RMSD": "1.70Å",
+        "inverse folding score": "-0.077",
+        "wildtype log-likelihood": "-0.991",
+        "average variants log-likelihood": "-1.069",
+        "average RMSF": "0.15"
+      }
+    },
+    "comparison": {
+      "treatment vs control": "not stated",
+      "group vs group": "SNE group vs SNL group",
+      "time or dose comparison": "not stated"
+    },
+    "temporal_or_dose_dimension": {
+      "time point(s)": "not stated",
+      "dose / concentration": "not stated"
+    },
+    "statistical_claim": {
+      "significant": "significant",
+      "not significant": "not stated",
+      "trend": "not stated",
+      "not stated": "not stated"
+    },
+    "interpretation_boundary": {
+      "what can be concluded based ONLY on this result": "The variants exhibit significant variability in free energy and structural properties, with high accuracy in predictions.",
+      "what cannot be concluded based on this result": "The specific functional implications of the observed structural and dynamic properties cannot be concluded."
+    }
+  },
+  {
+    "fig_id": "39616719_fig4",
+    "experimental_context": {
+      "model": "not stated",
+      "assay / measurement method": "not stated"
+    },
+    "observation": {
+      "what was measured": "protein particle size distribution",
+      "direction of change": "increase",
+      "approximate magnitude or qualitative description": "ranging from 10 nm to 3500 nm, with a small peak near 1 × 10^5 nm"
+    },
+    "comparison": {
+      "treatment vs control": "WSPSB vs CSB",
+      "group vs group": "not stated",
+      "time or dose comparison": "ultrasound power levels"
+    },
+    "temporal_or_dose_dimension": {
+      "time point(s)": "not stated",
+      "dose / concentration": "300 W"
+    },
+    "statistical_claim": "significant",
+    "interpretation_boundary": {
+      "what can be concluded based ONLY on this result": "appropriate ultrasonic treatment induced protein unfolding and increased protein particle size in WSPSB",
+      "what cannot be concluded based on this result": "specific mechanisms of protein aggregation or effects of other power levels beyond those tested"
+    }
+  },
+  {
+    "fig_id": "39616719_fig5",
+    "experimental_context": {
+      "model": "not stated",
+      "assay / measurement method": "fluorescence spectroscopy"
+    },
+    "observation": {
+      "what was measured": "fluorescence intensity",
+      "direction of change": "increase and then decrease",
+      "approximate magnitude or qualitative description": "significantly higher for 0 W sample compared to CSB, peak at 300 W"
+    },
+    "comparison": {
+      "treatment vs control": "ultrasound-assisted fermentation vs 0 W sample",
+      "group vs group": "not stated",
+      "time or dose comparison": "varying ultrasound power levels"
+    },
+    "temporal_or_dose_dimension": {
+      "time point(s)": "not stated",
+      "dose / concentration": "0 W, 300 W, > 300 W"
+    },
+    "statistical_claim": {
+      "significant": "significant (p < 0.05)",
+      "not significant": "not stated",
+      "trend": "not stated"
+    },
+    "interpretation_boundary": {
+      "what can be concluded based ONLY on this result": "ultrasound-assisted fermentation increases H_0 of steamed bread proteins compared to 0 W sample",
+      "what cannot be concluded based on this result": "specific mechanisms of protein unfolding or the exact effects of ultrasound power beyond 300 W"
+    }
+  },
+  {
+    "fig_id": "39722883_fig2",
+    "experimental_context": {
+      "model": "not stated",
+      "assay / measurement method": "not stated"
+    },
+    "observation": {
+      "what was measured": "k_cat / K_a",
+      "direction of change": "decrease",
+      "approximate magnitude or qualitative description": "maximal values found at pH= 7.5–7.8, decreased at lower and higher pH values"
+    },
+    "comparison": {
+      "treatment vs control": "not stated",
+      "group vs group": "not stated",
+      "time or dose comparison": "not stated"
+    },
+    "temporal_or_dose_dimension": {
+      "time point(s)": "not stated",
+      "dose / concentration": "not stated"
+    },
+    "statistical_claim": {
+      "significant": "not stated",
+      "not significant": "not stated",
+      "trend": "not stated",
+      "not stated": "not stated"
+    },
+    "interpretation_boundary": {
+      "what can be concluded based ONLY on this result": "maximal values of k_cat / K_a occur at specific pH values",
+      "what cannot be concluded based on this result": "the specific mechanisms or reasons for the changes in k_cat / K_a"
+    }
+  },
+  {
+    "fig_id": "39722883_fig6",
+    "experimental_context": {
+      "model": "not stated",
+      "assay / measurement method": "not stated"
+    },
+    "observation": {
+      "what was measured": "pK values of Cys_145 and His_41",
+      "direction of change": "not stated",
+      "approximate magnitude or qualitative description": "Cys_145 pK = 7.8–8.5; His_41 pK = 6.0–6.5"
+    },
+    "comparison": {
+      "treatment vs control": "not stated",
+      "group vs group": "not stated",
+      "time or dose comparison": "not stated"
+    },
+    "temporal_or_dose_dimension": {
+      "time point(s)": "0–40 min",
+      "dose / concentration": "2 μM"
+    },
+    "statistical_claim": {
+      "significant": "not stated",
+      "not significant": "not stated",
+      "trend": "not stated",
+      "not stated": "not stated"
+    },
+    "interpretation_boundary": {
+      "what can be concluded based ONLY on this result": "The pK values of Cys_145 and His_41 have been determined.",
+      "what cannot be concluded based on this result": "Mechanisms of action or effects of pH on enzyme activity cannot be concluded."
+    }
+  },
+  {
+    "fig_id": "39722883_fig7",
+    "experimental_context": {
+      "model": "not stated",
+      "assay": "stopped-flow fluorimetric analysis"
+    },
+    "observation": {
+      "what_was_measured": "rate of acylation (k_ac) and rate of deacylation (k_dac)",
+      "direction_of_change": "not stated",
+      "approximate_magnitude_or_qualitative_description": {
+        "k_acH2O": "42 ± 1 s^–1",
+        "k_acD2O": "78 ± 3 s^–1",
+        "k_dacH2O": "5.91 s^–1",
+        "k_dacD2O": "5.89 s^–1"
+      }
+    },
+    "comparison": {
+      "treatment_vs_control": "not stated",
+      "group_vs_group": "H2O vs D2O",
+      "time_or_dose_comparison": "not stated"
+    },
+    "temporal_or_dose_dimension": {
+      "time_point": "2–200 ms",
+      "dose_concentration": "5–90 μM"
+    },
+    "statistical_claim": {
+      "significant": "not stated",
+      "not_significant": "not stated",
+      "trend": "not stated",
+      "not_stated": "not stated"
+    },
+    "interpretation_boundary": {
+      "what_can_be_concluded": "The rates of acylation and deacylation were quantified in both H2O and D2O.",
+      "what_cannot_be_concluded": "The specific mechanisms or reasons for the differences in rates between H2O and D2O cannot be concluded."
+    }
+  },
+  {
+    "fig_id": "39588774_fig4",
+    "experimental_context": {
+      "model": "not stated",
+      "assay / measurement method": "not stated"
+    },
+    "observation": {
+      "what was measured": "trans- cleavage activity",
+      "direction of change": "increase",
+      "approximate magnitude or qualitative description": "stronger trans- cleavage activity commonly grouped in a region with high [EQ:EQ212] and moderate [EQ:EQ213]"
+    },
+    "comparison": {
+      "treatment vs control": "not stated",
+      "group vs group": "targets matching linear spacers vs targets matching hairpin spacers",
+      "time or dose comparison": "not stated"
+    },
+    "temporal_or_dose_dimension": {
+      "time point(s)": "not stated",
+      "dose / concentration": "not stated"
+    },
+    "statistical_claim": {
+      "significant": "not stated",
+      "not significant": "not stated",
+      "trend": "not stated",
+      "not stated": "not stated"
+    },
+    "interpretation_boundary": {
+      "what can be concluded based ONLY on this result": "targets matching linear spacers typically initiated stronger trans- cleavage activity than those matching a hairpin spacer",
+      "what cannot be concluded based on this result": "the specific mechanisms governing trans- cleavage activity or the performance of crRNA/dsDNA pairs outside the tested conditions"
+    }
+  },
+  {
+    "fig_id": "39588774_fig5",
+    "experimental_context": {
+      "model": "not stated",
+      "assay / measurement method": "trans- cleavage assays"
+    },
+    "observation": {
+      "what was measured": "trans- cleavage activity",
+      "direction of change": "increase",
+      "approximate magnitude or qualitative description": "higher in Clusters #1 − 3 compared to Clusters #4 − 6"
+    },
+    "comparison": {
+      "treatment vs control": "not stated",
+      "group vs group": "Clusters #1 − 3 vs Clusters #4 − 6",
+      "time or dose comparison": "not stated"
+    },
+    "temporal_or_dose_dimension": {
+      "time point(s)": "not stated",
+      "dose / concentration": "not stated"
+    },
+    "statistical_claim": {
+      "significant": "significant",
+      "not significant": "not stated",
+      "trend": "not stated",
+      "not stated": "not stated"
+    },
+    "interpretation_boundary": {
+      "what can be concluded based ONLY on this result": "trans- cleavage activity is higher in certain clusters",
+      "what cannot be concluded based on this result": "specific mechanisms or reasons for the differences in activity"
+    }
+  },
+  {
+    "fig_id": "39591473_fig1",
+    "experimental_context": {
+      "model": "not stated",
+      "assay / measurement method": "not stated"
+    },
+    "observation": {
+      "what was measured": "RMSD between predicted and experimental structures",
+      "direction of change": "not stated",
+      "approximate magnitude or qualitative description": "≤2.5Å RMSD for at least one experimental structure in 95.35% of the domain sub-clusters; under 5Å RMSD in 98.78% of domain sub-clusters; 89.10% of the sub-clusters have all their members under 2.5 Å RMSD"
+    },
+    "comparison": {
+      "treatment vs control": "not stated",
+      "group vs group": "not stated",
+      "time or dose comparison": "not stated"
+    },
+    "temporal_or_dose_dimension": {
+      "time point(s)": "not stated",
+      "dose / concentration": "not stated"
+    },
+    "statistical_claim": {
+      "significant": "not stated",
+      "not significant": "not stated",
+      "trend": "not stated",
+      "not stated": "not stated"
+    },
+    "interpretation_boundary": {
+      "what can be concluded based ONLY on this result": "The AF2 predicted model has a high accuracy in reproducing experimental structures for many domain sub-clusters.",
+      "what cannot be concluded based on this result": "The specific mechanisms or reasons for the discrepancies in the remaining domain sub-clusters cannot be concluded."
+    }
+  },
+  {
+    "fig_id": "39591473_fig2",
+    "experimental_context": {
+      "model": "not stated",
+      "assay / measurement method": "not stated"
+    },
+    "observation": {
+      "what was measured": "fraction of α-Helix and β-Sheet differences",
+      "direction of change": "increase",
+      "approximate magnitude or qualitative description": "At least 64.80%, 40.70%, 25.50%, and 10.30% of domains have more than 1, 2, 4, and 8 additional residues in α-Helices or β-Sheets, respectively"
+    },
+    "comparison": {
+      "treatment vs control": "not stated",
+      "group vs group": "not stated",
+      "time or dose comparison": "not stated"
+    },
+    "temporal_or_dose_dimension": {
+      "time point(s)": "not stated",
+      "dose / concentration": "not stated"
+    },
+    "statistical_claim": {
+      "significant": "not stated",
+      "not significant": "not stated",
+      "trend": "not stated",
+      "not stated": "not stated"
+    },
+    "interpretation_boundary": {
+      "what can be concluded based ONLY on this result": "AF2-predicted structures may predict more secondary structure content compared to experiments",
+      "what cannot be concluded based on this result": "the exact nature of the overestimation or the performance of AF2 in predicting dynamic domains"
+    }
+  },
+  {
+    "fig_id": "39580491_fig3",
+    "experimental_context": {
+      "model": "MV4-11 cells",
+      "assay / measurement method": "not stated"
+    },
+    "observation": {
+      "what was measured": "degradation of HiBiT-WDR5",
+      "direction of change": "decrease",
+      "approximate magnitude or qualitative description": "EC50 values of 288 ± 137 nM, 200 ± 28 nM, and 54 ± 18 nM for PROTAC 1, 2, and 3 respectively"
+    },
+    "comparison": {
+      "treatment vs control": "PROTACs 1, 2, and 3 vs control",
+      "group vs group": "not stated",
+      "time or dose comparison": "not stated"
+    },
+    "temporal_or_dose_dimension": {
+      "time point(s)": "not stated",
+      "dose / concentration": "ranging from 2 nM to 10 μM"
+    },
+    "statistical_claim": {
+      "significant": "not stated",
+      "not significant": "not stated",
+      "trend": "not stated",
+      "not stated": "not stated"
+    },
+    "interpretation_boundary": {
+      "what can be concluded based ONLY on this result": "PROTACs 1, 2, and 3 can degrade HiBiT-WDR5 at specific concentrations",
+      "what cannot be concluded based on this result": "the complete degradation of WDR5 or the mechanism of degradation"
+    }
+  },
+  {
+    "fig_id": "39580491_fig6",
+    "experimental_context": {
+      "model": "MV4-11 cells",
+      "assay / measurement method": "not stated"
+    },
+    "observation": {
+      "what was measured": "binding affinity (K_D value) and residence time (k_off)",
+      "direction of change": "decrease",
+      "approximate magnitude or qualitative description": "5 ± 0.4 nM for PROTAC 4 with WDR5 vs 59 ± 0.9 nM for PROTAC 4 alone; 14x increase in residence time"
+    },
+    "comparison": {
+      "treatment vs control": "PROTAC 4 with WDR5 vs PROTAC 4 alone",
+      "group vs group": "PROTAC 4 vs PROTAC 1-3",
+      "time or dose comparison": "not stated"
+    },
+    "temporal_or_dose_dimension": {
+      "time point(s)": "5 h for degradation measurement; 24 h for toxicity assessment",
+      "dose / concentration": "1.5 µM for PROTAC 4; 3.8 ± 1.0 nM for MS67"
+    },
+    "statistical_claim": {
+      "significant": "significant for PROTAC 4 degradation",
+      "not significant": "not stated",
+      "trend": "not stated",
+      "not stated": "not stated"
+    },
+    "interpretation_boundary": {
+      "what can be concluded based ONLY on this result": "PROTAC 4 has a significantly lower K_D value and longer residence time compared to PROTAC 4 alone, indicating improved binding and degradation efficiency.",
+      "what cannot be concluded based on this result": "The specific mechanisms of degradation or the effects of other PROTACs beyond the observed binding and degradation metrics."
+    }
+  },
+  {
+    "fig_id": "39580491_fig7",
+    "experimental_context": {
+      "model": "MV4-11 cells",
+      "assay / measurement method": "not stated"
+    },
+    "observation": {
+      "what was measured": "WDR5 degradation",
+      "direction of change": "increase",
+      "approximate magnitude or qualitative description": "D_max of 73.8 ± 2.9% for PROTAC 4"
+    },
+    "comparison": {
+      "treatment vs control": "PROTAC 4 vs MS67",
+      "group vs group": "PROTAC 1-4 vs MS67",
+      "time or dose comparison": "not stated"
+    },
+    "temporal_or_dose_dimension": {
+      "time point(s)": "5 h",
+      "dose / concentration": "1.5 µM"
+    },
+    "statistical_claim": {
+      "significant": "significant",
+      "not significant": "not stated",
+      "trend": "not stated",
+      "not stated": "not stated"
+    },
+    "interpretation_boundary": {
+      "what can be concluded based ONLY on this result": "PROTAC 4 induces proteasomal degradation of WDR5",
+      "what cannot be concluded based on this result": "The specific mechanisms of degradation or the effects on endogenous WDR5 accessibility"
+    }
+  },
+  {
+    "fig_id": "39564806_fig1",
+    "experimental_context": {
+      "model": "human cells, HEK293 cells, promyelocytic leukemic PLB‐985 cells",
+      "assay / measurement method": "immunofluorescence analysis, cellular fractionation, split GFP approaches, maximum shift assay, SDS‐PAGE, co‐immunoprecipitation, in vitro import experiments, submitochondrial fractionation"
+    },
+    "observation": {
+      "what was measured": "HAX1 localization, interaction with MIA40, import of HAX1",
+      "direction of change": "not stated",
+      "approximate magnitude or qualitative description": "HAX1 localized to the IMS, interaction confirmed under native conditions, mild and not statistically significant import changes"
+    },
+    "comparison": {
+      "treatment vs control": "HAX1 import in MIA40 knockdown cells vs control protein COX19",
+      "group vs group": "HAX1 with MIA40 variants",
+      "time or dose comparison": "specific times during in vitro import experiments"
+    },
+    "temporal_or_dose_dimension": {
+      "time point(s)": "not stated",
+      "dose / concentration": "not stated"
+    },
+    "statistical_claim": {
+      "significant": "not significant",
+      "not significant": "P = 0.087 for HAX1 import, p = 0.055 for HAX1‐Δ26 import",
+      "trend": "not stated",
+      "not stated": "not stated"
+    },
+    "interpretation_boundary": {
+      "what can be concluded based ONLY on this result": "HAX1 interacts with MIA40 and is imported into the IMS, with the N-terminal region being important for import",
+      "what cannot be concluded based on this result": "the exact mechanism of interaction or the role of MIA40 in HAX1 stabilization beyond the observed effects"
+    }
+  },
+  {
+    "fig_id": "39558224_fig2",
+    "experimental_context": {
+      "model": "293T cells, Hep3B cells",
+      "assay": "qPCR"
+    },
+    "observation": {
+      "what_was_measured": "DDX20 protein levels",
+      "direction_of_change": "increase, decrease",
+      "approximate_magnitude_or_qualitative_description": "upregulation, significant reduction"
+    },
+    "comparison": {
+      "treatment_vs_control": "MYC-TRIM25 overexpression vs control",
+      "group_vs_group": "not stated",
+      "time_or_dose_comparison": "not stated"
+    },
+    "temporal_or_dose_dimension": {
+      "time_point": "not stated",
+      "dose_concentration": "not stated"
+    },
+    "statistical_claim": {
+      "significant": "significant, not significant",
+      "not_significant": "not stated",
+      "trend": "not stated"
+    },
+    "interpretation_boundary": {
+      "what_can_be_concluded": "TRIM25 knockdown leads to upregulation of DDX20; MYC-TRIM25 overexpression leads to reduction of DDX20",
+      "what_cannot_be_concluded": "causal mechanisms or effects of other E3 ubiquitin ligases on DDX20"
+    }
+  },
+  {
+    "fig_id": "39558224_fig3",
+    "experimental_context": {
+      "model": "not stated",
+      "assay / measurement method": "co-immunoprecipitation, confocal microscopy, ubiquitination assay"
+    },
+    "observation": {
+      "what was measured": "ubiquitination levels of DDX20",
+      "direction of change": "decrease",
+      "approximate magnitude or qualitative description": "significantly reduced"
+    },
+    "comparison": {
+      "treatment vs control": "DAPK overexpression vs DAPK knockdown",
+      "group vs group": "not stated",
+      "time or dose comparison": "not stated"
+    },
+    "temporal_or_dose_dimension": {
+      "time point(s)": "not stated",
+      "dose / concentration": "not stated"
+    },
+    "statistical_claim": {
+      "significant": "significant",
+      "not significant": "not stated",
+      "trend": "not stated"
+    },
+    "interpretation_boundary": {
+      "what can be concluded based ONLY on this result": "DAPK reduces the ubiquitination of DDX20",
+      "what cannot be concluded based on this result": "the exact mechanism by which DAPK regulates DDX20 stability"
+    }
+  },
+  {
+    "fig_id": "39550762_fig4",
+    "experimental_context": {
+      "model": "not stated",
+      "assay / measurement method": "molecular dynamics simulations"
+    },
+    "observation": {
+      "what was measured": "RMSF values",
+      "direction of change": "increase / decrease",
+      "approximate magnitude or qualitative description": "higher differences in RMSF values for the corresponding aligned residues"
+    },
+    "comparison": {
+      "treatment vs control": "not stated",
+      "group vs group": "CmGLYK vs AtGLYK",
+      "time or dose comparison": "not stated"
+    },
+    "temporal_or_dose_dimension": {
+      "time point(s)": "not stated",
+      "dose / concentration": "not stated"
+    },
+    "statistical_claim": {
+      "significant": "not stated",
+      "not significant": "not stated",
+      "trend": "not stated",
+      "not stated": "not stated"
+    },
+    "interpretation_boundary": {
+      "what can be concluded based ONLY on this result": "the loop regions in mesophilic GLYK homologues have elevated RMSF relative to CmGLYK",
+      "what cannot be concluded based on this result": "the specific mechanisms of thermostability or the exact role of the Walker A motif"
+    }
+  },
+  {
+    "fig_id": "39596352_fig3",
+    "experimental_context": {
+      "model": "not stated",
+      "assay": "not stated"
+    },
+    "observation": {
+      "what_was_measured": "distances between atoms DHU N1 and Asn236 C",
+      "direction_of_change": "increase and decrease",
+      "approximate_magnitude_or_qualitative_description": "sharp jumps and large spike"
+    },
+    "comparison": {
+      "treatment_vs_control": "not stated",
+      "group_vs_group": "comparison between WT enzyme and mutant enzyme Glu260Ala",
+      "time_or_dose_comparison": "transitions between poses"
+    },
+    "temporal_or_dose_dimension": {
+      "time_point": "not stated",
+      "dose_concentration": "not stated"
+    },
+    "statistical_claim": {
+      "significant": "not stated",
+      "not_significant": "not stated",
+      "trend": "not stated",
+      "not_stated": "not stated"
+    },
+    "interpretation_boundary": {
+      "what_can_be_concluded": "the distances between DHU N1 and Asn236 C changed during eversion",
+      "what_cannot_be_concluded": "the specific mechanisms or reasons for the changes in distances"
+    }
+  }
+]

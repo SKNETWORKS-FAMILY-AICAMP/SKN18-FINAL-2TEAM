@@ -28,6 +28,7 @@ dateparser # 날짜 파싱 - 리라이트쿼리 tool
 
 # Database
 psycopg[binary, pool]
+psycopg2
 pgvector
 sqlalchemy
 
@@ -40,6 +41,7 @@ py2neo
 Django>=5.0,<6.0
 django-environ
 djangorestframework
+drf-spectacular
 gunicorn
 django-sass-processor
 libsass

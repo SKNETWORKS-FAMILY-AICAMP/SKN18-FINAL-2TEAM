@@ -5,14 +5,46 @@ LangGraph Memory Node (Read / Write)
 케이스 타입별 컬럼 구조로 메모리 관리
 """
 
-import sys
 import os
-sys.path.append(os.path.join(os.path.dirname(__file__), '../../infra/db'))
-
-from memory_db_stetting import Connect_PostgreSQL
-from memory_db_schema import ConversationMemory
+import json
 from datetime import datetime
-from graph.llm_config import memory_summarize_tool_llm
+from typing import Optional
+from psycopg2.extras import RealDictCursor
+from psycopg2.pool import SimpleConnectionPool
+from dotenv import load_dotenv
+
+from graph.llm_config import memory_summarize_tool_llm, get_model_name
+
+# .env 파일 로드
+load_dotenv()
+
+# PostgreSQL 연결 풀 생성
+_connection_pool: Optional[SimpleConnectionPool] = None
+
+def get_db_pool():
+    """PostgreSQL 연결 풀 반환 (싱글톤)"""
+    global _connection_pool
+    if _connection_pool is None:
+        _connection_pool = SimpleConnectionPool(
+            minconn=1,
+            maxconn=10,
+            host=os.getenv("POSTGRES_HOST"),
+            port=os.getenv("POSTGRES_PORT"),
+            database=os.getenv("POSTGRES_DB"),
+            user=os.getenv("POSTGRES_USER"),
+            password=os.getenv("POSTGRES_PASSWORD")
+        )
+    return _connection_pool
+
+def get_db_connection():
+    """데이터베이스 연결 가져오기"""
+    pool = get_db_pool()
+    return pool.getconn()
+
+def release_db_connection(conn):
+    """데이터베이스 연결 반환"""
+    pool = get_db_pool()
+    pool.putconn(conn)
 
 
 CONTEXT_WINDOW_MAX = 10
@@ -29,18 +61,18 @@ VALID_CASE_TYPES = ["SIMULATION_Q", "INFERENCE_Q", "BIO_Q", "PROTOCOL_Q", "USER_
 def summarize_llm_response(question: str, full_response: str, max_length: int = 500) -> str:
     """
     LLM을 사용하여 질문과 응답을 함께 요약
-    
+
     Args:
         question: 사용자 질문
         full_response: 전체 LLM 응답
         max_length: 최대 요약 길이 (기본값 500자)
-    
+
     Returns:
         "~질문에 대한 응답으로 ~~~다." 형식의 요약
     """
     if not full_response or not question:
         return ""
-    
+
     # 응답 길이에 따라 문장 수 결정
     response_length = len(full_response)
     if response_length < 500:
@@ -49,7 +81,7 @@ def summarize_llm_response(question: str, full_response: str, max_length: int = 
     else:
         sentence_count = 10
         target_length = max_length
-    
+
     # LLM으로 요약
     try:
         prompt = f"""다음 질문과 답변을 "{question[:50]}... 질문에 대한 응답으로" 형식으로 시작하여 요약하세요.
@@ -70,8 +102,10 @@ def summarize_llm_response(question: str, full_response: str, max_length: int = 
 
 요약만 출력하세요:"""
 
+        model_name = get_model_name(memory_summarize_tool_llm)
+        print(f"[Memory] 요약 모델: {model_name}")
         summary = memory_summarize_tool_llm(prompt).strip()
-        
+
         # 길이 초과 시 문장 단위로 자르기
         if len(summary) > target_length:
             # 마지막 완전한 문장까지만 포함
@@ -80,10 +114,10 @@ def summarize_llm_response(question: str, full_response: str, max_length: int = 
                 summary = '.'.join(sentences[:-1]) + '.'
             else:
                 summary = summary[:target_length-3] + "..."
-        
+
         print(f"[Summarize] Q&A 요약 완료: 질문 {len(question)}자 + 응답 {len(full_response)}자 → 요약 {len(summary)}자 ({sentence_count}문장)")
         return summary
-        
+
     except Exception as e:
         print(f"[Summarize] LLM 요약 실패: {e}, fallback 사용")
         # fallback: 질문 요약 + 답변 첫 문장
@@ -132,32 +166,23 @@ def memory_read_basic_tool(chat_room_id: str, user_id: str = "default") -> dict:
             "has_previous": False
         }
 
-    db = Connect_PostgreSQL()
+    conn = None
     try:
-        # 메모리 조회
-        memory = (
-            db.query(ConversationMemory)
-            .filter_by(chat_room_id=chat_room_id_int, user_id=user_id)
-            .first()
-        )
-        
-        if memory is None:
-            return {
-                "last_question": "",
-                "last_summary": "",
-                "last_case_type": "",
-                "last_topic": "",
-                "has_previous": False
-            }
-        
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+
         # chat_room_id로 가장 최근 대화 조회
-        latest_conv = (
-            db.query(ConversationMemory)
-            .filter_by(chat_room_id=chat_room_id, user_id=user_id)
-            .order_by(ConversationMemory.created_at.desc())
-            .first()
-        )
-        
+        query = """
+            SELECT chat_sid, original_question, summary, case_type, topic, created_at
+            FROM t_memory
+            WHERE chat_room_id = %s AND user_id = %s
+            ORDER BY created_at DESC
+            LIMIT 1
+        """
+        cursor.execute(query, (chat_room_id_int, user_id))
+        latest_conv = cursor.fetchone()
+        cursor.close()
+
         if not latest_conv:
             return {
                 "last_question": "",
@@ -166,19 +191,15 @@ def memory_read_basic_tool(chat_room_id: str, user_id: str = "default") -> dict:
                 "last_topic": "",
                 "has_previous": False
             }
-        
-        # 케이스 타입과 요약 가져오기
-        last_case_type = latest_conv.case_type or ""
-        last_summary = latest_conv.summary or ""
-        
+
         return {
-            "last_question": latest_conv.original_question or "",
-            "last_summary": last_summary,
-            "last_case_type": last_case_type,
-            "last_topic": latest_conv.topic or "",
+            "last_question": latest_conv.get("original_question") or "",
+            "last_summary": latest_conv.get("summary") or "",
+            "last_case_type": latest_conv.get("case_type") or "",
+            "last_topic": latest_conv.get("topic") or "",
             "has_previous": True
         }
-        
+
     except Exception as e:
         print(f"[memory_read_basic_tool Error] {e}")
         return {
@@ -189,7 +210,8 @@ def memory_read_basic_tool(chat_room_id: str, user_id: str = "default") -> dict:
             "has_previous": False
         }
     finally:
-        db.close()
+        if conn:
+            release_db_connection(conn)
 
 
 # ---------------------------------------------
@@ -201,7 +223,7 @@ def memory_read_node(state):
     - memory_slot: 슬롯 메모리 (last_question, original_question, topic, entities 등)
     - xxx_history: 각 케이스 타입별 대화 히스토리 (선택적)
     """
-    
+
     # 노드 진입 로그
     print(f"\n{'='*60}")
     print(f"[MEMORY_READ NODE] 시작")
@@ -220,40 +242,47 @@ def memory_read_node(state):
 
     user_id = state.get("user_id", "default")
 
-    db = Connect_PostgreSQL()
+    conn = None
     try:
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+
         # chat_room_id로 모든 대화 조회 (최신순)
-        conversations = (
-            db.query(ConversationMemory)
-            .filter_by(chat_room_id=chat_room_id, user_id=user_id)
-            .order_by(ConversationMemory.created_at.desc())
-            .all()
-        )
-        
+        query = """
+            SELECT chat_sid, original_question, summary, case_type, topic,
+                   entities, referenced_memory_count, created_at
+            FROM t_memory
+            WHERE chat_room_id = %s AND user_id = %s
+            ORDER BY created_at DESC
+        """
+        cursor.execute(query, (chat_room_id, user_id))
+        conversations = cursor.fetchall()
+        cursor.close()
+
         # 조회된 대화들의 chat_id 로그
         print(f"\n[MemoryRead] 조회된 대화 개수: {len(conversations)}")
         for conv in conversations:
-            summary_preview = (conv.summary or "")[:30] + "..." if conv.summary else "N/A"
-            print(f"[MemoryRead] chat_sid={conv.chat_sid}, case_type={conv.case_type}, created_at={conv.created_at}, summary={summary_preview}")
-        
+            summary_preview = (conv.get("summary") or "")[:30] + "..." if conv.get("summary") else "N/A"
+            print(f"[MemoryRead] chat_sid={conv.get('chat_sid')}, case_type={conv.get('case_type')}, created_at={conv.get('created_at')}, summary={summary_preview}")
+
         # 가장 최근 대화 정보
         last_case = None
         last_summary = None
         if conversations:
             latest = conversations[0]
-            last_summary = latest.summary
-            last_case = latest.case_type
-        
+            last_summary = latest.get("summary")
+            last_case = latest.get("case_type")
+
         state["memory_slot"] = {
             "last_case": last_case,
             "last_summary": last_summary,
         }
-        
+
         # 어떤 케이스 타입의 히스토리를 가져올지 결정
         current_case = state.get("case_type")
         is_follow_up = state.get("is_follow_up", False)
         reference_case = state.get("reference_case_type")
-        
+
         # USER_INFO인 경우 항상 USER_INFO 타입 메모리 조회
         if current_case == "USER_INFO":
             target_case_type = "USER_INFO"
@@ -271,19 +300,19 @@ def memory_read_node(state):
             target_case_type = current_case
             history_source = "CURRENT_TYPE"
             print(f"[MemoryRead] 일반 질문: {current_case} 타입 히스토리 로드")
-        
+
         # 해당 케이스 타입의 히스토리만 최대 5개 조회
         relevant_conversations = [
-            conv for conv in conversations 
-            if conv.case_type == target_case_type and conv.summary
+            conv for conv in conversations
+            if conv.get("case_type") == target_case_type and conv.get("summary")
         ][:CASE_HISTORY_LIMIT]  # 최대 5개
-        
+
         # relevant_history 구성
         state["relevant_history"] = [
             {
-                "chat_sid": conv.chat_sid,
-                "question": conv.original_question,
-                "summary": conv.summary,
+                "chat_sid": conv.get("chat_sid"),
+                "question": conv.get("original_question"),
+                "summary": conv.get("summary"),
                 "keywords": []  # latest_keywords 컬럼 삭제로 빈 리스트 사용
             }
             for conv in relevant_conversations
@@ -298,8 +327,19 @@ def memory_read_node(state):
 
         return state
 
+    except Exception as e:
+        print(f"[MemoryRead Error] {e}")
+        # 에러 발생 시에도 state 반환 (빈 메모리로)
+        state["memory_slot"] = {
+            "last_case": None,
+            "last_summary": None,
+        }
+        state["relevant_history"] = []
+        state["history_source"] = "ERROR"
+        return state
     finally:
-        db.close()
+        if conn:
+            release_db_connection(conn)
 
 
 # ---------------------------------------------
@@ -309,7 +349,7 @@ def memory_read_node(state):
 
 def memory_write_node(state):
     """
-    각 질문마다 새로운 ConversationMemory row 생성.
+    각 질문마다 새로운 t_memory row 생성.
     해당 케이스 컬럼에만 summary 저장.
     topic 필드에 채팅방 제목용 1줄 요약 저장.
     """
@@ -320,7 +360,7 @@ def memory_write_node(state):
     print(f"  case_type: {state.get('case_type', '')}")
     print(f"  final_answer: {str(state.get('final_answer', ''))[:30]}...")
     print(f"{'='*60}\n")
-    
+
     chat_room_id = state.get("conversation_id")
     # chat_room_id를 정수로 변환 (DB 스키마가 Integer)
     try:
@@ -332,7 +372,7 @@ def memory_write_node(state):
     user_id = state.get("user_id", "default")
     current_case_type = state.get("case_type", "NO_RELATION")
 
-    db = Connect_PostgreSQL()
+    conn = None
     try:
         # NO_RELATION이 아닌 경우에만 저장
         if (state.get("question") and state.get("final_answer")
@@ -340,9 +380,6 @@ def memory_write_node(state):
 
             full_answer = state.get("final_answer", "") or "답변을 생성하지 못했습니다."
             question = state.get("question", "")
-
-            # chat_title은 Django에서 첫 메시지에서만 생성하므로 LangGraph에서는 제거
-            # state["chat_title"] = ""  # 제거됨
 
             # USER_INFO인 경우 요약은 사용자의 인적사항 1문장만
             if current_case_type == "USER_INFO":
@@ -362,12 +399,14 @@ def memory_write_node(state):
 7. 사용자가 정보를 제공하지 않고 질문만 했다면 빈 문자열 반환
 
 요약만 출력하세요:"""
+                    model_name = get_model_name(memory_summarize_tool_llm)
+                    print(f"[Memory] 요약 모델: {model_name}")
                     summary = memory_summarize_tool_llm(prompt).strip()
-                    
+
                     # 길이 제한
                     if len(summary) > 100:
                         summary = summary[:97] + "..."
-                    
+
                     print(f"[MemoryWrite] USER_INFO 요약: {summary}")
                 except Exception as e:
                     print(f"[MemoryWrite] USER_INFO 요약 실패: {e}, fallback 사용")
@@ -376,7 +415,7 @@ def memory_write_node(state):
             else:
                 # 기존 로직: 일반 요약
                 summary = summarize_llm_response(question, full_answer, max_length=500)
-            
+
             # 유효한 케이스 타입인지 확인
             if current_case_type in VALID_CASE_TYPES:
                 # 답변 생성 시 참고한 이전 대화 개수 계산
@@ -391,28 +430,48 @@ def memory_write_node(state):
                     referenced_count = len(state.get("protocal_q_history", []))
                 elif current_case_type == "USER_INFO":
                     referenced_count = 0  # USER_INFO는 이전 대화 참고 없음
-                
-                # 새 ConversationMemory row 생성
-                # topic은 Django Chat 모델의 title과는 별개로 메모리 DB에만 저장됨
+
+                # 새 t_memory row 생성
                 question_text = state.get("question", "")
                 topic = question_text[:50] if question_text else ""  # 질문 앞 50자를 topic으로 사용
+                entities = state.get("entities", []) or []
 
-                new_memory = ConversationMemory(
-                    chat_room_id=chat_room_id,
-                    user_id=user_id,
-                    original_question=question_text,
-                    topic=topic,  # 질문 앞부분을 topic으로 사용
-                    entities=state.get("entities", []) or [],
-                    referenced_memory_count=referenced_count,
-                    case_type=current_case_type,
-                    full_response=full_answer,
-                    summary=summary
-                )
-                
-                db.add(new_memory)
-                db.commit()
+                # entities를 JSON으로 변환
+                entities_json = json.dumps(entities, ensure_ascii=False)
 
-                print(f"[MemoryWrite] 새 row 생성: chat_sid={new_memory.chat_sid}, case_type={current_case_type}")
+                conn = get_db_connection()
+                cursor = conn.cursor()
+
+                insert_query = """
+                    INSERT INTO t_memory (
+                        chat_room_id, user_id, case_type, original_question,
+                        full_response, summary, topic, referenced_memory_count,
+                        entities, created_at, updated_at
+                    ) VALUES (
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                    ) RETURNING chat_sid
+                """
+
+                now = datetime.now()
+                cursor.execute(insert_query, (
+                    chat_room_id,
+                    user_id,
+                    current_case_type,
+                    question_text,
+                    full_answer,
+                    summary,
+                    topic,
+                    referenced_count,
+                    entities_json,
+                    now,
+                    now
+                ))
+
+                new_chat_sid = cursor.fetchone()[0]
+                conn.commit()
+                cursor.close()
+
+                print(f"[MemoryWrite] 새 row 생성: chat_sid={new_chat_sid}, case_type={current_case_type}")
                 print(f"[MemoryWrite] 저장 완료:")
                 print(f"  - case_type: {current_case_type}")
                 print(f"  - topic: {topic}")
@@ -426,8 +485,15 @@ def memory_write_node(state):
         print(f"\n[MEMORY_WRITE NODE] 종료")
         print(f"  저장 완료: case_type={current_case_type}")
         print(f"{'='*60}\n")
-        
+
         return state
 
+    except Exception as e:
+        print(f"[MemoryWrite Error] {e}")
+        import traceback
+        traceback.print_exc()
+        # 에러 발생 시에도 state 반환
+        return state
     finally:
-        db.close()
+        if conn:
+            release_db_connection(conn)
