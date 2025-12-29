@@ -18,8 +18,6 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import include, path
 from django.views.decorators.csrf import csrf_exempt
-from django.conf import settings
-from django.conf.urls.static import static
 from apps.account.views import index as root_index
 from drf_spectacular.views import (
     SpectacularAPIView,
@@ -54,9 +52,4 @@ urlpatterns = [
     path("admin/", admin.site.urls),
 ]
 
-# 정적 파일 서빙 (프로덕션 환경에서도 작동)
-if settings.DEBUG:
-    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
-else:
-    # 프로덕션 환경에서도 정적 파일 서빙 (WhiteNoise 대신 사용)
-    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+# WhiteNoise가 정적 파일을 자동으로 서빙하므로 별도 설정 불필요
