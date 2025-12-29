@@ -27,13 +27,13 @@ from dotenv import load_dotenv
 # ─────────────────────────────────────
 # 0) 프로젝트 루트(.env) 로드
 # ─────────────────────────────────────
-BASE_DIR = Path(__file__).resolve().parents[2]  # SKN18-FINAL-2TEAM
+BASE_DIR = Path(__file__).resolve().parents[4]  # SKN18-FINAL-2TEAM
 
 # 공통 카테고리 모듈 import 위해 sys.path에 루트 추가
 if str(BASE_DIR) not in sys.path:
     sys.path.append(str(BASE_DIR))
 
-from common_experiment_categories import (
+from rag.etl.step03_extract.extract_for_kg.common_experiment_categories import (
     CATEGORY_TREE,
     LEAF_TO_PARENT,
     VALID_PARENTS,
@@ -137,11 +137,15 @@ def classify_protocol(title: str, url: str | None = None) -> tuple[str, str]:
 # ─────────────────────────────────────
 
 def main():
-    neo4j_dir = BASE_DIR / "neo4j"
-    import_dir = neo4j_dir / "import"
+    # 입력: data/processed/protocols/protocol_csv 안의 메타데이터 파일
+    input_dir = BASE_DIR / "data" / "processed" / "protocols" / "protocol_csv"
+    # 실제 파일명에 공백이 포함되어 있음에 주의 ("Cell .csv")
+    input_path = input_dir / "t_protocol_metadata_Cell.csv"
 
-    input_path = import_dir / "t_protocol_metadata_Cell.csv"
-    output_path = import_dir / "t_protocol_metadata_Cell_labeled.csv"
+    # 출력: data/entities/protocol 안에 라벨링된 파일 저장
+    output_dir = BASE_DIR / "data" / "entities" / "protocol"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_path = output_dir / "t_protocol_metadata_Cell_labeled.csv"
 
     print(f"입력 파일 경로:   {input_path}")
     print(f"출력 파일 경로:   {output_path}")
@@ -149,6 +153,16 @@ def main():
 
     # 1) 기본 입력 CSV 읽기
     base_df = pd.read_csv(input_path)
+
+    # 테스트용 limit (STEP03_TEST_LIMIT 환경변수) 적용
+    limit_env = os.getenv("STEP03_TEST_LIMIT")
+    if limit_env:
+        try:
+            limit_val = int(limit_env)
+        except ValueError:
+            limit_val = None
+        if limit_val is not None and limit_val > 0:
+            base_df = base_df.head(limit_val).copy()
 
     # 2) 이미 라벨링된 파일이 있으면 거기서 이어서 하기
     if output_path.exists():

@@ -1,15 +1,21 @@
 import pandas as pd
 import re
 import os
+from pathlib import Path
 from tqdm import tqdm
 
 # ==========================================
 # 설정
 # ==========================================
-# 파일 경로 (사용자 환경에 맞게 수정하세요)
-DATA_DIR = "./import"  # CSV 파일들이 있는 폴더
+# 기본 파일 경로: 프로젝트 루트 기준
+#  - normalization 파이프라인(00_pmc_normalization_pipeline)에서 호출될 때는
+#    DATA_DIR 이 pmc_csv/filtered 로 override 되므로,
+#    여기 값은 단독 실행 시 기본값 역할만 한다.
+ROOT_DIR = Path(__file__).resolve().parents[2]
+DATA_DIR = ROOT_DIR / "data" / "processed" / "pubmed" / "pmc_csv" / "filtered"
+
 REF_FILE = "references.csv"
-ARTICLE_FILE = "article_enriched.csv"
+ARTICLE_FILE = "articles.csv"
 # 기능 ㅣ 저널 논문 제목 정규화 -> article_enriched.csv 와 references.csv 의 제목 비교 용이하게
 # ==========================================
 # 정규화 함수 (핵심 로직)
