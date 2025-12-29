@@ -1,9 +1,38 @@
 /* Sequence Input Modal Styles */
 
+/* Modal container size adjustments */
+#sequenceInputModal.modal-overlay .modal-container.modal-medium {
+    width: 90vw;
+    max-width: 672px; /* max-w-2xl */
+    min-height: 320px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+}
+
+#sequenceInputModal .modal-body {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
 .sequence-textarea {
-    font-family: monospace;
-    font-size: 0.875rem;
-    resize: vertical;
+    width: 100%;
+    height: 256px; /* h-64: 16rem = 256px */
+    padding: 0.5rem 0.75rem; /* py-2 px-3 */
+    border: 1px solid #d1d5db; /* border border-gray-300 */
+    border-radius: 0.5rem; /* rounded-lg */
+    font-family: monospace; /* font-mono */
+    font-size: 0.875rem; /* text-sm */
+    resize: none; /* resize-none */
+    outline: none;
+}
+
+.sequence-textarea:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5); /* focus:ring-2 focus:ring-blue-500 */
 }
 
 .form-help-text {

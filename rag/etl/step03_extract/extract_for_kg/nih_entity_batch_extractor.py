@@ -1,18 +1,28 @@
-import pandas as pd
-import gilda
+# [중요] 충돌 방지를 위해 scispacy/torch 관련 모듈을 가장 먼저 import
+import scispacy.linking 
+from scispacy.linking import EntityLinker
 import spacy
-import os
-from tqdm import tqdm
+import torch  # 혹시 모르니 명시적으로 추가해도 좋음
 
+import pandas as pd
+import gilda  # <--- 나중에 import
+import os
+from pathlib import Path
+from tqdm import tqdm
 # ==========================================
 # [설정] 파일 경로 및 배치 설정
 # ==========================================
-METADATA_FILE = 'nih_metadata1208.csv'
-CHUNK_FILE = 'nih_chunk_data1208.csv'
+ROOT_DIR = Path(__file__).resolve().parents[4]
+NIH_DIR = ROOT_DIR / "data" / "processed" / "nih" / "nih_csv"
+OUT_DIR = ROOT_DIR / "data" / "entities" / "nih" 
+OUT_DIR.mkdir(parents=True, exist_ok=True)
+
+METADATA_FILE = NIH_DIR / "nih_metadata1208.csv"
+CHUNK_FILE = "C:\\dev\\study\\skn18_fianl-2team\\SKN18-FINAL-2TEAM\\data\\chunks\\nih\\nih_chunk_data1208.csv"
 
 # 최종 결과 파일
-OUTPUT_METADATA_ENTITIES = 'mapped_metadata_entities.csv'
-OUTPUT_CHUNK_ENTITIES = 'mapped_chunk_entities.csv'
+OUTPUT_METADATA_ENTITIES = OUT_DIR / "ts_mapped_metadata_entities.csv"
+OUTPUT_CHUNK_ENTITIES = OUT_DIR / "ts_mapped_chunk_entities.csv"
 
 # 한 번에 처리할 행 개수 (메모리 관리용)
 BATCH_SIZE = 2000 
@@ -20,14 +30,20 @@ BATCH_SIZE = 2000
 # ==========================================
 # [준비] 모델 및 캐시 초기화
 # ==========================================
-print("⏳ ScispaCy 모델 로딩 중 (NER 전용)...")
-try:
-    # NER 외 불필요한 파이프라인 비활성화로 속도 향상
-    nlp = spacy.load("en_core_sci_sm", disable=["tagger", "parser", "attribute_ruler", "lemmatizer"])
-except OSError:
-    print("❌ 모델을 찾을 수 없습니다. (pip install scispacy...)")
-    exit()
 
+def init_umls_pipeline():
+    """scispaCy + UMLS 링커 초기화 (한 번만 로딩)"""
+    print("⚙️ scispaCy 모델 로딩 중 (en_core_sci_lg)...")
+    try:
+        nlp = spacy.load("en_core_sci_lg")
+    except OSError:
+        print("❌ 모델 설치 필요: pip install https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.5.1/en_core_sci_lg-0.5.1.tar.gz")
+        exit(1)
+        
+    print("🔗 UMLS Entity Linker 연결 중...")
+    if "scispacy_linker" not in nlp.pipe_names:
+        nlp.add_pipe("scispacy_linker", config={"resolve_abbreviations": True, "linker_name": "umls"})
+    return nlp, nlp.get_pipe("scispacy_linker")
 # [핵심] 중복 연산 방지용 인메모리 캐시
 id_cache = {}
 
@@ -147,64 +163,69 @@ def process_metadata_batch():
 # ==========================================
 # [2] Chunk 배치 처리 (NLP)
 # ==========================================
-def process_chunks_batch():
-    print(f"\n🚀 [2/2] Chunk 배치 처리 시작: {CHUNK_FILE}")
+# def process_chunks_batch():
+#     print(f"\n🚀 [2/2] Chunk 배치 처리 시작: {CHUNK_FILE}")
     
-    if os.path.exists(OUTPUT_CHUNK_ENTITIES): os.remove(OUTPUT_CHUNK_ENTITIES)
+#     if os.path.exists(OUTPUT_CHUNK_ENTITIES): os.remove(OUTPUT_CHUNK_ENTITIES)
     
-    try:
-        total_rows = sum(1 for _ in open(CHUNK_FILE, encoding='utf-8')) - 1
-    except:
-        total_rows = None
+#     try:
+#         total_rows = sum(1 for _ in open(CHUNK_FILE, encoding='utf-8')) - 1
+#     except:
+#         total_rows = None
 
-    chunk_iter = pd.read_csv(CHUNK_FILE, chunksize=BATCH_SIZE)
+#     chunk_iter = pd.read_csv(CHUNK_FILE, chunksize=BATCH_SIZE)
 
-    with tqdm(total=total_rows, unit='rows') as pbar:
-        for i, df in enumerate(chunk_iter):
-            batch_results = []
+#     with tqdm(total=total_rows, unit='rows') as pbar:
+#         for i, df in enumerate(chunk_iter):
+#             batch_results = []
             
-            texts = df['chunk'].fillna("").tolist()
-            chunk_ids = df['chunk_id'].tolist()
-            if 'nctid' in df.columns:
-                nct_ids = df['nctid'].tolist()
-            else:
-                nct_ids = ["Unknown"] * len(texts)
+#             texts = df['chunk'].fillna("").tolist()
+#             chunk_ids = df['chunk_id'].tolist()
+#             if 'nctid' in df.columns:
+#                 nct_ids = df['nctid'].tolist()
+#             else:
+#                 nct_ids = ["Unknown"] * len(texts)
 
-            for doc, chunk_id, nct_id in zip(nlp.pipe(texts), chunk_ids, nct_ids):
-                seen_entities = set()
+#             for doc, chunk_id, nct_id in zip(nlp.pipe(texts), chunk_ids, nct_ids):
+#                 seen_entities = set()
                 
-                for ent in doc.ents:
-                    res = get_cached_id(ent.text)
-                    if res:
-                        unique_key = (chunk_id, res['id'])
-                        if unique_key not in seen_entities:
-                            batch_results.append({
-                                'nctId': nct_id,
-                                'chunkId': chunk_id,
-                                'sourceType': 'Chunk_Text',
-                                'entityId': f"{res['db']}:{res['id']}",
-                                'entityName': res['name'],
-                                'entityType': res['db'],
-                                'score': res['score'],
-                                'originalText': ent.text
-                            })
-                            seen_entities.add(unique_key)
+#                 for ent in doc.ents:
+#                     res = get_cached_id(ent.text)
+#                     if res:
+#                         unique_key = (chunk_id, res['id'])
+#                         if unique_key not in seen_entities:
+#                             batch_results.append({
+#                                 'nctId': nct_id,
+#                                 'chunkId': chunk_id,
+#                                 'sourceType': 'Chunk_Text',
+#                                 'entityId': f"{res['db']}:{res['id']}",
+#                                 'entityName': res['name'],
+#                                 'entityType': res['db'],
+#                                 'score': res['score'],
+#                                 'originalText': ent.text
+#                             })
+#                             seen_entities.add(unique_key)
             
-            if batch_results:
-                mode = 'w' if i == 0 else 'a'
-                header = (i == 0)
-                pd.DataFrame(batch_results).to_csv(OUTPUT_CHUNK_ENTITIES, mode=mode, index=False, header=header)
+#             if batch_results:
+#                 mode = 'w' if i == 0 else 'a'
+#                 header = (i == 0)
+#                 pd.DataFrame(batch_results).to_csv(OUTPUT_CHUNK_ENTITIES, mode=mode, index=False, header=header)
             
-            pbar.update(len(df))
+#             pbar.update(len(df))
+
 
 # ==========================================
 # [메인 실행]
 # ==========================================
 if __name__ == "__main__":
-    process_metadata_batch() # Keywords 포함
-    process_chunks_batch()
-    
-    print("\n✅ 모든 작업 완료!")
+    # UMLS + scispaCy 파이프라인 한 번만 초기화
+    nlp, umls_linker = init_umls_pipeline()
+
+    process_metadata_batch()  # Keywords 포함
+    # process_chunks_batch()
+
+    print("\n? 모든 작업 완료!")
     print(f"1. {OUTPUT_METADATA_ENTITIES} (Conditions, Interventions, Keywords)")
     print(f"2. {OUTPUT_CHUNK_ENTITIES}")
-    print(f"📊 캐시된 고유 단어 수: {len(id_cache)}개")
+    print(f"?? 캐시된 고유 단어 수: {len(id_cache)}개")
+

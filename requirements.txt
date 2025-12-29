@@ -9,6 +9,8 @@ numpy==1.26.4
 # torch==2.2.2  # Dockerfile에서 먼저 설치하므로 여기서는 제외
 pandas
 scipy
+spacy
+gilda
 
 # OpenAI API (embedding용)
 openai
@@ -40,6 +42,7 @@ py2neo
 Django>=5.0,<6.0
 django-environ
 djangorestframework
+drf-spectacular
 gunicorn
 django-sass-processor
 libsass

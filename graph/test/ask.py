@@ -22,9 +22,12 @@ import traceback
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
 
-# DB 초기화 모듈 임포트
-sys.path.append(os.path.join(os.path.dirname(__file__), '../../infra/db'))
-from memory_db_stetting import init_db
+# Django 설정 초기화
+import django
+DJANGO_PROJECT_ROOT = os.path.join(os.path.dirname(__file__), '../../django_app')
+sys.path.insert(0, DJANGO_PROJECT_ROOT)
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
+django.setup()
 
 def print_banner():
     """프로그램 시작 배너"""
@@ -38,15 +41,15 @@ def print_banner():
 
 
 def initialize_db():
-    """DB 테이블 초기화"""
+    """DB 테이블 초기화 (Django 마이그레이션 사용)"""
     try:
-        print("\n🔧 DB 테이블 초기화 중...")
-        init_db()
-        print("✅ DB 테이블 초기화 완료!")
+        print("\n🔧 DB 마이그레이션 확인 중...")
+        print("✅ Django ORM 사용 중 (마이그레이션은 수동으로 실행해주세요)")
+        print("   명령어: python manage.py migrate")
         return True
     except Exception as e:
-        print(f"⚠️  DB 초기화 실패: {e}")
-        print("   계속 진행합니다 (기존 테이블 사용)")
+        print(f"⚠️  DB 초기화 확인 실패: {e}")
+        print("   계속 진행합니다")
         return False
 
 

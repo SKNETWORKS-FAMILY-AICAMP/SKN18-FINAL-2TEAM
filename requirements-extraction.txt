@@ -1,0 +1,13 @@
+########################################
+# KG Extract 단계(ScispaCy/ spaCy 모델) 전용 requirements
+# - spaCy 3.4 계열 + SciSpaCy 0.5.1 + en_core_sci_lg 모델
+# - 기본 requirements.txt(neo4j-graphrag, pydantic>=2)와 동시에 설치할 수 없으므로
+#   별도 가상환경을 사용하거나 필요 시만 설치하세요.
+########################################
+
+spacy>=3.4.0,<3.6.0
+scispacy==0.5.4
+https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.5.4/en_core_sci_lg-0.5.4.tar.gz
+
+
+

@@ -420,7 +420,10 @@ infra/neo4j/plugins/**
 
 # End of https://www.toptal.com/developers/gitignore/api/python,django,windows,macos,jupyternotebooks
 
-# __init__.py 파일은 Python 패키지에 필수이므로 Git에 포함해야 함
-# *__init__.py 규칙을 제거하고 모든 __init__.py 파일을 포함
-# (Python 패키지 구조에 필수이며 Docker 빌드 시 필요)
-*graph\models\*
+*__init__.py
+
+# ML 모델 파일 (용량이 크므로 Git에 포함하지 않음)
+graph/models/
+
+# Fine-tuning data directory
+.fine-tuning/data/
