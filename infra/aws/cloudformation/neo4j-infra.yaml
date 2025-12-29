@@ -258,6 +258,14 @@ Resources:
                   - ssm:GetParameter
                   - ssm:GetParameters
                 Resource: !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/skn18/*"
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                Resource: "arn:aws:s3:::skn18-etl-data"
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource: "arn:aws:s3:::skn18-etl-data/neo4j-data/*"
 
   Ec2InstanceProfile:
     Type: AWS::IAM::InstanceProfile
