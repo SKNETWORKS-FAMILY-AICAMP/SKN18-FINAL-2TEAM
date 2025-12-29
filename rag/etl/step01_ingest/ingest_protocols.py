@@ -161,7 +161,7 @@ def build_ordered_steps(steps: list[dict]) -> list[dict]:
         # fallback: number 기준 정렬
         return sorted(
             steps,
-            key=lambda x: int(x.get("number", 0) or 0)
+            key=lambda x: str(x.get("number", 0) or 0)
         )
 
     # 4️⃣ 체인 따라가며 순서 복원
@@ -190,7 +190,7 @@ def build_ordered_steps(steps: list[dict]) -> list[dict]:
         # number 기준으로 보조 정렬 후 뒤에 붙임
         remaining_sorted = sorted(
             remaining,
-            key=lambda x: int(x.get("number", 0) or 0)
+            key=lambda x: str(x.get("number", 0) or 0)
         )
 
         ordered.extend(remaining_sorted)
