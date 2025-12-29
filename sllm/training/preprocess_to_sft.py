@@ -223,7 +223,8 @@ def extract_dataset_from_result(result_text: str):
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": build_user_prompt(result_text)}
             ],
-            response_format={"type": "json_object"}
+            response_format={"type": "json_object"},
+            max_tokens=1024
         )
         content = response.choices[0].message.content
 
