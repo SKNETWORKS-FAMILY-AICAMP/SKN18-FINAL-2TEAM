@@ -25,29 +25,27 @@ from openai import OpenAI
 # -----------------------------------------
 # 1) 환경변수 로드
 # -----------------------------------------
-load_dotenv()
-
+# 환경변수 로드 (없어도 에러 발생하지 않음 - 실제 사용 시점에 검증)
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-if not OPENAI_API_KEY:
-    raise ValueError("❌ OPENAI_API_KEY not found in .env")
-
 SLLM_BASE_URL = os.getenv("SLLM_BASE_URL")
-if not SLLM_BASE_URL:
-    raise ValueError("❌ SLLM_BASE_URL not found in .env")
-
 RUNPOD_API_KEY = os.getenv("RUNPOD_API_KEY")
-if not RUNPOD_API_KEY:
-    raise ValueError("❌ RUNPOD_API_KEY not found in .env")
-
 MODEL_NAME = os.getenv("MODEL_NAME")
-if not MODEL_NAME:
-    raise ValueError("❌ MODEL_NAME not found in .env")
 
 
 # -----------------------------------------
 # 2) 클라이언트 초기화
 # -----------------------------------------
-openai_client = OpenAI(api_key=OPENAI_API_KEY)
+# OpenAI 클라이언트는 지연 초기화 (lazy initialization)
+openai_client = None
+
+def _get_openai_client():
+    """OpenAI 클라이언트를 지연 초기화 (lazy initialization)"""
+    global openai_client
+    if openai_client is None:
+        if not OPENAI_API_KEY:
+            raise ValueError("❌ OPENAI_API_KEY not found in .env")
+        openai_client = OpenAI(api_key=OPENAI_API_KEY)
+    return openai_client
 
 
 # -----------------------------------------
@@ -67,7 +65,8 @@ def _parse_openai_response(resp):
 
 def gpt4_1_nano(prompt: str):
     """GPT-4.1-nano 호출"""
-    resp = openai_client.chat.completions.create(
+    client = _get_openai_client()
+    resp = client.chat.completions.create(
         model="gpt-4.1-nano",
         messages=[{"role": "user", "content": prompt}],
         temperature=0.2
@@ -77,7 +76,8 @@ def gpt4_1_nano(prompt: str):
 
 def gpt4o_mini(prompt: str):
     """GPT-4o-mini 호출"""
-    resp = openai_client.chat.completions.create(
+    client = _get_openai_client()
+    resp = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[{"role": "user", "content": prompt}],
         temperature=0.2
@@ -87,7 +87,8 @@ def gpt4o_mini(prompt: str):
 
 def gpt5_nano(prompt: str):
     """GPT-5-nano 호출"""
-    resp = openai_client.chat.completions.create(
+    client = _get_openai_client()
+    resp = client.chat.completions.create(
         model="gpt-5-nano",
         messages=[{"role": "user", "content": prompt}],
     )
@@ -113,6 +114,14 @@ def sllm(prompt: str, temperature: float = 0.7, max_tokens: int = 1024):
     """
     from openai import OpenAI
     import time
+
+    # 사용 시점에 환경변수 검증
+    if not SLLM_BASE_URL:
+        raise ValueError("❌ SLLM_BASE_URL not found in .env")
+    if not RUNPOD_API_KEY:
+        raise ValueError("❌ RUNPOD_API_KEY not found in .env")
+    if not MODEL_NAME:
+        raise ValueError("❌ MODEL_NAME not found in .env")
 
     print(f"\n{'='*60}")
     print(f"[SLLM] 호출 시작")
