@@ -11,6 +11,9 @@ import sys
 import hashlib
 from datetime import datetime
 from pathlib import Path
+from typing import List, Dict
+import csv
+import json
 
 # 패키지 형태로 실행하지 않아도 rag.* 모듈을 찾을 수 있도록 루트 경로 추가
 # Lambda 환경 감지
@@ -45,45 +48,199 @@ CHUNKS_SPLIT_ROOT = BASE_PATH / "data/chunks/protocols"  # 분할된 청크 파�
 
 # 분할 단위 (환경 변수로 제어 가능)
 SPLIT_ROWS_PER_FILE = int(os.getenv("PROTOCOL_CHUNK_SPLIT_SIZE", "3000"))
+# table metadata CSV 저장 위치
+TABLE_OUTPUT_ROOT = BASE_PATH / "data/processed/pubmed"
 
 
-def protect_table_blocks(text: str) -> str:
-    """
-    표 블록을 감지하여 보호하는 함수
-    3-column 이상 table header와 2-column 이상 table row를 감지하여
-    <TABLE_BLOCK> 태그로 감싸서 문장 분리 시 보호한다.
-    """
-    lines = text.split("\n")
-    table_blocks = []
+def protect_table_blocks(text: str) -> tuple[str, list[str]]:
+    lines = text.splitlines()
+
+    extracted_tables = []
+    cleaned_lines = []
+
     in_table = False
-    current_block = []
+    current_table = []
 
-    # 3-column 이상 table header 감지
-    header_pattern = re.compile(r'^[^\s].*(\s{2,}[^\s]+){2,}')
+    header_pattern = re.compile(
+    r'^\s*('
+    r'(\S+\s{2,}\S+)'      # 공백 2개 이상
+    r'|'
+    r'(.+\t.+)'            # 탭
+    r'|'
+    r'(\|.*\|)'            # pipe table
+    r')\s*$'
+    )
 
-    # table row 감지 (2-column 이상)
-    row_pattern = re.compile(r'^\s*\S+(\s{2,}\S+){1,}')
+    row_pattern = re.compile(
+    r'^\s*('
+    r'(\S+\s{2,}\S+)'
+    r'|'
+    r'(.+\t.+)'
+    r'|'
+    r'(\|.*\|)'
+    r'|'
+    r'(\d+(\.\d+)?\s*[a-zA-Zµ°/%]+)'  # 숫자+단위
+    r')\s*$'
+    )
+
 
     for line in lines:
-        if header_pattern.match(line) or (in_table and row_pattern.match(line)):
-            # 표 시작 또는 표 내부
-            if not in_table:
-                in_table = True
-                current_block = []
-            current_block.append(line)
-        else:
-            # 표 종료
+        stripped = line.strip()
+
+        # 빈 줄은 table 종료 트리거로 사용
+        if not stripped:
             if in_table:
-                table_blocks.append("<TABLE_BLOCK>\n" + "\n".join(current_block) + "\n</TABLE_BLOCK>")
+                extracted_tables.append("\n".join(current_table))
+                current_table = []
                 in_table = False
-            table_blocks.append(line)
+            cleaned_lines.append(line)
+            continue
 
-    # 마지막 줄이 표였을 경우 처리
-    if in_table:
-        table_blocks.append("<TABLE_BLOCK>\n" + "\n".join(current_block) + "\n</TABLE_BLOCK>")
+        # table header 시작
+        if not in_table and header_pattern.match(line):
+            in_table = True
+            current_table = [line]
+            continue
 
-    return "\n".join(table_blocks)
+        # table 내부 row
+        if in_table and row_pattern.match(line):
+            current_table.append(line)
+            continue
 
+        # table 종료 조건 (형식 깨짐)
+        if in_table:
+            extracted_tables.append("\n".join(current_table))
+            current_table = []
+            in_table = False
+            # 현재 line은 table이 아니므로 cleaned text로 보냄
+            cleaned_lines.append(line)
+            continue
+
+        # 일반 문장
+        cleaned_lines.append(line)
+
+    # 파일 끝에서 table 종료 처리
+    if in_table and current_table:
+        extracted_tables.append("\n".join(current_table))
+
+    cleaned_text = "\n".join(cleaned_lines).strip()
+
+    return cleaned_text, extracted_tables
+
+def table_to_json(
+    table_text: str,
+    table_id: str,
+    chunk_id: str,
+    keyword: str,
+    protocol_id: str,
+    url: str,
+    title: str
+) -> Dict:
+    """
+    보호된 table text를 table 단위 JSON metadata로 변환한다.
+    header는 항상 포함하며, 표 전체를 하나의 JSON 필드로 유지한다.
+    """
+
+    # --- 1. line 정리 ---
+    lines = [ln.strip() for ln in table_text.splitlines() if ln.strip()]
+    if not lines:
+        return {}
+
+    # --- 2. header 파싱 ---
+    header_cols = re.split(r'\s{2,}|\t+', lines[0])
+    header = [col.strip() for col in header_cols if col.strip()]
+
+    # --- 3. row 파싱 ---
+    rows: List[List[str]] = []
+
+    for line in lines[1:]:
+        cols = re.split(r'\s{2,}|\t+', line)
+
+        # 컬럼이 2개 미만이면 table 종료
+        if len(cols) < 2:
+            break
+
+        row = [col.strip() for col in cols if col.strip()]
+        rows.append(row)
+
+    # --- 4. table JSON 구성 ---
+    table_json = {
+        "header": header,
+        "rows": rows
+    }
+
+    # --- 5. metadata 객체 반환 ---
+    return {
+        "table_id": table_id,
+        "chunk_id": chunk_id,
+        "keyword": keyword,
+        "protocol_id": protocol_id,
+        "url": url,
+        "title": title,
+        "table_json": table_json
+    }
+
+def write_table_metadata_csv(
+    table_metadata: list[dict],
+    output_csv: str
+):
+    """
+    table_to_json 결과(list of dict)를 CSV 파일로 저장
+    """
+
+    output_path = Path(output_csv)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    fieldnames = [
+        "table_id",
+        "chunk_id",
+        "keyword",
+        "protocol_id",
+        "url",
+        "title",
+        "table_json"
+    ]
+
+    file_exists = output_path.exists()
+
+    with open(output_path, "a", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(
+            f,
+            fieldnames=fieldnames,
+            quoting=csv.QUOTE_ALL  # 중요
+        )
+        if not file_exists:
+            writer.writeheader()
+
+        for meta in table_metadata:
+            writer.writerow({
+                "table_id": meta["table_id"],
+                "chunk_id": meta["chunk_id"],
+                "keyword": meta["keyword"],
+                "protocol_id": meta["protocol_id"],
+                "url": meta["url"],
+                "title": meta["title"],
+                # JSON → string
+                "table_json": json.dumps(
+                    meta["table_json"],
+                    ensure_ascii=False
+                )
+            })
+
+def build_table_output_path(keyword: str, status: str) -> Path:
+    now = datetime.now()
+    parts = [
+        TABLE_OUTPUT_ROOT,
+        status,
+        f"year={now.year:04d}",
+        f"month={now.month:02d}",
+        f"day={now.day:02d}",
+        "stage=table_metadata",
+        f"protocol_tables_{keyword}.csv",
+    ]
+    path = Path(*parts)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    return path
 
 def split_into_sentences(text: str):
     """
@@ -91,8 +248,6 @@ def split_into_sentences(text: str):
     표 블록을 보호한 후 문장 분리를 수행한다.
     """
     # 1) 표 블록 보호
-    text = protect_table_blocks(text)
-    
     protected = text
 
     # URL 보호
@@ -142,9 +297,6 @@ def split_into_sentences(text: str):
         sent = sent.replace('<ROMAN>', '').replace('</ROMAN>', '')
 
         sent = sent.replace('<DOT>', '.')
-
-        # 표 블록 복원
-        sent = sent.replace('<TABLE_BLOCK>', '').replace('</TABLE_BLOCK>', '')
 
         cleaned.append(sent)
 
@@ -247,11 +399,7 @@ def chunk_dataframe(df: pd.DataFrame, keyword: str) -> pd.DataFrame:
         # URL 기반 고유 ID 생성 (같은 URL은 항상 같은 해시값)
         url_hash = hashlib.md5(url.encode()).hexdigest()[:12] if url else "no_url"
 
-        combined_text = (
-            "<abstract>\n" + row["abstract"] + "\n"
-            "<step_content>\n" + row["step_content"] + "\n"
-            "<guidelines>\n" + row["guidelines"]
-        )
+        combined_text = row["cleaned_text"]
 
         # 1) 문장 단위 split
         sentences = split_into_sentences(combined_text)
@@ -410,9 +558,12 @@ def process_file(csv_path: Path) -> None:
     """
     keyword = csv_path.stem.replace("protocol_cleaned_", "")
     status = "success"
+
+    table_metadata_all = []  # ⭐ table metadata 누적
     
     try:
         out_path = build_output_path(keyword, status)
+        table_out_path = build_table_output_path(keyword, status)
         
         # 1. 기존 chunked 파일에서 URL Set만 로드 (메모리 효율적)
         existing_urls = load_existing_urls(out_path)
@@ -476,6 +627,56 @@ def process_file(csv_path: Path) -> None:
             f"(전체 {total_rows}개, 중복 {duplicate_count}개)",
             flush=True,
         )
+
+        cleaned_texts = []
+
+        # ⭐ row 단위로 table 추출
+        for _, row in new_cleaned_df.iterrows():
+            protocol_id = str(row.get("protocol_id", ""))
+            url = str(row.get("url", ""))
+            title = str(row.get("title", ""))
+
+            # URL hash (table_id 안정성 확보)
+            url_hash = hashlib.md5(url.encode()).hexdigest()[:12] if url else "no_url"
+
+            # 문서 단위 text 결합
+            combined_text = (
+                "<abstract>\n" + str(row.get("abstract", "")) + "\n"
+                "<step_content>\n" + str(row.get("step_content", "")) + "\n"
+                "<guidelines>\n" + str(row.get("guidelines", ""))
+            )
+
+            # 1️⃣ table 보호 + 분리
+            cleaned_text, table_blocks = protect_table_blocks(combined_text)
+
+            cleaned_texts.append(cleaned_text)
+
+            # 2️⃣ table → json
+            for t_idx, table_text in enumerate(table_blocks):
+                table_id = f"table_{keyword}_{url_hash}_{t_idx}"
+
+                table_meta = table_to_json(
+                    table_text=table_text,
+                    table_id=table_id,
+                    chunk_id=f"{keyword}_{url_hash}",  # table anchor
+                    keyword=keyword,
+                    protocol_id=protocol_id,
+                    url=url,
+                    title=title,
+                )
+
+                if table_meta:
+                    table_metadata_all.append(table_meta)
+
+        new_cleaned_df = new_cleaned_df.copy()
+        new_cleaned_df["cleaned_text"] = cleaned_texts
+
+        # ⭐ table → json 수집 완료 직후
+        if table_metadata_all:
+            write_table_metadata_csv(
+                table_metadata_all,
+                table_out_path
+            )
         
         # 4. 새 데이터만 chunking
         new_chunks_df = chunk_dataframe(new_cleaned_df, keyword)
@@ -544,6 +745,7 @@ def process_file(csv_path: Path) -> None:
         out_path = build_output_path(keyword, status)
         output_df = pd.DataFrame([{"error": str(exc)}])
         output_df.to_csv(out_path, index=False)
+
         print(f"[CHUNK][Protocol.io][{keyword}] 실패: {exc}", flush=True)
 
 
