@@ -417,13 +417,12 @@ django_app/static/assets/**
 # neo4j plugins
 infra/neo4j/plugins/**
 
-
-# End of https://www.toptal.com/developers/gitignore/api/python,django,windows,macos,jupyternotebooks
-
-*__init__.py
-
 # ML 모델 파일 (용량이 크므로 Git에 포함하지 않음)
 graph/models/
+models/
 
 # Fine-tuning data directory
 .fine-tuning/data/
+
+# End of https://www.toptal.com/developers/gitignore/api/python,django,windows,macos,jupyternotebooks
+

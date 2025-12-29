@@ -35,13 +35,13 @@ from openai import OpenAI
 # ─────────────────────────────────────
 
 # 프로젝트 루트 추론
-ROOT_DIR = Path(__file__).resolve().parents[2]
+ROOT_DIR = Path(__file__).resolve().parents[4]
 
 # common_experiment_categories 모듈 import 가능하도록 sys.path에 추가
 if str(ROOT_DIR) not in sys.path:
     sys.path.append(str(ROOT_DIR))
 
-from common_experiment_categories import (
+from rag.etl.step03_extract.extract_for_kg.common_experiment_categories import (
     CATEGORY_TREE,
     LEAF_TO_PARENT,
     PARENT_DEFAULT_LEAF,
@@ -51,8 +51,8 @@ from common_experiment_categories import (
 DEBUG = False
 
 # sections.csv / 출력 경로
-SECTIONS_PATH = ROOT_DIR / "data" / "pmc_1000" / "t_sections_filtered.csv"
-OUTPUT_PATH = ROOT_DIR / "data" / "pmc_1000" / "ts_paper_experiments_table.csv"
+SECTIONS_PATH = ROOT_DIR / "data" / "processed" / "pubmed" / "pmc_csv"/ "filtered" / "sections.csv"
+OUTPUT_PATH = ROOT_DIR / "data" / "entities" / "pubmed"/ "ts_paper_experiments.csv"
 
 # .env 로드
 load_dotenv(ROOT_DIR / ".env")
@@ -374,8 +374,8 @@ def main() -> None:
     print(f"[INFO] batch_size={batch_size}, resume={resume}")
 
     first_write_main = not (resume and OUTPUT_PATH.exists())
-    first_write_mat = not (resume and mat_path.exists())
-    first_write_eq = not (resume and eq_path.exists())
+    # first_write_mat = not (resume and mat_path.exists())
+    # first_write_eq = not (resume and eq_path.exists())
 
     processed_count = 0
 
@@ -394,8 +394,8 @@ def main() -> None:
         )
 
         batch_rows: list[dict] = []
-        batch_material_rows: list[dict] = []
-        batch_equipment_rows: list[dict] = []
+        # batch_material_rows: list[dict] = []
+        # batch_equipment_rows: list[dict] = []
 
         for _, row in batch_df.iterrows():
             pmid = row["pmid"]
@@ -443,33 +443,33 @@ def main() -> None:
                     }
                 )
 
-                # 2) materials 분리 테이블
-                for m in split_items(materials_str):
-                    batch_material_rows.append(
-                        {
-                            "pmid": pmid,
-                            "experiment_id": experiment_id,
-                            "experiment_index": exp_idx,
-                            "method": method,
-                            "category_parent": category_parent,
-                            "category_leaf": category_leaf,
-                            "material": m,
-                        }
-                    )
+                # # 2) materials 분리 테이블
+                # for m in split_items(materials_str):
+                #     batch_material_rows.append(
+                #         {
+                #             "pmid": pmid,
+                #             "experiment_id": experiment_id,
+                #             "experiment_index": exp_idx,
+                #             "method": method,
+                #             "category_parent": category_parent,
+                #             "category_leaf": category_leaf,
+                #             "material": m,
+                #         }
+                #     )
 
-                # 3) equipment 분리 테이블
-                for eq in split_items(equipment_str):
-                    batch_equipment_rows.append(
-                        {
-                            "pmid": pmid,
-                            "experiment_id": experiment_id,
-                            "experiment_index": exp_idx,
-                            "method": method,
-                            "category_parent": category_parent,
-                            "category_leaf": category_leaf,
-                            "equipment": eq,
-                        }
-                    )
+                # # 3) equipment 분리 테이블
+                # for eq in split_items(equipment_str):
+                #     batch_equipment_rows.append(
+                #         {
+                #             "pmid": pmid,
+                #             "experiment_id": experiment_id,
+                #             "experiment_index": exp_idx,
+                #             "method": method,
+                #             "category_parent": category_parent,
+                #             "category_leaf": category_leaf,
+                #             "equipment": eq,
+                #         }
+                #     )
 
             processed_pmids.add(str(pmid))
             processed_count += 1
@@ -492,27 +492,27 @@ def main() -> None:
             first_write_main = False
             print(f"[INFO] 배치 {batch_idx} 메인 테이블 {len(out_df)}행 저장")
 
-        if batch_material_rows:
-            mat_df = pd.DataFrame(batch_material_rows)
-            mat_df.to_csv(
-                mat_path,
-                index=False,
-                mode="w" if first_write_mat else "a",
-                header=first_write_mat,
-            )
-            first_write_mat = False
-            print(f"[INFO] 배치 {batch_idx} 재료 테이블 {len(mat_df)}행 저장")
+        # if batch_material_rows:
+        #     mat_df = pd.DataFrame(batch_material_rows)
+        #     mat_df.to_csv(
+        #         mat_path,
+        #         index=False,
+        #         mode="w" if first_write_mat else "a",
+        #         header=first_write_mat,
+        #     )
+        #     first_write_mat = False
+        #     print(f"[INFO] 배치 {batch_idx} 재료 테이블 {len(mat_df)}행 저장")
 
-        if batch_equipment_rows:
-            eq_df = pd.DataFrame(batch_equipment_rows)
-            eq_df.to_csv(
-                eq_path,
-                index=False,
-                mode="w" if first_write_eq else "a",
-                header=first_write_eq,
-            )
-            first_write_eq = False
-            print(f"[INFO] 배치 {batch_idx} 장비 테이블 {len(eq_df)}행 저장")
+        # if batch_equipment_rows:
+        #     eq_df = pd.DataFrame(batch_equipment_rows)
+        #     eq_df.to_csv(
+        #         eq_path,
+        #         index=False,
+        #         mode="w" if first_write_eq else "a",
+        #         header=first_write_eq,
+        #     )
+        #     first_write_eq = False
+        #     print(f"[INFO] 배치 {batch_idx} 장비 테이블 {len(eq_df)}행 저장")
 
         print(
             f"[INFO] ====== 배치 {batch_idx} 종료, 누적 처리 논문 수: {processed_count} ======"
