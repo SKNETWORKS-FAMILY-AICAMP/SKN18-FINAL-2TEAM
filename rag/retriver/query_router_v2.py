@@ -18,7 +18,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
-from rag_state import PipelineRAGState
+from rag_state_v2 import PipelineRAGState
 
 
 @dataclass

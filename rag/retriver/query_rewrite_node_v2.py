@@ -2,7 +2,7 @@ import json
 import re
 from typing import Any, Callable, Dict, List, Optional
 
-from rag_state import PipelineRAGState  # [New]
+from rag_state_v2 import PipelineRAGState  # [New]
 
 # -----------------------------
 # Helpers

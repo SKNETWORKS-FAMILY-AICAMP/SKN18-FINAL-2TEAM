@@ -21,7 +21,7 @@ from typing import Any, Dict, Optional
 from langchain_openai import OpenAIEmbeddings
 from langchain_huggingface import HuggingFaceEndpointEmbeddings
 
-from rag_state import PipelineRAGState
+from rag_state_v2 import PipelineRAGState
 
 
 class EmbeddingRoutingNode:
@@ -100,4 +100,3 @@ class EmbeddingRoutingNode:
 
         state["embeddings"] = emb
         return state
-
