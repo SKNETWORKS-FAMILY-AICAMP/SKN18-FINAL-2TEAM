@@ -477,7 +477,7 @@ def _create_experiment_api(request):
             },
             status=500,
         )
-        # 큐 실패해도 DB는 이미 생성됐으니, 일단 201은 내려주고
+    
     # 4) 상태를 'R'(진행중)으로 업데이트
     experiment.status = 'R'
     experiment.progress = 0
