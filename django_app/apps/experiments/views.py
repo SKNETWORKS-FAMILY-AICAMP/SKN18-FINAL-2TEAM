@@ -11,6 +11,7 @@ from rest_framework.authentication import SessionAuthentication
 from rest_framework.views import APIView
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from .models import ExperimentTool, Experiment
+import requests
 
 
 @login_required
@@ -167,8 +168,144 @@ def index(request):
         }
     }
 )
-@api_view(['GET', 'POST'])
+@extend_schema(
+    summary="UniProt 단백질 검색",
+    description=(
+        "UniProt 공개 REST API를 이용하여 "
+        "단백질 검색 결과를 리스트 형태로 반환합니다."
+    ),
+    tags=["UniProt"],
+    parameters=[
+        OpenApiParameter(
+            name="keyword",
+            description="UniProt 단백질 검색 키워드 (예: human PH20)",
+            required=True,
+            type=str,
+        ),
+        OpenApiParameter(
+            name="size",
+            description="검색 결과 개수 (default: 10)",
+            required=False,
+            type=int,
+        ),
+    ],
+    responses={
+        200: {
+            "type": "object",
+            "properties": {
+                "keyword": {"type": "string"},
+                "count": {"type": "integer"},
+                "results": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "accession": {"type": "string"},
+                            "entry_name": {"type": "string"},
+                            "protein_name": {"type": "string"},
+                            "gene": {"type": "string"},
+                            "organism": {"type": "string"},
+                            "length": {"type": "integer"},
+                            "annotation_score": {"type": "integer"},
+                            "tags": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                            },
+                        },
+                    },
+                },
+            },
+        }
+    },
+)
+@api_view(['GET'])
 @permission_classes([IsAuthenticated])
+def uniprot_search_api(request):
+    # 1. Query parameter 수집
+    keyword = request.query_params.get("keyword")
+    size = int(request.query_params.get("size", 10))
+
+    if not keyword:
+        return Response(
+            {"error": "keyword query parameter is required"},
+            status=400,
+        )
+
+    # 2. UniProt REST API 호출
+    uniprot_url = "https://rest.uniprot.org/uniprotkb/search"
+    params = {
+        "query": keyword,
+        "format": "json",
+        "size": size,
+    }
+
+    try:
+        r = requests.get(uniprot_url, params=params, timeout=10)
+        r.raise_for_status()
+    except requests.RequestException as e:
+        return Response(
+            {"error": "Failed to fetch data from UniProt", "detail": str(e)},
+            status=502,
+        )
+
+    data = r.json()
+    raw_results = data.get("results", [])
+
+    # 3. UniProt JSON → Swagger 응답 구조로 매핑
+    results = []
+
+    for item in raw_results:
+        accession = item.get("primaryAccession")
+        entry_name = item.get("uniProtkbId")
+
+        protein_name = (
+            item.get("proteinDescription", {})
+                .get("recommendedName", {})
+                .get("fullName", {})
+                .get("value")
+        )
+
+        gene = None
+        genes = item.get("genes", [])
+        if genes:
+            gene = genes[0].get("geneName", {}).get("value")
+
+        organism_data = item.get("organism", {})
+        scientific = organism_data.get("scientificName")
+        common = organism_data.get("commonName")
+        organism = scientific
+        if scientific and common:
+            organism = f"{scientific} ({common})"
+
+        length = item.get("sequence", {}).get("length")
+        annotation_score = item.get("annotationScore")
+
+        tags = [
+            kw.get("name")
+            for kw in item.get("keywords", [])
+            if kw.get("name")
+        ]
+
+        results.append({
+            "accession": accession,
+            "entry_name": entry_name,
+            "protein_name": protein_name,
+            "gene": gene,
+            "organism": organism,
+            "length": length,
+            "annotation_score": annotation_score,
+            "tags": tags,
+        })
+
+    # 4. Swagger 명세와 정확히 일치하는 Response 반환
+    return Response(
+        {
+            "keyword": keyword,
+            "count": len(results),
+            "results": results,
+        },
+        status=200,
+    )
 def experiments_api(request):
     """API endpoint router for experiments (GET /api/experiments/ and POST /api/experiments/)."""
     if request.method == 'GET':
