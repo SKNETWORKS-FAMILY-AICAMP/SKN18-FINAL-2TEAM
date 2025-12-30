@@ -51,3 +51,5 @@ urlpatterns = [
     # 관리자
     path("admin/", admin.site.urls),
 ]
+
+# WhiteNoise가 정적 파일을 자동으로 서빙하므로 별도 설정 불필요
