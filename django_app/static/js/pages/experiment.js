@@ -1347,6 +1347,7 @@ async function executeSimulation(sequence = null, title = null) {
         tools: selectedTools,
         protein_sequence: finalSequence,
         pipeline_name: title || `Pipeline ${new Date().toLocaleString('ko-KR')}`,
+        tool_options: toolOptions, //수정사항
     };
     
     console.log('[ExperimentPage] ====== executeSimulation called ======');
