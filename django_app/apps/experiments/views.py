@@ -371,14 +371,28 @@ def _create_experiment_api(request):
                 print(f"[Experiments API] Tool not found or disabled: tool_sid={tool_id}")
                 continue
 
-            # 3-1) 실행 옵션값 → t_experiment_tool_selection.tool_options_json
-            options_for_tool = (
+        # 1) 사용자가 보낸 옵션 값 (일부만 있을 수 있음)
+            user_options = (
                 tool_options.get(str(tool_id))
                 or tool_options.get(tool_id)
                 or {}
             )
+            if not isinstance(user_options, dict):
+                user_options = {}
+
+            # 2) 도구 정의 테이블에서 기본값 가져오기
+            merged_options = {}
+            for opt in ExperimentToolOption.objects.filter(tool=tool).order_by("sort_order", "field_name"):
+                if opt.default_value is not None:
+                    merged_options[opt.field_name] = opt.default_value
+
+            # 3) 사용자가 변경한 값으로 덮어쓰기
+            for key, value in user_options.items():
+                merged_options[key] = value
+
+            # 4) JSON 저장
             try:
-                options_json = json.dumps(options_for_tool, ensure_ascii=False)
+                options_json = json.dumps(merged_options, ensure_ascii=False)
             except TypeError:
                 options_json = "{}"
 
@@ -390,48 +404,7 @@ def _create_experiment_api(request):
                 created_id=user_identifier,
                 updated_id=user_identifier,
             )
-            print(
-                "[Experiments API] Created ExperimentToolSelection: "
-                f"selection_sid={selection.selection_sid}, "
-                f"experiment_sid={experiment.experiment_sid}, "
-                f"tool_sid={tool.tool_sid}, sort_order={sort_order}"
-            )
             created_tools.append(tool.tool_name)
-
-            # 3-2) 옵션 정의 → t_experiment_tool_option (tool_sid 기반)
-            option_defs_for_tool = (
-                tool_option_defs.get(str(tool_id))
-                or tool_option_defs.get(tool_id)
-                or []
-            )
-            if isinstance(option_defs_for_tool, list):
-                for idx, opt in enumerate(option_defs_for_tool):
-                    field_name = (opt.get("field_name") or "").strip()
-                    field_label = (opt.get("field_label") or "").strip()
-                    field_type = (opt.get("field_type") or "").strip()
-                    if not field_name or not field_label or not field_type:
-                        continue  # 필수 값 없으면 스킵
-
-                    option_obj = ExperimentToolOption.objects.create(
-                        tool=tool,
-                        field_name=field_name,
-                        field_label=field_label,
-                        field_type=field_type,
-                        default_value=opt.get("default_value"),
-                        min_value=opt.get("min_value", 0),
-                        max_value=opt.get("max_value", 100),
-                        step_value=opt.get("step_value", 1),
-                        options_json=opt.get("options_json"),
-                        sort_order=opt.get("sort_order", idx),
-                        help_text=opt.get("help_text") or "",
-                        created_id=user_identifier,
-                        updated_id=user_identifier,
-                    )
-                    print(
-                        "[Experiments API] Created ExperimentToolOption: "
-                        f"option_sid={option_obj.option_sid}, tool_sid={tool.tool_sid}"
-                    )
-
     # ------------------------
     # 4) 응답
     # ------------------------
