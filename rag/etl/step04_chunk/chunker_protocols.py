@@ -49,7 +49,7 @@ CHUNKS_SPLIT_ROOT = BASE_PATH / "data/chunks/protocols"  # 분할된 청크 파�
 # 분할 단위 (환경 변수로 제어 가능)
 SPLIT_ROWS_PER_FILE = int(os.getenv("PROTOCOL_CHUNK_SPLIT_SIZE", "3000"))
 # table metadata CSV 저장 위치
-TABLE_OUTPUT_ROOT = BASE_PATH / "data/processed/pubmed"
+TABLE_OUTPUT_ROOT = BASE_PATH / "data/entities/protocols"
 
 
 def protect_table_blocks(text: str) -> tuple[str, list[str]]:
