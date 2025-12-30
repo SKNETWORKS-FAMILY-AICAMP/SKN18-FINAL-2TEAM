@@ -15,7 +15,6 @@ from django.db import transaction
 from django_app.apps.core.queue import publish_simulation
 
 
-
 def _get_user_identifier(user):
     return str(user.user_id) if hasattr(user, 'user_id') else str(user.pk)
 
@@ -276,6 +275,56 @@ def _list_experiments_api(request):
     }, status=200)
 
 
+TOOL_NAME_QUEUE_MAP = {
+    "RFdiffusion": "rfdiffusion",
+    "ProteinMPNN": "protein_mpnn",
+    "AlphaFold3": "alphafold3",
+}
+
+
+def enqueue_simulation_tasks(experiment, selections, user):
+    """
+    한 실험에 대한 selection 목록을 받아,
+    각 selection마다 RabbitMQ에 시뮬레이션 작업을 발행한다.
+    """
+    user_id = getattr(user, "user_id", None) or getattr(user, "pk", None)
+    total_steps = len(selections)
+    task_ids = []
+
+    for sel in selections:
+        tool_name_display = sel.tool.tool_name
+        tool_name_for_queue = TOOL_NAME_QUEUE_MAP.get(tool_name_display)
+        if not tool_name_for_queue:
+            continue
+
+        try:
+            tool_options = json.loads(sel.tool_options_json or "{}")
+        except json.JSONDecodeError:
+            tool_options = {}
+
+        payload = {
+            "protein_sequence": experiment.protein_sequence,
+            "protein_name": experiment.protein_name,
+            "selection_sid": sel.selection_sid,
+            "tool_sid": sel.tool_id,
+            "tool_name": tool_name_display,
+            "sort_order": sel.sort_order,
+            "total_steps": total_steps,
+            "tool_options": tool_options,
+        }
+
+        task_id = publish_simulation(
+            tool_name=tool_name_for_queue,
+            experiment_sid=experiment.experiment_sid,
+            payload=payload,
+            user_id=user_id,
+        )
+        task_ids.append(task_id)
+
+    return task_ids
+
+
+
 def _create_experiment_api(request):
     """POST /api/experiments/ - 실험 생성."""
     print("=" * 80)
@@ -344,6 +393,7 @@ def _create_experiment_api(request):
     # 2) 사용자 식별자
     # ------------------------
     user_identifier = _get_user_identifier(request.user)
+    selections = []
     created_tools = []
     # ------------------------
     # 3) t_experiment + t_experiment_tool_selection + t_experiment_tool_option 한번에
@@ -407,72 +457,19 @@ def _create_experiment_api(request):
                 created_id=user_identifier,
                 updated_id=user_identifier,
             )
+            selections.append(selection)
             created_tools.append(tool.tool_name)
-
-    # 여기부터 메시지 큐 발행 로직
-    # 1) 어떤 tool_name 으로 보낼지 결정
-    #    - 예: 파이프라인의 첫 도구를 기준으로
-    first_selection = experiment.tool_selections.select_related('tool').order_by('sort_order').first()
-    if not first_selection:
-        # 도구가 하나도 없다면 큐에 보낼 게 없음
-        return Response(
-            {"error": "No tools selected for this experiment"},
-            status=400,
-        )
-
-    TOOL_NAME_QUEUE_MAP = {
-    "RFdiffusion": "rfdiffusion",
-    "ProteinMPNN": "protein_mpnn",
-    "AlphaFold3": "alphafold3",
-    }
-
-    tool_name_display = first_selection.tool.tool_name  # DB 값
-    tool_name_for_queue = TOOL_NAME_QUEUE_MAP.get(tool_name_display)
-    
-    if not tool_name_for_queue:
-        return Response(
-            {"error": f"Unsupported tool for queue: {tool_name_display}"},
-            status=400,
-    )
-
-    # 2) 큐에 넣을 payload 구성 (예시)
-    tool_selections_payload = []
-    for sel in experiment.tool_selections.select_related('tool').order_by('sort_order'):
-        try:
-            tool_options = json.loads(sel.tool_options_json or "{}")
-        except json.JSONDecodeError:
-            tool_options = {}
-
-        tool_selections_payload.append({
-            "selection_sid": sel.selection_sid,
-            "tool_sid": sel.tool_id,
-            "tool_name": sel.tool.tool_name,
-            "sort_order": sel.sort_order,
-            "tool_options": tool_options,
-        })
-
-    payload = {
-        "protein_sequence": experiment.protein_sequence,
-        "protein_name": experiment.protein_name,
-        "tool_selections": tool_selections_payload,
-    }
-
-    user_id = getattr(request.user, "user_id", None) or getattr(request.user, "pk", None)
     
     # 3) 메시지 큐에 작업 발행
     try:
-        task_id = publish_simulation(
-            tool_name=tool_name_for_queue,
-            experiment_sid=experiment.experiment_sid,
-            payload=payload,
-            user_id=user_id,
-        )
+        task_ids = enqueue_simulation_tasks(experiment, selections, request.user)
+
     except Exception as e:
-        print(f"Failed to publish simulation task: {e}")
+        print(f"Failed to publish simulation tasks: {e}")
         return Response(
             {
                 "status": "error",
-                "message": "Failed to enqueue simulation task",
+                "message": "Failed to enqueue simulation tasks",
                 "detail": str(e),
             },
             status=500,
@@ -489,7 +486,7 @@ def _create_experiment_api(request):
             "status": "queued",  # 큐에 올라갔다는 상태
             "message": "Simulation task has been queued",
             "experiment_sid": experiment.experiment_sid,
-            "task_id": task_id,
+            "task_ids": task_ids,
             # 실험 상세 정보도 함께 내려줌
             "data": {
                 "id": experiment.experiment_sid,
