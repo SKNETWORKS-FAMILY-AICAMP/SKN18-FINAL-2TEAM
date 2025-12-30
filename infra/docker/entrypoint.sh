@@ -134,7 +134,73 @@ if command -v aws &> /dev/null; then
   fi
   
   # ========================================
-  # 5. 기타 Django 설정도 Parameter Store에서 가져오기
+  # 5. Neo4j 설정 가져오기 (환경 변수 → Parameter Store → CloudFormation 순서)
+  # ========================================
+  if [ -z "$NEO4J_BOLT_HOST" ]; then
+    # 1순위: Parameter Store에서 가져오기 (이미 등록된 /skn18/neo4j-host 사용)
+    NEO4J_BOLT_HOST=$(aws ssm get-parameter \
+      --name /skn18/neo4j-host \
+      --region "$AWS_REGION" \
+      --query 'Parameter.Value' \
+      --output text 2>/dev/null || echo "")
+    
+    # 2순위: Parameter Store에서 가져오지 못한 경우, CloudFormation Output에서 가져오기
+    if [ -z "$NEO4J_BOLT_HOST" ] || [ "$NEO4J_BOLT_HOST" = "None" ]; then
+      echo "⚠ Could not get NEO4J_BOLT_HOST from Parameter Store, trying CloudFormation..."
+      NEO4J_BOLT_HOST=$(aws cloudformation describe-stacks \
+        --stack-name "$STACK_NAME" \
+        --region "$AWS_REGION" \
+        --query 'Stacks[0].Outputs[?OutputKey==`Neo4jPublicIp`].OutputValue' \
+        --output text 2>/dev/null || echo "")
+      if [ -n "$NEO4J_BOLT_HOST" ] && [ "$NEO4J_BOLT_HOST" != "None" ]; then
+        echo "✓ Using NEO4J_BOLT_HOST from CloudFormation: $NEO4J_BOLT_HOST"
+      else
+        echo "⚠ NEO4J_BOLT_HOST could not be retrieved from Parameter Store or CloudFormation"
+      fi
+    else
+      echo "✓ Using NEO4J_BOLT_HOST from Parameter Store: $NEO4J_BOLT_HOST"
+    fi
+  else
+    echo "✓ Using NEO4J_BOLT_HOST from environment variable: $NEO4J_BOLT_HOST"
+  fi
+  
+  if [ -z "$NEO4J_BOLT_PORT" ]; then
+    NEO4J_BOLT_PORT=$(aws ssm get-parameter \
+      --name /skn18/neo4j-bolt-port \
+      --region "$AWS_REGION" \
+      --query 'Parameter.Value' \
+      --output text 2>/dev/null || echo "7687")
+  fi
+  
+  if [ -z "$NEO4J_USER" ] && [ -z "$NEO4J_USERNAME" ]; then
+    NEO4J_USER=$(aws ssm get-parameter \
+      --name /skn18/neo4j-user \
+      --region "$AWS_REGION" \
+      --query 'Parameter.Value' \
+      --output text 2>/dev/null || echo "neo4j")
+    NEO4J_USERNAME="$NEO4J_USER"  # NEO4J_USERNAME도 동일하게 설정
+  elif [ -z "$NEO4J_USERNAME" ]; then
+    NEO4J_USERNAME="$NEO4J_USER"
+  elif [ -z "$NEO4J_USER" ]; then
+    NEO4J_USER="$NEO4J_USERNAME"
+  fi
+  
+  if [ -z "$NEO4J_PASSWORD" ]; then
+    NEO4J_PASSWORD=$(aws ssm get-parameter \
+      --name /skn18/neo4j-password \
+      --with-decryption \
+      --region "$AWS_REGION" \
+      --query 'Parameter.Value' \
+      --output text 2>/dev/null || echo "")
+  fi
+  
+  # NEO4J_URI 구성 (bolt://host:port 형식)
+  if [ -n "$NEO4J_BOLT_HOST" ] && [ -n "$NEO4J_BOLT_PORT" ]; then
+    NEO4J_URI="bolt://${NEO4J_BOLT_HOST}:${NEO4J_BOLT_PORT}"
+  fi
+  
+  # ========================================
+  # 6. 기타 Django 설정도 Parameter Store에서 가져오기
   # ========================================
   if [ -z "$DJANGO_SECRET_KEY" ]; then
     DJANGO_SECRET_KEY=$(aws ssm get-parameter \
@@ -154,6 +220,16 @@ if command -v aws &> /dev/null; then
       --output text 2>/dev/null || echo "")
   fi
   
+  # TAVILY_API_KEY 가져오기
+  if [ -z "$TAVILY_API_KEY" ]; then
+    TAVILY_API_KEY=$(aws ssm get-parameter \
+      --name /skn18/tavily-api-key \
+      --with-decryption \
+      --region "$AWS_REGION" \
+      --query 'Parameter.Value' \
+      --output text 2>/dev/null || echo "")
+  fi
+  
   # 환경 변수로 export (이미 설정된 경우 덮어쓰지 않음)
   [ -n "$POSTGRES_HOST" ] && export POSTGRES_HOST
   [ -n "$POSTGRES_DB" ] && export POSTGRES_DB
@@ -164,12 +240,23 @@ if command -v aws &> /dev/null; then
   [ -n "$RABBITMQ_USER" ] && export RABBITMQ_USER
   [ -n "$RABBITMQ_PASSWORD" ] && export RABBITMQ_PASSWORD
   [ -n "$RABBITMQ_PORT" ] && export RABBITMQ_PORT
+  [ -n "$NEO4J_BOLT_HOST" ] && export NEO4J_BOLT_HOST
+  [ -n "$NEO4J_BOLT_PORT" ] && export NEO4J_BOLT_PORT
+  [ -n "$NEO4J_USER" ] && export NEO4J_USER
+  [ -n "$NEO4J_USERNAME" ] && export NEO4J_USERNAME
+  [ -n "$NEO4J_PASSWORD" ] && export NEO4J_PASSWORD
+  [ -n "$NEO4J_URI" ] && export NEO4J_URI
   [ -n "$DJANGO_SECRET_KEY" ] && export DJANGO_SECRET_KEY
   [ -n "$OPENAI_API_KEY" ] && export OPENAI_API_KEY
+  [ -n "$TAVILY_API_KEY" ] && export TAVILY_API_KEY
   
   echo "✓ Configuration loaded from Parameter Store"
   echo "  POSTGRES_HOST: ${POSTGRES_HOST:-(not set)}"
   echo "  RABBITMQ_HOST: ${RABBITMQ_HOST:-(not set)}"
+  echo "  NEO4J_BOLT_HOST: ${NEO4J_BOLT_HOST:-(not set)}"
+  echo "  NEO4J_BOLT_PORT: ${NEO4J_BOLT_PORT:-(not set)}"
+  echo "  NEO4J_USER: ${NEO4J_USER:-(not set)}"
+  echo "  NEO4J_URI: ${NEO4J_URI:-(not set)}"
   echo "  POSTGRES_DB: ${POSTGRES_DB:-(not set)}"
   echo "  POSTGRES_USER: ${POSTGRES_USER:-(not set)}"
 else
