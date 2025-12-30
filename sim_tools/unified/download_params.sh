@@ -3,7 +3,7 @@ set -euo pipefail
 
 MODELS_DIR="${MODELS_DIR:-/models}"
 
-# --- AlphaFold params (유지: 여기서는 "존재/디렉토리 생성"만 하고, 다운로드 로직은 네 기존 방식 그대로 두는 자리) ---
+# --- AlphaFold params (유지: 여기서는 "존재/디렉토리 생성"만 하고, 다운로드 로직은 기존 방식 그대로) ---
 AF_DIR="${AF_DIR:-$MODELS_DIR/alphafold}"
 mkdir -p "$AF_DIR"
 
@@ -43,7 +43,6 @@ download_http() {
     return 1
   fi
 
-  # sanity: 0바이트면 실패 처리
   if [[ ! -s "$out" ]]; then
     echo "[download_params] ERROR: downloaded file is empty: $out" >&2
     return 1
@@ -87,8 +86,7 @@ save_to_cache() {
   fi
 }
 
-# --- Official-ish public links (RFdiffusion ckpts) ---
-# (문서에 나온 파일 서버 링크 그대로 사용)  [oai_citation:1‡ccportal.ims.ac.jp](https://ccportal.ims.ac.jp/en/print/pdf/node/3519)
+# --- RFdiffusion public ckpt links (IPD UW server) ---
 BASE_CKPT_URL="http://files.ipd.uw.edu/pub/RFdiffusion/6f5902ac237024bdd0c176cb93063dc4/Base_ckpt.pt"
 COMPLEX_BASE_URL="http://files.ipd.uw.edu/pub/RFdiffusion/e29311f6f1bf1af907f9ef9f44b8328b/Complex_base_ckpt.pt"
 COMPLEX_FOLD_BASE_URL="http://files.ipd.uw.edu/pub/RFdiffusion/60f09a193fb5e5ccdc4980417708dbab/Complex_Fold_base_ckpt.pt"
@@ -122,7 +120,7 @@ for i in "${!need_names[@]}"; do
   save_to_cache "$name"
 done
 
-# --- final verification: 하나라도 없으면 종료(요구사항: 다운 실패 시 종료) ---
+# --- final verification: 하나라도 없으면 종료 ---
 missing=0
 for name in "${need_names[@]}"; do
   f="$RFD_MODELS_DIR/$name"
