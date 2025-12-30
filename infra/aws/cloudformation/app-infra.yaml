@@ -121,11 +121,11 @@ Resources:
   WebTargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
-      Name: skn18-web-tg
+      Name: skn18-web-tg-v2
       Port: 8000
       Protocol: HTTP
       VpcId: !Ref VpcId
-      TargetType: ip  # Docker 컨테이너 IP 사용
+      TargetType: instance  # EC2 인스턴스 타입으로 변경 (자동 등록 가능)
       HealthCheckPath: /
       HealthCheckProtocol: HTTP
       HealthCheckIntervalSeconds: 30
@@ -133,17 +133,17 @@ Resources:
       HealthyThresholdCount: 2
       UnhealthyThresholdCount: 3
       Matcher:
-        HttpCode: "200"
+        HttpCode: "200,302"  # 302 리다이렉트도 정상으로 처리
       Tags:
         - Key: Name
-          Value: "skn18-web-target-group"
+          Value: "skn18-web-target-group-v2"
 
   WebApplicationLoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
       Name: skn18-web-alb
       Type: application
-      Scheme: internet-facing
+      Scheme: internet-facing  # 내부망 연결 필요시: internal로 변경
       IpAddressType: ipv4
       Subnets:
         - !Ref SubnetId
@@ -292,8 +292,34 @@ Resources:
                 Action:
                   - elasticloadbalancing:RegisterTargets
                   - elasticloadbalancing:DeregisterTargets
-                  - elasticloadbalancing:DescribeTargetHealth
                 Resource: !Ref WebTargetGroup
+              - Effect: Allow
+                Action:
+                  - elasticloadbalancing:DescribeTargetHealth
+                  - elasticloadbalancing:DescribeTargetGroups
+                Resource: "*"  # 모든 Target Group 조회 가능
+        # CloudFormation Stack 정보 조회 권한 (Target Group ARN 조회용)
+        - PolicyName: CloudFormationReadPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - cloudformation:DescribeStacks
+                  - cloudformation:DescribeStackOutputs
+                  - cloudformation:ListStacks
+                Resource: "*"  # 모든 Stack 조회 가능하도록 확장 (상위 Stack 조회 필요)
+        # EC2 태그 및 인스턴스 정보 조회 권한
+        - PolicyName: Ec2DescribePolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ec2:DescribeTags
+                  - ec2:DescribeInstances
+                  - ec2:DescribeInstanceAttribute
+                Resource: "*"
 
   AppEc2InstanceProfile:
     Type: AWS::IAM::InstanceProfile
@@ -317,13 +343,17 @@ Resources:
       Tags:
         - Key: Name
           Value: "skn18-app-ec2"
+        - Key: CloudFormationStack
+          Value: !Ref AWS::StackName
+        - Key: TargetGroupArn
+          Value: !Ref WebTargetGroup
       BlockDeviceMappings:
         - DeviceName: "/dev/xvda"
           Ebs:
             VolumeSize: 30
             VolumeType: gp3
       UserData:
-        Fn::Base64: !Sub |
+        Fn::Base64: |
           #!/bin/bash
           set -xe
 
@@ -352,6 +382,41 @@ Resources:
           # 프로젝트 디렉토리 생성
           mkdir -p /home/ec2-user/app
           chown ec2-user:ec2-user /home/ec2-user/app
+
+          # ========================================
+          # ALB Target Group 자동 등록
+          # ========================================
+          echo "Registering EC2 instance to ALB Target Group..."
+          
+          # AWS CLI 설치 확인 (Amazon Linux 2023에는 기본 설치됨)
+          if ! command -v aws &> /dev/null; then
+            echo "Installing AWS CLI..."
+            sudo yum install -y aws-cli
+          fi
+          
+          # 인스턴스 ID 및 리전 가져오기
+          INSTANCE_ID=$(curl -s http://169.254.169.254/latest/meta-data/instance-id)
+          REGION=$(curl -s http://169.254.169.254/latest/meta-data/placement/region)
+          
+          # Target Group ARN 가져오기 (EC2 인스턴스 태그에서 직접 읽기)
+          TARGET_GROUP_ARN=$(aws ec2 describe-tags \
+            --region "$REGION" \
+            --filters "Name=resource-id,Values=$INSTANCE_ID" "Name=key,Values=TargetGroupArn" \
+            --query 'Tags[0].Value' \
+            --output text 2>/dev/null || echo "")
+          
+          if [ -n "$TARGET_GROUP_ARN" ] && [ -n "$INSTANCE_ID" ]; then
+            echo "Registering instance $INSTANCE_ID to target group $TARGET_GROUP_ARN"
+            aws elbv2 register-targets \
+              --target-group-arn "$TARGET_GROUP_ARN" \
+              --targets Id="$INSTANCE_ID" \
+              --region "$REGION" && echo "✓ Successfully registered to ALB Target Group" || echo "⚠ Failed to register target (may already be registered)"
+          else
+            echo "WARNING: Cannot register to ALB Target Group"
+            echo "  INSTANCE_ID: ${INSTANCE_ID:-NOT FOUND}"
+            echo "  TARGET_GROUP_ARN: ${TARGET_GROUP_ARN:-NOT FOUND}"
+            echo "  STACK_NAME: ${STACK_NAME:-NOT FOUND}"
+          fi
 
           echo "=== App EC2 initialization completed ==="
 
