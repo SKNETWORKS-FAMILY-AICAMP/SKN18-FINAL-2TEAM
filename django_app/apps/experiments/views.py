@@ -12,6 +12,9 @@ from rest_framework.views import APIView
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from .models import ExperimentTool, Experiment, ExperimentToolSelection, ExperimentToolOption
 from django.db import transaction
+from django_app.apps.core.queue import publish_simulation
+
+
 
 def _get_user_identifier(user):
     return str(user.user_id) if hasattr(user, 'user_id') else str(user.pk)
@@ -405,13 +408,89 @@ def _create_experiment_api(request):
                 updated_id=user_identifier,
             )
             created_tools.append(tool.tool_name)
-    # ------------------------
-    # 4) 응답
-    # ------------------------
+
+    # 여기부터 메시지 큐 발행 로직
+    # 1) 어떤 tool_name 으로 보낼지 결정
+    #    - 예: 파이프라인의 첫 도구를 기준으로
+    first_selection = experiment.tool_selections.select_related('tool').order_by('sort_order').first()
+    if not first_selection:
+        # 도구가 하나도 없다면 큐에 보낼 게 없음
+        return Response(
+            {"error": "No tools selected for this experiment"},
+            status=400,
+        )
+
+    TOOL_NAME_QUEUE_MAP = {
+    "RFdiffusion": "rfdiffusion",
+    "ProteinMPNN": "protein_mpnn",
+    "AlphaFold3": "alphafold3",
+    }
+
+    tool_name_display = first_selection.tool.tool_name  # DB 값
+    tool_name_for_queue = TOOL_NAME_QUEUE_MAP.get(tool_name_display)
+    
+    if not tool_name_for_queue:
+        return Response(
+            {"error": f"Unsupported tool for queue: {tool_name_display}"},
+            status=400,
+    )
+
+    # 2) 큐에 넣을 payload 구성 (예시)
+    tool_selections_payload = []
+    for sel in experiment.tool_selections.select_related('tool').order_by('sort_order'):
+        try:
+            tool_options = json.loads(sel.tool_options_json or "{}")
+        except json.JSONDecodeError:
+            tool_options = {}
+
+        tool_selections_payload.append({
+            "selection_sid": sel.selection_sid,
+            "tool_sid": sel.tool_id,
+            "tool_name": sel.tool.tool_name,
+            "sort_order": sel.sort_order,
+            "tool_options": tool_options,
+        })
+
+    payload = {
+        "protein_sequence": experiment.protein_sequence,
+        "protein_name": experiment.protein_name,
+        "tool_selections": tool_selections_payload,
+    }
+
+    user_id = getattr(request.user, "user_id", None) or getattr(request.user, "pk", None)
+    
+    # 3) 메시지 큐에 작업 발행
+    try:
+        task_id = publish_simulation(
+            tool_name=tool_name_for_queue,
+            experiment_sid=experiment.experiment_sid,
+            payload=payload,
+            user_id=user_id,
+        )
+    except Exception as e:
+        print(f"Failed to publish simulation task: {e}")
+        return Response(
+            {
+                "status": "error",
+                "message": "Failed to enqueue simulation task",
+                "detail": str(e),
+            },
+            status=500,
+        )
+        # 큐 실패해도 DB는 이미 생성됐으니, 일단 201은 내려주고
+    # 4) 상태를 'R'(진행중)으로 업데이트
+    experiment.status = 'R'
+    experiment.progress = 0
+    experiment.save(update_fields=['status', 'progress', 'updated_at'])
+
+    # 5) 클라이언트 응답 (실험 생성 + 큐 등록 정보 포함)
     return Response(
         {
-            "status": "success",
-            "message": "Experiment created",
+            "status": "queued",  # 큐에 올라갔다는 상태
+            "message": "Simulation task has been queued",
+            "experiment_sid": experiment.experiment_sid,
+            "task_id": task_id,
+            # 실험 상세 정보도 함께 내려줌
             "data": {
                 "id": experiment.experiment_sid,
                 "pipeline_name": experiment.pipeline_name,
