@@ -152,9 +152,7 @@ def chat_detail(request, chat_id):
             # Method 1: Use message__pk (primary key lookup) - most reliable
             chat_message_graphs = ChatMessagePaperGraph.objects.filter(
                 message__pk__in=message_ids
-            ).select_related('graph', 'message').defer(
-                'graph__updated_id'  # Exclude updated_id field that doesn't exist in DB
-            ).order_by('message__message_sid', 'sort_order', 'created_at')
+            ).select_related('graph', 'message').order_by('message__message_sid', 'sort_order', 'created_at')
             
             # Debug: Try different query methods for comparison
             alt_query1 = ChatMessagePaperGraph.objects.filter(
@@ -171,7 +169,7 @@ def chat_detail(request, chat_id):
                 alt_count2 = alt_query2.count()
                 print(f"[DEBUG] Query method 2 (message_id__in): Found {alt_count2} records")
                 if alt_count2 > alt_count1:
-                    chat_message_graphs = alt_query2.select_related('graph', 'message').defer('graph__updated_id').order_by('message_id', 'sort_order', 'created_at')
+                    chat_message_graphs = alt_query2.select_related('graph', 'message').order_by('message_id', 'sort_order', 'created_at')
             except Exception as e:
                 print(f"[DEBUG] Query method 2 failed: {e}")
             
@@ -182,14 +180,12 @@ def chat_detail(request, chat_id):
             alt_count3 = alt_query3.count()
             print(f"[DEBUG] Query method 3 (message__pk__in): Found {alt_count3} records")
             if alt_count3 > 0:
-                chat_message_graphs = alt_query3.select_related('graph', 'message').defer('graph__updated_id').order_by('message__message_sid', 'sort_order', 'created_at')
+                chat_message_graphs = alt_query3.select_related('graph', 'message').order_by('message__message_sid', 'sort_order', 'created_at')
         else:
             # Fallback to message__chat if no messages
             chat_message_graphs = ChatMessagePaperGraph.objects.filter(
                 message__chat=chat
-            ).select_related('graph', 'message').defer(
-                'graph__updated_id'
-            ).order_by('message_id', 'sort_order', 'created_at')
+            ).select_related('graph', 'message').order_by('message_id', 'sort_order', 'created_at')
         
         # Debug: Check if any graphs exist
         graph_count = chat_message_graphs.count()
