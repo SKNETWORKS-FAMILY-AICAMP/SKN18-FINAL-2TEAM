@@ -52,6 +52,8 @@ MODELS_DIR = _get_models_dir()
 os.makedirs(MODELS_DIR, exist_ok=True)
 os.environ["SENTENCE_TRANSFORMERS_HOME"] = MODELS_DIR
 os.environ["HF_HOME"] = MODELS_DIR
+# Hugging Face 모델 다운로드 타임아웃 설정 (3분)
+os.environ["HF_HUB_DOWNLOAD_TIMEOUT"] = "180"
 
 
 # ============================================
