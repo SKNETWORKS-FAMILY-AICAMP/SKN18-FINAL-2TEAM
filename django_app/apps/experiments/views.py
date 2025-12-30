@@ -12,6 +12,7 @@ from rest_framework.views import APIView
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from .models import ExperimentTool, Experiment, ExperimentToolSelection, ExperimentToolOption
 from django.db import transaction
+from django.utils import timezone
 
 def _get_user_identifier(user):
     return str(user.user_id) if hasattr(user, 'user_id') else str(user.pk)
@@ -172,6 +173,26 @@ def index(request):
             }
         }
     }
+)
+@extend_schema(
+    summary="UniProt 단백질 검색",
+    description="UniProt 공개 REST API를 이용하여 단백질을 검색합니다.",
+    tags=["UniProt"],
+    parameters=[
+        OpenApiParameter(
+            name="keyword",
+            description="검색 키워드 (예: human PH20)",
+            required=True,
+            type=str,
+        ),
+        OpenApiParameter(
+            name="size",
+            description="검색 결과 개수 (default: 10)",
+            required=False,
+            type=int,
+        ),
+    ],
+    responses={200: dict},
 )
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
