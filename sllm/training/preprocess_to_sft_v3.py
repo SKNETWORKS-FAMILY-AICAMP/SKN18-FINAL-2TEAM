@@ -1,118 +1,20 @@
 '''
+V2
+
 1. 완성된 annotation json 데이터 만들기
--   annotation.json 파일 만들기 (저장경로 : sllm\datasets )
-
-``` # 1. json 파일 예시
-{
-  "observations": [
-    "Proteomic analysis identified 1,427 differentially expressed proteins in MALT1-knockout cells",
-    "Overlap of proteomic and FACS data revealed 16 proteins that modulate GPX4 protein levels",
-    "RC3H1 protein expression increased in MALT1-deficient cells with reduced cleavage",
-    "RC3H1 physically interacts with GPX4",
-    "RC3H1 knockdown increases GPX4 protein levels and reduces GPX4 ubiquitination",
-    "RC3H1 overexpression promotes ubiquitin-dependent GPX4 degradation",
-    "Interference with RC3H1 reverses GPX4 degradation in MALT1-deficient cells"
-  ],
-  "question": "What mechanism explains how MALT1 regulates GPX4 ubiquitination and protein stability?",
-  "conclusion": {
-  "interpretation": [
-    "MALT1 suppresses GPX4 ubiquitination by cleaving the E3 ubiquitin ligase RC3H1.",
-    "RC3H1 directly promotes ubiquitin-dependent degradation of GPX4."
-  ],
-  "interpretation_limits": [
-    "The precise ubiquitination sites on GPX4 are not identified.",
-    "Other E3 ligases regulating GPX4 were not evaluated."
-  ],
-  "cautions": [
-    "These findings are based on in vitro liver cancer cell models.",
-    "Temporal dynamics beyond the tested conditions are not assessed."
-  ],
-  "suggested_next_steps": [
-    "Map ubiquitination sites on GPX4 mediated by RC3H1.",
-    "Test whether other E3 ligases compensate for RC3H1 loss."
-  ]
-}
-
-  "interpretation_boundary": {
-    "can_conclude": [
-      "RC3H1 promotes ubiquitin-dependent degradation of GPX4",
-      "MALT1 negatively regulates RC3H1 through proteolytic cleavage",
-      "MALT1 indirectly stabilizes GPX4 protein levels"
-    ],
-    "cannot_conclude": [
-      "Exact molecular details of RC3H1-mediated ubiquitination of GPX4",
-      "Whether other E3 ligases regulate GPX4",
-      "Clinical implications of the MALT1–RC3H1–GPX4 axis"
-    ]
-  }
-}
-
-
-
 2. 완성된 annotation json 데이터를 sft 데이터셋으로 변환하기
-1에서 만든 json 데이터에서 instruction, input, output 으로 이루어진 JSONL 형식의 데이터셋 만들기. 
-이름은 sft_dataset.jsonl 파일로 저장하기 (저장경로 : sllm\datasets )
-- instruction: 항상 고정문구
-- input: json 데이터에서 conclution을 제외한 필드
-- output: json 데이터에서 conclusion의 값
-(예시)
-input = {
-  "observations": [
-    "Proteomic analysis identified 1,427 differentially expressed proteins in MALT1-knockout cells",
-    "Overlap of proteomic and FACS data revealed 16 proteins that modulate GPX4 protein levels",
-    "RC3H1 protein expression increased in MALT1-deficient cells with reduced cleavage",
-    "RC3H1 physically interacts with GPX4",
-    "RC3H1 knockdown increases GPX4 protein levels and reduces GPX4 ubiquitination",
-    "RC3H1 overexpression promotes ubiquitin-dependent GPX4 degradation",
-    "Interference with RC3H1 reverses GPX4 degradation in MALT1-deficient cells"
-  ],
-  "question": "What mechanism explains how MALT1 regulates GPX4 ubiquitination and protein stability?",
-  "interpretation_boundary": {
-    "can_conclude": [
-      "RC3H1 promotes ubiquitin-dependent degradation of GPX4",
-      "MALT1 negatively regulates RC3H1 through proteolytic cleavage",
-      "MALT1 indirectly stabilizes GPX4 protein levels"
-    ],
-    "cannot_conclude": [
-      "Exact molecular details of RC3H1-mediated ubiquitination of GPX4",
-      "Whether other E3 ligases regulate GPX4",
-      "Clinical implications of the MALT1–RC3H1–GPX4 axis"
-    ]
-  }
-}
-
-
-output = {
-  "interpretation": [
-    "MALT1 suppresses GPX4 ubiquitination by cleaving the E3 ubiquitin ligase RC3H1.",
-    "RC3H1 directly promotes ubiquitin-dependent degradation of GPX4."
-  ],
-  "interpretation_limits": [
-    "The precise ubiquitination sites on GPX4 are not identified.",
-    "Other E3 ligases regulating GPX4 were not evaluated."
-  ],
-  "cautions": [
-    "These findings are based on in vitro liver cancer cell models.",
-    "Temporal dynamics beyond the tested conditions are not assessed."
-  ],
-  "suggested_next_steps": [
-  "Suggest follow-up experiments WITHOUT proposing mechanisms.",
-  "Experiments should aim to reproduce, validate, or test generality of the observed effects only."
-  ]
-}
-
-
 
 
 '''
 
 ################ config ################
-PROCESS_ROWS = 10  # 처리할 데이터 row 개수
-CSV_PATH = r"c:\dev\ai_camp\SKN18-FINAL-2TEAM\sllm\datasets\raw_dataset_reference.csv"
+PROCESS_ROWS = 1500  # 처리할 데이터 row 개수
+CSV_PATH = r"c:\dev\ai_camp\SKN18-FINAL-2TEAM\sllm\datasets\section_category_result.csv"
 
 # 타임스탬프는 실행 시 동적으로 생성됨
 ANNOTATION_OUTPUT = None  # create_annotation_json()에서 설정
 SFT_OUTPUT = None  # create_sft_dataset()에서 설정
+
 
 
 ################ 1. annotation.json ################
@@ -122,13 +24,11 @@ from openai import OpenAI
 import json
 import os
 from tqdm import tqdm
-from pathlib import Path
 from dotenv import load_dotenv
 from datetime import datetime
 load_dotenv()
 
 client = OpenAI()
-
 
 
 
@@ -142,7 +42,7 @@ Your role is to strictly separate:
 
 CRITICAL RULES (VIOLATION = FAILURE):
 - NEVER propose or imply molecular, structural, catalytic, or mechanistic explanations.
-- NEVER use words such as:
+- NEVER use causal or speculative words such as:
   "mechanism", "mechanistic", "likely", "suggest", "indicate", 
   "facilitate", "contribute", "due to", "because", "implies", "potential".
 - If a causal or mechanistic explanation is not explicitly proven in the Results text,
@@ -150,10 +50,13 @@ CRITICAL RULES (VIOLATION = FAILURE):
 
 Your output will be used for small language model training.
 Over-interpretation is considered a critical error.
-If you are unsure whether a statement is interpretive, DO NOT include it.
-Silence is preferred over over-interpretation.
+If you are unsure whether a statement is interpretive, restate the observation verbatim or state that the comparison cannot be made.
+
+If the Results text contains NO valid experimental observations after filtering, you MUST NOT generate a JSON output.
+Instead, output exactly: "NO_VALID_RESULTS"
 
 """
+
 
 
 
@@ -176,6 +79,11 @@ CRITICAL: Remove any sentences that have Methods, Review, or Introduction charac
 - Introduction: context-setting, hypothesis statements, research questions
 - Keep ONLY Results-section content: experimental findings and data.
 
+IMPORTANT SKIP RULE:
+- If you cannot extract at least ONE valid observation that meets the criteria above, DO NOT generate the JSON.
+- Output exactly: "NO_VALID_RESULTS".
+
+
 Output JSON schema (MUST FOLLOW EXACTLY):
 
 {{
@@ -195,24 +103,22 @@ Output JSON schema (MUST FOLLOW EXACTLY):
     "interpretation": [
       "Effect-level summaries ONLY.",
       "Describe WHAT changed, increased, decreased, differed, or was associated.",
-      "NEVER use verbs: restrict, promote, enhance, reduce (or variants). Rewrite if found.",
-      "Use neutral verbs: changed, differed, was associated with, showed, exhibited.",
       "NO mechanisms, NO hypotheses, NO causal language.",
-      "If unsure, restate the observation in compact form."
+      "If unsure, restate the observation in compact form or state that the comparison cannot be made."
     ],
     "interpretation_limits": [
-      State ONLY absences of measurements or comparisons explicitly mentioned in the Results text.
-      Do NOT name any untested concept categories (e.g., mechanism, structure, pathway).      Do NOT name or describe any possible mechanisms.
-      "List limitations of the experimental evidence."
+      "State limits of the reported comparisons or measurements.",
+      "Mention if only specific conditions, cell lines, time points, or concentrations were tested.",
+      "Do NOT introduce new concepts or mechanisms."
     ],
     "cautions": [
       "Highlight experimental context and limitations.",
       "Note any constraints on generalizability."
     ],
     "suggested_next_steps": [
-      "Suggest ONLY follow-up experiments that repeat, replicate, or extend the same comparison under controlled variations (e.g., different concentrations, temperatures, or time points).",
-      "Do NOT introduce new variables or explanatory factors."
-  ]
+      "Suggest ONLY follow-up experiments that repeat or extend the same comparison under controlled variations (e.g., different concentrations, temperatures, or time points).",
+      "Do NOT introduce new explanatory variables or mechanisms."
+    ]
   }},
 
   "interpretation_boundary": {{
@@ -227,13 +133,8 @@ Output JSON schema (MUST FOLLOW EXACTLY):
     ]
   }}
 }}
-
-HARD CONSTRAINTS:
-- conclusion.interpretation MUST NOT explain WHY something happens.
-- conclusion.interpretation MUST be compatible with interpretation_boundary.cannot_conclude.
-- If a sentence could appear in a Discussion section, it MUST NOT appear in conclusion.interpretation.
-
 """
+
 
 
 
@@ -241,7 +142,7 @@ def extract_dataset_from_result(result_text: str):
     """OpenAI API를 사용하여 결과 텍스트에서 구조화된 데이터 추출"""
     try:
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-4o",   # $99.66 -> $99.57 (10개)
             temperature=0,
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
@@ -274,7 +175,7 @@ def create_annotation_json():
     """CSV에서 데이터를 읽어 annotation.json 생성 (1건씩 저장)"""
     # 타임스탬프 생성 (YYMMDDHHMMSS 형식)
     timestamp = datetime.now().strftime("%y%m%d%H%M%S")
-    annotation_output = rf"c:\dev\ai_camp\SKN18-FINAL-2TEAM\sllm\datasets\annotation_{timestamp}.json"
+    annotation_output = rf"c:\dev\ai_camp\SKN18-FINAL-2TEAM\sllm\datasets\annotation_v3_{timestamp}.json"
 
     print(f"📂 Loading CSV from: {CSV_PATH}")
     df = pd.read_csv(CSV_PATH)
@@ -339,7 +240,7 @@ def create_sft_dataset(annotation_output):
     """annotation.json을 읽어 SFT dataset JSONL 생성"""
     # 타임스탬프 생성 (YYMMDDHHMMSS 형식)
     timestamp = datetime.now().strftime("%y%m%d%H%M%S")
-    sft_output = rf"c:\dev\ai_camp\SKN18-FINAL-2TEAM\sllm\datasets\sft_dataset_{timestamp}.jsonl"
+    sft_output = rf"c:\dev\ai_camp\SKN18-FINAL-2TEAM\sllm\datasets\sft_dataset_v3_{timestamp}.jsonl"
 
     print(f"\n📂 Loading annotation.json from: {annotation_output}")
 

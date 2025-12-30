@@ -10,6 +10,11 @@ from rest_framework.response import Response
 from rest_framework.authentication import SessionAuthentication
 from rest_framework.views import APIView
 from drf_spectacular.utils import extend_schema, OpenApiParameter
+from .models import ExperimentTool, Experiment, ExperimentToolSelection, ExperimentToolOption
+from django.db import transaction
+
+def _get_user_identifier(user):
+    return str(user.user_id) if hasattr(user, 'user_id') else str(user.pk)
 from .models import ExperimentTool, Experiment
 import requests
 
@@ -93,7 +98,7 @@ def index(request):
     # 실험 목록 조회 (사용자별로 필터링)
     # created_id는 user_id (UUID 문자열)를 저장
     # CustomUser는 user_id를 primary key로 사용하므로 user_id 속성 사용
-    user_identifier = str(request.user.user_id) if hasattr(request.user, 'user_id') else str(request.user.pk)
+    user_identifier = _get_user_identifier(request.user)
     experiments = Experiment.objects.filter(
         created_id=user_identifier
     ).prefetch_related('tools').order_by('-created_at')[:20]  # 최근 20개만
@@ -168,57 +173,7 @@ def index(request):
         }
     }
 )
-@extend_schema(
-    summary="UniProt 단백질 검색",
-    description=(
-        "UniProt 공개 REST API를 이용하여 "
-        "단백질 검색 결과를 리스트 형태로 반환합니다."
-    ),
-    tags=["UniProt"],
-    parameters=[
-        OpenApiParameter(
-            name="keyword",
-            description="UniProt 단백질 검색 키워드 (예: human PH20)",
-            required=True,
-            type=str,
-        ),
-        OpenApiParameter(
-            name="size",
-            description="검색 결과 개수 (default: 10)",
-            required=False,
-            type=int,
-        ),
-    ],
-    responses={
-        200: {
-            "type": "object",
-            "properties": {
-                "keyword": {"type": "string"},
-                "count": {"type": "integer"},
-                "results": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "accession": {"type": "string"},
-                            "entry_name": {"type": "string"},
-                            "protein_name": {"type": "string"},
-                            "gene": {"type": "string"},
-                            "organism": {"type": "string"},
-                            "length": {"type": "integer"},
-                            "annotation_score": {"type": "integer"},
-                            "tags": {
-                                "type": "array",
-                                "items": {"type": "string"},
-                            },
-                        },
-                    },
-                },
-            },
-        }
-    },
-)
-@api_view(['GET'])
+@api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 def uniprot_search_api(request):
     # 1. Query parameter 수집
@@ -327,7 +282,7 @@ def _list_experiments_api(request):
     
     # 실험 목록 조회 (사용자별로 필터링)
     # CustomUser는 user_id를 primary key로 사용하므로 user_id 속성 사용
-    user_identifier = str(request.user.user_id) if hasattr(request.user, 'user_id') else str(request.user.pk)
+    user_identifier = _get_user_identifier(request.user)
     print(f"[Experiments API] User identifier (string): {user_identifier}")
     print(f"[Experiments API] User has user_id attr: {hasattr(request.user, 'user_id')}")
     if hasattr(request.user, 'user_id'):
@@ -439,14 +394,148 @@ def _create_experiment_api(request):
     
     print("[Experiments API] ====== End of request log ======")
     print("=" * 80)
-    
-    # Return success response (no actual processing)
-    return Response({
-        'status': 'success',
-        'message': 'Experiment creation request received',
-        'data': {
-            'tools_count': len(body.get('tools', [])),
-            'sequence_length': len(body.get('protein_sequence', '')),
-            'pipeline_name': body.get('pipeline_name', ''),
-        }
-    }, status=200)
+
+
+    # ------------------------
+    # 1) 입력값 검증
+    # ------------------------
+    tools = body.get("tools") or []
+    if not isinstance(tools, list) or not tools:
+        return Response(
+            {"error": "tools is required and must be a non-empty list"},
+            status=400,
+        )
+
+    protein_sequence = (body.get("protein_sequence") or "").strip()
+    if not protein_sequence:
+        return Response({"error": "protein_sequence is required"}, status=400)
+
+    pipeline_name = (body.get("pipeline_name") or "").strip()
+    if not pipeline_name:
+        pipeline_name = f"Pipeline {timezone.now().strftime('%Y-%m-%d %H:%M:%S')}"
+
+    protein_name = (body.get("protein_name") or "").strip()
+    tool_options = body.get("tool_options") or {}
+    if not isinstance(tool_options, dict):
+        tool_options = {}
+
+    # 새로: 옵션 정의(테이블 t_experiment_tool_option용)
+    tool_option_defs = body.get("tool_option_defs") or {}
+    if not isinstance(tool_option_defs, dict):
+        tool_option_defs = {}
+
+    # ------------------------
+    # 2) 사용자 식별자
+    # ------------------------
+    user_identifier = _get_user_identifier(request.user)
+    created_tools = []
+    # ------------------------
+    # 3) t_experiment + t_experiment_tool_selection + t_experiment_tool_option 한번에
+    # ------------------------
+    with transaction.atomic():
+        # t_experiment insert
+        experiment = Experiment.objects.create(
+            pipeline_name=pipeline_name,
+            status="R",  # Ready
+            progress=0,
+            protein_sequence=protein_sequence,
+            protein_name=protein_name or None,
+            created_id=user_identifier,
+            updated_id=user_identifier,
+        )
+        print(f"[Experiments API] Created Experiment: experiment_sid={experiment.experiment_sid}")
+
+        # 각 tool_sid 기준으로 selection + option 정의 생성
+        for sort_order, raw_tool_id in enumerate(tools):
+            try:
+                tool_id = int(raw_tool_id)
+            except (TypeError, ValueError):
+                print(f"[Experiments API] Invalid tool id in tools list: {raw_tool_id}")
+                continue
+
+            tool = ExperimentTool.objects.filter(tool_sid=tool_id, status="E").first()
+            if not tool:
+                print(f"[Experiments API] Tool not found or disabled: tool_sid={tool_id}")
+                continue
+
+            # 3-1) 실행 옵션값 → t_experiment_tool_selection.tool_options_json
+            options_for_tool = (
+                tool_options.get(str(tool_id))
+                or tool_options.get(tool_id)
+                or {}
+            )
+            try:
+                options_json = json.dumps(options_for_tool, ensure_ascii=False)
+            except TypeError:
+                options_json = "{}"
+
+            selection = ExperimentToolSelection.objects.create(
+                experiment=experiment,
+                tool=tool,
+                sort_order=sort_order,
+                tool_options_json=options_json,
+                created_id=user_identifier,
+                updated_id=user_identifier,
+            )
+            print(
+                "[Experiments API] Created ExperimentToolSelection: "
+                f"selection_sid={selection.selection_sid}, "
+                f"experiment_sid={experiment.experiment_sid}, "
+                f"tool_sid={tool.tool_sid}, sort_order={sort_order}"
+            )
+            created_tools.append(tool.tool_name)
+
+            # 3-2) 옵션 정의 → t_experiment_tool_option (tool_sid 기반)
+            option_defs_for_tool = (
+                tool_option_defs.get(str(tool_id))
+                or tool_option_defs.get(tool_id)
+                or []
+            )
+            if isinstance(option_defs_for_tool, list):
+                for idx, opt in enumerate(option_defs_for_tool):
+                    field_name = (opt.get("field_name") or "").strip()
+                    field_label = (opt.get("field_label") or "").strip()
+                    field_type = (opt.get("field_type") or "").strip()
+                    if not field_name or not field_label or not field_type:
+                        continue  # 필수 값 없으면 스킵
+
+                    option_obj = ExperimentToolOption.objects.create(
+                        tool=tool,
+                        field_name=field_name,
+                        field_label=field_label,
+                        field_type=field_type,
+                        default_value=opt.get("default_value"),
+                        min_value=opt.get("min_value", 0),
+                        max_value=opt.get("max_value", 100),
+                        step_value=opt.get("step_value", 1),
+                        options_json=opt.get("options_json"),
+                        sort_order=opt.get("sort_order", idx),
+                        help_text=opt.get("help_text") or "",
+                        created_id=user_identifier,
+                        updated_id=user_identifier,
+                    )
+                    print(
+                        "[Experiments API] Created ExperimentToolOption: "
+                        f"option_sid={option_obj.option_sid}, tool_sid={tool.tool_sid}"
+                    )
+
+    # ------------------------
+    # 4) 응답
+    # ------------------------
+    return Response(
+        {
+            "status": "success",
+            "message": "Experiment created",
+            "data": {
+                "id": experiment.experiment_sid,
+                "pipeline_name": experiment.pipeline_name,
+                "status": experiment.status,
+                "progress": experiment.progress,
+                "tools": created_tools,
+                "tools_count": len(body.get("tools", [])),
+                "sequence_length": len(body.get("protein_sequence", "")),
+                "pipeline_name_input": body.get("pipeline_name", ""),
+            },
+        },
+        status=200,
+    )

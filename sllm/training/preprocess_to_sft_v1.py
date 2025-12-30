@@ -108,11 +108,12 @@ output = {
 
 ################ config ################
 PROCESS_ROWS = 10  # 처리할 데이터 row 개수
-CSV_PATH = r"c:\dev\ai_camp\SKN18-FINAL-2TEAM\sllm\datasets\raw_dataset_reference.csv"
+CSV_PATH = r"c:\dev\ai_camp\SKN18-FINAL-2TEAM\sllm\datasets\section_category_result.csv"
 
 # 타임스탬프는 실행 시 동적으로 생성됨
 ANNOTATION_OUTPUT = None  # create_annotation_json()에서 설정
 SFT_OUTPUT = None  # create_sft_dataset()에서 설정
+
 
 
 ################ 1. annotation.json ################
@@ -122,7 +123,6 @@ from openai import OpenAI
 import json
 import os
 from tqdm import tqdm
-from pathlib import Path
 from dotenv import load_dotenv
 from datetime import datetime
 load_dotenv()
@@ -142,7 +142,7 @@ Your role is to strictly separate:
 
 CRITICAL RULES (VIOLATION = FAILURE):
 - NEVER propose or imply molecular, structural, catalytic, or mechanistic explanations.
-- NEVER use words such as:
+- NEVER use causal or speculative words such as:
   "mechanism", "mechanistic", "likely", "suggest", "indicate", 
   "facilitate", "contribute", "due to", "because", "implies", "potential".
 - If a causal or mechanistic explanation is not explicitly proven in the Results text,
@@ -150,10 +150,9 @@ CRITICAL RULES (VIOLATION = FAILURE):
 
 Your output will be used for small language model training.
 Over-interpretation is considered a critical error.
-If you are unsure whether a statement is interpretive, DO NOT include it.
-Silence is preferred over over-interpretation.
-
+If you are unsure whether a statement is interpretive, restate the observation verbatim or state that the comparison cannot be made.
 """
+
 
 
 
@@ -195,24 +194,22 @@ Output JSON schema (MUST FOLLOW EXACTLY):
     "interpretation": [
       "Effect-level summaries ONLY.",
       "Describe WHAT changed, increased, decreased, differed, or was associated.",
-      "NEVER use verbs: restrict, promote, enhance, reduce (or variants). Rewrite if found.",
-      "Use neutral verbs: changed, differed, was associated with, showed, exhibited.",
       "NO mechanisms, NO hypotheses, NO causal language.",
-      "If unsure, restate the observation in compact form."
+      "If unsure, restate the observation in compact form or state that the comparison cannot be made."
     ],
     "interpretation_limits": [
-      State ONLY absences of measurements or comparisons explicitly mentioned in the Results text.
-      Do NOT name any untested concept categories (e.g., mechanism, structure, pathway).      Do NOT name or describe any possible mechanisms.
-      "List limitations of the experimental evidence."
+      "State limits of the reported comparisons or measurements.",
+      "Mention if only specific conditions, cell lines, time points, or concentrations were tested.",
+      "Do NOT introduce new concepts or mechanisms."
     ],
     "cautions": [
       "Highlight experimental context and limitations.",
       "Note any constraints on generalizability."
     ],
     "suggested_next_steps": [
-      "Suggest ONLY follow-up experiments that repeat, replicate, or extend the same comparison under controlled variations (e.g., different concentrations, temperatures, or time points).",
-      "Do NOT introduce new variables or explanatory factors."
-  ]
+      "Suggest ONLY follow-up experiments that repeat or extend the same comparison under controlled variations (e.g., different concentrations, temperatures, or time points).",
+      "Do NOT introduce new explanatory variables or mechanisms."
+    ]
   }},
 
   "interpretation_boundary": {{
@@ -227,13 +224,8 @@ Output JSON schema (MUST FOLLOW EXACTLY):
     ]
   }}
 }}
-
-HARD CONSTRAINTS:
-- conclusion.interpretation MUST NOT explain WHY something happens.
-- conclusion.interpretation MUST be compatible with interpretation_boundary.cannot_conclude.
-- If a sentence could appear in a Discussion section, it MUST NOT appear in conclusion.interpretation.
-
 """
+
 
 
 
@@ -241,7 +233,7 @@ def extract_dataset_from_result(result_text: str):
     """OpenAI API를 사용하여 결과 텍스트에서 구조화된 데이터 추출"""
     try:
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-4o-mini",  # $99.57 -> 99.56 (10개)
             temperature=0,
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
@@ -274,7 +266,7 @@ def create_annotation_json():
     """CSV에서 데이터를 읽어 annotation.json 생성 (1건씩 저장)"""
     # 타임스탬프 생성 (YYMMDDHHMMSS 형식)
     timestamp = datetime.now().strftime("%y%m%d%H%M%S")
-    annotation_output = rf"c:\dev\ai_camp\SKN18-FINAL-2TEAM\sllm\datasets\annotation_{timestamp}.json"
+    annotation_output = rf"c:\dev\ai_camp\SKN18-FINAL-2TEAM\sllm\datasets\annotation_v1_{timestamp}.json"
 
     print(f"📂 Loading CSV from: {CSV_PATH}")
     df = pd.read_csv(CSV_PATH)
@@ -339,7 +331,7 @@ def create_sft_dataset(annotation_output):
     """annotation.json을 읽어 SFT dataset JSONL 생성"""
     # 타임스탬프 생성 (YYMMDDHHMMSS 형식)
     timestamp = datetime.now().strftime("%y%m%d%H%M%S")
-    sft_output = rf"c:\dev\ai_camp\SKN18-FINAL-2TEAM\sllm\datasets\sft_dataset_{timestamp}.jsonl"
+    sft_output = rf"c:\dev\ai_camp\SKN18-FINAL-2TEAM\sllm\datasets\sft_dataset_v1_{timestamp}.jsonl"
 
     print(f"\n📂 Loading annotation.json from: {annotation_output}")
 
