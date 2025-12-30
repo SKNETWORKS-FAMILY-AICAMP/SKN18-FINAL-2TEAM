@@ -47,7 +47,11 @@ ENV PYTHONPATH=/app
 
 EXPOSE 8000
 
+# CrossEncoder 모델 미리 다운로드 (런타임 타임아웃 방지)
+# 모델이 이미 다운로드되어 있으면 스킵됨
+RUN python -c "import os; os.makedirs('/app/models', exist_ok=True); from sentence_transformers import CrossEncoder; CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2', cache_folder='/app/models')" || echo "모델 다운로드 실패 (런타임에 다운로드됨)"
+
 # Entrypoint에서 마이그레이션 실행 후 Gunicorn 시작
 ENTRYPOINT ["/entrypoint.sh"]
-CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3"]
+CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3", "--timeout", "120"]
 
