@@ -11,7 +11,6 @@ generate_answer.py
 - INFERENCE_Q: 사용자 질문을 그대로 프롬프트로 전달하여 LLM이 답변 생성
 """
 
-from typing import Dict, Any
 from graph.llm_config import (
     generate_answer_bio_llm,
     generate_answer_info_llm,
@@ -23,6 +22,128 @@ from graph.llm_config import (
     get_model_name
 )
 import json
+from typing import Any, Dict, List, Optional
+
+def _build_filter_list_answer_from_contexts(state: Dict[str, Any]) -> Optional[str]:
+    """
+    FILTER/LIST 결과만으로 답변을 만들어주는 헬퍼.
+    - contexts 안의 article / protocol / trial 구조를 그대로 읽어서
+      간단한 표/리스트 형태의 요약 텍스트를 만든다.
+    - 적절한 결과가 없으면 None을 반환해서 기존 청크 기반 흐름을 그대로 타게 한다.
+    """
+    rewrite = state.get("rewrite") or {}
+    route = state.get("route") or {}
+    question_type = rewrite.get("question_type") or route.get("question_type")
+    if question_type not in ("filter", "list"):
+        return None
+
+    contexts: List[Dict[str, Any]] = state.get("contexts") or state.get("retrieval_results") or []
+    if not contexts:
+        return None
+
+    lines: List[str] = []
+    question = state.get("question", "")
+
+    # 도메인 추정
+    domains = rewrite.get("domains") or route.get("domains") or []
+    if isinstance(domains, str):
+        domains = [domains]
+
+    lines.append(f"질문: {question}")
+    lines.append("")
+    lines.append(f"질문 유형: {question_type} (필터/리스트 기반 요약)")
+    if domains:
+        lines.append(f"대상 도메인: {', '.join(domains)}")
+    lines.append("")
+
+    # 1) 논문(article) 결과 요약
+    articles = [c.get("article") for c in contexts if isinstance(c, dict) and c.get("article")]
+    if articles:
+        lines.append("=== 논문 결과 ===")
+        for i, art in enumerate(articles[:10], 1):
+            if not isinstance(art, dict):
+                continue
+            title = art.get("title", "")
+            year = art.get("year")
+            doi = art.get("doi")
+            pmid = art.get("pmid")
+            meta_parts = []
+            if year is not None:
+                meta_parts.append(f"연도: {year}")
+            if pmid:
+                meta_parts.append(f"PMID: {pmid}")
+            if doi:
+                meta_parts.append(f"DOI: {doi}")
+            meta_str = " / ".join(meta_parts) if meta_parts else ""
+            lines.append(f"{i}. {title}")
+            if meta_str:
+                lines.append(f"   - {meta_str}")
+        lines.append("")
+
+    # 2) 프로토콜(protocol) 결과 요약
+    protocols = [c.get("protocol") for c in contexts if isinstance(c, dict) and c.get("protocol")]
+    if protocols:
+        lines.append("=== 프로토콜 결과 ===")
+        for i, proto in enumerate(protocols[:10], 1):
+            if not isinstance(proto, dict):
+                continue
+            title = proto.get("title", "")
+            sid = proto.get("protocol_sid")
+            usage = proto.get("usage_degree")
+            meta_parts = []
+            if sid:
+                meta_parts.append(f"ID: {sid}")
+            if usage is not None:
+                meta_parts.append(f"사용도 점수: {usage}")
+            meta_str = " / ".join(meta_parts) if meta_parts else ""
+            lines.append(f"{i}. {title}")
+            if meta_str:
+                lines.append(f"   - {meta_str}")
+        lines.append("")
+
+    # 3) 임상시험(trial) 결과 요약
+    trials = [c.get("trial") or c.get("t") for c in contexts if isinstance(c, dict) and (c.get("trial") or c.get("t"))]
+    if trials:
+        lines.append("=== 임상시험 결과 ===")
+        for i, trial in enumerate(trials[:10], 1):
+            if not isinstance(trial, dict):
+                continue
+            title = trial.get("title", "")
+            nct_id = trial.get("nct_id")
+            phase = trial.get("phase")
+            status = trial.get("status")
+            start_date = trial.get("start_date")
+            conditions = trial.get("conditions") or []
+            interventions = trial.get("interventions") or []
+            meta_parts = []
+            if nct_id:
+                meta_parts.append(f"NCT: {nct_id}")
+            if phase:
+                meta_parts.append(f"Phase: {phase}")
+            if status:
+                meta_parts.append(f"상태: {status}")
+            if start_date:
+                meta_parts.append(f"시작일: {start_date}")
+            meta_str = " / ".join(meta_parts) if meta_parts else ""
+
+            lines.append(f"{i}. {title}")
+            if meta_str:
+                lines.append(f"   - {meta_str}")
+            if conditions:
+                lines.append(f"   - 질환: {', '.join(map(str, conditions[:4]))}")
+            if interventions:
+                lines.append(f"   - 중재(약물/처치): {', '.join(map(str, interventions[:4]))}")
+        lines.append("")
+
+    # 아무 것도 못 뽑았으면 None
+    if len(lines) <= 4:  # 헤더만 있는 경우
+        return None
+
+    # 간단한 결론 문장 추가
+    lines.append("위 결과는 그래프/메타데이터 기반 필터/리스트 검색 결과를 정리한 것입니다.")
+    lines.append("세부 내용이 더 필요하다면 특정 항목을 지정해서 다시 질문해 주세요.")
+
+    return "\n".join(lines)
 
 
 def generate_answer_node(state: Dict[str, Any]) -> Dict[str, Any]:
@@ -151,6 +272,14 @@ def _generate_bio_answer(state: Dict[str, Any]) -> Dict[str, Any]:
         for i, hist in enumerate(relevant_history[:2], 1):  # 최근 2개만
             context_parts.append(f"[대화 {i}] Q: {hist['question'][:60]}")
             context_parts.append(f"        A: {hist['summary'][:100]}\n")
+    
+    # 필터/리스트 전용 요약 시도
+    summary = _build_filter_list_answer_from_contexts(state)
+    if summary is not None:
+        # 필터/리스트 결과만으로 답변을 만들 수 있으면 여기서 바로 종료
+        state["final_answer"] = summary
+        state.setdefault("case_type", "BIO_Q_FILTER_LIST")
+        return state
     
     # RAG 검색 결과 추가
     selected_chunks = state.get("selected_chunks", [])
@@ -308,6 +437,14 @@ def _generate_protocol_answer(state: Dict[str, Any]) -> Dict[str, Any]:
         for i, hist in enumerate(relevant_history[:2], 1):  # 최근 2개만
             context_parts.append(f"[대화 {i}] Q: {hist['question'][:60]}")
             context_parts.append(f"        A: {hist['summary'][:100]}\n")
+
+    # 필터/리스트 전용 요약 시도
+    summary = _build_filter_list_answer_from_contexts(state)
+    if summary is not None:
+        # 필터/리스트 결과만으로 답변을 만들 수 있으면 여기서 바로 종료
+        state["final_answer"] = summary
+        state.setdefault("case_type", "BIO_Q_FILTER_LIST")
+        return state
     
     # RAG 검색 결과 추가
     selected_chunks = state.get("selected_chunks", [])

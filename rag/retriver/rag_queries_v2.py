@@ -122,180 +122,172 @@ class GraphSearchQueries:
     # - Dual RRF (Vector Score + Fulltext Score) 알고리즘 적용
     # ==========================================================================
 
+    # 1) Paper Search (Hybrid + Graph Context + PrimeKG Expansion)
     SEARCH_PAPER_HYBRID = """
-        // -------------------------------------------------------------------------
-        // 1) Vector & Text Search (기본 내용 검색)
-        //    - 임베딩(Vector)과 본문 키워드(Text)를 동시에 찾습니다.
-        // -------------------------------------------------------------------------
-        CALL {
-            WITH $embedding AS embedding, $q AS q
-            
-            // (1-A) Vector Search
-            CALL db.index.vector.queryNodes('chunk_vector_index', 150, embedding)
-            YIELD node AS c, score AS vec_score
-            RETURN c.chunk_id AS chunk_id, vec_score, 0.0 AS ft_score, 0.0 AS graph_score
-            
-            UNION
-            
-            // (1-B) Chunk Text Search
-            CALL db.index.fulltext.queryNodes('chunkTextIndex', q) 
-            YIELD node AS c, score AS ft_score
-            RETURN c.chunk_id AS chunk_id, 0.0 AS vec_score, ft_score, 0.0 AS graph_score
-        }
-
-        UNION
-
-        // -------------------------------------------------------------------------
-        // 2) Graph Context Search (Entity & Metadata 통합)
-        //    - Entity, Journal, Topic, StudyDesign 등 "연결된 노드"를 통해 찾습니다.
-        // -------------------------------------------------------------------------
-        CALL {
-            WITH $q AS q
-            
-            // (2-A) Entity Path: Entity -> Mention -> Section -> Chunk
-            CALL db.index.fulltext.queryNodes('entityTextIndex', q) YIELD node AS e, score
-            MATCH (e)<-[:NORMALIZED_TO]-(:Mention)<-[:HAS_MENTION]-(:Section)-[:HAS_CHUNK]->(c:Chunk)
-            RETURN c.chunk_id AS chunk_id, score AS graph_score
-            
-            UNION
-            
-            // (2-B) Metadata Path: [Journal, Topic, Design] -> Article -> Chunk
-            // * 핵심: 인덱스 목록을 순회하며 '연결된 Article'을 공통 패턴으로 찾음
-            UNWIND ['journalTextIndex', 'topicTextIndex', 'studyDesignTextIndex'] AS idxName
-            CALL db.index.fulltext.queryNodes(idxName, q) YIELD node, score
-            
-            // "검색된 노드(Journal/Topic/Design)와 연결된(--) Article 찾기"
-            MATCH (node)<--(a:Article)-[:HAS_SECTION]->(:Section)-[:HAS_CHUNK]->(c:Chunk)
-            RETURN c.chunk_id AS chunk_id, score AS graph_score
-        }
-        // (Vector/Text 블록과 컬럼 맞추기)
-        RETURN chunk_id, 0.0 AS vec_score, 0.0 AS ft_score, graph_score
-
-        // -------------------------------------------------------------------------
-        // 3) Score Aggregation & Reranking
-        // -------------------------------------------------------------------------
-        WITH chunk_id, 
-            max(vec_score) AS vec_score, 
-            max(ft_score) AS ft_score, 
-            max(graph_score) AS graph_score
-        
-        // 점수 가중치 조절 (그래프/메타데이터 매칭은 정확도가 높으므로 가산점 부여 가능)
-        WITH chunk_id, (vec_score + ft_score + graph_score * 1.2) AS hy_score
-        
-        MATCH (c:Chunk {chunk_id: chunk_id})
-        RETURN c.chunk_id AS chunk_id, hy_score
-        ORDER BY hy_score DESC
-        LIMIT coalesce($k, 50)
-        """
-
-    SEARCH_PROTOCOL_HYBRID = """
-    // =========================================================================
-    // 1. Direct Search (Vector + Text)
-    //    - 이미 효율적이므로 유지하되, 리턴 컬럼만 통일
-    // =========================================================================
+    // -------------------------------------------------------------------------
+    // 1 & 2) Vector/Text + Graph Context (Unified)
+    // -------------------------------------------------------------------------
     CALL {
-        WITH $embedding AS embedding, $q AS q
         // (1-A) Vector Search
-        CALL db.index.vector.queryNodes('protocol_chunk_vector_index', 150, embedding)
-        YIELD node AS pc, score AS vec_score
-        RETURN pc.chunking_id AS id, vec_score, 0.0 AS ft_score, 0.0 AS graph_score, 'protocol' AS type
-        
+        WITH $embedding AS embedding, $q AS q
+        CALL db.index.vector.queryNodes('chunk_vector_index', 150, embedding)
+        YIELD node AS c, score AS vec_score
+        RETURN c.chunk_id AS chunk_id, vec_score, 0.0 AS ft_score, 0.0 AS graph_score
+
         UNION
-        
-        // (1-B) Text Search (Chunk Body + Protocol Title)
-        CALL {
-            WITH q
-            CALL db.index.fulltext.queryNodes('protocolChunkTextIndex', q) YIELD node AS pc, score RETURN pc, score
-            UNION
-            CALL db.index.fulltext.queryNodes('protocolTextIndex', q) YIELD node AS p, score
-            MATCH (p)-[:HAS_CHUNK]->(pc:ProtocolChunk) RETURN pc, score
-        }
-        RETURN pc.chunking_id AS id, 0.0 AS vec_score, score AS ft_score, 0.0 AS graph_score, 'protocol' AS type
-    }
 
-    UNION
-
-    // =========================================================================
-    // 2. Graph Context Search (Optimized)
-    //    - Strategy: [검색 -> 노드 수집 -> 중복 제거 -> 경로 확장]
-    // =========================================================================
-    CALL {
+        // (1-B) Chunk Text Search
         WITH $q AS q
-        
-        // ---------------------------------------------------------------------
-        // Step 1: Seed Node 발굴 (Fulltext Index Scan)
-        // ---------------------------------------------------------------------
-        CALL {
-            WITH q
-            // (A) Entity Index
-            CALL db.index.fulltext.queryNodes('entityTextIndex', q) YIELD node, score RETURN node, score
-            UNION
-            // (B) Experiment / Metadata Indexes
-            UNWIND ['experimentTextIndex', 'expMaterialTextIndex', 'expEquipmentTextIndex', 
-                    'categoryLeafTextIndex', 'categoryParentTextIndex'] AS idxName
-            CALL db.index.fulltext.queryNodes(idxName, q) YIELD node, score RETURN node, score
-        }
-        
-        // [Optimization] 중복된 노드를 먼저 제거하여 확장 비용 최소화
-        WITH DISTINCT node, max(score) AS node_score
+        CALL db.index.fulltext.queryNodes('chunkTextIndex', $q)
+        YIELD node AS c, score AS ft_score
+        RETURN c.chunk_id AS chunk_id, 0.0 AS vec_score, ft_score, 0.0 AS graph_score
 
-        // ---------------------------------------------------------------------
-        // Step 2: Path Expansion (Protocol & Paper 분리 실행)
-        // ---------------------------------------------------------------------
-        CALL {
-            WITH node
-            // Case A: Entity -> Protocol (Direct)
-            MATCH (node:Entity)<-[:USED_METHOD]-(p:Protocol)-[:HAS_CHUNK]->(pc:ProtocolChunk)
-            RETURN pc.chunking_id AS id, 'protocol' AS type
-            
-            UNION
-            
-            WITH node
-            // Case B: Metadata -> Protocol (1~2 hops)
-            // (Exp/Mat) -- (Protocol)  OR  (Mat) -- (Exp) -- (Protocol)
-            MATCH (node)-[*1..2]-(p:Protocol)-[:HAS_CHUNK]->(pc:ProtocolChunk)
-            RETURN pc.chunking_id AS id, 'protocol' AS type
+        UNION
 
-            UNION
-            
-            WITH node
-            // Case C: Experiment -> Entity -> Protocol (Method Sharing)
-            MATCH (node:Experiment)-[:USED_METHOD]->(:Entity)<-[:USED_METHOD]-(p:Protocol)-[:HAS_CHUNK]->(pc:ProtocolChunk)
-            RETURN pc.chunking_id AS id, 'protocol' AS type
+        // (2-A) Entity Path: Entity -> Mention -> Section -> Chunk
+        WITH $q AS q
+        CALL db.index.fulltext.queryNodes('entityTextIndex', $q) YIELD node AS e, score
+        MATCH (e)<-[:MENTION_OF]-(:Mention)<-[:HAS_MENTION]-(:Section)-[:HAS_CHUNK]->(c:Chunk)
+        RETURN c.chunk_id AS chunk_id, 0.0 AS vec_score, 0.0 AS ft_score, score AS graph_score
 
-            UNION
-            
-            WITH node
-            // Case D: Metadata -> Paper (Article)
-            // (Exp/Mat) -- (Article) -- (Section) -- (Chunk)
-            MATCH (node)-[*1..2]-(a:Article)-[:HAS_SECTION]->(:Section)-[:HAS_CHUNK]->(c:Chunk)
-            RETURN c.chunk_id AS id, 'paper' AS type
-        }
-        
-        RETURN id, node_score AS graph_score, type
+        UNION
+
+        // (2-B) Metadata Path: [Journal, Topic, Design] -> Article -> Chunk
+        WITH $q AS q
+        UNWIND ['journalTextIndex', 'topicTextIndex', 'studyDesignTextIndex'] AS idxName
+        CALL db.index.fulltext.queryNodes(idxName, $q) YIELD node, score
+        MATCH (node)<--(a:Article)-[:HAS_SECTION]->(:Section)-[:HAS_CHUNK]->(c:Chunk)
+        RETURN c.chunk_id AS chunk_id, 0.0 AS vec_score, 0.0 AS ft_score, score AS graph_score
     }
 
-    // =========================================================================
-    // 3. Aggregation (RRF Style)
-    // =========================================================================
-    WITH id, type,
-        max(vec_score) AS vec_score,
-        max(ft_score) AS ft_score,
+    // -------------------------------------------------------------------------
+    // 3) Score Aggregation & Reranking
+    // -------------------------------------------------------------------------
+    WITH chunk_id,
+        max(vec_score)   AS vec_score,
+        max(ft_score)    AS ft_score,
         max(graph_score) AS graph_score
-    
-    // 최종 점수 계산 (Graph 점수에 가중치 1.2 부여)
-    WITH id, type, (coalesce(vec_score, 0.0) + coalesce(ft_score, 0.0) + coalesce(graph_score, 0.0) * 1.2) AS hy_score
-    
-    RETURN id, hy_score, type
+
+    WITH chunk_id, (vec_score + ft_score + graph_score * 1.2) AS hy_score
+
+    MATCH (c:Chunk {chunk_id: chunk_id})
+    RETURN c.chunk_id AS chunk_id, hy_score
     ORDER BY hy_score DESC
     LIMIT coalesce($k, 50)
     """
 
+
+
+    SEARCH_PROTOCOL_HYBRID = """
+        // =========================================================================
+        // 1 & 2. Direct (Vector + Text) + Graph Context (Unified)
+        // =========================================================================
+        CALL {
+            // (1-A) Vector Search (ProtocolChunk embedding)
+            WITH $embedding AS embedding, $q AS q
+            CALL db.index.vector.queryNodes('protocol_chunk_vector_index', 150, embedding)
+            YIELD node AS pc, score AS vec_score
+            RETURN pc.chunking_id AS id,
+                vec_score        AS vec_score,
+                0.0              AS ft_score,
+                0.0              AS graph_score,
+                'protocol'       AS type
+
+            UNION
+
+            // (1-B) Text Search (Chunk Body + Protocol Title)
+            WITH $q AS q
+            CALL {
+                WITH $q AS q
+                CALL db.index.fulltext.queryNodes('protocolChunkTextIndex', $q)
+                YIELD node AS pc, score
+                RETURN pc, score
+
+                UNION
+
+                CALL db.index.fulltext.queryNodes('protocolTextIndex', $q)
+                YIELD node AS p, score
+                MATCH (p)-[:HAS_CHUNK]->(pc:ProtocolChunk)
+                RETURN pc, score
+            }
+            RETURN pc.chunking_id AS id,
+                0.0            AS vec_score,
+                score          AS ft_score,
+                0.0            AS graph_score,
+                'protocol'     AS type
+
+            UNION
+
+            // (2) Graph Context Search (Seed -> Protocol/Paper paths)
+            WITH $q AS q
+            CALL {
+                WITH $q AS q
+                // Seed nodes from entity/experiment/category indexes
+                CALL db.index.fulltext.queryNodes('entityTextIndex', $q) YIELD node, score
+                RETURN node, score
+                UNION
+                UNWIND ['experimentTextIndex', 'expMaterialTextIndex', 'expEquipmentTextIndex',
+                        'categoryLeafTextIndex', 'categoryParentTextIndex'] AS idxName
+                CALL db.index.fulltext.queryNodes(idxName, $q) YIELD node, score
+                RETURN node, score
+            }
+
+            WITH DISTINCT node, max(score) AS node_score
+
+            CALL {
+                WITH node
+                // Case A: Entity -> Protocol
+                MATCH (node:Entity)<-[:USED_METHOD]-(p:Protocol)-[:HAS_CHUNK]->(pc:ProtocolChunk)
+                RETURN pc.chunking_id AS id, 'protocol' AS type
+
+                UNION
+
+                WITH node
+                // Case B: Metadata -> Protocol
+                MATCH (node)-[*1..2]-(p:Protocol)-[:HAS_CHUNK]->(pc:ProtocolChunk)
+                RETURN pc.chunking_id AS id, 'protocol' AS type
+
+                UNION
+
+                WITH node
+                // Case C: Experiment -> Entity -> Protocol
+                MATCH (node:Experiment)-[:USED_METHOD]->(:Entity)<-[:USED_METHOD]-(p:Protocol)-[:HAS_CHUNK]->(pc:ProtocolChunk)
+                RETURN pc.chunking_id AS id, 'protocol' AS type
+
+                UNION
+
+                WITH node
+                // Case D: Metadata -> Paper -> Chunk
+                MATCH (node)-[*1..2]-(a:Article)-[:HAS_SECTION]->(:Section)-[:HAS_CHUNK]->(c:Chunk)
+                RETURN c.chunk_id AS id, 'paper' AS type
+            }
+
+            RETURN id, node_score AS graph_score, type
+        }
+
+        // =========================================================================
+        // 3. Aggregation (RRF Style)
+        // =========================================================================
+        WITH id, type,
+            max(vec_score)   AS vec_score,
+            max(ft_score)    AS ft_score,
+            max(graph_score) AS graph_score
+
+        WITH id, type,
+            (coalesce(vec_score, 0.0)
+            + coalesce(ft_score, 0.0)
+            + coalesce(graph_score, 0.0) * 1.2) AS hy_score
+
+        RETURN id, hy_score, type
+        ORDER BY hy_score DESC
+        LIMIT coalesce($k, 50)
+        """
+
+
     SEARCH_CLINICAL_HYBRID = """
     CALL {
-        WITH $q AS q
         // 1. Entity(약물/질환) 기반 검색
-        CALL db.index.fulltext.queryNodes('entityTextIndex', q) YIELD node AS e, score
+        CALL db.index.fulltext.queryNodes('entityTextIndex', $q) YIELD node AS e, score
         MATCH (e)<-[:HAS_ENTITY]-(t:ClinicalTrial)
         RETURN t, score
         
@@ -303,19 +295,19 @@ class GraphSearchQueries:
         
         // 2. ClinicalTrial 직접 검색 (제목, ID)
         MATCH (t:ClinicalTrial)
-        WHERE t.title CONTAINS q OR t.nct_id = q
+        WHERE t.title CONTAINS $q OR t.nct_id = $q
         RETURN t, 1.0 AS score
     }
-    
+
     // 3. 점수 집계 및 중복 제거
     WITH t, max(score) AS hy_score
-    
+
     // 4. [Filtering] 메타데이터 기반 선택적 조회
     // 파라미터가 NULL이면 필터링하지 않음 (전체 조회)
     WHERE ($phase IS NULL OR t.phase = $phase)
     AND ($status IS NULL OR t.status = $status)
     AND ($year_from IS NULL OR (t.start_date IS NOT NULL AND t.start_date >= $year_from))
-    
+
     // 5. 상위 결과 선정
     ORDER BY hy_score DESC, t.phase DESC
     LIMIT coalesce($k, 15)  // 상세 정보를 다 가져오므로 개수를 조금 줄임(예: 15개)
@@ -329,21 +321,22 @@ class GraphSearchQueries:
         t.title AS title,
         t.summary AS summary,
         
-        // 메타데이터
+        -- 메타데이터
         t.phase AS phase,
         t.study_type AS study_type,
         t.status AS status,
         t.start_date AS start_date,
         
-        // 리스트 데이터
+        -- 리스트 데이터
         t.conditions AS conditions,
         t.interventions AS interventions,
         
-        // 그래프 정보 및 점수
+        -- 그래프 정보 및 점수
         graph_entities,
         hy_score,
         'ClinicalTrial_KG' AS type
     """
+
 
 # ==========================================================================
     # 2. FILTER / LIST: Metadata Lookup & Similarity
@@ -360,7 +353,7 @@ class GraphSearchQueries:
     FILTER_ARTICLES = """
     MATCH (a:Article)
     OPTIONAL MATCH (a)-[:PUBLISHED_IN]->(j:Journal)
-    OPTIONAL MATCH (a)-[:HAS_DOMAIN]->(d:Domain)
+    OPTIONAL MATCH (a)-[:IN_DOMAIN]->(d:Domain)
     OPTIONAL MATCH (a)-[:HAS_DESIGN]->(sd:StudyDesign)
     
     WITH a, j, d, sd
@@ -539,7 +532,7 @@ class GraphSearchQueries:
     OPTIONAL MATCH (a)-[r1:HAS_EXPERIMENT]->(exp:Experiment)
     
     // Path 2: 텍스트에서 언급(Mention)된 경우 (약한 연결)
-    OPTIONAL MATCH (a)-[:HAS_SECTION]->(:Section)-[:HAS_MENTION]->(m:Mention)-[:NORMALIZED_TO]->(e:Entity)
+    OPTIONAL MATCH (a)-[:HAS_SECTION]->(:Section)-[:HAS_MENTION]->(m:Mention)-[:MENTION_OF]->(e:Entity)
     
     WITH a, exp, e
     
@@ -571,84 +564,71 @@ class GraphSearchQueries:
 # 1) Paper Search (Hybrid + Graph Context + PrimeKG Expansion)
     SEARCH_KG_PAPER_HYBRID = """
     // -------------------------------------------------------------------------
-    // 1. Vector & Text Search (기본 내용 검색)
+    // 1 & 2. Vector + Text + Graph Context + PrimeKG Expansion (Unified)
     // -------------------------------------------------------------------------
     CALL {
+        // (1-A) Vector search on chunk_vector_index
         WITH $embedding AS embedding, $q AS q
-        // (1-A) Vector
         CALL db.index.vector.queryNodes('chunk_vector_index', 150, embedding)
         YIELD node AS c, score AS vec_score
         RETURN c.chunk_id AS chunk_id, vec_score, 0.0 AS ft_score, 0.0 AS graph_score
         
         UNION
         
-        // (1-B) Fulltext
-        CALL db.index.fulltext.queryNodes('chunkTextIndex', q) 
+        // (1-B) Fulltext search on chunkTextIndex
+        WITH $q AS q
+        CALL db.index.fulltext.queryNodes('chunkTextIndex', $q)
         YIELD node AS c, score AS ft_score
         RETURN c.chunk_id AS chunk_id, 0.0 AS vec_score, ft_score, 0.0 AS graph_score
-    }
 
-    UNION
+        UNION
 
-    // -------------------------------------------------------------------------
-    // 2. Graph Context Search (Entity + Metadata + KG Expansion)
-    // -------------------------------------------------------------------------
-    CALL {
+        // (2-A) Direct Entity Path
         WITH $q AS q
-        
-        // (2-A) Direct Entity Path: 검색된 Entity가 포함된 Chunk
-        CALL db.index.fulltext.queryNodes('entityTextIndex', q) YIELD node AS e, score
-        MATCH (e)<-[:NORMALIZED_TO]-(:Mention)<-[:HAS_MENTION]-(:Section)-[:HAS_CHUNK]->(c:Chunk)
-        RETURN c.chunk_id AS chunk_id, score AS graph_score
+        CALL db.index.fulltext.queryNodes('entityTextIndex', $q) YIELD node AS e, score
+        MATCH (e)<-[:MENTION_OF]-(:Mention)<-[:HAS_MENTION]-(:Section)-[:HAS_CHUNK]->(c:Chunk)
+        RETURN c.chunk_id AS chunk_id, 0.0 AS vec_score, 0.0 AS ft_score, score AS graph_score
         
         UNION
         
-        // (2-B) Metadata Path: Journal, Topic, StudyDesign 등 연결된 Chunk
+        // (2-B) Metadata Path
+        WITH $q AS q
         UNWIND ['journalTextIndex', 'topicTextIndex', 'studyDesignTextIndex'] AS idxName
-        CALL db.index.fulltext.queryNodes(idxName, q) YIELD node, score
+        CALL db.index.fulltext.queryNodes(idxName, $q) YIELD node, score
         MATCH (node)<--(a:Article)-[:HAS_SECTION]->(:Section)-[:HAS_CHUNK]->(c:Chunk)
-        RETURN c.chunk_id AS chunk_id, score AS graph_score
+        RETURN c.chunk_id AS chunk_id, 0.0 AS vec_score, 0.0 AS ft_score, score AS graph_score
 
         UNION
 
-        // (2-C) [NEW] PrimeKG Expansion Path
-        // Logic: 검색어 -> Entity -> (PrimeKG Neighbor) -> Neighbor Entity -> Chunk
-        CALL db.index.fulltext.queryNodes('entityTextIndex', q) YIELD node AS seed, score
-        
-        // PrimeKG 상에서 1-hop 이웃 찾기
-        MATCH (seed)-[:MAPS_TO_PRIMEKG]->(:BaseNode)--(:BaseNode)<-[:MAPS_TO_PRIMEKG]-(neighbor:Entity)
-        
-        // 이웃 Entity가 언급된 Chunk 찾기
-        MATCH (neighbor)<-[:NORMALIZED_TO]-(:Mention)<-[:HAS_MENTION]-(:Section)-[:HAS_CHUNK]->(c:Chunk)
-        
-        // * 가중치 조정: 간접 연결이므로 점수를 0.7배로 낮춤
-        RETURN c.chunk_id AS chunk_id, (score * 0.7) AS graph_score
+        // (2-C) PrimeKG Expansion Path
+        WITH $q AS q
+        CALL db.index.fulltext.queryNodes('entityTextIndex', $q) YIELD node AS seed, score
+        MATCH (seed)-[:REFERS_TO]->(:BaseNode)--(:BaseNode)<-[:REFERS_TO]-(neighbor:Entity)
+        MATCH (neighbor)<-[:MENTION_OF]-(:Mention)<-[:HAS_MENTION]-(:Section)-[:HAS_CHUNK]->(c:Chunk)
+        RETURN c.chunk_id AS chunk_id, 0.0 AS vec_score, 0.0 AS ft_score, (score * 0.7) AS graph_score
     }
 
     // -------------------------------------------------------------------------
     // 3. Score Aggregation
     // -------------------------------------------------------------------------
     WITH chunk_id, 
-         max(vec_score) AS vs, 
-         max(ft_score) AS fs, 
-         max(graph_score) AS gs
-    
-    // 최종 점수 합산 (그래프 점수에 가중치 1.2 부여)
+        max(vec_score)   AS vs, 
+        max(ft_score)    AS fs, 
+        max(graph_score) AS gs
+
     WITH chunk_id, (coalesce(vs,0.0) + coalesce(fs,0.0) + coalesce(gs,0.0) * 1.2) AS hy_score
-    
+
     MATCH (c:Chunk {chunk_id: chunk_id})
     RETURN c.chunk_id AS chunk_id, hy_score
     ORDER BY hy_score DESC
     LIMIT coalesce($k, 50)
     """
-    # 3) Clinical Search (Metadata + KG Entity + PrimeKG Expansion)
+
     SEARCH_KG_CLINICAL_HYBRID = """
     CALL {
-        WITH $q AS q
-        
         // (1) Direct Entity Search (기존)
         // 검색어와 정확히 매칭되는 Entity(약물/질환)가 포함된 임상시험
-        CALL db.index.fulltext.queryNodes('entityTextIndex', q) YIELD node AS e, score
+        CALL db.index.fulltext.queryNodes('entityTextIndex', $q) YIELD node AS e, score
         MATCH (e)<-[:HAS_ENTITY]-(t:ClinicalTrial)
         RETURN t, score
         
@@ -657,17 +637,17 @@ class GraphSearchQueries:
         // (2) Direct Metadata Search (기존)
         // 제목이나 NCT ID에 검색어가 포함된 임상시험
         MATCH (t:ClinicalTrial)
-        WHERE t.title CONTAINS q OR t.nct_id = q
+        WHERE t.title CONTAINS $q OR t.nct_id = $q
         RETURN t, 1.0 AS score
 
         UNION
 
         // (3) [NEW] PrimeKG Expansion Path
         // Logic: 검색어 -> Seed Entity -> (PrimeKG Neighbor) -> Neighbor Entity -> ClinicalTrial
-        CALL db.index.fulltext.queryNodes('entityTextIndex', q) YIELD node AS seed, score
+        CALL db.index.fulltext.queryNodes('entityTextIndex', $q) YIELD node AS seed, score
         
         // PrimeKG 상에서 이웃 찾기 (예: 'Lung Cancer' -> 'Cisplatin')
-        MATCH (seed)-[:MAPS_TO_PRIMEKG]->(:BaseNode)--(:BaseNode)<-[:MAPS_TO_PRIMEKG]-(neighbor:Entity)
+        MATCH (seed)-[:REFERS_TO]->(:BaseNode)--(:BaseNode)<-[:REFERS_TO]-(neighbor:Entity)
         
         // 이웃 Entity가 포함된 임상시험 찾기
         MATCH (neighbor)<-[:HAS_ENTITY]-(t:ClinicalTrial)
@@ -675,21 +655,21 @@ class GraphSearchQueries:
         // * 가중치 조정: 간접 연결이므로 점수 0.7배
         RETURN t, (score * 0.7) AS score
     }
-    
+
     // -------------------------------------------------------------------------
     // 4. Aggregation & Filtering
     // -------------------------------------------------------------------------
     WITH t, max(score) AS hy_score
-    
+
     // 필터링 적용 (Phase, Status, Year)
     WHERE ($phase IS NULL OR t.phase = $phase)
-      AND ($status IS NULL OR t.status = $status)
-      AND ($year_from IS NULL OR (t.start_date IS NOT NULL AND t.start_date >= $year_from))
-    
+    AND ($status IS NULL OR t.status = $status)
+    AND ($year_from IS NULL OR (t.start_date IS NOT NULL AND t.start_date >= $year_from))
+
     // 정렬 및 상위 N개 선정
     ORDER BY hy_score DESC, t.phase DESC
     LIMIT coalesce($k, 15)
-    
+
     // -------------------------------------------------------------------------
     // 5. Assembly (상세 정보 조회)
     // -------------------------------------------------------------------------
@@ -717,6 +697,7 @@ class GraphSearchQueries:
         'ClinicalTrial_KG' AS type
     """
 
+
 class GraphCellQueries:
     """
     [조립 단계] 검색된 ID들을 기반으로 LLM이 읽을 문맥(Context)을 생성
@@ -737,20 +718,20 @@ class GraphCellQueries:
     OPTIONAL MATCH (a)-[:HAS_TOPIC]->(t:Topic)
     OPTIONAL MATCH (a)-[:HAS_EXPERIMENT]->(exp:Experiment)
     OPTIONAL MATCH (a)-[:PUBLISHED_IN]->(j:Journal)
-    OPTIONAL MATCH (a)-[:HAS_DOMAIN]->(d:Domain)
+    OPTIONAL MATCH (a)-[:IN_DOMAIN]->(d:Domain)
     OPTIONAL MATCH (a)-[:HAS_DESIGN]->(sd:StudyDesign)
     
     // 2. [PrimeKG Context] 조건부 실행 (Flag가 True일 때만 수행)
     CALL {
         WITH a
         // (1) Guard Clause: 파라미터가 True인지 확인. 아니면 즉시 종료(OPTIONAL MATCH가 null 반환)
-        OPTIONAL MATCH (a)-[:HAS_SECTION]->(:Section)-[:HAS_MENTION]->(:Mention)-[:NORMALIZED_TO]->(e:Entity)
+        OPTIONAL MATCH (a)-[:HAS_SECTION]->(:Section)-[:HAS_MENTION]->(m:Mention)-[:MENTION_OF]->(e:Entity)
         WHERE coalesce($include_primekg, false) = true
         
         WITH DISTINCT e LIMIT 5
         
         // (2) PrimeKG 탐색 (Entity가 존재할 때만 실행됨)
-        OPTIONAL MATCH (e)-[:MAPS_TO_PRIMEKG]->(p:BaseNode)-[r]-(nbr:BaseNode)
+        OPTIONAL MATCH (e)-[:REFERS_TO]->(p:BaseNode)-[r]-(nbr:BaseNode)
         
         // (3) 결과 수집 (null 제외)
         WITH e, r, nbr
@@ -817,7 +798,7 @@ class GraphCellQueries:
         WITH DISTINCT e LIMIT 5
         
         // (2) PrimeKG 탐색
-        OPTIONAL MATCH (e)-[:MAPS_TO_PRIMEKG]->(:BaseNode)-[r]-(nbr:BaseNode)
+        OPTIONAL MATCH (e)-[:REFERS_TO]->(:BaseNode)-[r]-(nbr:BaseNode)
         
         // (3) 결과 수집
         WITH e, r, nbr
@@ -873,7 +854,7 @@ class GraphCellQueries:
         WITH DISTINCT e LIMIT 5
         
         // (2) PrimeKG 탐색
-        OPTIONAL MATCH (e)-[:MAPS_TO_PRIMEKG]->(:BaseNode)-[r]-(nbr:BaseNode)
+        OPTIONAL MATCH (e)-[:REFERS_TO]->(:BaseNode)-[r]-(nbr:BaseNode)
         
         // (3) 결과 수집
         WITH e, r, nbr

@@ -274,11 +274,11 @@ class QueryRoutingNode:
         need_kg: bool,
         base_priority: int,
     ) -> None:
-        """need_kg=True이면 도메인 조합에 맞는 KG 쿼리를 하나 추가."""
+        """need_kg=True이면 도메인 조합에 맞는 KG 하이브리드 스텝을 플랜에 추가한다."""
         if not need_kg:
             return
 
-        # clinical만 있는 경우 임상용 KG, 그 외엔 paper 기준 KG
+        # clinical만 있는 경우에는 임상 KG, 그 외에는 paper KG를 기본 사용
         if "clinical" in domains and "paper" not in domains:
             kg_query = "SEARCH_KG_CLINICAL_HYBRID"
         else:
@@ -287,13 +287,16 @@ class QueryRoutingNode:
         plan.append(
             RetrievalStep(
                 domain="kg",
-                mode="ENTITY",
-                embedder=None,
+                # Orchestrator는 HY/VEC 모드에서 KG 하이브리드 쿼리를 처리하고,
+                # 임베딩은 "main_1536" 키로 가져가기 때문에 이렇게 맞춰준다.
+                mode="HY",
+                embedder="main_1536",
                 priority=base_priority,
                 why="PrimeKG-based graph expansion",
                 query_key=kg_query,
             )
         )
+
 
     @staticmethod
     def _finalize(
