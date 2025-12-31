@@ -1,0 +1,36 @@
+[
+  {
+    "sid": 1,
+    "section_id": "39738725_sec12",
+    "observations": [
+      "Significant improvements were observed from the blinded baseline to the unblinded 6-month wear period in percent TIR(70-180 mg/dL), percent time in hyperglycemia(> 180 and > 250 mg/dL), mean EGV and GMI.",
+      "The unblinded 6-month wear period showed a significant improvement compared to the blinded baseline period in percent TIR(41.9??5.5%, p = 0.001), percent time > 180 mg/dL(58??4.3%, p = 0.001), percent time > 250 mg/dL(23.1??0.1%, p = 0.002), EGV(205 mg/dL to 172 mg/dL, p < 0.001) and GMI(8.2??.4%, p < 0.001).",
+      "There was little time spent in hypoglycemia during all CGM study periods.",
+      "No adverse events related to the intervention were reported during this study."
+    ],
+    "question": "How did the unblinded 6-month wear period compare to the blinded baseline period in terms of percent TIR, percent time in hyperglycemia, EGV, and GMI?",
+    "conclusion": {
+      "interpretation": [
+        "The unblinded 6-month wear period showed improvements in percent TIR, percent time in hyperglycemia, EGV, and GMI compared to the blinded baseline period."
+      ],
+      "interpretation_limits": [
+        "The reported improvements are specific to the conditions of the study, including the 6-month wear period and the patient population studied."
+      ],
+      "cautions": [
+        "The findings are limited to the specific patient group and study conditions, and may not be generalizable to other populations or settings."
+      ],
+      "suggested_next_steps": [
+        "Conduct follow-up experiments to assess the effects over different time periods or in different patient populations."
+      ]
+    },
+    "interpretation_boundary": {
+      "can_conclude": [
+        "The unblinded 6-month wear period showed improvements in percent TIR, percent time in hyperglycemia, EGV, and GMI compared to the blinded baseline period."
+      ],
+      "cannot_conclude": [
+        "ANY molecular, structural, catalytic, physiological, or clinical explanations.",
+        "ANY causal or mechanistic claims not explicitly demonstrated."
+      ]
+    }
+  }
+]

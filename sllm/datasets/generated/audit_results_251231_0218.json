@@ -1,0 +1,1781 @@
+[
+  {
+    "idx": 1,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Multiple unrelated tasks are mixed: the dataset includes both a comparison of Tanimoto similarities and a subset selection process."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 2,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Multiple unrelated tasks are mixed: interpretation and suggested next steps."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 3,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "The output interpretation is mostly supported by the observations, but there is a slight risk of over-interpretation regarding structural overlap.",
+      "The dataset focuses on a single task, but the suggested next steps introduce additional tasks that are not directly related to the current observations."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 4,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "The output interpretation includes a statement about hydrophobic similarity, which is not directly related to the ΔROCe values comparison task."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 5,
+    "verdict": "PASS",
+    "score": 95,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 15,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 6,
+    "verdict": "PASS",
+    "score": 90,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 15,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 7,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "The output interpretation slightly approaches the boundary of the 'cannot_conclude' constraints by suggesting associations that could imply causation.",
+      "The task is mostly focused but includes suggestions for future experiments, which slightly diverges from the main task of interpreting current results."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 8,
+    "verdict": "PASS",
+    "score": 90,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 15,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 9,
+    "verdict": "FAIL",
+    "score": 65,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 15,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output interpretation includes new entities not directly supported by observations.",
+      "Output makes comparative statements not fully supported by the observations.",
+      "Output partially violates cannot_conclude constraints by implying associations not explicitly demonstrated."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 10,
+    "verdict": "PASS",
+    "score": 90,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 15,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 11,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 12,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "The output interpretation slightly extends beyond the 'can_conclude' boundary by associating liraglutide treatment with decreased apoptosis without explicitly stating the lack of mechanistic explanation.",
+      "The atomicity score is reduced due to the inclusion of suggested next steps, which could be considered a separate task."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 13,
+    "verdict": "FAIL",
+    "score": 65,
+    "breakdown_integrity": 20,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Observations are vague and do not provide specific data points or results.",
+      "The output suggests next steps, which may imply a level of inference beyond the provided observations.",
+      "The question cannot be fully answered from the observations as they are not detailed.",
+      "The output includes a suggestion for follow-up experiments, which is not strictly an interpretation of the data."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 14,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "The output interpretation includes statements that are not fully supported by the observations.",
+      "The question asks for differences in pathways, but the output does not clearly delineate these differences.",
+      "The output does not fully respect the interpretation boundary, as it implies conclusions about pathway prominence without explicit support from observations."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 15,
+    "verdict": "FAIL",
+    "score": 65,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 15,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output interpretation is not fully supported by observations.",
+      "Output includes general statements not directly derived from observations.",
+      "Output does not clearly address the specific question about differences between Cyto-ST and ST-fusion embryos."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 16,
+    "verdict": "FAIL",
+    "score": 75,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 15,
+    "breakdown_boundary": 0,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes interpretation of BV2 cell line data, which is not relevant to the question focused on 3xTg AD mice.",
+      "Output violates cannot_conclude constraints by suggesting trends and generalizability without explicit demonstration."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 17,
+    "verdict": "PASS",
+    "score": 90,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "The task is narrowly focused on lysosomal volume and damage in microglia, which aligns well with the observations.",
+      "The output interpretation is supported by the observations and does not introduce new entities or scope.",
+      "The interpretation respects the cannot_conclude constraints, avoiding causal or mechanistic claims.",
+      "The task is slightly mixed with suggestions for future experiments, which could be considered a separate task."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 18,
+    "verdict": "FAIL",
+    "score": 65,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 15,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes observations from AD mice, which are not relevant to the question focused on BV2 cells.",
+      "The output mentions TREM2 levels, which are not directly related to the question about TBC1D15 and galectin3 levels.",
+      "The interpretation includes information not strictly derived from the observations, such as the mention of AD mice.",
+      "The output partially violates the cannot_conclude constraint by implying a broader context than the observations support."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 19,
+    "verdict": "FAIL",
+    "score": 65,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 15,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output interpretation includes statements that may imply causation, which violates the cannot_conclude constraints.",
+      "The question is not fully answerable from the observations alone, as it requires interpretation beyond the data.",
+      "The dataset mixes observations from different experimental conditions (e.g., BV2 cells and 3xTg AD mice) without clear separation."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 20,
+    "verdict": "PASS",
+    "score": 90,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "The task is slightly mixed with suggestions for next steps, which could be considered a separate task."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 21,
+    "verdict": "PASS",
+    "score": 90,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "The task is narrowly focused on apoptosis-related protein expression, but the suggested next steps hint at broader research directions, which slightly affects atomicity."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 22,
+    "verdict": "PASS",
+    "score": 90,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "The task is narrowly focused on comparing PUMA overexpression and silencing, which is appropriate.",
+      "The output interpretation aligns well with the observations and does not introduce unsupported claims.",
+      "The interpretation limits and cautions are clearly stated, respecting the cannot_conclude constraints."
+    ],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 23,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "The output interpretation is mostly supported by the observations, but there is a slight risk of overstepping the interpretation boundary by implying a mechanistic understanding.",
+      "The atomicity score is slightly reduced due to the inclusion of suggested next steps, which could be considered a separate task."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 24,
+    "verdict": "PASS",
+    "score": 90,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "The task is slightly mixed with suggestions for future research, which is not strictly part of the interpretation task."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 25,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Multiple unrelated tasks are mixed: the dataset includes both interpretation of results and suggestions for future experiments, which are separate tasks."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 26,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Multiple unrelated tasks are mixed: interpretation and suggested next steps."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 27,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "The output interpretation includes a statement about the NO/cGMP pathway that is not explicitly supported by the observations.",
+      "The suggested next steps imply a broader scope than the observations support."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 28,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Multiple unrelated tasks are mixed: the dataset includes both interpretation of results and suggestions for future experiments."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 29,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "The output interpretation is supported by the observations.",
+      "The question is answerable from the observations provided.",
+      "The output does not introduce new entities or scope beyond the observations.",
+      "The output respects the interpretation boundaries, but there is a slight risk of implying causality."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 30,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "The output interpretation is generally supported by the observations, but the suggested next steps introduce a new scope not directly supported by the observations."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 31,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Multiple unrelated tasks are mixed: interpretation and suggested next steps."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 32,
+    "verdict": "FAIL",
+    "score": 49,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 15,
+    "breakdown_atomicity": 5,
+    "hard_fail": true,
+    "hard_fail_reasons": [
+      "question_misaligned_with_observations"
+    ],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 33,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 15,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes statements not directly supported by observations, such as co-localization with PIP2.",
+      "Output suggests next steps that imply potential mechanisms, which violates the cannot_conclude constraints.",
+      "The question is answerable from observations, but the output includes additional interpretations not strictly necessary for the question."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 34,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 15,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes fluorescence intensity and gene expression details not directly related to the question about glucose and fructose concentrations.",
+      "The output interpretation includes information not strictly necessary to answer the question.",
+      "The output partially violates the cannot_conclude constraint by discussing gene expression trends."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 35,
+    "verdict": "PASS",
+    "score": 95,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 15,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 36,
+    "verdict": "PASS",
+    "score": 95,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 37,
+    "verdict": "PASS",
+    "score": 90,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 15,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 38,
+    "verdict": "FAIL",
+    "score": 45,
+    "breakdown_integrity": 20,
+    "breakdown_alignment": 10,
+    "breakdown_faithfulness": 5,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": true,
+    "hard_fail_reasons": [
+      "question_misaligned_with_observations"
+    ],
+    "key_issues": [
+      "The observations are not directly related to the question about system performance differences.",
+      "The output includes a statement about the system maintaining rhythm without external signals, which is not directly supported by the observations.",
+      "The question cannot be fully answered from the provided observations.",
+      "The output violates the cannot_conclude constraint by implying system behavior without explicit demonstration."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 39,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "The output interpretation is generally supported by the observations, but there is a slight overreach in suggesting next steps which are not directly derived from the observations.",
+      "The atomicity score is slightly lower due to the inclusion of suggested next steps, which could be considered a separate task from interpreting the data."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 40,
+    "verdict": "FAIL",
+    "score": 45,
+    "breakdown_integrity": 20,
+    "breakdown_alignment": 10,
+    "breakdown_faithfulness": 10,
+    "breakdown_boundary": 0,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "The question cannot be answered from the provided observations as it requires a comparison between Figures 5 and 6, which is not present in the observations.",
+      "The output violates the cannot_conclude constraints by suggesting next steps that imply causal or mechanistic claims.",
+      "The observations do not directly address the question about differences between Figures 5 and 6."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 41,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 42,
+    "verdict": "PASS",
+    "score": 90,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 15,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 43,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes statements not fully supported by observations.",
+      "Interpretation includes entities not directly mentioned in observations.",
+      "Output partially violates cannot_conclude constraints by suggesting potential mechanisms.",
+      "Multiple tasks are mixed, such as interpretation and suggesting next steps."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 44,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 15,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes multiple tasks: interpretation of siRNA transfections and ITP plasma treatment.",
+      "Output mentions GRP78 siRNA transfections, which is not directly related to the main question about ITP plasma treatment.",
+      "Interpretation includes elements not strictly derived from the observations."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 45,
+    "verdict": "FAIL",
+    "score": 49,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 5,
+    "hard_fail": true,
+    "hard_fail_reasons": [
+      "cannot_conclude_violation:\\bcaus(e|al|ality)\\b"
+    ],
+    "key_issues": [
+      "The dataset is focused on a single task, comparing TNPO3mut and TNPO3wt expression.",
+      "The observations are non-empty and result-like, providing data on protein levels and effects on fly muscle.",
+      "The output statements are supported by the observations, with no new entities or scope introduced.",
+      "The output does not violate the cannot_conclude constraints, but the atomicity score is slightly reduced due to the inclusion of suggested next steps, which could be seen as a separate task."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 46,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "The output interpretation closely aligns with the observations, but the suggested next steps hint at potential future research directions, which could be seen as slightly beyond the strict interpretation of the data."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 47,
+    "verdict": "FAIL",
+    "score": 75,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 15,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output interpretation includes a statement about ActD treatment improving abilities, which is not directly related to the primary question about TNPO3mut expression.",
+      "The output does not fully respect the 'cannot_conclude' constraints, as it implies a broader conclusion about TNPO3mut effects over time without explicit temporal data support."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 48,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "The output interpretation closely aligns with the observations, but there is a slight risk of over-interpretation regarding the association with wing phenotypes.",
+      "The task is focused on a single domain, but the suggested next steps introduce new experimental directions."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 49,
+    "verdict": "FAIL",
+    "score": 65,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 10,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output interpretation includes a statement about autophagy being upregulated, which is not directly supported by the observations.",
+      "The output makes a conclusion about chloroquine treatment reducing autophagic activity, which is not explicitly demonstrated in the observations.",
+      "The output violates the cannot_conclude constraint by suggesting a reduction in autophagic activity without explicit demonstration."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 50,
+    "verdict": "FAIL",
+    "score": 49,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 15,
+    "breakdown_atomicity": 5,
+    "hard_fail": true,
+    "hard_fail_reasons": [
+      "question_misaligned_with_observations"
+    ],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 51,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Multiple unrelated tasks are mixed: wound healing and capillary density are separate domains."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 52,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "The output interpretation is mostly supported by the observations, but there is a slight overreach in the statement about ATF4 knockdown and overexpression effects, which could be seen as interpretive.",
+      "The dataset is focused on a single task, but the inclusion of ATF4-related observations introduces a secondary focus that slightly affects atomicity."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 53,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "The output includes a statement about ATF4 deficiency intensifying the decline in expression in mice on HFD, which is not directly supported by the 'can_conclude' constraints.",
+      "The task slightly mixes the interpretation of in vitro and in vivo results, which could be considered as mixing unrelated domains."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 54,
+    "verdict": "PASS",
+    "score": 90,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "The dataset is focused on a single task related to H3K4 methylation levels in HCMECs under PA treatment.",
+      "The output interpretation is well-supported by the observations and does not introduce new entities or scope.",
+      "The output respects the interpretation boundaries, but the atomicity score is slightly reduced due to the inclusion of ATF4 modulation, which could be considered a separate task."
+    ],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 55,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes statements that could be interpreted as mechanistic, which violates the cannot_conclude constraints.",
+      "The question is not fully answerable from the observations alone, as it requires comparison with ATF4 overexpression, which is not directly observed.",
+      "The task mixes observations about enzyme expression with complex formation and recruitment, which could be considered unrelated tasks."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 56,
+    "verdict": "FAIL",
+    "score": 49,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 15,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": true,
+    "hard_fail_reasons": [
+      "question_misaligned_with_observations"
+    ],
+    "key_issues": [
+      "Output includes statements not directly supported by observations.",
+      "Output contains information about serum ck-MB levels and cardiac function, which are not directly related to the question about NCOA4 and GPX4 expression.",
+      "The output includes a statement about NCOA4 and LC3B co-localization, which is not directly relevant to the question."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 57,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "The output interpretation slightly extends beyond the strict boundary by suggesting alterations in protein expression related to ferroptosis, which could be seen as interpretive.",
+      "The atomicity score is reduced due to the inclusion of suggested next steps, which could be considered a separate task."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 58,
+    "verdict": "FAIL",
+    "score": 65,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 15,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes interpretation that partially attenuated effects, which is not supported by the 'can_conclude' constraints.",
+      "The question is not fully answerable from observations alone due to the inclusion of attenuation effects.",
+      "The output interpretation includes a statement that could be seen as mechanistic, violating the 'cannot_conclude' constraints."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 59,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "The output includes a statement about protein expression that is not explicitly covered by the 'can_conclude' constraints.",
+      "The suggested next steps introduce new experimental conditions not directly related to the observations."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 60,
+    "verdict": "FAIL",
+    "score": 49,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": true,
+    "hard_fail_reasons": [
+      "question_misaligned_with_observations"
+    ],
+    "key_issues": [
+      "The output does not explicitly state that no causal or mechanistic claims are made, which is a requirement under the cannot_conclude constraints."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 61,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "The output interpretation includes statements about reversing changes in LVAWs, LVESD, and LV Vols, which are not explicitly supported by the 'can_conclude' constraints.",
+      "The atomicity score is slightly reduced due to the inclusion of suggested next steps, which could be considered a separate task."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 62,
+    "verdict": "PASS",
+    "score": 90,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 15,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Multiple unrelated tasks are mixed: the dataset includes both the comparison of myocardial fibers and inflammatory cell infiltration, and the effects of treatments, which are separate tasks."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 63,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "The output slightly approaches the boundary of the cannot_conclude constraints by suggesting next steps, which could imply a mechanistic exploration."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 64,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output interpretation slightly extends beyond the strict boundary by suggesting next steps, which could imply mechanistic exploration.",
+      "The atomicity score is reduced due to the inclusion of suggested next steps, which could be considered a separate task."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 65,
+    "verdict": "PASS",
+    "score": 90,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "The dataset is focused on a single task and does not mix unrelated domains.",
+      "The output statements are supported by the observations and do not introduce new entities or scope.",
+      "The output respects the cannot_conclude constraints, but the suggested next steps could be seen as slightly interpretive."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 66,
+    "verdict": "PASS",
+    "score": 90,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "The dataset is focused on a single task related to weight, lipid levels, and lesion severity in AS mice.",
+      "Observations are clear and directly related to the question.",
+      "Output statements are supported by observations without introducing new entities or scope.",
+      "Interpretation limits and cautions are appropriately stated, but atomicity could be improved by focusing more narrowly on a single aspect."
+    ],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 67,
+    "verdict": "PASS",
+    "score": 90,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 15,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 68,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "The output interpretation is mostly supported by the observations, but there is a slight risk of over-interpretation regarding the restoration of migration capability.",
+      "The suggested next steps imply a broader scope than the observations directly support."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 69,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "The output interpretation closely follows the observations and does not introduce new entities or scope.",
+      "The interpretation limits and cautions are appropriately stated, adhering to the provided constraints.",
+      "The suggested next steps are relevant but slightly extend beyond the strict interpretation of the observations."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 70,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Multiple unrelated tasks are mixed: the dataset includes observations on mRNA expression, protein expression, and cell migration, which could be considered separate domains."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 71,
+    "verdict": "PASS",
+    "score": 90,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 15,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 72,
+    "verdict": "PASS",
+    "score": 90,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 15,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 73,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "The output interpretation is mostly supported by the observations, but there is a slight risk of over-interpretation regarding the delineation between white and grey matter.",
+      "The task is focused on a single domain, but the suggested next steps introduce new elements not directly related to the observations."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 74,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "The output interpretation slightly extends beyond the 'cannot_conclude' constraints by implying associations that could be interpreted as causal.",
+      "The atomicity score is reduced due to the presence of multiple suggested next steps, which could be seen as mixing tasks."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 75,
+    "verdict": "PASS",
+    "score": 90,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "The dataset is focused on a single task related to HAF depletion and overexpression effects.",
+      "The output interpretation is well-aligned with the observations and does not introduce new entities or scope.",
+      "The interpretation respects the cannot_conclude constraints, avoiding mechanistic claims."
+    ],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 76,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "The output includes a statement about protein levels of TAK1, NEMO, P-p50, and P-p65, which is not directly related to the question focused on TRADD and RIPK1.",
+      "The atomicity score is reduced due to the inclusion of additional proteins beyond TRADD and RIPK1, which slightly mixes tasks."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 77,
+    "verdict": "FAIL",
+    "score": 49,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 15,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": true,
+    "hard_fail_reasons": [
+      "question_misaligned_with_observations"
+    ],
+    "key_issues": [
+      "Output includes statements about HAF overexpression which is not directly related to the question about HAF knockdown.",
+      "The output interpretation includes a statement about HAF overexpression attenuating changes, which is not directly supported by the observations related to the question.",
+      "The output does not fully adhere to the 'cannot_conclude' constraints, as it implies a mechanistic role of HAF overexpression."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 78,
+    "verdict": "FAIL",
+    "score": 49,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": true,
+    "hard_fail_reasons": [
+      "question_misaligned_with_observations"
+    ],
+    "key_issues": [
+      "Output interpretation closely follows the observations and does not introduce new entities or scope.",
+      "The question is answerable from the observations provided.",
+      "The output does not violate the cannot_conclude constraints, but the boundary score is slightly reduced due to the need for more explicit caution against mechanistic interpretations."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 79,
+    "verdict": "PASS",
+    "score": 95,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 80,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "The output interpretation includes statements about p62/SQSTM1 expression, which is not explicitly mentioned in the 'can_conclude' section.",
+      "The atomicity score is reduced due to the inclusion of both autophagy and cell cycle effects, which could be considered separate tasks."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 81,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 15,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes a statement about ATF4 overexpression reducing cell growth, which is a mechanistic claim not directly supported by the observations.",
+      "The question asks for a comparison between KYSE30 and KYSE70 cells, but the output does not address this comparison directly.",
+      "The output partially violates the cannot_conclude constraint by implying a mechanistic effect of ATF4 overexpression."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 82,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "The output includes statements about protein expressions (ATF4 and LC3) which were not part of the original question focused on ROS, calcium, and cell viability.",
+      "The task slightly mixes the focus by including protein expression data, which could be considered a separate domain."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 83,
+    "verdict": "FAIL",
+    "score": 75,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 15,
+    "breakdown_boundary": 0,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output violates cannot_conclude constraints by suggesting a decrease in expression without explicit evidence.",
+      "The output interpretation suggests a conclusion that is not directly supported by the observations."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 84,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 85,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "The output interpretation includes a statement about less green fluorescence in TUNEL detection, which is not directly supported by the observations.",
+      "The suggested next steps introduce new experimental conditions not present in the observations."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 86,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "The task is focused on interpreting experimental results without inferring mechanisms, which is adhered to.",
+      "The observations are non-empty and result-like, focusing on system behavior rather than background or methods.",
+      "The output statements are supported by the observations, but there is a slight risk of over-interpretation regarding the SNIC bifurcation.",
+      "The interpretation does not violate the cannot_conclude constraints, but caution is needed to ensure no implicit mechanistic claims are made.",
+      "The task is mostly atomic, but there is a minor mix of discussing both A_2 and C_1 effects, which could be seen as separate tasks."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 87,
+    "verdict": "PASS",
+    "score": 90,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "The task is slightly mixed with suggestions for next steps, which could be considered a separate task."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 88,
+    "verdict": "PASS",
+    "score": 90,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "The task is slightly mixed with suggestions for future experiments, which could be considered a separate task."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 89,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "The output interpretation is mostly supported by the observations, but there is a slight risk of over-interpretation regarding the stability of the system.",
+      "The atomicity score is slightly reduced due to the inclusion of suggested next steps, which could be considered a separate task."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 90,
+    "verdict": "PASS",
+    "score": 90,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "The dataset is focused on a single task related to the effects of MeJA pretreatment on A. bisporus.",
+      "The observations are non-empty and result-like, providing specific data points.",
+      "The output statements are supported by the observations and do not introduce new entities or scope.",
+      "The output respects the interpretation boundaries, avoiding causal or mechanistic claims."
+    ],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 91,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "The output interpretation slightly exceeds the boundary by suggesting follow-up experiments, which could imply a need for further investigation not strictly supported by the observations."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 92,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "The output includes a statement about the conserved MYB domain, which is not directly related to the expression change question.",
+      "The atomicity score is reduced due to the inclusion of structural details that are not directly relevant to the expression change task."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 93,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Multiple unrelated tasks are mixed: gene expression analysis and DNA binding specificity."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 94,
+    "verdict": "FAIL",
+    "score": 75,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 0,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes a statement about higher levels of total phenolics and flavonoids, which is not directly related to the question about resistance to P. tolaasii infection.",
+      "The output violates the cannot_conclude constraint by suggesting a potential implication of phenolics and flavonoids without explicit demonstration."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 95,
+    "verdict": "FAIL",
+    "score": 49,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 5,
+    "hard_fail": true,
+    "hard_fail_reasons": [
+      "question_misaligned_with_observations"
+    ],
+    "key_issues": [
+      "The output interpretation is mostly supported by the observations, but there is a slight extension in the scope regarding foam cells treated with Hcy, which is not directly related to the high methionine diet in the question.",
+      "The dataset mixes observations from in vivo (mice) and in vitro (foam cells) experiments, which could be considered as mixing unrelated tasks."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 96,
+    "verdict": "FAIL",
+    "score": 65,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 15,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "The question cannot be fully answered from the observations provided.",
+      "The output includes an interpretation about lncARF accumulation in nuclei, which is not directly related to the question.",
+      "The output suggests next steps that imply potential mechanisms, which could violate the cannot_conclude constraints."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 97,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 0,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output violates cannot_conclude constraints by suggesting effects on lipid accumulation, which is beyond the scope of the question.",
+      "The question is not fully aligned with the observations as it asks for a comparison with untreated cells, which is not directly addressed in the observations.",
+      "Multiple tasks are mixed, such as effects on lipid accumulation and expression changes, which are not directly related to the question."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 98,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 10,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes a statement about lncARF extending the half-life of RRAGD, which is a mechanistic claim not explicitly demonstrated in the observations.",
+      "The output suggests next steps that imply a broader scope than the observations support.",
+      "The interpretation includes a statement about protein levels that is not directly related to the question asked."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 99,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "The output interpretation is well-supported by the observations.",
+      "The question is answerable from the observations provided.",
+      "The output does not violate the cannot_conclude constraints.",
+      "The task is focused on a single domain without mixing unrelated tasks."
+    ],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 100,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "The output interpretation is consistent with the observations and does not introduce new entities or scope.",
+      "The question is answerable from the observations provided.",
+      "The output does not violate the cannot_conclude constraints, but the boundary score is slightly reduced due to the potential for implicit mechanistic inference."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 101,
+    "verdict": "FAIL",
+    "score": 75,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes a statement about DNMT1 overexpression and autophagy, which is not directly related to the question about Hcy and DNMT1 inhibitors.",
+      "The output interpretation includes a mechanistic claim about DNMT1 overexpression affecting autophagy, which violates the cannot_conclude constraint."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 102,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "The output interpretation is well-supported by the observations.",
+      "The dataset focuses on a single task related to FosB and lncARF in foam cells.",
+      "The interpretation limits and cautions are clearly stated, respecting the cannot_conclude constraints.",
+      "The dataset does not mix unrelated tasks, maintaining atomicity."
+    ],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 103,
+    "verdict": "FAIL",
+    "score": 65,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "The output includes an interpretation about lncARF not correlating with other parameters, which is not directly related to the question about AUC values.",
+      "The task mixes multiple interpretations, such as correlation and diagnostic performance, which are unrelated to the specific question.",
+      "The output includes a statement about lncARF expression correlation that is not directly relevant to the AUC comparison question.",
+      "The output violates the atomicity rule by addressing multiple unrelated tasks."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 104,
+    "verdict": "PASS",
+    "score": 90,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 15,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 105,
+    "verdict": "FAIL",
+    "score": 75,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 0,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output violates cannot_conclude constraints by suggesting pathway alterations without explicit demonstration.",
+      "Interpretation includes pathway alterations which may imply mechanistic insights, violating the cannot_conclude boundary."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  }
+]

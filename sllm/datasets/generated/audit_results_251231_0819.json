@@ -1,0 +1,92 @@
+[
+  {
+    "idx": 1,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 20,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Observations are somewhat vague and do not provide clear, result-like data.",
+      "The question is not fully answerable from the observations provided.",
+      "Output includes suggested next steps which imply a level of inference beyond the observations."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 2,
+    "verdict": "FAIL",
+    "score": 49,
+    "breakdown_integrity": 20,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 0,
+    "breakdown_atomicity": 0,
+    "hard_fail": true,
+    "hard_fail_reasons": [
+      "question_misaligned_with_observations"
+    ],
+    "key_issues": [
+      "Observations are subjective and do not provide concrete data.",
+      "Output includes suggestions for next steps, which is outside the scope of the task.",
+      "Output does not strictly adhere to the interpretation limits set in the instruction."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 3,
+    "verdict": "FAIL",
+    "score": 60,
+    "breakdown_integrity": 20,
+    "breakdown_alignment": 10,
+    "breakdown_faithfulness": 15,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Observations are somewhat relevant but do not provide a clear answer to the question.",
+      "Output includes new suggestions and cautions that are not strictly based on the observations.",
+      "The question is not directly answerable from the observations provided."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 4,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes suggestions for next steps, which introduces a new task.",
+      "Observations are somewhat relevant but do not fully support the interpretation of differences in preferences."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 5,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes multiple unrelated tasks (interpretation, cautions, suggested next steps).",
+      "Some output statements introduce new entities (e.g., sample size, generalizability) not present in observations."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  }
+]

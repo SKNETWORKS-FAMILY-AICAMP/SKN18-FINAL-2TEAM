@@ -1,0 +1,94 @@
+[
+  {
+    "idx": 1,
+    "verdict": "FAIL",
+    "score": 49,
+    "breakdown_integrity": 20,
+    "breakdown_alignment": 10,
+    "breakdown_faithfulness": 15,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": true,
+    "hard_fail_reasons": [
+      "question_misaligned_with_observations"
+    ],
+    "key_issues": [
+      "Observations are somewhat relevant but do not provide a clear result-like output.",
+      "The question is not directly answerable from the observations provided.",
+      "Output includes new suggestions and cautions that are not supported by the observations.",
+      "Multiple unrelated tasks are mixed in the suggested next steps."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 2,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "The observations are non-empty but the output includes subjective interpretations that may not be strictly supported by the observations.",
+      "The question posed cannot be fully answered based solely on the provided observations, as it requires a comparative analysis that is not explicitly supported.",
+      "The output includes suggested next steps that imply a causal relationship, which violates the cannot_conclude constraints."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 3,
+    "verdict": "FAIL",
+    "score": 55,
+    "breakdown_integrity": 20,
+    "breakdown_alignment": 10,
+    "breakdown_faithfulness": 15,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Observations are somewhat relevant but do not provide clear, result-like data.",
+      "The question is not directly answerable from the observations provided.",
+      "Output includes suggested next steps which introduce new entities and scope.",
+      "Multiple unrelated tasks are mixed (interpretation and suggesting next steps)."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 4,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 20,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Observations are somewhat relevant but do not provide a clear basis for answering the question about differences in perspectives.",
+      "The output includes suggested next steps, which introduces a new task unrelated to the interpretation of the observations.",
+      "The question asks for differences, but the observations do not provide comparative data."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 5,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes suggested next steps, which introduces a new task unrelated to the interpretation of the observations."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  }
+]
