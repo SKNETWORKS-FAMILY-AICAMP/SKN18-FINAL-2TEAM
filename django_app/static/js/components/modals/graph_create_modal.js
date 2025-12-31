@@ -349,13 +349,30 @@
             return;
         }
 
-        // Get chart as SVG
-        const svg = chartInstance.getSVG({
-            chart: {
-                width: 600,
-                height: 400
+        let svg = '';
+        if (typeof chartInstance.getSVG === 'function') {
+            // Get chart as SVG using Highcharts API (requires exporting module)
+            svg = chartInstance.getSVG({
+                chart: {
+                    width: 600,
+                    height: 400
+                }
+            });
+        } else if (graphPreviewContainer) {
+            // Fallback: extract current SVG markup directly from the preview container
+            const svgElement = graphPreviewContainer.querySelector('svg');
+            if (svgElement) {
+                svg = svgElement.outerHTML;
             }
-        });
+        }
+
+        if (!svg) {
+            console.error('[GraphCreateModal] Unable to export chart SVG');
+            if (window.notyf) {
+                window.notyf.error('차트 이미지를 생성할 수 없습니다.');
+            }
+            return;
+        }
 
         // Convert SVG to base64 data URL
         const svgBase64 = btoa(unescape(encodeURIComponent(svg)));
