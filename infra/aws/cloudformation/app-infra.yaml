@@ -397,6 +397,10 @@ Resources:
           # 프로젝트 디렉토리 생성
           mkdir -p /home/ec2-user/app
           chown ec2-user:ec2-user /home/ec2-user/app
+          
+          # 모델 파일 영구 저장 디렉토리 생성 (컨테이너 재기동 시에도 유지)
+          mkdir -p /home/ec2-user/models
+          chown ec2-user:ec2-user /home/ec2-user/models
 
           # ========================================
           # ALB Target Group 자동 등록
