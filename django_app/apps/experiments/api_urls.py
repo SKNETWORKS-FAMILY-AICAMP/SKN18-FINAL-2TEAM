@@ -7,5 +7,5 @@ app_name = "experiments_api"
 urlpatterns = [
     # /api/experiments/ -> apps.experiments.views.experiments_api
     path("", views.experiments_api, name="api_experiments"),
-    path("runpod/pipeline", views_runpod.rfdiffusion_runpod_api, name="api_runpod_rfdiffusion"),
+    path("runpod/rfdiffusion/", views_runpod.rfdiffusion_runpod_api, name="api_runpod_rfdiffusion"),
 ]
