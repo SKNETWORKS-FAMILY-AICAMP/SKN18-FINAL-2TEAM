@@ -37,20 +37,23 @@ def rfdiffusion_runpod_api(request):
     if not isinstance(request.data, dict):
         return Response({"detail": "JSON body is required."}, status=400)
 
-    run_url = RUNPOD_BASE_URL.rstrip("/") + "/run"
-    try:
-        resp = requests.post(
-            run_url,
-            json=request.data,
-            headers={"Content-Type": "application/json"},
-            timeout=60,
-        )
-    except requests.RequestException as exc:
-        return Response({"detail": f"RunPod request failed: {exc}"}, status=502)
+    # run_url = RUNPOD_BASE_URL.rstrip("/") + "/run"
+    # try:
+        # resp = requests.post(
+        #     run_url,
+        #     json=request.data,
+        #     headers={"Content-Type": "application/json"},
+        #     timeout=60,
+        # )
+    # except requests.RequestException as exc:
+    #     return Response({"detail": f"RunPod request failed: {exc}"}, status=502)
 
-    try:
-        data = resp.json()
-    except ValueError:
-        data = {"detail": resp.text}
 
-    return Response(data, status=resp.status_code)
+    # try:
+    #     data = resp.json()
+    # except ValueError:
+    #     data = {"detail": resp.text}
+
+    # return Response(data, status=resp.status_code)
+    print("출력이야..")
+    return Response({"detail": "RunPod RFdiffusion API endpoint is under construction."}, status=200)
