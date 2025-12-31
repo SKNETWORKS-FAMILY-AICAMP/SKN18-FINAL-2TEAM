@@ -5,14 +5,32 @@
 import logging
 import subprocess
 import os
+import json
 from typing import Dict, Any
 from datetime import datetime
+
+# >>> 여기 추가 <<<
+import sys
+from pathlib import Path
+
+# 프로젝트 루트(SKN18-FINAL-2TEAM) 기준으로 django_app 경로 추가
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+DJANGO_APP_DIR = PROJECT_ROOT / "django_app"
+if str(DJANGO_APP_DIR) not in sys.path:
+    sys.path.insert(0, str(DJANGO_APP_DIR))
+
 from messaging.consumers.base import BaseConsumer
-from messaging.producers.topic_producer import TopicProducer
+from messaging.producers.base import TopicProducer
 from messaging.schemas.base import StatusMessage
+from apps.experiments.models import ExperimentToolSelection
 
 logger = logging.getLogger(__name__)
 
+TOOL_NAME_QUEUE_MAP = {
+    "RFdiffusion": "rfdiffusion",
+    "ProteinMPNN": "protein_mpnn",
+    "AlphaFold3": "alphafold3",
+}
 
 def update_experiment_status(
     experiment_sid: int,
@@ -128,6 +146,89 @@ def launch_simulation_docker(
             "error": str(e),
         }
 
+def has_older_pending_experiment(current_experiment_sid: int) -> bool:
+    """
+    현재 experiment_sid 보다 먼저 생성된 실험 중에
+    아직 완료되지 않은(E, R, P) 것이 있는지 확인.
+    있으면 True → 지금 메시지는 나중에 처리해야 함.
+    """
+    import django
+    import os as _os
+    from django.db.models import Q
+
+    _os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
+    django.setup()
+
+    from apps.experiments.models import Experiment
+
+    return Experiment.objects.filter(
+        experiment_sid__lt=current_experiment_sid,
+        status__in=["E", "R", "P"],
+    ).exists()
+
+def enqueue_next_selection(experiment_sid: int, current_sort_order: int, requested_by: int | None):
+    """
+    현재 sort_order 이후의 다음 ExperimentToolSelection을 찾아
+    그 도구를 RabbitMQ 큐에 넣는다.
+    다음 단계가 없으면 None 반환.
+    """
+    try:
+        import django
+        import os as _os
+        _os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
+        django.setup()
+
+        qs = (
+            ExperimentToolSelection.objects
+            .select_related("experiment", "tool")
+            .filter(experiment_id=experiment_sid)
+            .order_by("sort_order")
+        )
+        next_sel = qs.filter(sort_order__gt=current_sort_order).first()
+        if not next_sel:
+            return None  # 더 이상 다음 단계 없음
+
+        total_steps = qs.count()
+
+        tool_name_display = next_sel.tool.tool_name
+        tool_name_for_queue = TOOL_NAME_QUEUE_MAP.get(tool_name_display)
+        if not tool_name_for_queue:
+            logger.warning(f"Unknown tool for queue: {tool_name_display}")
+            return None
+
+        try:
+            tool_options = json.loads(next_sel.tool_options_json or "{}")
+        except json.JSONDecodeError:
+            tool_options = {}
+
+        payload = {
+            "protein_sequence": next_sel.experiment.protein_sequence,
+            "protein_name": next_sel.experiment.protein_name,
+            "selection_sid": next_sel.selection_sid,
+            "tool_sid": next_sel.tool_id,
+            "tool_name": tool_name_display,
+            "sort_order": next_sel.sort_order,
+            "total_steps": total_steps,
+            "tool_options": tool_options,
+        }
+
+        task_id = publish_simulation(
+            tool_name=tool_name_for_queue,
+            experiment_sid=experiment_sid,
+            payload=payload,
+            user_id=requested_by,
+        )
+        logger.info(
+            f"Enqueued next step: experiment_sid={experiment_sid}, "
+            f"sort_order={next_sel.sort_order}, task_id={task_id}"
+        )
+        return task_id
+
+    except Exception as e:
+        logger.error(f"Failed to enqueue next selection: {e}", exc_info=True)
+        return None
+
+
 
 def handle_simulation_task(message: Dict[str, Any]):
     """
@@ -141,9 +242,22 @@ def handle_simulation_task(message: Dict[str, Any]):
     experiment_sid = payload.get("experiment_sid")
     tool_name = payload.get("tool_name")
     
+    # 파이프라인 단계 정보 / 요청자 ID
+    current_sort_order = payload.get("sort_order", 0)
+    total_steps = payload.get("total_steps", 1)
+    requested_by = message.get("requested_by")
+    
     if not experiment_sid or not tool_name:
         logger.error(f"Invalid message: missing experiment_sid or tool_name")
         return
+    
+    if has_older_pending_experiment(experiment_sid):
+        logger.info(
+            f"Skip for now: experiment_sid={experiment_sid} has older pending experiments. Requeue."
+        )
+        # 그냥 예외를 던지면 BaseConsumer가 basic_nack(..., requeue=True) 해서
+        # 메시지를 큐 뒤로 다시 넣어 줍니다.
+        raise RuntimeError("Older pending experiment exists")
     
     try:
         # 1. 시작: 상태 업데이트 + 피드백 발행
@@ -182,28 +296,45 @@ def handle_simulation_task(message: Dict[str, Any]):
         update_experiment_status(experiment_sid, 'R', 25)
         publish_status(task_id, experiment_sid, 'R', 25)
         
-        # 4. 시뮬레이션 실행
         result = launch_simulation_docker(tool_name, config_path, output_dir)
-        
+
         if result["success"]:
-            # 5. 진행률 업데이트: 75%
-            update_experiment_status(experiment_sid, 'R', 75)
-            publish_status(task_id, experiment_sid, 'R', 75)
-            
-            # 6. 결과 저장 (t_experiment_result 테이블)
-            # TODO: 결과 파일을 t_experiment_result에 저장
-            
-            # 7. 완료: 상태 업데이트 + 피드백 발행
-            update_experiment_status(experiment_sid, 'C', 100)
-            publish_status(
-                task_id,
-                experiment_sid,
-                'C',
-                100,
-                {"output_dir": output_dir, "result": result}
+            # 파이프라인 진행률 계산 (0-based sort_order → 1-based 단계)
+            step_index = current_sort_order + 1
+            pipeline_progress = int(100 * step_index / max(total_steps, 1))
+
+            # 다음 단계 큐잉 시도
+            next_task_id = enqueue_next_selection(
+                experiment_sid=experiment_sid,
+                current_sort_order=current_sort_order,
+                requested_by=requested_by,
             )
-            
-            logger.info(f"Simulation completed: experiment_sid={experiment_sid}")
+
+            if next_task_id:
+                # 아직 남은 단계가 있으므로 진행 중 상태 유지
+                update_experiment_status(experiment_sid, 'R', pipeline_progress)
+                publish_status(
+                    task_id,
+                    experiment_sid,
+                    'R',
+                    pipeline_progress,
+                    {"next_task_id": next_task_id},
+                )
+                logger.info(
+                    f"Step completed: experiment_sid={experiment_sid}, "
+                    f"sort_order={current_sort_order}, next_task_id={next_task_id}"
+                )
+            else:
+                # 마지막 단계 → 전체 파이프라인 완료
+                update_experiment_status(experiment_sid, 'C', 100)
+                publish_status(
+                    task_id,
+                    experiment_sid,
+                    'C',
+                    100,
+                    {"output_dir": output_dir, "result": result},
+                )
+                logger.info(f"Simulation pipeline completed: experiment_sid={experiment_sid}")
         else:
             # 실패 처리
             error_msg = result.get("error", "Unknown error")

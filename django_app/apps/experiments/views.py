@@ -284,44 +284,45 @@ TOOL_NAME_QUEUE_MAP = {
 
 def enqueue_simulation_tasks(experiment, selections, user):
     """
-    한 실험에 대한 selection 목록을 받아,
-    각 selection마다 RabbitMQ에 시뮬레이션 작업을 발행한다.
+    실험 생성 직후, 첫 단계 selection 하나만 RabbitMQ에 넣는다.
+    나머지 단계는 worker에서 순차적으로 enqueue.
     """
     user_id = getattr(user, "user_id", None) or getattr(user, "pk", None)
+    if not selections:
+        return []
+
+    # sort_order 기준 첫 단계
+    first_sel = sorted(selections, key=lambda s: s.sort_order)[0]
     total_steps = len(selections)
-    task_ids = []
 
-    for sel in selections:
-        tool_name_display = sel.tool.tool_name
-        tool_name_for_queue = TOOL_NAME_QUEUE_MAP.get(tool_name_display)
-        if not tool_name_for_queue:
-            continue
+    tool_name_display = first_sel.tool.tool_name
+    tool_name_for_queue = TOOL_NAME_QUEUE_MAP.get(tool_name_display)
+    if not tool_name_for_queue:
+        return []
 
-        try:
-            tool_options = json.loads(sel.tool_options_json or "{}")
-        except json.JSONDecodeError:
-            tool_options = {}
+    try:
+        tool_options = json.loads(first_sel.tool_options_json or "{}")
+    except json.JSONDecodeError:
+        tool_options = {}
 
-        payload = {
-            "protein_sequence": experiment.protein_sequence,
-            "protein_name": experiment.protein_name,
-            "selection_sid": sel.selection_sid,
-            "tool_sid": sel.tool_id,
-            "tool_name": tool_name_display,
-            "sort_order": sel.sort_order,
-            "total_steps": total_steps,
-            "tool_options": tool_options,
-        }
+    payload = {
+        "protein_sequence": experiment.protein_sequence,
+        "protein_name": experiment.protein_name,
+        "selection_sid": first_sel.selection_sid,
+        "tool_sid": first_sel.tool_id,
+        "tool_name": tool_name_display,
+        "sort_order": first_sel.sort_order,   # 현재 단계 index
+        "total_steps": total_steps,           # 파이프라인 전체 길이
+        "tool_options": tool_options,
+    }
 
-        task_id = publish_simulation(
-            tool_name=tool_name_for_queue,
-            experiment_sid=experiment.experiment_sid,
-            payload=payload,
-            user_id=user_id,
-        )
-        task_ids.append(task_id)
-
-    return task_ids
+    task_id = publish_simulation(
+        tool_name=tool_name_for_queue,
+        experiment_sid=experiment.experiment_sid,
+        payload=payload,
+        user_id=user_id,
+    )
+    return [task_id]
 
 
 
@@ -402,7 +403,7 @@ def _create_experiment_api(request):
         # t_experiment insert
         experiment = Experiment.objects.create(
             pipeline_name=pipeline_name,
-            status="R",  # Ready
+            status="E",  # Ready
             progress=0,
             protein_sequence=protein_sequence,
             protein_name=protein_name or None,
@@ -475,10 +476,10 @@ def _create_experiment_api(request):
             status=500,
         )
     
-    # 4) 상태를 'R'(진행중)으로 업데이트
-    experiment.status = 'R'
-    experiment.progress = 0
-    experiment.save(update_fields=['status', 'progress', 'updated_at'])
+    # # 4) 상태를 'R'(진행중)으로 업데이트
+    # experiment.status = 'R'
+    # experiment.progress = 0
+    # experiment.save(update_fields=['status', 'progress', 'updated_at'])
 
     # 5) 클라이언트 응답 (실험 생성 + 큐 등록 정보 포함)
     return Response(
