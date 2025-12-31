@@ -195,7 +195,7 @@ def index(request):
     responses={200: dict},
 )
 @api_view(['GET', 'POST'])
-@permission_classes([IsAuthenticated])
+@permission_classes([])
 def uniprot_search_api(request):
     # 1. Query parameter 수집
     keyword = request.query_params.get("keyword")
