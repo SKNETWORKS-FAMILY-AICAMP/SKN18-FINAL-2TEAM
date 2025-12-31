@@ -93,9 +93,32 @@
                 </div>
 
                 <!-- Bookmark Sidebar -->
-                <div class="bookmark-sidebar hidden" id="bookmarkSidebar">
+                <div class="bookmark-sidebar" id="bookmarkSidebar" data-bookmark-api-url="{% url 'bookmark_api:bookmark_list' %}">
                     <div class="bookmark-header">
-                        <h3>북마크</h3>
+                        <div class="bookmark-header-top">
+                            <h3>북마크</h3>
+                            <div class="bookmark-header-actions">
+                                <button class="btn-bookmark-edit-toggle" id="btnBookmarkEditToggle" title="편집 모드">
+                                    <i class="fa-solid fa-pen"></i>
+                                </button>
+                                <button class="btn-bookmark-add-category" id="btnBookmarkAddCategory" title="카테고리 추가">
+                                    <i class="fa-solid fa-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <!-- Add Category Input -->
+                        <div class="bookmark-add-category-form" id="bookmarkAddCategoryForm" style="display: none;">
+                            <input
+                                type="text"
+                                id="bookmarkNewCategoryName"
+                                placeholder="카테고리 이름 입력..."
+                                class="bookmark-input"
+                            />
+                            <div class="bookmark-form-actions">
+                                <button class="btn-bookmark-save" id="btnBookmarkSaveCategory">저장</button>
+                                <button class="btn-bookmark-cancel" id="btnBookmarkCancelCategory">취소</button>
+                            </div>
+                        </div>
                     </div>
                     <div class="bookmark-content" id="bookmarkContent">
                         <!-- Bookmarks will be rendered here by JavaScript -->

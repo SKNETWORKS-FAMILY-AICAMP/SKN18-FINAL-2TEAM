@@ -6,10 +6,18 @@ let isEditMode = false;
 let noteTitle = "";
 let noteContent = "";
 let noteTags = "";
-let isBookmarkSidebarOpen = false;
+let isBookmarkSidebarOpen = true;
 let openBookmarkCategories = {};
 let attachedFiles = [];
 let fileIdCounter = 1;
+let attachedCharts = [];
+let chartIdCounter = 1;
+let isBookmarkEditMode = false;
+let isAddingBookmarkCategory = false;
+let addingBookmarkToCategoryId = null;
+let newCategoryName = '';
+let newBookmarkTitle = '';
+let newBookmarkUrl = '';
 
 // CKEditor5 instance
 let editorInstance = null;
@@ -24,41 +32,13 @@ let btnShareNote, btnBookmarkToggle;
 let noteTitleInput, noteTagsInput;
 let btnFileAttach, btnGraphAttach, attachedFilesList;
 let bookmarkSidebar, bookmarkContent;
-
-// Bookmarks data
-const bookmarks = [
-    {
-        category: '실험 프로토콜',
-        items: [
-            { id: 1, title: 'CRISPR 표준 프로토콜', url: 'https://example.com/crispr-protocol' },
-            { id: 2, title: 'PCR 실험 가이드', url: 'https://example.com/pcr-guide' },
-            { id: 3, title: 'Western Blot 절차', url: 'https://example.com/western-blot' }
-        ]
-    },
-    {
-        category: '논문 자료',
-        items: [
-            { id: 4, title: 'AlphaFold2 원문', url: 'https://example.com/alphafold2' },
-            { id: 5, title: 'mRNA 백신 연구', url: 'https://example.com/mrna-vaccine' },
-            { id: 6, title: 'CRISPR 최신 리뷰', url: 'https://example.com/crispr-review' }
-        ]
-    },
-    {
-        category: '데이터베이스',
-        items: [
-            { id: 7, title: 'PubMed', url: 'https://pubmed.ncbi.nlm.nih.gov/' },
-            { id: 8, title: 'UniProt', url: 'https://www.uniprot.org/' },
-            { id: 9, title: 'GenBank', url: 'https://www.ncbi.nlm.nih.gov/genbank/' }
-        ]
-    },
-    {
-        category: '분석 도구',
-        items: [
-            { id: 10, title: 'BLAST Search', url: 'https://blast.ncbi.nlm.nih.gov/' },
-            { id: 11, title: 'Protein Structure Viewer', url: 'https://example.com/structure-viewer' }
-        ]
-    }
-];
+let bookmarkApiUrl = "/api/bookmarks/";
+let bookmarkCategories = [];
+let bookmarksLoading = false;
+let bookmarksError = null;
+let btnBookmarkEditToggle, btnBookmarkAddCategory;
+let bookmarkAddCategoryForm, bookmarkNewCategoryName;
+let btnBookmarkSaveCategory, btnBookmarkCancelCategory;
 
 // Initialize
 function initNoteEditor() {
@@ -76,6 +56,16 @@ function initNoteEditor() {
     attachedFilesList = document.getElementById('attachedFilesList');
     bookmarkSidebar = document.getElementById('bookmarkSidebar');
     bookmarkContent = document.getElementById('bookmarkContent');
+    btnBookmarkEditToggle = document.getElementById('btnBookmarkEditToggle');
+    btnBookmarkAddCategory = document.getElementById('btnBookmarkAddCategory');
+    bookmarkAddCategoryForm = document.getElementById('bookmarkAddCategoryForm');
+    bookmarkNewCategoryName = document.getElementById('bookmarkNewCategoryName');
+    btnBookmarkSaveCategory = document.getElementById('btnBookmarkSaveCategory');
+    btnBookmarkCancelCategory = document.getElementById('btnBookmarkCancelCategory');
+    if (bookmarkSidebar && bookmarkSidebar.dataset.bookmarkApiUrl) {
+        bookmarkApiUrl = bookmarkSidebar.dataset.bookmarkApiUrl;
+    }
+    applyBookmarkSidebarState();
 
     // Attach event listeners
     if (btnCancelNote) btnCancelNote.addEventListener('click', handleCancelNote);
@@ -84,6 +74,17 @@ function initNoteEditor() {
     if (btnBookmarkToggle) btnBookmarkToggle.addEventListener('click', handleToggleBookmark);
     if (btnFileAttach) btnFileAttach.addEventListener('click', handleFileAttach);
     if (btnGraphAttach) btnGraphAttach.addEventListener('click', handleGraphAttach);
+    if (btnBookmarkEditToggle) btnBookmarkEditToggle.addEventListener('click', handleToggleBookmarkEditMode);
+    if (btnBookmarkAddCategory) btnBookmarkAddCategory.addEventListener('click', handleShowAddCategoryForm);
+    if (btnBookmarkSaveCategory) btnBookmarkSaveCategory.addEventListener('click', handleAddCategory);
+    if (btnBookmarkCancelCategory) btnBookmarkCancelCategory.addEventListener('click', handleCancelAddCategory);
+    if (bookmarkNewCategoryName) {
+        bookmarkNewCategoryName.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                handleAddCategory();
+            }
+        });
+    }
 
     // Check if editing existing note (에디터 초기화 전에 설정)
     const urlParams = new URLSearchParams(window.location.search);
@@ -103,6 +104,7 @@ function initNoteEditor() {
     // Render bookmarks
     renderBookmarks();
     renderAttachedFiles();
+    loadBookmarks();
 }
 
 // Initialize Tagify for tags input
@@ -291,7 +293,7 @@ function initCKEditor() {
                 'imageStyle:side'
             ]
         },
-        placeholder: '연구 내용을 작성하세요... 실험 방법, 결과, 분석 내용 등을 자유롭게 기록할 수 있습니다.',
+        placeholder: '연구 내용을 작성하세요. 실험 방법, 결과, 분석 내용 등을 자유롭게 기록할 수 있습니다.',
         language: 'ko'
     })
     .then(editor => {
@@ -405,7 +407,8 @@ function handleSaveNote() {
         title: title,
         content: content,
         tags: tags,
-        attachedFiles: attachedFiles
+        attachedFiles: attachedFiles,
+        charts: attachedCharts,
     };
     
     console.log('Saving note:', noteData);
@@ -439,7 +442,10 @@ function handleShareNote() {
 // Handle toggle bookmark sidebar
 function handleToggleBookmark() {
     isBookmarkSidebarOpen = !isBookmarkSidebarOpen;
-    
+    applyBookmarkSidebarState();
+}
+
+function applyBookmarkSidebarState() {
     if (bookmarkSidebar) {
         if (isBookmarkSidebarOpen) {
             bookmarkSidebar.classList.remove('hidden');
@@ -501,11 +507,19 @@ function insertChartToEditor(chartData) {
         return;
     }
 
+    const chartEntry = {
+        id: chartIdCounter++,
+        ...chartData,
+    };
+    attachedCharts.push(chartEntry);
+
+    const chartDataJson = escapeHtml(JSON.stringify(chartEntry));
+
     // Create HTML for the chart
     const chartHtml = `
-        <figure class="chart-figure">
-            <img src="${chartData.imageDataUrl}" alt="${escapeHtml(chartData.title)}" style="max-width: 100%; height: auto;" />
-            <figcaption>${escapeHtml(chartData.title)}</figcaption>
+        <figure class="chart-figure" data-chart-id="${chartEntry.id}" data-chart='${chartDataJson}'>
+            <img src="${chartEntry.imageDataUrl}" alt="${escapeHtml(chartEntry.title)}" style="max-width: 100%; height: auto;" />
+            <figcaption>${escapeHtml(chartEntry.title)}</figcaption>
         </figure>
     `;
 
@@ -566,25 +580,147 @@ function formatFileSize(bytes) {
 
 // CKEditor5 handles toolbar internally - no custom toolbar needed
 
+// Load bookmarks from API (t_bookmark)
+async function loadBookmarks() {
+    if (!bookmarkContent) return;
+
+    bookmarksLoading = true;
+    bookmarksError = null;
+    renderBookmarks();
+
+    try {
+        const response = await fetch(bookmarkApiUrl, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+            },
+            credentials: 'same-origin',
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        const results = Array.isArray(data.results) ? data.results : [];
+
+        bookmarkCategories = results.map((category) => ({
+            id: category.category_sid,
+            name: category.category_name,
+            bookmarks: Array.isArray(category.bookmarks)
+                ? category.bookmarks.map((bookmark) => ({
+                    id: bookmark.bookmark_sid,
+                    title: bookmark.title,
+                    url: bookmark.url,
+                    description: bookmark.description || '',
+                }))
+                : [],
+        }));
+        
+        // Reset adding state when bookmarks are reloaded
+        addingBookmarkToCategoryId = null;
+
+        openBookmarkCategories = {};
+    } catch (error) {
+        console.error('[NoteEditor] Failed to load bookmarks:', error);
+        bookmarksError = '북마크를 불러오지 못했습니다.';
+        if (error && error.message) {
+            bookmarksError += ` (${error.message})`;
+        }
+    } finally {
+        bookmarksLoading = false;
+        renderBookmarks();
+    }
+}
+
 // Render bookmarks
 function renderBookmarks() {
     if (!bookmarkContent) return;
 
-    bookmarkContent.innerHTML = bookmarks.map((category, index) => `
+    if (bookmarksLoading) {
+        bookmarkContent.innerHTML = `
+            <div class="bookmark-placeholder">
+                <i class="fas fa-spinner fa-spin"></i>
+                <span>북마크를 불러오는 중입니다...</span>
+            </div>
+        `;
+        return;
+    }
+
+    if (bookmarksError) {
+        bookmarkContent.innerHTML = `
+            <div class="bookmark-placeholder error">
+                <p>${escapeHtml(bookmarksError)}</p>
+                <button class="btn-bookmark-retry" onclick="window.NoteEditorPage.reloadBookmarks()">
+                    <i class="fas fa-redo"></i>
+                    <span>다시 시도</span>
+                </button>
+            </div>
+        `;
+        return;
+    }
+
+    if (bookmarkCategories.length === 0) {
+        bookmarkContent.innerHTML = `
+            <div class="bookmark-placeholder">
+                <i class="fas fa-info-circle"></i>
+                <span>등록된 북마크가 없습니다.</span>
+            </div>
+        `;
+        return;
+    }
+
+    bookmarkContent.innerHTML = bookmarkCategories.map((category, index) => `
         <div class="bookmark-category">
-            <button class="bookmark-category-header" onclick="window.NoteEditorPage.toggleBookmarkCategory(${index})">
-                <i class="fas ${openBookmarkCategories[index] ? 'fa-chevron-down' : 'fa-chevron-right'}"></i>
-                <i class="fas fa-folder"></i>
-                <span class="bookmark-category-title">${escapeHtml(category.category)}</span>
-                <span class="bookmark-category-count">(${category.items.length})</span>
-            </button>
+            <div class="bookmark-category-header-wrapper">
+                <button class="bookmark-category-header" onclick="window.NoteEditorPage.toggleBookmarkCategory(${index})">
+                    <i class="fas ${openBookmarkCategories[index] ? 'fa-chevron-down' : 'fa-chevron-right'}"></i>
+                    <i class="fas fa-folder"></i>
+                    <span class="bookmark-category-title">${escapeHtml(category.name)}</span>
+                    <span class="bookmark-category-count">(${category.bookmarks.length})</span>
+                </button>
+                <button class="btn-bookmark-add-to-category" onclick="window.NoteEditorPage.showAddBookmarkForm(${category.id})" title="북마크 추가">
+                    <i class="fas fa-plus"></i>
+                </button>
+                ${isBookmarkEditMode ? `
+                    <button class="btn-bookmark-delete-category" onclick="window.NoteEditorPage.deleteBookmarkCategory(${category.id}, '${escapeHtml(category.name)}')" title="카테고리 삭제">
+                        <i class="fas fa-times"></i>
+                    </button>
+                ` : ''}
+            </div>
             ${openBookmarkCategories[index] ? `
                 <div class="bookmark-items">
-                    ${category.items.map(item => `
+                    ${addingBookmarkToCategoryId === category.id ? `
+                        <div class="bookmark-add-form">
+                            <input
+                                type="text"
+                                id="bookmarkNewTitle_${category.id}"
+                                placeholder="북마크 제목..."
+                                class="bookmark-input"
+                            />
+                            <input
+                                type="url"
+                                id="bookmarkNewUrl_${category.id}"
+                                placeholder="URL (https://...)"
+                                class="bookmark-input"
+                                onkeypress="if(event.key==='Enter') window.NoteEditorPage.addBookmark(${category.id})"
+                            />
+                            <div class="bookmark-form-actions">
+                                <button class="btn-bookmark-save" onclick="window.NoteEditorPage.addBookmark(${category.id})">저장</button>
+                                <button class="btn-bookmark-cancel" onclick="window.NoteEditorPage.cancelAddBookmark()">취소</button>
+                            </div>
+                        </div>
+                    ` : ''}
+                    ${category.bookmarks.map(item => `
                         <div class="bookmark-item">
                             <div class="bookmark-item-header">
                                 <i class="fas fa-file-alt"></i>
                                 <span class="bookmark-item-title">${escapeHtml(item.title)}</span>
+                                ${isBookmarkEditMode ? `
+                                    <button class="btn-bookmark-delete" onclick="window.NoteEditorPage.deleteBookmark(${category.id}, ${item.id}, '${escapeHtml(item.title)}')" title="북마크 삭제">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                ` : ''}
                             </div>
                             <div class="bookmark-item-actions">
                                 <button class="btn-bookmark-add" onclick="window.NoteEditorPage.addBookmarkToNote('${escapeHtml(item.title)}', '${escapeHtml(item.url)}')">
@@ -636,11 +772,37 @@ function addBookmarkToNote(title, url) {
     }
 }
 
+// Get CSRF Token
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
 // Escape HTML
 function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
+    if (text === null || text === undefined) {
+        return '';
+    }
+
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;',
+    };
+
+    return String(text).replace(/[&<>"']/g, (char) => map[char]);
 }
 
 // Initialize on DOM ready
@@ -650,9 +812,279 @@ if (document.readyState === 'loading') {
     initNoteEditor();
 }
 
+// Toggle bookmark edit mode
+function handleToggleBookmarkEditMode() {
+    isBookmarkEditMode = !isBookmarkEditMode;
+    if (btnBookmarkEditToggle) {
+        if (isBookmarkEditMode) {
+            btnBookmarkEditToggle.classList.add('active');
+        } else {
+            btnBookmarkEditToggle.classList.remove('active');
+        }
+    }
+    renderBookmarks();
+}
+
+// Show add category form
+function handleShowAddCategoryForm() {
+    isAddingBookmarkCategory = true;
+    if (bookmarkAddCategoryForm) {
+        bookmarkAddCategoryForm.style.display = 'block';
+    }
+    if (bookmarkNewCategoryName) {
+        bookmarkNewCategoryName.focus();
+    }
+}
+
+// Cancel add category
+function handleCancelAddCategory() {
+    isAddingBookmarkCategory = false;
+    newCategoryName = '';
+    if (bookmarkAddCategoryForm) {
+        bookmarkAddCategoryForm.style.display = 'none';
+    }
+    if (bookmarkNewCategoryName) {
+        bookmarkNewCategoryName.value = '';
+    }
+}
+
+// Add bookmark category
+async function handleAddCategory() {
+    const categoryName = bookmarkNewCategoryName ? bookmarkNewCategoryName.value.trim() : '';
+    if (!categoryName) {
+        if (window.notyf) {
+            window.notyf.error('카테고리 이름을 입력해주세요.');
+        }
+        return;
+    }
+
+    try {
+        const response = await fetch(bookmarkApiUrl + 'categories/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken'),
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({ category_name: categoryName }),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || `HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        
+        // 서버에서 새로고침하여 최신 데이터 가져오기
+        await loadBookmarks();
+        
+        handleCancelAddCategory();
+        
+        if (window.notyf) {
+            window.notyf.success('카테고리가 추가되었습니다.');
+        }
+    } catch (error) {
+        console.error('[NoteEditor] Failed to add category:', error);
+        if (window.notyf) {
+            window.notyf.error(error.message || '카테고리 추가에 실패했습니다.');
+        }
+    }
+}
+
+// Show add bookmark form
+function showAddBookmarkForm(categoryId) {
+    addingBookmarkToCategoryId = categoryId;
+    renderBookmarks();
+    // Focus on title input after render
+    setTimeout(() => {
+        const titleInput = document.getElementById(`bookmarkNewTitle_${categoryId}`);
+        if (titleInput) {
+            titleInput.focus();
+        }
+    }, 100);
+}
+
+// Cancel add bookmark
+function cancelAddBookmark() {
+    addingBookmarkToCategoryId = null;
+    newBookmarkTitle = '';
+    newBookmarkUrl = '';
+    renderBookmarks();
+}
+
+// Add bookmark
+async function addBookmark(categoryId) {
+    const titleInput = document.getElementById(`bookmarkNewTitle_${categoryId}`);
+    const urlInput = document.getElementById(`bookmarkNewUrl_${categoryId}`);
+    
+    const title = titleInput ? titleInput.value.trim() : '';
+    const url = urlInput ? urlInput.value.trim() : '';
+
+    if (!title || !url) {
+        if (window.notyf) {
+            window.notyf.error('제목과 URL을 모두 입력해주세요.');
+        }
+        return;
+    }
+
+    try {
+        const response = await fetch(bookmarkApiUrl + 'bookmarks/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken'),
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({
+                category_sid: categoryId,
+                title: title,
+                bookmark_url: url,
+            }),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || `HTTP ${response.status}`);
+        }
+
+        // 서버에서 새로고침하여 최신 데이터 가져오기
+        await loadBookmarks();
+        
+        cancelAddBookmark();
+        
+        if (window.notyf) {
+            window.notyf.success('북마크가 추가되었습니다.');
+        }
+    } catch (error) {
+        console.error('[NoteEditor] Failed to add bookmark:', error);
+        if (window.notyf) {
+            window.notyf.error(error.message || '북마크 추가에 실패했습니다.');
+        }
+    }
+}
+
+// Delete bookmark category
+async function deleteBookmarkCategory(categoryId, categoryName) {
+    if (!window.Swal) {
+        if (confirm(`"${categoryName}" 카테고리를 삭제하시겠습니까? 카테고리 내 모든 북마크도 함께 삭제됩니다.`)) {
+            await performDeleteCategory(categoryId);
+        }
+        return;
+    }
+
+    window.Swal.fire({
+        title: '카테고리 삭제',
+        html: `"<strong>${escapeHtml(categoryName)}</strong>" 카테고리를 삭제하시겠습니까?<br><br>카테고리 내 모든 북마크도 함께 삭제됩니다.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc2626',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: '삭제하기',
+        cancelButtonText: '취소',
+        reverseButtons: true
+    }).then(async (result) => {
+        if (result.isConfirmed) {
+            await performDeleteCategory(categoryId);
+        }
+    });
+}
+
+// Perform delete category
+async function performDeleteCategory(categoryId) {
+    try {
+        const response = await fetch(bookmarkApiUrl + `categories/${categoryId}/`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+            },
+            credentials: 'same-origin',
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || `HTTP ${response.status}`);
+        }
+
+        // 서버에서 새로고침하여 최신 데이터 가져오기
+        await loadBookmarks();
+        
+        if (window.notyf) {
+            window.notyf.success('카테고리가 삭제되었습니다.');
+        }
+    } catch (error) {
+        console.error('[NoteEditor] Failed to delete category:', error);
+        if (window.notyf) {
+            window.notyf.error(error.message || '카테고리 삭제에 실패했습니다.');
+        }
+    }
+}
+
+// Delete bookmark
+async function deleteBookmark(categoryId, bookmarkId, bookmarkTitle) {
+    if (!window.Swal) {
+        if (confirm(`"${bookmarkTitle}" 북마크를 삭제하시겠습니까?`)) {
+            await performDeleteBookmark(categoryId, bookmarkId);
+        }
+        return;
+    }
+
+    window.Swal.fire({
+        title: '북마크 삭제',
+        html: `"<strong>${escapeHtml(bookmarkTitle)}</strong>" 북마크를 삭제하시겠습니까?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc2626',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: '삭제하기',
+        cancelButtonText: '취소',
+        reverseButtons: true
+    }).then(async (result) => {
+        if (result.isConfirmed) {
+            await performDeleteBookmark(categoryId, bookmarkId);
+        }
+    });
+}
+
+// Perform delete bookmark
+async function performDeleteBookmark(categoryId, bookmarkId) {
+    try {
+        const response = await fetch(bookmarkApiUrl + `bookmarks/${bookmarkId}/`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+            },
+            credentials: 'same-origin',
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || `HTTP ${response.status}`);
+        }
+
+        // 서버에서 새로고침하여 최신 데이터 가져오기
+        await loadBookmarks();
+        
+        if (window.notyf) {
+            window.notyf.success('북마크가 삭제되었습니다.');
+        }
+    } catch (error) {
+        console.error('[NoteEditor] Failed to delete bookmark:', error);
+        if (window.notyf) {
+            window.notyf.error(error.message || '북마크 삭제에 실패했습니다.');
+        }
+    }
+}
+
 // Export to window
 window.NoteEditorPage = {
     handleFileRemove,
     toggleBookmarkCategory,
     addBookmarkToNote,
+    reloadBookmarks: loadBookmarks,
+    showAddBookmarkForm,
+    cancelAddBookmark,
+    addBookmark,
+    deleteBookmarkCategory,
+    deleteBookmark,
 };
