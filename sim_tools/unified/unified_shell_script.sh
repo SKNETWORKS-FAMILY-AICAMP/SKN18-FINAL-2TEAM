@@ -133,6 +133,24 @@ cmd_install() {
     fi
   fi
 
+  # ------------------------------------------------------------
+  # ✅ RFdiffusion runtime deps (Hydra/OmegaConf 등) 설치
+  # - pip install -e . 만으로는 deps가 안깔리는 경우가 있어 requirements를 같이 설치
+  # - 그래도 누락될 수 있어 핵심 패키지는 안전장치로 강제 설치
+  # ------------------------------------------------------------
+  log "installing RFdiffusion requirements (if present)"
+
+  if [[ -f "$RFDIFFUSION_DIR/requirements.txt" ]]; then
+    "$(venv_python)" -m pip install -r "$RFDIFFUSION_DIR/requirements.txt"
+  fi
+
+  if [[ -f "$RFDIFFUSION_DIR/env/requirements.txt" ]]; then
+    "$(venv_python)" -m pip install -r "$RFDIFFUSION_DIR/env/requirements.txt"
+  fi
+
+  # 안전장치: run_inference.py에서 바로 필요한 핵심 deps
+  "$(venv_python)" -m pip install -U omegaconf hydra-core
+
   log "installing RFdiffusion (editable)"
   pushd "$RFDIFFUSION_DIR" >/dev/null
   "$(venv_python)" -m pip install -e .
@@ -141,6 +159,7 @@ cmd_install() {
   log "sanity check"
   "$(venv_python)" - <<'PY'
 import sys, numpy as np, torch, dgl, e3nn, pyrsistent, se3_transformer
+import omegaconf, hydra
 print("python:", sys.version.split()[0])
 print("numpy :", np.__version__)
 print("torch :", torch.__version__, "cuda:", torch.version.cuda, "avail:", torch.cuda.is_available())
@@ -148,6 +167,8 @@ print("dgl   :", dgl.__version__)
 print("e3nn  :", getattr(e3nn, "__version__", "unknown"))
 print("pyrsistent import: OK")
 print("se3_transformer import: OK")
+print("omegaconf:", getattr(omegaconf, "__version__", "unknown"))
+print("hydra:", getattr(hydra, "__version__", "unknown"))
 PY
 
   log "install done"
