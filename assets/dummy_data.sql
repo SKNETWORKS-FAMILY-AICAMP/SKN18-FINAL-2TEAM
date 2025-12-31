@@ -658,3 +658,54 @@ FROM t_experiment e
 CROSS JOIN t_experiment_tool t
 WHERE e.pipeline_name = 'Medical Diagnosis Helper'
   AND (t.tool_name IN ('ProteinMPNN', 'AlphaFold2', 'AlphaFold'));
+
+-- ============================================
+-- 북마크 관련 테이블 더미 데이터 삽입
+-- ============================================
+-- created_id / updated_id는 임시 사용자 'bookmark_admin'으로 지정
+
+-- t_bookmark_category 테이블 더미 데이터 삽입
+INSERT INTO t_bookmark_category (category_sid, category_name, sort_order, created_at, created_id, updated_at, updated_id) VALUES
+(1, '실험 프로토콜', 1, CURRENT_TIMESTAMP, 'bookmark_admin', CURRENT_TIMESTAMP, 'bookmark_admin'),
+(2, '논문 자료', 2, CURRENT_TIMESTAMP, 'bookmark_admin', CURRENT_TIMESTAMP, 'bookmark_admin'),
+(3, '데이터베이스', 3, CURRENT_TIMESTAMP, 'bookmark_admin', CURRENT_TIMESTAMP, 'bookmark_admin'),
+(4, '분석 구', 4, CURRENT_TIMESTAMP, 'bookmark_admin', CURRENT_TIMESTAMP, 'bookmark_admin');
+
+-- t_bookmark 테이블 더미 데이터 삽입
+INSERT INTO t_bookmark (bookmark_sid, title, bookmark_url, description, created_at, created_id, updated_at, updated_id) VALUES
+(1, 'CRISPR 표준 프로토콜', 'https://example.com/crispr-protocol', 'CRISPR 유전자 편집 실험을 위한 표준 프로토콜 가이드', CURRENT_TIMESTAMP, 'bookmark_admin', CURRENT_TIMESTAMP, 'bookmark_admin'),
+(2, 'PCR 실험 가이드', 'https://example.com/pcr-guide', 'PCR (Polymerase Chain Reaction) 실험 절차 및 최적화 방법', CURRENT_TIMESTAMP, 'bookmark_admin', CURRENT_TIMESTAMP, 'bookmark_admin'),
+(3, 'Western Blot 절차', 'https://example.com/western-blot', 'Western Blot을 통한 단백질 검출 및 분석 절차', CURRENT_TIMESTAMP, 'bookmark_admin', CURRENT_TIMESTAMP, 'bookmark_admin'),
+(4, 'AlphaFold2 원문', 'https://example.com/alphafold2', 'AlphaFold2 단백질 구조 예측 모델 관련 논문', CURRENT_TIMESTAMP, 'bookmark_admin', CURRENT_TIMESTAMP, 'bookmark_admin'),
+(5, 'mRNA 백신 연구', 'https://example.com/mrna-vaccine', 'mRNA 백신 기술 및 최신 연구 동향', CURRENT_TIMESTAMP, 'bookmark_admin', CURRENT_TIMESTAMP, 'bookmark_admin'),
+(6, 'CRISPR 최신 리뷰', 'https://example.com/crispr-review', 'CRISPR 유전자 편집 기술의 최신 리뷰 논문', CURRENT_TIMESTAMP, 'bookmark_admin', CURRENT_TIMESTAMP, 'bookmark_admin'),
+(7, 'PubMed', 'https://pubmed.ncbi.nlm.nih.gov/', '생의학 및 생명과학 논문 검색 데이터베이스', CURRENT_TIMESTAMP, 'bookmark_admin', CURRENT_TIMESTAMP, 'bookmark_admin'),
+(8, 'UniProt', 'https://www.uniprot.org/', '단백질 서열 및 기능 정보 데이터베이스', CURRENT_TIMESTAMP, 'bookmark_admin', CURRENT_TIMESTAMP, 'bookmark_admin'),
+(9, 'GenBank', 'https://www.ncbi.nlm.nih.gov/genbank/', '유전자 서열 데이터베이스', CURRENT_TIMESTAMP, 'bookmark_admin', CURRENT_TIMESTAMP, 'bookmark_admin'),
+(10, 'BLAST Search', 'https://blast.ncbi.nlm.nih.gov/', '유전자 및 단백질 서열 유사도 검색 도구', CURRENT_TIMESTAMP, 'bookmark_admin', CURRENT_TIMESTAMP, 'bookmark_admin'),
+(11, 'Protein Structure Viewer', 'https://example.com/structure-viewer', '단백질 3D 구조 시각화 및 분석 도구', CURRENT_TIMESTAMP, 'bookmark_admin', CURRENT_TIMESTAMP, 'bookmark_admin');
+
+-- t_bookmark_map 테이블 더미 데이터 삽입 (북마크와 카테고리 매핑)
+INSERT INTO t_bookmark_map (bookmark_sid, category_sid, sort_order, created_at, created_id) VALUES
+-- 실험 프로토콜 카테고리 (category_sid=1)
+(1, 1, 1, CURRENT_TIMESTAMP, 'bookmark_admin'),
+(2, 1, 2, CURRENT_TIMESTAMP, 'bookmark_admin'),
+(3, 1, 3, CURRENT_TIMESTAMP, 'bookmark_admin'),
+-- 논문 자료 카테고리 (category_sid=2)
+(4, 2, 1, CURRENT_TIMESTAMP, 'bookmark_admin'),
+(5, 2, 2, CURRENT_TIMESTAMP, 'bookmark_admin'),
+(6, 2, 3, CURRENT_TIMESTAMP, 'bookmark_admin'),
+-- 데이터베이스 카테고리 (category_sid=3)
+(7, 3, 1, CURRENT_TIMESTAMP, 'bookmark_admin'),
+(8, 3, 2, CURRENT_TIMESTAMP, 'bookmark_admin'),
+(9, 3, 3, CURRENT_TIMESTAMP, 'bookmark_admin'),
+-- 분석 구 카테고리 (category_sid=4)
+(10, 4, 1, CURRENT_TIMESTAMP, 'bookmark_admin'),
+(11, 4, 2, CURRENT_TIMESTAMP, 'bookmark_admin');
+
+-- PostgreSQL 시퀀스 재설정 (더미 데이터 삽입 후 시퀀스를 올바르게 설정)
+-- t_bookmark_category 시퀀스 재설정
+SELECT setval('t_bookmark_category_category_sid_seq', (SELECT COALESCE(MAX(category_sid), 1) FROM t_bookmark_category));
+
+-- t_bookmark 시퀀스 재설정
+SELECT setval('t_bookmark_bookmark_sid_seq', (SELECT COALESCE(MAX(bookmark_sid), 1) FROM t_bookmark));
