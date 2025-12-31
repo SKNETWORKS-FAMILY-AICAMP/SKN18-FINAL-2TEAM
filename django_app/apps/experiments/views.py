@@ -193,7 +193,7 @@ def _list_experiments_api(request):
     print(f"[Experiments API] User pk: {request.user.pk}")
     print(f"[Experiments API] User pk type: {type(request.user.pk)}")
     
-    # 실험 목록 조회 (사용자별로 필터링)
+    # 실험 목록 조회 (사용자별로 필터링) 
     # CustomUser는 user_id를 primary key로 사용하므로 user_id 속성 사용
     user_identifier = _get_user_identifier(request.user)
     print(f"[Experiments API] User identifier (string): {user_identifier}")
