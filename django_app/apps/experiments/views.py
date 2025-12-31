@@ -244,23 +244,31 @@ def uniprot_search_api(request):
         gene = None
         genes = item.get("genes", [])
 
-        if genes:
-            g = genes[0]
-
+        for g in genes:
             if g.get("geneName"):
                 gene = g["geneName"]["value"]
+                break
 
-            elif g.get("orderedLocusNames"):
+            if g.get("orderedLocusNames"):
                 gene = g["orderedLocusNames"][0]["value"]
+                break
 
-            elif g.get("synonyms"):
+            if g.get("orfNames"):
+                gene = g["orfNames"][0]["value"]
+                break
+
+            if g.get("synonyms"):
                 gene = g["synonyms"][0]["value"]
+                break
 
-            # UI 스타일: SPAM1 (HYAL3, PH20)
-            if gene and g.get("synonyms"):
-                syns = [s["value"] for s in g["synonyms"]]
-                if syns:
-                    gene = f"{gene} ({', '.join(syns)})"
+        # UI-style synonym 표시 (geneName 있을 때만)
+        if gene:
+            for g in genes:
+                if g.get("geneName") and g.get("synonyms"):
+                    syns = [s["value"] for s in g["synonyms"]]
+                    if syns:
+                        gene = f"{gene} ({', '.join(syns)})"
+                    break
 
         organism_data = item.get("organism", {})
         scientific = organism_data.get("scientificName")
