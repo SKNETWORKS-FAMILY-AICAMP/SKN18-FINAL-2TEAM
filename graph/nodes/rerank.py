@@ -24,6 +24,18 @@ Query 임베딩, Document 임베딩 -> 이 두 개를 교차(cross) 시켜서 �
 
 import os
 from typing import Dict, Any, List
+
+import huggingface_hub
+
+# Compatibility shim for newer huggingface_hub versions missing cached_download
+if not hasattr(huggingface_hub, "cached_download"):
+    from huggingface_hub import hf_hub_download
+
+    def cached_download(*args, **kwargs):
+        return hf_hub_download(*args, **kwargs)
+
+    huggingface_hub.cached_download = cached_download
+
 from sentence_transformers import CrossEncoder
 
 # 모델 저장 경로 설정 (환경에 따라 자동 선택)
