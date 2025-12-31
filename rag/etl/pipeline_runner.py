@@ -43,7 +43,6 @@ class PipelineConfig:
     entities_dir: str = os.getenv("ETL_ENTITIES_DIR", "data/entities")
     chunks_dir: str = os.getenv("ETL_CHUNKS_DIR", "data/chunks")
     embeddings_dir: str = os.getenv("ETL_EMBEDDINGS_DIR", "data/embeddings")
-
     batch_size: int = int(os.getenv("ETL_BATCH_SIZE", "50"))
 
 
@@ -94,17 +93,17 @@ def run_ingest(source: SourceType, cfg: PipelineConfig, limit: int | None = None
 
         if s == "pubmed":
             mod = import_module("rag.etl.step01_ingest.ingest_pubmed")
+            mod = import_module("rag.etl.step01_ingest.ingest_pubmed")
             mod.run(raw_dir=cfg.raw_dir, limit=limit)
         elif s == "nih":
+            mod = import_module("rag.etl.step01_ingest.ingest_nih")
             mod = import_module("rag.etl.step01_ingest.ingest_nih")
             mod.run(raw_dir=cfg.raw_dir, limit=limit)
         elif s == "protocols":
             mod = import_module("rag.etl.step01_ingest.ingest_protocols")
-            # protocols는 main() 함수만 있음
-            if hasattr(mod, 'run'):
-                mod.run(raw_dir=cfg.raw_dir, limit=limit)
-            else:
-                mod.main()
+            # protocols는 로컬에서 실행 시 main() 함수 사용 (모든 키워드 병렬 처리)
+            # run() 함수는 Lambda에서 단일 keyword 처리용이므로 로컬에서는 사용하지 않음
+            mod.main(raw_dir=cfg.raw_dir)
         else:
             raise ValueError(f"Unknown source: {s}")
 
@@ -124,6 +123,9 @@ def run_normalize(source: SourceType, cfg: PipelineConfig) -> None:
       - rag.etl.step02_normalize.normalize_pubmed.run(raw_dir, processed_dir)
       - rag.etl.step02_normalize.normalize_nih.run(raw_dir, processed_dir)
       - rag.etl.step02_normalize.normalize_protocols.run(raw_dir, processed_dir)
+      - rag.etl.step02_normalize.normalize_pubmed.run(raw_dir, processed_dir)
+      - rag.etl.step02_normalize.normalize_nih.run(raw_dir, processed_dir)
+      - rag.etl.step02_normalize.normalize_protocols.run(raw_dir, processed_dir)
     """
     logger = logging.getLogger("etl.normalize")
 
@@ -139,9 +141,12 @@ def run_normalize(source: SourceType, cfg: PipelineConfig) -> None:
 
         if s == "pubmed":
             mod = import_module("rag.etl.step02_normalize.normalize_pubmed")
+            mod = import_module("rag.etl.step02_normalize.normalize_pubmed")
         elif s == "nih":
             mod = import_module("rag.etl.step02_normalize.normalize_nih")
+            mod = import_module("rag.etl.step02_normalize.normalize_nih")
         elif s == "protocols":
+            mod = import_module("rag.etl.step02_normalize.normalize_protocols")
             mod = import_module("rag.etl.step02_normalize.normalize_protocols")
         else:
             raise ValueError(f"Unknown source: {s}")
@@ -176,25 +181,37 @@ def run_extract(cfg: PipelineConfig, source: SourceType) -> None:
 
     src_filter = None if source == "all" else source
 
-    # 엔터티 추출
-    logger.info("▶ [EXTRACT] entity extraction start (source=%s)", source)
+    # 0) PMC 정제 파이프라인 (pmid/section_id/cleansing)
+    try:
+        logger.info("▶ [EXTRACT] pmc_normalization_pipeline start (source=%s)", source)
+        norm_mod = import_module("rag.etl.step03_extract.pmc_normalization_pipeline")
+        norm_mod.run(cfg, source)  # cfg: PipelineConfig, source: SourceType
+        logger.info("✔ [EXTRACT] pmc_normalization_pipeline done")
+    except ModuleNotFoundError:
+        logger.info("⏭  [EXTRACT] pmc_normalization_pipeline 모듈 없음 → 스킵")
+    except Exception as e:
+        logger.error("[EXTRACT] pmc_normalization_pipeline 실행 실패: %s", e, exc_info=True)
+        raise
+
+    # 1) 엔터티 추출
+    logger.info("▶ [EXTRACT] entity_extraction start (source=%s)", source)
     ent_mod = import_module("rag.etl.step03_extract.entity_extraction")
     ent_mod.run(
         processed_dir=cfg.processed_dir,
         entities_dir=cfg.entities_dir,
         source=src_filter,
     )
-    logger.info("✔ [EXTRACT] entity extraction done")
+    logger.info("✔ [EXTRACT] entity_extraction done")
 
-    # 관계 추출 (파일 없으면 스킵 가능하도록 try/except)
+    # 2) 관계 추출 (파일 없으면 스킵 가능하도록 try/except)
     try:
-        logger.info("▶ [EXTRACT] relation extraction start (source=%s)", source)
+        logger.info("▶ [EXTRACT] relation_extraction start (source=%s)", source)
         rel_mod = import_module("rag.etl.step03_extract.relation_extraction")
         rel_mod.run(
             entities_dir=cfg.entities_dir,
             source=src_filter,
         )
-        logger.info("✔ [EXTRACT] relation extraction done")
+        logger.info("✔ [EXTRACT] relation_extraction done")
     except ModuleNotFoundError:
         logger.info("⏭  [EXTRACT] relation_extraction 모듈 없음 → 스킵")
 
@@ -209,6 +226,9 @@ def run_chunk(source: SourceType, cfg: PipelineConfig) -> None:
     04_chunk/ 아래 각 소스 모듈의 run() 또는 main() 호출.
 
     기대 시그니처:
+      rag.etl.step04_chunk.chunker_pubmed.run(...)
+      rag.etl.step04_chunk.chunker_nih.main()  # main() 함수 사용
+      rag.etl.step04_chunk.chunker_protocols.main()  # main() 함수 사용
       rag.etl.step04_chunk.chunker_pubmed.run(...)
       rag.etl.step04_chunk.chunker_nih.main()  # main() 함수 사용
       rag.etl.step04_chunk.chunker_protocols.main()  # main() 함수 사용
@@ -227,6 +247,7 @@ def run_chunk(source: SourceType, cfg: PipelineConfig) -> None:
         try:
             if s == "pubmed":
                 mod = import_module("rag.etl.step04_chunk.chunker_pubmed")
+                mod = import_module("rag.etl.step04_chunk.chunker_pubmed")
                 if hasattr(mod, 'run'):
                     mod.run(processed_dir=cfg.processed_dir, chunks_dir=cfg.chunks_dir)
                 elif hasattr(mod, 'main'):
@@ -235,6 +256,7 @@ def run_chunk(source: SourceType, cfg: PipelineConfig) -> None:
                     logger.warning("⚠ [CHUNK] pubmed: run() 또는 main() 함수가 없습니다. 스킵합니다.")
             elif s == "nih":
                 mod = import_module("rag.etl.step04_chunk.chunker_nih")
+                mod = import_module("rag.etl.step04_chunk.chunker_nih")
                 if hasattr(mod, 'main'):
                     mod.main()
                 elif hasattr(mod, 'run'):
@@ -242,6 +264,7 @@ def run_chunk(source: SourceType, cfg: PipelineConfig) -> None:
                 else:
                     logger.warning("⚠ [CHUNK] nih: run() 또는 main() 함수가 없습니다. 스킵합니다.")
             elif s == "protocols":
+                mod = import_module("rag.etl.step04_chunk.chunker_protocols")
                 mod = import_module("rag.etl.step04_chunk.chunker_protocols")
                 if hasattr(mod, 'main'):
                     mod.main()
@@ -270,6 +293,9 @@ def run_embed(source: SourceType, cfg: PipelineConfig, limit: int | None = None)
       rag.etl.step05_embed.embed_pubmed.run(chunks_dir, embeddings_dir)
       rag.etl.step05_embed.embed_nih.run(...)
       rag.etl.step05_embed.embed_protocols.main()  # main() 함수 사용
+      rag.etl.step05_embed.embed_pubmed.run(chunks_dir, embeddings_dir)
+      rag.etl.step05_embed.embed_nih.run(...)
+      rag.etl.step05_embed.embed_protocols.main()  # main() 함수 사용
     """
     logger = logging.getLogger("etl.embed")
     ensure_dirs(cfg.embeddings_dir)
@@ -281,11 +307,17 @@ def run_embed(source: SourceType, cfg: PipelineConfig, limit: int | None = None)
 
     for s in targets:
         logger.info("▶ [EMBED] start source=%s (limit=%s)", s, limit)
+        logger.info("▶ [EMBED] start source=%s (limit=%s)", s, limit)
 
         try:
             if s == "pubmed":
                 mod = import_module("rag.etl.step05_embed.embed_pubmed")
+                mod = import_module("rag.etl.step05_embed.embed_pubmed")
                 if hasattr(mod, 'run'):
+                    mod.run(
+                        chunks_dir=cfg.chunks_dir,
+                        embeddings_dir=cfg.embeddings_dir,
+                    )
                     mod.run(
                         chunks_dir=cfg.chunks_dir,
                         embeddings_dir=cfg.embeddings_dir,
@@ -295,6 +327,7 @@ def run_embed(source: SourceType, cfg: PipelineConfig, limit: int | None = None)
                 else:
                     logger.warning("⚠ [EMBED] pubmed: run() 또는 main() 함수가 없습니다. 스킵합니다.")
             elif s == "nih":
+                mod = import_module("rag.etl.step05_embed.embed_nih")
                 mod = import_module("rag.etl.step05_embed.embed_nih")
                 nih_processed_root = Path(cfg.processed_dir) / "nih"
                 if hasattr(mod, 'run'):
@@ -307,6 +340,7 @@ def run_embed(source: SourceType, cfg: PipelineConfig, limit: int | None = None)
                 else:
                     logger.warning("⚠ [EMBED] nih: 모듈이 비어있거나 run()/main() 함수가 없습니다. 스킵합니다.")
             elif s == "protocols":
+                mod = import_module("rag.etl.step05_embed.embed_protocols")
                 mod = import_module("rag.etl.step05_embed.embed_protocols")
                 if hasattr(mod, 'main'):
                     mod.main()
@@ -332,8 +366,10 @@ def run_embed(source: SourceType, cfg: PipelineConfig, limit: int | None = None)
 def run_upsert(cfg: PipelineConfig) -> None:
     """
     06_upsert/upsert_pgvector.py 의 run() 호출.
+    06_upsert/upsert_pgvector.py 의 run() 호출.
 
     기대 시그니처:
+      rag.etl.step06_upsert.upsert_pgvector.run(
       rag.etl.step06_upsert.upsert_pgvector.run(
           embeddings_dir: str,
       )
@@ -342,6 +378,7 @@ def run_upsert(cfg: PipelineConfig) -> None:
 
     logger.info("▶ [UPSERT] start")
 
+    mod = import_module("rag.etl.step06_upsert.upsert_pgvector")
     mod = import_module("rag.etl.step06_upsert.upsert_pgvector")
     mod.run(
         embeddings_dir=cfg.embeddings_dir,

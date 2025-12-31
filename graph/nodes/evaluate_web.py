@@ -6,7 +6,7 @@ BioRAGState 구조에 맞게 구현
 """
 
 from typing import Dict, Any
-from graph.llm_config import evaluate_web_node_llm
+from graph.llm_config import evaluate_web_node_llm, get_model_name
 
 
 def evaluate_web_node(state: Dict[str, Any]) -> Dict[str, Any]:
@@ -91,7 +91,11 @@ def evaluate_web_node(state: Dict[str, Any]) -> Dict[str, Any]:
 """
 
     try:
-        # GPT-4o-mini를 사용하여 웹 검색 결과 정제
+        # 사용 모델 확인
+        model_name = get_model_name(evaluate_web_node_llm)
+        print(f"[EvaluateWeb] 사용 모델: {model_name}")
+        
+        # LLM을 사용하여 웹 검색 결과 정제
         result = evaluate_web_node_llm(prompt)
         
         # 결과를 청크 단위로 분리

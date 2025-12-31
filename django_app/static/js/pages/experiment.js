@@ -153,8 +153,15 @@ let experiments = [];
 
 // Initialize experiment page
 function initExperiment() {
-    // Load tools from API
-    loadAvailableTools();
+    // Initialize availableTools from template data if available
+    if (window.EXPERIMENT_TOOLS && Array.isArray(window.EXPERIMENT_TOOLS) && window.EXPERIMENT_TOOLS.length > 0) {
+        availableTools = window.EXPERIMENT_TOOLS;
+        renderToolList();
+        renderToolsGrid();
+    } else {
+        // Load tools from API if not available in template
+        loadAvailableTools();
+    }
 
     // Load experiments
     loadExperiments();
@@ -313,9 +320,9 @@ async function handleSearch() {
     
     if (!sequenceQuery) {
         if (window.notyf) {
-            window.notyf.error('단백질 서열을 입력해주세요.');
+            window.notyf.error('검색어를 입력해주세요.');
         } else {
-            alert('단백질 서열을 입력해주세요.');
+            alert('검색어를 입력해주세요.');
         }
         return;
     }
@@ -780,13 +787,12 @@ function fallbackCopySequence(sequence) {
 
 // Handle protein detail click
 function handleProteinDetailClick(result) {
-    if (window.ProteinDetailModal && window.ProteinDetailModal.open) {
-        window.ProteinDetailModal.open(result);
-    } else {
-        console.error('ProteinDetailModal not available');
+    if (!result) {
+        console.error('Protein detail click: No result data provided');
+        return;
     }
     
-    // Also set as selected protein for pipeline
+    // Set as selected protein for pipeline first
     selectedProtein = result;
     if (window.ExperimentPage) {
         window.ExperimentPage.selectedProtein = result;
@@ -794,6 +800,21 @@ function handleProteinDetailClick(result) {
     
     // Update pipeline visualization
     updatePipelineSection();
+    
+    // Open detail modal
+    if (window.ProteinDetailModal && window.ProteinDetailModal.open) {
+        window.ProteinDetailModal.open(result);
+    } else {
+        console.error('ProteinDetailModal not available. Make sure protein_detail_modal.js is loaded.');
+        // Fallback: try to initialize modal if it exists
+        const modal = document.getElementById('proteinDetailModal');
+        if (modal && typeof initProteinDetailModal === 'function') {
+            initProteinDetailModal();
+            if (window.ProteinDetailModal && window.ProteinDetailModal.open) {
+                window.ProteinDetailModal.open(result);
+            }
+        }
+    }
 }
 
 // Handle save to note
@@ -830,11 +851,23 @@ function updateToolCards() {
             if (statusEl) {
                 statusEl.textContent = '선택됨';
             }
+            // Add check icon if not present
+            if (!card.querySelector('.tool-check-icon')) {
+                const checkIcon = document.createElement('div');
+                checkIcon.className = 'tool-check-icon';
+                checkIcon.innerHTML = '<i class="fas fa-check-circle"></i>';
+                card.insertBefore(checkIcon, card.firstChild);
+            }
         } else {
             card.classList.remove('selected');
             const statusEl = card.querySelector('.tool-status');
             if (statusEl) {
                 statusEl.textContent = '대기';
+            }
+            // Remove check icon if present
+            const checkIcon = card.querySelector('.tool-check-icon');
+            if (checkIcon) {
+                checkIcon.remove();
             }
         }
     });
@@ -866,19 +899,20 @@ function updatePipelineSection() {
         renderPipelineOptions();
         // Add padding to main content when pipeline is shown (React: pb-48)
         if (mainContent) {
-            mainContent.classList.add('has-pipeline');
+            mainContent.style.paddingBottom = '12rem'; // pb-48 = 12rem
         }
     } else {
         pipelineSection.style.display = 'none';
         // Remove padding when pipeline is hidden
         if (mainContent) {
-            mainContent.classList.remove('has-pipeline');
+            mainContent.style.paddingBottom = '';
         }
     }
 
     // Update tool count
-    if (pipelineToolCount) {
-        pipelineToolCount.textContent = selectedTools.length;
+    const pipelineToolCountEl = document.getElementById('pipelineToolCount');
+    if (pipelineToolCountEl) {
+        pipelineToolCountEl.textContent = selectedTools.length;
     }
 }
 
@@ -892,38 +926,50 @@ function renderPipelineVisualization() {
     // Render protein button
     renderPipelineProteinButton();
 
-    // Render tools
+    // Render tools with arrows between them
+    // React structure: Protein -> Arrow -> Tool1 -> Arrow -> Tool2 -> ...
     const toolsHtml = selectedToolsData.map((tool, index) => {
-        const isLast = index === selectedToolsData.length - 1;
         const iconClass = tool.icon || "fas fa-cog";
         return `
-            ${index === 0 ? '<div class="pipeline-arrow"><i class="fas fa-arrow-right"></i></div>' : ''}
             <div class="pipeline-item pipeline-item-tool" data-tool-id="${tool.id}">
                 <div class="pipeline-tool-card">
                     <i class="${iconClass}"></i>
                     <span>${escapeHtml(tool.name)}</span>
+                    <button class="pipeline-tool-settings-btn" data-tool-id="${tool.id}" title="옵션 설정">
+                        <i class="fas fa-cog"></i>
+                    </button>
                 </div>
             </div>
-            ${!isLast ? '<div class="pipeline-arrow"><i class="fas fa-arrow-right"></i></div>' : ''}
+            ${index < selectedToolsData.length - 1 ? '<div class="pipeline-arrow"><i class="fas fa-arrow-right"></i></div>' : ''}
         `;
     }).join('');
 
-    // Find protein item and insert tools after it
+    // Find protein item and insert arrow + tools after it
     const proteinItem = pipelineItems.querySelector('.pipeline-item-protein');
     if (proteinItem) {
-        // Remove existing tool items and arrows
+        // Remove existing tool items and arrows (but keep protein item)
         const existingItems = pipelineItems.querySelectorAll('.pipeline-item-tool, .pipeline-arrow');
         existingItems.forEach(item => item.remove());
 
-        // Insert tools after protein item
+        // Insert arrow before tools if there are any tools
         if (selectedToolsData.length > 0) {
+            // Add arrow after protein button
+            const arrowAfterProtein = document.createElement('div');
+            arrowAfterProtein.className = 'pipeline-arrow';
+            arrowAfterProtein.innerHTML = '<i class="fas fa-arrow-right"></i>';
+            proteinItem.after(arrowAfterProtein);
+
+            // Insert tools with arrows
             const tempDiv = document.createElement('div');
             tempDiv.innerHTML = toolsHtml;
             while (tempDiv.firstChild) {
-                proteinItem.after(tempDiv.firstChild);
+                arrowAfterProtein.after(tempDiv.firstChild);
             }
         }
     }
+    
+    // Attach click handlers for settings buttons
+    attachPipelineToolHandlers();
 }
 
 // Render pipeline protein button
@@ -932,15 +978,20 @@ function renderPipelineProteinButton() {
 
     if (selectedProtein) {
         pipelineProteinBtn.className = 'pipeline-protein-btn pipeline-protein-btn-selected';
+        const proteinName = selectedProtein.name || selectedProtein.proteinName || '선택된 서열';
         pipelineProteinBtn.innerHTML = `
             <i class="fas fa-file-lines"></i>
-            <span>${escapeHtml(selectedProtein.name || selectedProtein.proteinName || '선택된 서열')}</span>
+            <div>
+                <p class="text-xs">${escapeHtml(proteinName)}</p>
+            </div>
         `;
     } else {
         pipelineProteinBtn.className = 'pipeline-protein-btn pipeline-protein-btn-empty';
         pipelineProteinBtn.innerHTML = `
             <i class="fas fa-file-lines"></i>
-            <span>단백질 서열 선택</span>
+            <div>
+                <p class="text-xs text-red-600">단백질 서열 선택</p>
+            </div>
         `;
     }
 }
@@ -1076,22 +1127,170 @@ function getSelectedToolsInOrder() {
 
 // Attach pipeline handlers
 function attachPipelineHandlers() {
+    console.log('[ExperimentPage] attachPipelineHandlers called');
+    console.log('[ExperimentPage] pipelineProteinBtn:', pipelineProteinBtn);
+    
     // Protein button click
-    pipelineProteinBtn?.addEventListener('click', () => {
+    if (!pipelineProteinBtn) {
+        console.error('[ExperimentPage] pipelineProteinBtn not found!');
+        return;
+    }
+    
+    pipelineProteinBtn.addEventListener('click', (e) => {
+        console.log('[ExperimentPage] ====== pipelineProteinBtn CLICKED ======');
+        console.log('[ExperimentPage] Event:', e);
+        console.log('[ExperimentPage] window.SequenceInputModal:', window.SequenceInputModal);
+        console.log('[ExperimentPage] window.SequenceInputModal?.open:', window.SequenceInputModal?.open);
+        
+        const openModal = () => {
+            console.log('[ExperimentPage] openModal function called');
         if (window.SequenceInputModal && window.SequenceInputModal.open) {
             const initialSequence = selectedProtein?.sequence || sequenceQuery || '';
+                console.log('[ExperimentPage] Opening SequenceInputModal with initialSequence:', initialSequence);
+                console.log('[ExperimentPage] selectedProtein:', selectedProtein);
+                console.log('[ExperimentPage] sequenceQuery:', sequenceQuery);
             window.SequenceInputModal.open(initialSequence);
+                console.log('[ExperimentPage] SequenceInputModal.open called');
+            } else {
+                console.error('[ExperimentPage] SequenceInputModal not available in openModal');
+                if (window.notyf) {
+                    window.notyf.error('서열 입력 모달을 불러올 수 없습니다.');
+                }
+            }
+        };
+        
+        // Try to open immediately
+        if (window.SequenceInputModal && window.SequenceInputModal.open) {
+            console.log('[ExperimentPage] SequenceInputModal available, opening immediately');
+            openModal();
+        } else {
+            console.log('[ExperimentPage] SequenceInputModal not available, waiting...');
+            // Wait for SequenceInputModal to be available
+            let attempts = 0;
+            const maxAttempts = 20;
+            const checkInterval = setInterval(() => {
+                attempts++;
+                console.log(`[ExperimentPage] Checking SequenceInputModal (attempt ${attempts}/${maxAttempts})`);
+                if (window.SequenceInputModal && window.SequenceInputModal.open) {
+                    clearInterval(checkInterval);
+                    console.log('[ExperimentPage] SequenceInputModal now available, opening');
+                    openModal();
+                } else if (attempts >= maxAttempts) {
+                    clearInterval(checkInterval);
+                    console.error('[ExperimentPage] SequenceInputModal not available after waiting');
+                    if (window.notyf) {
+                        window.notyf.error('서열 입력 모달을 불러올 수 없습니다.');
+                    }
+                }
+            }, 50);
         }
     });
+    
+    console.log('[ExperimentPage] pipelineProteinBtn click event listener attached');
 
     // Clear pipeline button
     pipelineClearBtn?.addEventListener('click', () => {
         handleClearPipeline();
     });
 
-    // Run pipeline button
-    pipelineRunBtn?.addEventListener('click', () => {
+    // Run pipeline button - opens simulation confirm modal
+    pipelineRunBtn?.addEventListener('click', (e) => {
+        console.log('[ExperimentPage] ====== pipelineRunBtn CLICKED ======');
+        console.log('[ExperimentPage] window.SimulationConfirmModal:', window.SimulationConfirmModal);
+        
+        const openModal = () => {
+            if (selectedTools.length === 0) {
+                if (window.notyf) {
+                    window.notyf.error('최소 하나의 도구를 선택해주세요.');
+                }
+                return;
+            }
+
+            if (!sequenceQuery && !proteinSequenceInput?.value.trim()) {
+                if (window.notyf) {
+                    window.notyf.error('단백질 서열을 입력해주세요.');
+                }
+                return;
+            }
+
+            const sequence = selectedProtein?.sequence || proteinSequenceInput?.value.trim() || sequenceQuery;
+            const selectedToolsData = availableTools.filter(t => selectedTools.includes(t.id));
+            
+            console.log('[ExperimentPage] Opening SimulationConfirmModal');
+            console.log('[ExperimentPage] Selected tools:', selectedToolsData);
+            console.log('[ExperimentPage] Sequence:', sequence);
+            
+            if (window.SimulationConfirmModal && window.SimulationConfirmModal.open) {
+                window.SimulationConfirmModal.open(selectedToolsData, sequence);
+            } else {
+                console.error('[ExperimentPage] SimulationConfirmModal not available in openModal');
+                if (window.notyf) {
+                    window.notyf.error('시뮬레이션 확인 모달을 불러올 수 없습니다.');
+                }
+            }
+        };
+        
+        // Try to open immediately
+        if (window.SimulationConfirmModal && window.SimulationConfirmModal.open) {
+            console.log('[ExperimentPage] SimulationConfirmModal available, opening immediately');
+            openModal();
+        } else {
+            console.log('[ExperimentPage] SimulationConfirmModal not available, waiting...');
+            // Wait for SimulationConfirmModal to be available
+            let attempts = 0;
+            const maxAttempts = 20;
+            const checkInterval = setInterval(() => {
+                attempts++;
+                console.log(`[ExperimentPage] Checking SimulationConfirmModal (attempt ${attempts}/${maxAttempts})`);
+                if (window.SimulationConfirmModal && window.SimulationConfirmModal.open) {
+                    clearInterval(checkInterval);
+                    console.log('[ExperimentPage] SimulationConfirmModal now available, opening');
+                    openModal();
+                } else if (attempts >= maxAttempts) {
+                    clearInterval(checkInterval);
+                    console.error('[ExperimentPage] SimulationConfirmModal not available after waiting');
+                    // Fallback: use handleRunSimulation which has its own fallback
         handleRunSimulation();
+                }
+            }, 50);
+        }
+    });
+}
+
+// Attach pipeline tool handlers (settings button clicks)
+function attachPipelineToolHandlers() {
+    const settingsButtons = document.querySelectorAll('.pipeline-tool-settings-btn');
+    settingsButtons.forEach(btn => {
+        // Remove existing listeners to prevent duplicates
+        const newBtn = btn.cloneNode(true);
+        btn.parentNode.replaceChild(newBtn, btn);
+        
+        newBtn.addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevent event bubbling
+            const toolId = parseInt(newBtn.getAttribute('data-tool-id'));
+            const tool = availableTools.find(t => t.id === toolId);
+            if (tool && window.ToolOptionsModal) {
+                window.ToolOptionsModal.open(tool);
+            } else if (tool) {
+                console.error('ToolOptionsModal not available');
+                // Fallback: try to wait for modal
+                let attempts = 0;
+                const maxAttempts = 10;
+                const checkInterval = setInterval(() => {
+                    attempts++;
+                    if (window.ToolOptionsModal) {
+                        clearInterval(checkInterval);
+                        window.ToolOptionsModal.open(tool);
+                    } else if (attempts >= maxAttempts) {
+                        clearInterval(checkInterval);
+                        console.error('ToolOptionsModal not available after waiting');
+                        if (window.notyf) {
+                            window.notyf.error('옵션 모달을 불러올 수 없습니다.');
+                        }
+                    }
+                }, 100);
+            }
+        });
     });
 }
 
@@ -1135,6 +1334,7 @@ async function executeSimulation(sequence = null, title = null) {
     const finalSequence = sequence || selectedProtein?.sequence || sequenceQuery || proteinSequenceInput?.value.trim() || '';
     
     if (!finalSequence) {
+        console.log('[ExperimentPage] executeSimulation: No sequence provided');
         if (window.notyf) {
             window.notyf.error('단백질 서열을 입력해주세요.');
         } else {
@@ -1143,6 +1343,19 @@ async function executeSimulation(sequence = null, title = null) {
         return;
     }
 
+    const requestData = {
+        tools: selectedTools,
+        protein_sequence: finalSequence,
+        pipeline_name: title || `Pipeline ${new Date().toLocaleString('ko-KR')}`,
+        tool_options: toolOptions, //수정사항
+    };
+    
+    console.log('[ExperimentPage] ====== executeSimulation called ======');
+    console.log('[ExperimentPage] Request URL: /api/experiments/');
+    console.log('[ExperimentPage] Request method: POST');
+    console.log('[ExperimentPage] Request data:', requestData);
+    console.log('[ExperimentPage] CSRF Token:', getCsrfToken() ? 'Present' : 'Missing');
+
     try {
         const response = await fetch('/api/experiments/', {
             method: 'POST',
@@ -1150,15 +1363,32 @@ async function executeSimulation(sequence = null, title = null) {
                 'X-CSRFToken': getCsrfToken(),
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-                tools: selectedTools,
-                protein_sequence: finalSequence,
-                pipeline_name: title || `Pipeline ${new Date().toLocaleString('ko-KR')}`,
-            }),
+            body: JSON.stringify(requestData),
         });
 
+        console.log('[ExperimentPage] Response status:', response.status);
+        console.log('[ExperimentPage] Response statusText:', response.statusText);
+        console.log('[ExperimentPage] Response headers:', {
+            'content-type': response.headers.get('content-type'),
+            'content-length': response.headers.get('content-length'),
+        });
+
+        // Check if response is JSON before parsing
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            const text = await response.text();
+            console.warn('[ExperimentPage] API returned non-JSON response');
+            console.warn('[ExperimentPage] Response content (first 500 chars):', text.substring(0, 500));
+            console.warn('[ExperimentPage] Response URL:', response.url);
+            console.warn('[ExperimentPage] Response status:', response.status, response.statusText);
+            // Don't show error to user, just log
+            return;
+        }
+
         if (response.ok) {
+            try {
             const data = await response.json();
+                console.log('[ExperimentPage] API response (success):', data);
             
             // Show success message
             if (window.notyf) {
@@ -1172,22 +1402,42 @@ async function executeSimulation(sequence = null, title = null) {
             selectedTools = [];
             updateToolCards();
             updatePipelineActions();
-        } else {
-            const error = await response.json();
+            } catch (jsonError) {
+                console.error('[ExperimentPage] Error parsing JSON response:', jsonError);
+                console.error('[ExperimentPage] JSON parse error details:', {
+                    name: jsonError.name,
+                    message: jsonError.message,
+                });
             if (window.notyf) {
-                window.notyf.error(error.detail || '시뮬레이션 실행에 실패했습니다.');
-            } else {
-                alert(error.detail || '시뮬레이션 실행에 실패했습니다.');
+                    window.notyf.error('응답 데이터를 파싱하는데 실패했습니다.');
+            }
+        }
+        } else {
+            // Try to parse error response as JSON
+            try {
+                const error = await response.json();
+                console.warn('[ExperimentPage] API error response:', error);
+                // Don't show error to user, just log
+            } catch (jsonError) {
+                // If error response is not JSON, log status text
+                const text = await response.text().catch(() => '');
+                console.warn('[ExperimentPage] Error response is not JSON');
+                console.warn('[ExperimentPage] Status:', response.status, response.statusText);
+                console.warn('[ExperimentPage] Response content (first 500 chars):', text.substring(0, 500));
+                // Don't show error to user, just log
             }
         }
     } catch (error) {
-        console.error('Error running simulation:', error);
-        if (window.notyf) {
-            window.notyf.error('시뮬레이션 실행 중 오류가 발생했습니다.');
-        } else {
-            alert('시뮬레이션 실행 중 오류가 발생했습니다.');
-        }
+        console.error('[ExperimentPage] Error running simulation:', error);
+        console.error('[ExperimentPage] Error details:', {
+            name: error.name,
+            message: error.message,
+            stack: error.stack,
+        });
+        // Don't show error to user, just log
     }
+    
+    console.log('[ExperimentPage] ====== executeSimulation completed ======');
 }
 
 // Handle clear pipeline
@@ -1252,11 +1502,13 @@ function renderToolsGrid() {
         return `
             <div class="tool-card ${isSelected ? 'selected' : ''}" data-tool-id="${tool.id}">
                 ${isSelected ? '<div class="tool-check-icon"><i class="fas fa-check-circle"></i></div>' : ''}
-                <div class="tool-icon">
-                    <i class="${iconClass}"></i>
+                <div class="flex flex-col items-center text-center">
+                    <div class="tool-icon">
+                        <i class="${iconClass}"></i>
+                    </div>
+                    <p class="tool-name">${escapeHtml(tool.name)}</p>
+                    <p class="tool-desc">${escapeHtml(tool.description)}</p>
                 </div>
-                <p class="tool-name">${escapeHtml(tool.name)}</p>
-                <p class="tool-desc">${escapeHtml(tool.description)}</p>
                 <div class="tool-status">${isSelected ? '선택됨' : '대기'}</div>
             </div>
         `;
@@ -1273,8 +1525,10 @@ function renderExperimentTable(experiments) {
     if (experiments.length === 0) {
         experimentTableBody.innerHTML = `
             <tr>
-                <td colspan="4" class="empty-state">
-                    <p class="empty-message">실험을 진행하시겠습니까?</p>
+                <td colspan="4" class="empty-state-cell">
+                    <div class="empty-state">
+                        <p class="empty-message">상단의 시뮬레이션 실험을 진행하시면 진행상태를 확인할 수 있습니다</p>
+                    </div>
                 </td>
             </tr>
         `;
@@ -1282,54 +1536,67 @@ function renderExperimentTable(experiments) {
     }
 
     experimentTableBody.innerHTML = experiments.map(experiment => {
+        // 도구 정보 처리 - API에서 도구 이름 배열로 반환됨
         const tools = experiment.tools || [];
-        // React uses tools as string array, so extract tool names
         const toolsHtml = tools.map(tool => {
-            const toolName = typeof tool === 'string' ? tool : (tool.name || tool);
+            const toolName = typeof tool === 'string' ? tool : (tool.name || tool.tool_name || tool);
             return `<span class="tool-tag">${escapeHtml(toolName)}</span>`;
         }).join('');
 
-        const status = experiment.status || 'ready';
-        // React uses Korean status strings directly
-        const statusDisplay = status === '완료' || status === 'completed' ? '완료' :
-                            status === '진행중' || status === 'in_progress' ? '진행중' :
-                            status === '준비' || status === 'ready' ? '준비' : status;
+        // 상태 처리 - API에서 status_display를 제공하거나 상태 코드를 변환
+        const statusCode = experiment.status || 'R';
+        const statusDisplay = experiment.status_display || 
+                            (statusCode === 'C' ? '완료' :
+                             statusCode === 'P' ? '진행중' :
+                             statusCode === 'R' ? '준비' :
+                             statusCode === 'F' ? '실패' :
+                             statusCode === 'E' ? '활성' :
+                             statusCode === 'D' ? '비활성' : statusCode);
 
+        // 생성일 처리
         const createdAgo = experiment.created_at ? 
             formatTimeAgo(new Date(experiment.created_at)) : 
-            '알 수 없음';
+            (experiment.created || '알 수 없음');
 
-        // Calculate progress (mock or from API) - React uses progress directly
-        const progress = experiment.progress || (status === 'completed' || status === '완료' ? 100 : 
-                        status === 'in_progress' || status === '진행중' ? 50 : 0);
+        // 진행률 처리 - API에서 직접 제공
+        const progress = experiment.progress !== undefined ? experiment.progress : 
+                        (statusCode === 'C' ? 100 : 
+                        statusCode === 'P' ? 65 : 
+                        statusCode === 'R' ? 25 : 0);
 
-        // React uses 'pipeline' field, but Django might use 'pipeline_name'
-        const pipelineName = experiment.pipeline || experiment.pipeline_name || 'Unnamed Pipeline';
+        // 파이프라인 이름 처리
+        const pipelineName = experiment.pipeline || experiment.pipeline_name || experiment.name || 'Unnamed Pipeline';
 
-        // Determine status class based on statusDisplay (React uses Korean strings)
-        const statusClass = statusDisplay === '완료' ? 'status-completed' :
-                           statusDisplay === '진행중' ? 'status-progress' :
-                           'status-ready';
+        // 상태 클래스 결정
+        const statusClass = statusDisplay === '완료' ? 'status-완료 status-completed' :
+                           statusDisplay === '진행중' ? 'status-진행중 status-progress' :
+                           statusDisplay === '준비' ? 'status-준비 status-ready' :
+                           statusDisplay === '실패' ? 'status-실패 status-failed' :
+                           'status-준비 status-ready';
         
-        const statusDotClass = statusDisplay === '완료' ? 'status-dot-completed' :
-                              statusDisplay === '진행중' ? 'status-dot-progress' :
-                              'status-dot-ready';
+        const statusDotClass = statusDisplay === '완료' ? 'status-dot-완료 status-dot-completed' :
+                              statusDisplay === '진행중' ? 'status-dot-진행중 status-dot-progress' :
+                              statusDisplay === '준비' ? 'status-dot-준비 status-dot-ready' :
+                              statusDisplay === '실패' ? 'status-dot-실패 status-dot-failed' :
+                              'status-dot-준비 status-dot-ready';
 
         return `
-            <tr data-experiment-id="${experiment.id}" data-experiment-progress="${progress}">
-                <td>${escapeHtml(pipelineName)}</td>
-                <td>
+            <tr data-experiment-id="${experiment.id}" data-experiment-progress="${progress}" class="status-table-row">
+                <td class="status-td-pipeline">
+                    <p class="text-sm text-gray-900">${escapeHtml(pipelineName)}</p>
+                </td>
+                <td class="status-td-tools">
                     <div class="tool-tags">
                         ${toolsHtml}
                     </div>
                 </td>
-                <td>
+                <td class="status-td-status">
                     <span class="status-badge ${statusClass}">
                         <span class="status-dot ${statusDotClass}"></span>
                         ${statusDisplay}
                     </span>
                 </td>
-                <td>${createdAgo}</td>
+                <td class="status-td-created text-gray-600 text-sm whitespace-nowrap">${escapeHtml(createdAgo)}</td>
             </tr>
         `;
     }).join('');
@@ -1364,12 +1631,25 @@ function attachToolItemHandlers() {
 
 // Attach tool card handlers
 function attachToolCardHandlers() {
-    const toolCards = toolsGrid?.querySelectorAll('.tool-card');
-    toolCards?.forEach(card => {
-        card.addEventListener('click', () => {
-            const toolId = parseInt(card.getAttribute('data-tool-id'));
-            toggleToolSelection(toolId);
+    if (!toolsGrid) return;
+    
+    const toolCards = toolsGrid.querySelectorAll('.tool-card');
+    toolCards.forEach(card => {
+        // Remove existing listeners to prevent duplicates
+        const newCard = card.cloneNode(true);
+        card.parentNode.replaceChild(newCard, card);
+        
+        // Add click event listener
+        newCard.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const toolId = parseInt(newCard.getAttribute('data-tool-id'));
+            if (!isNaN(toolId)) {
+                toggleToolSelection(toolId);
+            }
         });
+        
+        // Add cursor pointer style
+        newCard.style.cursor = 'pointer';
     });
 }
 
@@ -1383,7 +1663,18 @@ function attachExperimentTableHandlers() {
             const experiment = experiments.find(exp => exp.id == experimentId);
             if (experiment) {
                 // Use existing data if available (like React's setSelectedExperiment)
-                renderExperimentResult(experiment);
+                // Ensure experiment has all required fields for sidebar
+                const experimentData = {
+                    ...experiment,
+                    pipeline: experiment.pipeline || experiment.pipeline_name || 'Unnamed Pipeline',
+                    tools: experiment.tools || [],
+                    status: experiment.status || 'ready',
+                    progress: experiment.progress !== undefined ? experiment.progress : 
+                             (experiment.status === 'completed' || experiment.status === '완료' ? 100 :
+                              experiment.status === 'in_progress' || experiment.status === '진행중' ? 65 : 25),
+                    created: experiment.created || formatTimeAgo(new Date(experiment.created_at || new Date()))
+                };
+                renderExperimentResult(experimentData);
                 if (experimentResultSidebar) {
                     experimentResultSidebar.style.display = 'flex';
                     document.body.style.overflow = 'hidden';
@@ -1456,13 +1747,38 @@ function renderExperimentResult(experiment) {
         }
     }
 
-    // Status - React uses Korean status strings directly
+    // Status - Convert status code to Korean
     if (experimentResultStatus) {
-        const status = experiment.status || experiment.status_display || 'ready';
-        // If status is already in Korean, use it directly; otherwise convert
-        const statusDisplay = status === '완료' || status === 'completed' ? '완료' :
-                            status === '진행중' || status === 'in_progress' ? '진행중' :
-                            status === '준비' || status === 'ready' ? '준비' : status;
+        const status = experiment.status || experiment.status_display || 'R';
+        
+        // Convert status code to Korean
+        let statusDisplay = '';
+        if (typeof status === 'string') {
+            // Check if already in Korean
+            if (status === '완료' || status === '진행중' || status === '준비' || status === '실패' || status === '활성' || status === '비활성') {
+                statusDisplay = status;
+            }
+            // Check English status strings
+            else if (status === 'completed' || status === 'C') {
+                statusDisplay = '완료';
+            } else if (status === 'in_progress' || status === 'P') {
+                statusDisplay = '진행중';
+            } else if (status === 'ready' || status === 'R') {
+                statusDisplay = '준비';
+            } else if (status === 'failed' || status === 'F') {
+                statusDisplay = '실패';
+            } else if (status === 'enabled' || status === 'E') {
+                statusDisplay = '활성';
+            } else if (status === 'disabled' || status === 'D') {
+                statusDisplay = '비활성';
+            } else {
+                // Unknown status, use as-is
+                statusDisplay = status;
+            }
+        } else {
+            statusDisplay = '알 수 없음';
+        }
+        
         experimentResultStatus.textContent = statusDisplay;
     }
 
@@ -1470,14 +1786,18 @@ function renderExperimentResult(experiment) {
     // React uses progress directly from selectedExperiment.progress
     let progress = experiment.progress;
     if (progress === undefined || progress === null) {
-        const status = experiment.status || experiment.status_display || 'ready';
-        // React uses Korean status strings, so check both
-        if (status === 'completed' || status === '완료') {
+        const status = experiment.status || experiment.status_display || 'R';
+        // Convert status code to determine progress
+        if (status === 'completed' || status === '완료' || status === 'C') {
             progress = 100;
-        } else if (status === 'in_progress' || status === '진행중') {
-            progress = 50; // Default progress for in_progress
+        } else if (status === 'in_progress' || status === '진행중' || status === 'P') {
+            progress = 65; // Default progress for in_progress (matching React mock data)
+        } else if (status === 'ready' || status === '준비' || status === 'R') {
+            progress = 25; // Default progress for ready (matching React mock data)
+        } else if (status === 'failed' || status === '실패' || status === 'F') {
+            progress = 0; // Failed experiments have 0% progress
         } else {
-            progress = 0;
+            progress = 0; // Default for unknown status
         }
     }
     
@@ -1519,10 +1839,31 @@ async function renderExperimentResultFiles(experiment) {
     }
 
     // Fallback: Use mock files based on status (React uses Korean status strings)
-    const statusDisplay = experiment.status_display || experiment.status || 'ready';
-    // Convert to Korean if needed
-    const statusKorean = statusDisplay === '완료' || statusDisplay === 'completed' ? '완료' :
-                        statusDisplay === '진행중' || statusDisplay === 'in_progress' ? '진행중' : statusDisplay;
+    const status = experiment.status || experiment.status_display || 'R';
+    
+    // Convert status code to Korean
+    let statusKorean = '';
+    if (typeof status === 'string') {
+        // Check if already in Korean
+        if (status === '완료' || status === '진행중' || status === '준비' || status === '실패') {
+            statusKorean = status;
+        }
+        // Check English status strings and codes
+        else if (status === 'completed' || status === 'C') {
+            statusKorean = '완료';
+        } else if (status === 'in_progress' || status === 'P') {
+            statusKorean = '진행중';
+        } else if (status === 'ready' || status === 'R') {
+            statusKorean = '준비';
+        } else if (status === 'failed' || status === 'F') {
+            statusKorean = '실패';
+        } else {
+            statusKorean = '준비'; // Default
+        }
+    } else {
+        statusKorean = '준비'; // Default
+    }
+    
     const mockFiles = generateMockResultFiles(statusKorean);
     renderResultFilesList(mockFiles, experiment.id);
 }
@@ -1530,9 +1871,28 @@ async function renderExperimentResultFiles(experiment) {
 // Generate mock result files based on status
 // React uses Korean status strings: "완료", "진행중", etc.
 function generateMockResultFiles(status) {
-    // Convert English status to Korean for comparison
-    const statusKorean = status === 'completed' || status === '완료' ? '완료' :
-                        status === 'in_progress' || status === '진행중' ? '진행중' : status;
+    // Convert status code/English to Korean for comparison
+    let statusKorean = '';
+    if (typeof status === 'string') {
+        // Check if already in Korean
+        if (status === '완료' || status === '진행중' || status === '준비' || status === '실패') {
+            statusKorean = status;
+        }
+        // Check English status strings and codes
+        else if (status === 'completed' || status === 'C') {
+            statusKorean = '완료';
+        } else if (status === 'in_progress' || status === 'P') {
+            statusKorean = '진행중';
+        } else if (status === 'ready' || status === 'R') {
+            statusKorean = '준비';
+        } else if (status === 'failed' || status === 'F') {
+            statusKorean = '실패';
+        } else {
+            statusKorean = '준비'; // Default
+        }
+    } else {
+        statusKorean = '준비'; // Default
+    }
     
     if (statusKorean === '완료') {
         return [
@@ -1545,7 +1905,12 @@ function generateMockResultFiles(status) {
             { id: 1, name: '중간 결과 1', type: 'TXT', size: '89 KB', date: '30분 전', url: '/api/experiments/files/1/' },
             { id: 2, name: '로그 파일', type: 'LOG', size: '234 KB', date: '15분 전', url: '/api/experiments/files/2/' },
         ];
+    } else if (statusKorean === '실패') {
+        return [
+            { id: 1, name: '에러 로그', type: 'LOG', size: '45 KB', date: '1시간 전', url: '/api/experiments/files/1/' },
+        ];
     } else {
+        // 준비 상태 또는 기타
         return [
             { id: 1, name: '입력 데이터', type: 'CSV', size: '512 KB', date: '1일 전', url: '/api/experiments/files/1/' },
         ];
@@ -1682,29 +2047,163 @@ function showToolGuide(toolId) {
 
 // Open tool guide modal (extracted for reuse)
 function openToolGuideModal(tool) {
-    if (window.ToolGuideModal && window.ToolGuideModal.open) {
-        window.ToolGuideModal.open(tool);
-    } else {
-        console.error('ToolGuideModal not available');
-        // Fallback: navigate to guide page
-        if (tool.id) {
-            window.location.href = `/experiments/tools/${tool.id}/guide/`;
-        }
+    if (!tool) {
+        console.error('Tool data not provided');
+        return;
     }
+    
+    // Check if ToolGuideModal is available
+    if (window.ToolGuideModal && typeof window.ToolGuideModal.open === 'function') {
+        window.ToolGuideModal.open(tool);
+        return;
+    }
+    
+    // If not available, try to wait for it to load
+    const modal = document.getElementById('toolGuideModal');
+    if (!modal) {
+        console.error('ToolGuideModal element not found');
+        if (window.notyf) {
+            window.notyf.error('도구 가이드 모달을 찾을 수 없습니다.');
+        }
+        return;
+    }
+    
+    // Wait for ToolGuideModal to be available (check multiple times)
+    let attempts = 0;
+    const maxAttempts = 50; // Increased attempts for slower connections
+    let checkInterval = null;
+    let eventListenerAdded = false;
+    
+    // First, try to listen for the ready event
+    if (!eventListenerAdded && typeof document !== 'undefined') {
+        eventListenerAdded = true;
+        const readyHandler = () => {
+            if (checkInterval) {
+                clearInterval(checkInterval);
+            }
+            if (window.ToolGuideModal && typeof window.ToolGuideModal.open === 'function') {
+                // Ensure modal is initialized before opening
+                if (window.ToolGuideModal.init) {
+                    window.ToolGuideModal.init();
+                }
+                window.ToolGuideModal.open(tool);
+                document.removeEventListener('toolGuideModalReady', readyHandler);
+                return;
+            }
+        };
+        document.addEventListener('toolGuideModalReady', readyHandler, { once: true });
+    }
+    
+    // Also use interval as fallback
+    checkInterval = setInterval(() => {
+        attempts++;
+        if (window.ToolGuideModal && typeof window.ToolGuideModal.open === 'function') {
+            clearInterval(checkInterval);
+            // Ensure modal is initialized before opening
+            if (window.ToolGuideModal.init) {
+                window.ToolGuideModal.init();
+            }
+            window.ToolGuideModal.open(tool);
+        } else if (attempts >= maxAttempts) {
+            clearInterval(checkInterval);
+            console.error('ToolGuideModal not available after waiting. Make sure tool_guide_modal.js is loaded.');
+            // Fallback: try to manually open modal if element exists
+            if (modal) {
+                console.warn('Attempting to manually open modal...');
+                // Manually render and show modal as fallback
+                manualOpenToolGuideModal(tool, modal);
+            } else {
+                if (window.notyf) {
+                    window.notyf.error('도구 가이드를 불러올 수 없습니다.');
+                }
+            }
+        }
+    }, 50); // Check every 50ms (faster checking) // Increase interval to 100ms for better reliability
 }
 
-// Format time ago
+// Fallback function to manually open modal
+function manualOpenToolGuideModal(tool, modalElement) {
+    if (!modalElement || !tool) return;
+    
+    // Update title
+    const modalTitle = document.getElementById('toolGuideModalTitle');
+    const modalSubtitle = document.getElementById('toolGuideModalSubtitle');
+    const overviewEl = document.getElementById('toolGuideOverview');
+    const usageList = document.getElementById('toolGuideUsageList');
+    const tipsEl = document.getElementById('toolGuideTips');
+    
+    if (modalTitle) modalTitle.textContent = `${tool.name} 사용 가이드`;
+    if (modalSubtitle) modalSubtitle.textContent = tool.category || '';
+    if (overviewEl) overviewEl.textContent = tool.guide?.overview || tool.description || '';
+    if (tipsEl) tipsEl.textContent = tool.guide?.tips || '';
+    
+    // Render usage steps
+    if (usageList && tool.guide?.usage) {
+        usageList.innerHTML = tool.guide.usage.map((step, index) => {
+            const stepText = step.replace(/^\d+\.\s*/, '');
+            return `
+                <div class="guide-step">
+                    <div class="guide-step-number">${index + 1}</div>
+                    <p class="guide-step-text">${escapeHtml(stepText)}</p>
+                </div>
+            `;
+        }).join('');
+    }
+    
+    // Show modal
+    modalElement.classList.add('active');
+    modalElement.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+    
+    // Attach close handlers
+    const closeBtn = modalElement.querySelector('.modal-close-btn');
+    const footerCloseBtn = modalElement.querySelector('[data-action="close"]');
+    
+    const closeModal = () => {
+        modalElement.classList.remove('active');
+        modalElement.style.display = 'none';
+        document.body.style.overflow = '';
+    };
+    
+    if (closeBtn) {
+        closeBtn.onclick = closeModal;
+    }
+    if (footerCloseBtn) {
+        footerCloseBtn.onclick = closeModal;
+    }
+    
+    // Close on overlay click
+    modalElement.onclick = (e) => {
+        if (e.target === modalElement) {
+            closeModal();
+        }
+    };
+}
+
+// Format time ago (matching React format: "2 days ago", "1 day ago", "12 hours ago")
 function formatTimeAgo(date) {
+    if (!date) return '알 수 없음';
+    
     const now = new Date();
-    const diff = now - date;
+    const diff = now - new Date(date);
     const seconds = Math.floor(diff / 1000);
     const minutes = Math.floor(seconds / 60);
     const hours = Math.floor(minutes / 60);
     const days = Math.floor(hours / 24);
 
-    if (days > 0) return `${days}일 전`;
-    if (hours > 0) return `${hours}시간 전`;
-    if (minutes > 0) return `${minutes}분 전`;
+    // Match React format more closely
+    if (days > 0) {
+        if (days === 1) return '1일 전';
+        return `${days}일 전`;
+    }
+    if (hours > 0) {
+        if (hours === 1) return '1시간 전';
+        return `${hours}시간 전`;
+    }
+    if (minutes > 0) {
+        if (minutes === 1) return '1분 전';
+        return `${minutes}분 전`;
+    }
     return '방금 전';
 }
 
@@ -1739,6 +2238,32 @@ if (document.readyState === 'loading') {
     initExperiment();
 }
 
+// Update protein sequence input field (for use by modals)
+function updateProteinSequenceInput(sequence) {
+    if (proteinSequenceInput) {
+        proteinSequenceInput.value = sequence || '';
+    }
+}
+
+// Setter methods for updating state from external modules
+function setSequenceQuery(value) {
+    sequenceQuery = value;
+}
+
+function setSelectedProtein(value) {
+    selectedProtein = value;
+}
+
+function setToolOptions(value) {
+    toolOptions = value;
+}
+
+function setSelectedTools(value) {
+    selectedTools = Array.isArray(value) ? [...value] : [];
+    updateToolCards();
+    updatePipelineActions();
+}
+
 // Export for use in other modules
 if (typeof window !== 'undefined') {
     window.ExperimentPage = {
@@ -1761,10 +2286,17 @@ if (typeof window !== 'undefined') {
         getSelectedToolsInOrder,
         openExperimentResultSidebar,
         closeExperimentResultSidebar,
-        selectedTools,
-        availableTools,
-        sequenceQuery,
-        toolOptions,
-        selectedProtein,
+        updateProteinSequenceInput, // Add method for modals to update input field
+        // Setter methods for updating state
+        setSequenceQuery,
+        setSelectedProtein,
+        setToolOptions,
+        setSelectedTools,
+        // Use getters to always return current values
+        get selectedTools() { return selectedTools; },
+        get availableTools() { return availableTools; },
+        get sequenceQuery() { return sequenceQuery; },
+        get toolOptions() { return toolOptions; },
+        get selectedProtein() { return selectedProtein; },
     };
 }

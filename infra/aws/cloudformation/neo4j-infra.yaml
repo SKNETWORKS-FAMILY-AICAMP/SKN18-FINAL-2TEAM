@@ -1,0 +1,318 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: "Neo4j EC2 Infrastructure - VPC, Security Group, EC2 Instance"
+
+Parameters:
+  # Parameter Store에서 값을 읽어오는 파라미터들
+  KeyName:
+    Type: "AWS::SSM::Parameter::Value<String>"
+    Default: "/skn18/key-name"
+    Description: "EC2 SSH KeyPair 이름 (Parameter Store: /skn18/key-name)"
+
+  InstanceType:
+    Type: "AWS::SSM::Parameter::Value<String>"
+    Default: "/skn18/neo4j-instance-type"
+    Description: "Neo4j EC2 인스턴스 타입 (Parameter Store: /skn18/neo4j-instance-type, 예: t3.large)"
+
+  AllowedCidr:
+    Type: "AWS::SSM::Parameter::Value<String>"
+    Default: "/skn18/allowed-cidr"
+    Description: "Neo4j에 접근 가능한 CIDR (Parameter Store: /skn18/allowed-cidr)"
+
+  Neo4jAmiId:
+    Type: "AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>"
+    Default: "/skn18/neo4j-ami-id"
+    Description: "AMI ID for Neo4j EC2 instance (Packer로 빌드된 AMI ID를 Parameter Store에 저장 필요: /skn18/neo4j-ami-id)"
+
+  VpcId:
+    Type: "String"
+    Description: "Existing VPC ID (optional, leave empty to create new VPC)"
+    Default: ""
+
+  SubnetId:
+    Type: "String"
+    Description: "Existing Subnet ID (required if VpcId is provided, leave empty if creating new VPC)"
+    Default: ""
+
+Conditions:
+  CreateVPC:
+    Fn::Equals:
+      - !Ref VpcId
+      - ""
+
+Resources:
+  # =========================
+  # 네트워크 (VPC - 기존 VPC 사용 또는 새로 생성)
+  # =========================
+  AppVPC:
+    Type: AWS::EC2::VPC
+    Condition: CreateVPC
+    Properties:
+      CidrBlock: "10.1.0.0/16"
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags:
+        - Key: Name
+          Value: "skn18-neo4j-vpc"
+
+  AppInternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Condition: CreateVPC
+    Properties:
+      Tags:
+        - Key: Name
+          Value: "skn18-neo4j-igw"
+
+  AppVpcIgwAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Condition: CreateVPC
+    Properties:
+      VpcId: !Ref AppVPC
+      InternetGatewayId: !Ref AppInternetGateway
+
+  AppPublicSubnet:
+    Type: AWS::EC2::Subnet
+    Condition: CreateVPC
+    Properties:
+      VpcId: !Ref AppVPC
+      CidrBlock: "10.1.1.0/24"
+      MapPublicIpOnLaunch: true
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      Tags:
+        - Key: Name
+          Value: "skn18-neo4j-public-subnet"
+
+  AppPublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Condition: CreateVPC
+    Properties:
+      VpcId: !Ref AppVPC
+      Tags:
+        - Key: Name
+          Value: "skn18-neo4j-public-rt"
+
+  AppPublicRoute:
+    Type: AWS::EC2::Route
+    Condition: CreateVPC
+    DependsOn: AppVpcIgwAttachment
+    Properties:
+      RouteTableId: !Ref AppPublicRouteTable
+      DestinationCidrBlock: "0.0.0.0/0"
+      GatewayId: !Ref AppInternetGateway
+
+  AppPublicSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Condition: CreateVPC
+    Properties:
+      SubnetId: !Ref AppPublicSubnet
+      RouteTableId: !Ref AppPublicRouteTable
+
+  # =========================
+  # 보안 그룹
+  # =========================
+  Neo4jSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Security group for Neo4j EC2"
+      VpcId: !If [CreateVPC, !Ref AppVPC, !Ref VpcId]
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 7474
+          ToPort: 7474
+          CidrIp: !Ref AllowedCidr
+          Description: "Neo4j HTTP"
+        - IpProtocol: tcp
+          FromPort: 7687
+          ToPort: 7687
+          CidrIp: !Ref AllowedCidr
+          Description: "Neo4j Bolt"
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref AllowedCidr
+          Description: "SSH"
+      Tags:
+        - Key: Name
+          Value: "skn18-neo4j-sg"
+
+  # =========================
+  # EC2 인스턴스
+  # =========================
+  Neo4jInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: !Ref InstanceType
+      ImageId: !Ref Neo4jAmiId
+      KeyName: !Ref KeyName
+      IamInstanceProfile: !Ref Ec2InstanceProfile
+      SubnetId: !If 
+        - CreateVPC
+        - !Ref AppPublicSubnet
+        - !Ref SubnetId
+      SecurityGroupIds:
+        - !Ref Neo4jSecurityGroup
+      Tags:
+        - Key: Name
+          Value: "skn18-neo4j-ec2"
+      BlockDeviceMappings:
+        - DeviceName: "/dev/xvda"
+          Ebs:
+            VolumeSize: 50
+            VolumeType: gp3
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          set -xe
+
+          # ========================================
+          # AMI에 이미 포함된 설정:
+          # - Docker 설치 및 설정 완료
+          # - ec2-user가 docker 그룹에 추가됨
+          # - /var/lib/neo4j 디렉토리 구조 준비됨
+          # - /var/lib/neo4j/config/neo4j.conf 파일 준비됨
+          # - /var/lib/neo4j/config/init.cypher 파일 준비됨
+          # - /var/lib/neo4j/plugins/ 플러그인 파일 준비됨
+          # ========================================
+
+          # ---------
+          # Docker 서비스 시작 (AMI에 설치되어 있지만 중지 상태)
+          # ---------
+          systemctl start docker
+          systemctl enable docker
+
+          # ---------
+          # 기존 컨테이너 정리 (재시작 시 중복 방지)
+          # ---------
+          docker stop neo4j-final || true
+          docker rm -f neo4j-final || true
+
+          # ---------
+          # Neo4j 데이터 디렉토리 최종 확인
+          # ---------
+          mkdir -p /var/lib/neo4j/{data,logs,plugins,import,config}
+          chown -R ec2-user:ec2-user /var/lib/neo4j
+
+          # ---------
+          # Parameter Store에서 Neo4j 비밀번호 가져오기
+          # ---------
+          REGION=$(curl -s --max-time 5 http://169.254.169.254/latest/meta-data/placement/region 2>/dev/null)
+          if [ -z "$REGION" ]; then
+            REGION="ap-northeast-2"
+          fi
+          echo "Using region: $REGION"
+          NEO4J_PASSWORD=$(aws ssm get-parameter --name /skn18/neo4j-password --with-decryption --region "$REGION" --query 'Parameter.Value' --output text 2>&1)
+          if [ $? -ne 0 ] || [ -z "$NEO4J_PASSWORD" ]; then
+            echo "ERROR: Failed to retrieve Neo4j password from Parameter Store"
+            echo "Error details: $NEO4J_PASSWORD"
+            # 임시로 기본값 사용 (디버깅용)
+            NEO4J_PASSWORD="neo4jpass"
+            echo "Using fallback password for debugging"
+          else
+            echo "Neo4j password retrieved successfully from Parameter Store"
+          fi
+
+          # ---------
+          # Docker 컨테이너 실행 (neo4j:5.15.0)
+          # ---------
+          docker run -d \
+            --name neo4j-final \
+            -e NEO4J_AUTH=neo4j/"$NEO4J_PASSWORD" \
+            -e NEO4J_PLUGINS='["apoc","graph-data-science"]' \
+            -e NEO4J_dbms_security_procedures_unrestricted=apoc.*,gds.* \
+            -e NEO4J_dbms_security_procedures_allowlist=apoc.*,gds.* \
+            -p 7474:7474 \
+            -p 7687:7687 \
+            -v /var/lib/neo4j/data:/data \
+            -v /var/lib/neo4j/logs:/logs \
+            -v /var/lib/neo4j/plugins:/plugins \
+            -v /var/lib/neo4j/import:/import \
+            -v /var/lib/neo4j/config/neo4j.conf:/config/neo4j.conf \
+            -v /var/lib/neo4j/config/init.cypher:/docker-entrypoint-initdb.d/init.cypher \
+            --restart unless-stopped \
+            neo4j:5.15.0
+
+          echo "=== Neo4j Docker container started successfully ==="
+
+  # =========================
+  # EC2 IAM 역할 (Parameter Store 접근용)
+  # =========================
+  Ec2ParameterStoreRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+      Policies:
+        - PolicyName: ParameterStoreAccessPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ssm:GetParameter
+                  - ssm:GetParameters
+                Resource: !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/skn18/*"
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                Resource: "arn:aws:s3:::skn18-etl-data"
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource: "arn:aws:s3:::skn18-etl-data/neo4j-data/*"
+
+  Ec2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref Ec2ParameterStoreRole
+
+Outputs:
+  InstanceId:
+    Description: "Neo4j EC2 Instance ID"
+    Value: !Ref Neo4jInstance
+    Export:
+      Name: !Sub "${AWS::StackName}-Neo4jInstanceId"
+
+  PublicIp:
+    Description: "Neo4j EC2 Public IP"
+    Value: !GetAtt Neo4jInstance.PublicIp
+    Export:
+      Name: !Sub "${AWS::StackName}-Neo4jPublicIp"
+
+  HttpEndpoint:
+    Description: "Neo4j HTTP 접속 엔드포인트"
+    Value: !Sub "http://${Neo4jInstance.PublicIp}:7474"
+    Export:
+      Name: !Sub "${AWS::StackName}-Neo4jHttpEndpoint"
+
+  BoltEndpoint:
+    Description: "Neo4j Bolt 접속 엔드포인트"
+    Value: !Sub "bolt://${Neo4jInstance.PublicIp}:7687"
+    Export:
+      Name: !Sub "${AWS::StackName}-Neo4jBoltEndpoint"
+
+  ConnectionStringExample:
+    Description: "Neo4j 접속 예시 (비밀번호는 Parameter Store에서 확인: /skn18/neo4j-password)"
+    Value: !Sub "bolt://neo4j:[PASSWORD]@${Neo4jInstance.PublicIp}:7687"
+    Export:
+      Name: !Sub "${AWS::StackName}-Neo4jConnectionStringExample"
+
+  VpcId:
+    Description: "사용된 VPC ID"
+    Value: !If [CreateVPC, !Ref AppVPC, !Ref VpcId]
+    Export:
+      Name: !Sub "${AWS::StackName}-VpcId"
+
+  SecurityGroupId:
+    Description: "Security Group ID"
+    Value: !Ref Neo4jSecurityGroup
+    Export:
+      Name: !Sub "${AWS::StackName}-Neo4jSecurityGroupId"
+

@@ -13,17 +13,17 @@
         
         <div class="modal-body">
             <div class="form-group">
-                <label for="sequenceInputTextarea">단백질 서열</label>
+                <label for="sequenceInputModalTextarea">단백질 서열</label>
                 <textarea
-                    id="sequenceInputTextarea"
+                    id="sequenceInputModalTextarea"
                     placeholder="단백질 서열을 붙여넣으세요 (예: MEEPQSDPSVEPPLSQETFSDLWKLLPENNVLSPLPSQAMDDLMLSPDDIEQWFTEDPGP...)"
                     class="form-textarea sequence-textarea"
                     rows="12"
                 ></textarea>
-                <p class="form-help-text" id="sequenceInputCharCount">서열을 입력하세요</p>
+                <p class="form-help-text" id="sequenceInputModalCharCount">서열을 입력하세요</p>
             </div>
 
-            <div class="sequence-input-info" id="sequenceInputInfo" style="display: none;">
+            <div class="sequence-input-info" id="sequenceInputModalInfo" style="display: none;">
                 <i class="fa-solid fa-info-circle"></i>
                 <p>입력된 서열이 실험 파이프라인에 적용됩니다</p>
             </div>
@@ -31,7 +31,7 @@
         
         <div class="modal-footer">
             <button class="modal-btn modal-btn-secondary" data-action="close">취소</button>
-            <button class="modal-btn modal-btn-primary" id="sequenceInputApplyBtn" disabled>
+            <button class="modal-btn modal-btn-primary" id="sequenceInputModalApplyBtn" disabled>
                 <i class="fa-solid fa-check-circle"></i>
                 적용
             </button>

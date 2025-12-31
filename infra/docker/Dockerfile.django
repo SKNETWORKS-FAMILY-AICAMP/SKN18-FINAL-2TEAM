@@ -6,19 +6,40 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     gcc \
     postgresql-client \
+    curl \
+    unzip \
     && rm -rf /var/lib/apt/lists/*
+
+# AWS CLI 설치 (Parameter Store 접근용)
+RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && \
+    unzip awscliv2.zip && \
+    ./aws/install && \
+    rm -rf awscliv2.zip aws/
 
 # Python 의존성
 COPY requirements.txt .
+# PyTorch CPU-only 버전 먼저 설치 (GPU 없이 EC2에서 실행하므로 CUDA 제외하여 크기 절감)
+# CPU-only 버전 사용 시 약 2GB → 500MB로 크기 감소
+RUN pip install --no-cache-dir \
+    --index-url https://download.pytorch.org/whl/cpu \
+    torch==2.2.2
+# 나머지 패키지 설치
 RUN pip install --no-cache-dir -r requirements.txt
 
 # 애플리케이션 코드 복사
 COPY django_app/ ./django_app/
 COPY graph/ ./graph/
-COPY rag/ ./rag/
-COPY kg/ ./kg/
-COPY sllm/ ./sllm/
-COPY messaging/ ./messaging/  # Producer 모듈 포함
+# rag/retriver만 복사 (ETL 코드는 Lambda에서 실행되므로 불필요)
+COPY rag/retriver/ ./rag/retriver/
+# messaging은 django_app/apps/core/queue.py에서 사용
+COPY messaging/ ./messaging/
+# kg, sllm은 보류 (필요시 추가)
+# COPY kg/ ./kg/
+# COPY sllm/ ./sllm/
+
+# Entrypoint 스크립트 (자동 마이그레이션 실행)
+COPY infra/docker/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 # Django 설정
 WORKDIR /app/django_app
@@ -26,5 +47,11 @@ ENV PYTHONPATH=/app
 
 EXPOSE 8000
 
-CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3"]
+# CrossEncoder 모델 미리 다운로드 (런타임 타임아웃 방지)
+# 모델이 이미 다운로드되어 있으면 스킵됨
+RUN python -c "import os; os.makedirs('/app/models', exist_ok=True); from sentence_transformers import CrossEncoder; CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2', cache_folder='/app/models')" || echo "모델 다운로드 실패 (런타임에 다운로드됨)"
+
+# Entrypoint에서 마이그레이션 실행 후 Gunicorn 시작
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3", "--timeout", "120"]
 

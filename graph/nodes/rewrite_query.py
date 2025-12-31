@@ -15,7 +15,8 @@ from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 from graph.llm_config import (
     rewrite_query_simplifier_tool_llm,
-    rewrite_query_node_llm
+    rewrite_query_node_llm,
+    get_model_name
 )
 
 
@@ -182,6 +183,8 @@ def query_simplifier_tool(question: str) -> str:
 검색 쿼리만 출력하세요:"""
 
     try:
+        model_name = get_model_name(rewrite_query_simplifier_tool_llm)
+        print(f"[QuerySimplifier] 사용 모델: {model_name}")
         simplified = rewrite_query_simplifier_tool_llm(prompt).strip()
         print(f"[query_simplifier_tool] '{question[:30]}...' → '{simplified}'")
         return simplified
@@ -255,6 +258,8 @@ JSON만 출력하세요:"""
 
     try:
         # LLM이 tool 사용 결정
+        model_name = get_model_name(rewrite_query_node_llm)
+        print(f"[QueryRewrite] 사용 모델: {model_name}")
         decision_response = rewrite_query_node_llm(tool_decision_prompt).strip()
         decision = json.loads(decision_response)
         

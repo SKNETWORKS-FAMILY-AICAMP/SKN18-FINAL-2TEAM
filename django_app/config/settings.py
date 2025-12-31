@@ -15,6 +15,7 @@ from pathlib import Path
 from config.env import env
 
 import os
+from rest_framework.authentication import SessionAuthentication
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -54,10 +55,15 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    
+    # Swagger/OpenAPI
+    "rest_framework",
+    "drf_spectacular",
 ]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",  # 정적 파일 서빙 (SecurityMiddleware 바로 다음)
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -152,6 +158,11 @@ STATICFILES_FINDERS = [
 ]
 SASS_PROCESSOR_ROOT = BASE_DIR / 'static'
 
+# WhiteNoise 설정 (정적 파일 서빙 및 압축)
+# CompressedStaticFilesStorage: 압축만 수행 (파일명 해시 없음, CSS 내 상대 경로 참조 호환)
+# CompressedManifestStaticFilesStorage: 압축 + 파일명 해시 (캐싱 최적화, CSS 내 경로 참조 시 문제 가능)
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
+
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'uploads'
 
@@ -193,3 +204,74 @@ GOOGLE_CALENDAR_SCOPE = os.getenv(
     "GOOGLE_CALENDAR_SCOPE",
     "https://www.googleapis.com/auth/calendar",
 )
+
+# ───────────────────────────────────
+# REST Framework & Swagger/OpenAPI
+# ───────────────────────────────────
+# DRF SessionAuthentication에서 CSRF 우회를 위한 커스텀 인증 클래스
+class CsrfExemptSessionAuthentication(SessionAuthentication):
+    def enforce_csrf(self, request):
+        # API 경로에서는 CSRF 검증을 우회
+        if request.path.startswith('/api/'):
+            return
+        return super().enforce_csrf(request)
+
+REST_FRAMEWORK = {
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'config.settings.CsrfExemptSessionAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',
+    ],
+}
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'HelixOps AI Platform API',
+    'DESCRIPTION': 'HelixOps AI Platform API Documentation',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'COMPONENT_SPLIT_REQUEST': True,
+    'AUTHENTICATION_WHITELIST': [
+        'rest_framework.authentication.SessionAuthentication',
+    ],
+    # Swagger UI 설정
+    'SWAGGER_UI_SETTINGS': {
+        'deepLinking': True,
+        'persistAuthorization': True,
+        'displayOperationId': False,
+        'defaultModelsExpandDepth': 1,
+        'defaultModelExpandDepth': 1,
+        'docExpansion': 'none',
+        'filter': True,
+        'showExtensions': True,
+        'showCommonExtensions': True,
+        'tryItOutEnabled': True,
+        # 세션 쿠키 자동 전달
+        'withCredentials': True,
+    },
+    # 세션 인증을 위한 설정
+    'APPEND_COMPONENTS': {
+        'securitySchemes': {
+            'sessionAuth': {
+                'type': 'apiKey',
+                'in': 'cookie',
+                'name': 'sessionid',
+                'description': 'Django session cookie. 로그인 후 브라우저가 자동으로 전달합니다. Swagger UI에서 테스트하려면 먼저 로그인하세요.',
+            },
+            'csrftoken': {
+                'type': 'apiKey',
+                'in': 'cookie',
+                'name': 'csrftoken',
+                'description': 'CSRF 토큰. 세션 인증과 함께 자동으로 전달됩니다.',
+            }
+        }
+    },
+    'SECURITY': [
+        {'sessionAuth': []},
+        {'csrftoken': []},
+    ],
+}
