@@ -270,7 +270,7 @@ cmd_run() {
 }
 
 ########################################
-# 4) Serve (uvicorn nohup) (start_api_uvicorn_nohup.sh 통합)
+# 4) Serve (uvicorn nohup) (통합 + 절대 안깨지게 env 주입)
 ########################################
 cmd_serve() {
   log "serve start"
@@ -288,7 +288,14 @@ cmd_serve() {
   fi
 
   cd "$APP_DIR"
-  nohup env OUTPUTS_DIR="$OUTPUTS_DIR" \
+
+  # ✅ 핵심: API가 참조하는 env들을 강제 주입(환경/재시작/사용자 차이에도 절대 안깨짐)
+  nohup env \
+    SCRIPT_DIR="$SCRIPT_DIR" \
+    OPS_SH="$SCRIPT_DIR/unified_shell_script.sh" \
+    OUTPUTS_DIR="$OUTPUTS_DIR" \
+    TORCH_VENV="$TORCH_VENV" \
+    PYTHONPATH="$RFDIFFUSION_DIR" \
     "$(venv_python)" -m uvicorn api_server:app --host 0.0.0.0 --port "$PORT" \
     > "$UVICORN_LOG" 2>&1 &
 
