@@ -36,6 +36,37 @@ ensure_dir() { mkdir -p "$1"; }
 venv_python() { echo "${TORCH_VENV}/bin/python"; }
 
 ########################################
+# 0) Up (ALL-IN-ONE)
+# - 딱 한 번 실행으로: install + download-params + serve
+########################################
+cmd_up() {
+  log "========================================"
+  log "ALL-IN-ONE UP: install -> download-params -> serve"
+  log "APP_DIR=$APP_DIR"
+  log "SCRIPT_DIR=$SCRIPT_DIR"
+  log "OUTPUTS_DIR=$OUTPUTS_DIR"
+  log "MODELS_DIR=$MODELS_DIR"
+  log "RFDIFFUSION_DIR=$RFDIFFUSION_DIR"
+  log "PORT=$PORT"
+  log "========================================"
+
+  # 1) install (root 필요)
+  cmd_install
+
+  # 2) download params (필수)
+  cmd_download_params
+
+  # 3) serve (API 백그라운드)
+  cmd_serve
+
+  log "========================================"
+  log "ALL DONE ✅"
+  log "Health: curl -s http://127.0.0.1:${PORT}/health ; echo"
+  log "Logs  : ./unified_shell_script.sh logs:api"
+  log "========================================"
+}
+
+########################################
 # 1) Install (install.sh 통합)
 ########################################
 cmd_install() {
@@ -123,7 +154,7 @@ PY
 }
 
 ########################################
-# 2) Download params (download_params.sh 통합)
+# 2) Download params (download_params.sh 통합) - 필수
 ########################################
 download_http() {
   local url="$1"
@@ -262,7 +293,7 @@ cmd_run() {
   ensure_dir "$MODELS_DIR"
   ensure_dir "$OUTPUTS_DIR"
 
-  # ckpt 다운로드/스테이징
+  # ckpt 다운로드/스테이징 (필수)
   cmd_download_params
 
   # 실행
@@ -333,13 +364,15 @@ cmd_logs_job() {
 usage() {
   cat <<EOF
 Usage:
-  ./unified_shell_script.sh install             # (root) OS deps + venv + RFdiffusion deps + uvicorn/fastapi
-  ./unified_shell_script.sh download-params     # download/stage RFdiffusion checkpoints
-  ./unified_shell_script.sh run [args...]       # run RFdiffusion via src/main.py (also downloads params)
-  ./unified_shell_script.sh serve               # start uvicorn on :8000 in background (nohup)
-  ./unified_shell_script.sh stop                # stop uvicorn (by pid file)
-  ./unified_shell_script.sh logs:api            # tail -f uvicorn log
-  ./unified_shell_script.sh logs:job <job_name> # tail -f job log
+  ./unified_shell_script.sh                      # ✅ ALL-IN-ONE (up): install + download-params + serve
+  ./unified_shell_script.sh up                   # same as above
+  ./unified_shell_script.sh install              # (root) OS deps + venv + RFdiffusion deps + uvicorn/fastapi
+  ./unified_shell_script.sh download-params      # download/stage RFdiffusion checkpoints (필수지만 단독 실행도 가능)
+  ./unified_shell_script.sh run [args...]        # run RFdiffusion via src/main.py (also downloads params)
+  ./unified_shell_script.sh serve                # start uvicorn on :8000 in background (nohup)
+  ./unified_shell_script.sh stop                 # stop uvicorn (by pid file)
+  ./unified_shell_script.sh logs:api             # tail -f uvicorn log
+  ./unified_shell_script.sh logs:job <job_name>  # tail -f job log
 
 Env overrides:
   TORCH_VENV=/opt/venv_torch
@@ -352,10 +385,11 @@ EOF
 }
 
 main() {
-  local cmd="${1:-help}"
+  local cmd="${1:-up}"   # ✅ 기본 실행을 up으로 변경
   shift || true
 
   case "$cmd" in
+    up) cmd_up "$@" ;;
     install) cmd_install "$@" ;;
     download-params) cmd_download_params "$@" ;;
     run) cmd_run "$@" ;;
