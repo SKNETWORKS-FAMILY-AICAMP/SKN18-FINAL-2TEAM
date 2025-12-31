@@ -143,6 +143,45 @@ Resources:
           Value: "skn18-etl-data"
 
   # =========================
+  # S3 버킷 (사용자 업로드 파일 저장소)
+  # =========================
+  UserUploadBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: skn18-file-uploads
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      # 사용자 업로드 파일 라이프사이클 정책
+      # 프로필 이미지, 노트 첨부 파일, 시뮬레이션 결과 파일 등
+      LifecycleConfiguration:
+        Rules:
+          # 임시 파일 자동 삭제 (30일 후)
+          - Id: DeleteTempFiles
+            Status: Enabled
+            Prefix: "temp/"
+            ExpirationInDays: 30
+          # 오래된 업로드 파일 삭제 (1년 후, 필요시 조정)
+          - Id: DeleteOldUploads
+            Status: Enabled
+            Prefix: "uploads/"
+            ExpirationInDays: 365
+      # 서버 측 암호화 활성화
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      Tags:
+        - Key: Name
+          Value: "skn18-file-uploads"
+        - Key: Purpose
+          Value: "user-file-uploads"
+
+  # =========================
   # S3 버킷 폴더 생성 (Neo4j 데이터용) - Custom Resource 사용
   # =========================
   S3FolderCreationRole:
@@ -590,4 +629,17 @@ Outputs:
     Value: !Ref NihLambdaLayer
     Export:
       Name: !Sub "${AWS::StackName}-NihLayerArn"
+
+  # 사용자 업로드 버킷 Outputs
+  UserUploadBucketName:
+    Description: "사용자 업로드 파일 저장용 S3 버킷 이름"
+    Value: !Ref UserUploadBucket
+    Export:
+      Name: !Sub "${AWS::StackName}-UserUploadBucketName"
+
+  UserUploadBucketArn:
+    Description: "사용자 업로드 파일 저장용 S3 버킷 ARN"
+    Value: !GetAtt UserUploadBucket.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-UserUploadBucketArn"
 

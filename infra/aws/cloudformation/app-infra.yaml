@@ -320,6 +320,21 @@ Resources:
                   - ec2:DescribeInstances
                   - ec2:DescribeInstanceAttribute
                 Resource: "*"
+        # 사용자 업로드 S3 버킷 접근 권한
+        - PolicyName: UserUploadBucketAccessPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                  - s3:DeleteObject
+                  - s3:ListBucket
+                  - s3:GetObjectVersion
+                Resource:
+                  - !Sub "arn:aws:s3:::skn18-file-uploads/*"
+                  - !Sub "arn:aws:s3:::skn18-file-uploads"
 
   AppEc2InstanceProfile:
     Type: AWS::IAM::InstanceProfile
