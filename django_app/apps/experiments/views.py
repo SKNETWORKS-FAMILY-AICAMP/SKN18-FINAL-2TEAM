@@ -234,12 +234,32 @@ def uniprot_search_api(request):
         accession = item.get("primaryAccession")
         entry_name = item.get("uniProtkbId")
 
-        protein_name = (
-            item.get("proteinDescription", {})
-                .get("recommendedName", {})
+        protein_name = None
+        pd = item.get("proteinDescription", {})
+
+        # 1️⃣ Reviewed (Swiss-Prot)
+        if pd.get("recommendedName"):
+            protein_name = (
+                pd["recommendedName"]
                 .get("fullName", {})
                 .get("value")
-        )
+            )
+
+        # 2️⃣ Unreviewed (TrEMBL)
+        if not protein_name and pd.get("submissionNames"):
+            protein_name = (
+                pd["submissionNames"][0]
+                .get("fullName", {})
+                .get("value")
+            )
+
+        # 3️⃣ Alternative names (fallback)
+        if not protein_name and pd.get("alternativeNames"):
+            protein_name = (
+                pd["alternativeNames"][0]
+                .get("fullName", {})
+                .get("value")
+            )
 
         gene = None
         genes = item.get("genes", [])
