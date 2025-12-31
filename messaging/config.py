@@ -76,12 +76,12 @@ if RABBITMQ_PASSWORD is None:
     RABBITMQ_PASSWORD = _get_parameter_from_store("/skn18/rabbitmq-password") or "guest"
 
 # VHOST: 환경 변수 또는 기본값
-RABBITMQ_VHOST = os.getenv("RABBITMQ_VHOST", "/")
+RABBITMQ_VHOST = os.getenv("RABBITMQ_VHOST") or "/"
 
 # 연결 URL (비밀번호는 URL 인코딩 필요)
 _encoded_password = quote_plus(RABBITMQ_PASSWORD)
-RABBITMQ_URL = f"amqp://{RABBITMQ_USER}:{_encoded_password}@{RABBITMQ_HOST}:{RABBITMQ_PORT}/{RABBITMQ_VHOST}"
-
+_encoded_vhost = quote_plus(RABBITMQ_VHOST)
+RABBITMQ_URL = f"amqp://{RABBITMQ_USER}:{_encoded_password}@{RABBITMQ_HOST}:{RABBITMQ_PORT}/{_encoded_vhost}"
 # Exchange 정의 (토픽 익스체인지 기반)
 EXCHANGES: Dict[str, Dict[str, Any]] = {
     "tasks": {

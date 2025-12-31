@@ -7,9 +7,19 @@ import multiprocessing
 import logging
 import sys
 import os
+import django
+from pathlib import Path  
 
-# Django 설정 로드 (Consumer에서 Django ORM 사용 시 필요)
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
+# 프로젝트 루트 기준으로 django_app 추가
+PROJECT_ROOT = Path(__file__).resolve().parents[2]  # .../SKN18-FINAL-2TEAM
+DJANGO_APP_DIR = PROJECT_ROOT / "django_app"
+if str(DJANGO_APP_DIR) not in sys.path:
+    sys.path.insert(0, str(DJANGO_APP_DIR))
+
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
+
+import django
+django.setup()
 
 logging.basicConfig(
     level=logging.INFO,
