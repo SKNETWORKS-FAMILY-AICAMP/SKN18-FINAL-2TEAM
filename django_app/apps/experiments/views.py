@@ -12,6 +12,8 @@ from rest_framework.views import APIView
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from .models import ExperimentTool, Experiment, ExperimentToolSelection, ExperimentToolOption
 from django.db import transaction
+from django_app.apps.core.queue import publish_simulation
+
 
 def _get_user_identifier(user):
     return str(user.user_id) if hasattr(user, 'user_id') else str(user.pk)
@@ -273,6 +275,57 @@ def _list_experiments_api(request):
     }, status=200)
 
 
+TOOL_NAME_QUEUE_MAP = {
+    "RFdiffusion": "rfdiffusion",
+    "ProteinMPNN": "protein_mpnn",
+    "AlphaFold3": "alphafold3",
+}
+
+
+def enqueue_simulation_tasks(experiment, selections, user):
+    """
+    실험 생성 직후, 첫 단계 selection 하나만 RabbitMQ에 넣는다.
+    나머지 단계는 worker에서 순차적으로 enqueue.
+    """
+    user_id = getattr(user, "user_id", None) or getattr(user, "pk", None)
+    if not selections:
+        return []
+
+    # sort_order 기준 첫 단계
+    first_sel = sorted(selections, key=lambda s: s.sort_order)[0]
+    total_steps = len(selections)
+
+    tool_name_display = first_sel.tool.tool_name
+    tool_name_for_queue = TOOL_NAME_QUEUE_MAP.get(tool_name_display)
+    if not tool_name_for_queue:
+        return []
+
+    try:
+        tool_options = json.loads(first_sel.tool_options_json or "{}")
+    except json.JSONDecodeError:
+        tool_options = {}
+
+    payload = {
+        "protein_sequence": experiment.protein_sequence,
+        "protein_name": experiment.protein_name,
+        "selection_sid": first_sel.selection_sid,
+        "tool_sid": first_sel.tool_id,
+        "tool_name": tool_name_display,
+        "sort_order": first_sel.sort_order,   # 현재 단계 index
+        "total_steps": total_steps,           # 파이프라인 전체 길이
+        "tool_options": tool_options,
+    }
+
+    task_id = publish_simulation(
+        tool_name=tool_name_for_queue,
+        experiment_sid=experiment.experiment_sid,
+        payload=payload,
+        user_id=user_id,
+    )
+    return [task_id]
+
+
+
 def _create_experiment_api(request):
     """POST /api/experiments/ - 실험 생성."""
     print("=" * 80)
@@ -341,6 +394,7 @@ def _create_experiment_api(request):
     # 2) 사용자 식별자
     # ------------------------
     user_identifier = _get_user_identifier(request.user)
+    selections = []
     created_tools = []
     # ------------------------
     # 3) t_experiment + t_experiment_tool_selection + t_experiment_tool_option 한번에
@@ -349,7 +403,7 @@ def _create_experiment_api(request):
         # t_experiment insert
         experiment = Experiment.objects.create(
             pipeline_name=pipeline_name,
-            status="R",  # Ready
+            status="E",  # Ready
             progress=0,
             protein_sequence=protein_sequence,
             protein_name=protein_name or None,
@@ -404,14 +458,37 @@ def _create_experiment_api(request):
                 created_id=user_identifier,
                 updated_id=user_identifier,
             )
+            selections.append(selection)
             created_tools.append(tool.tool_name)
-    # ------------------------
-    # 4) 응답
-    # ------------------------
+    
+    # 3) 메시지 큐에 작업 발행
+    try:
+        task_ids = enqueue_simulation_tasks(experiment, selections, request.user)
+
+    except Exception as e:
+        print(f"Failed to publish simulation tasks: {e}")
+        return Response(
+            {
+                "status": "error",
+                "message": "Failed to enqueue simulation tasks",
+                "detail": str(e),
+            },
+            status=500,
+        )
+    
+    # # 4) 상태를 'R'(진행중)으로 업데이트
+    # experiment.status = 'R'
+    # experiment.progress = 0
+    # experiment.save(update_fields=['status', 'progress', 'updated_at'])
+
+    # 5) 클라이언트 응답 (실험 생성 + 큐 등록 정보 포함)
     return Response(
         {
-            "status": "success",
-            "message": "Experiment created",
+            "status": "queued",  # 큐에 올라갔다는 상태
+            "message": "Simulation task has been queued",
+            "experiment_sid": experiment.experiment_sid,
+            "task_ids": task_ids,
+            # 실험 상세 정보도 함께 내려줌
             "data": {
                 "id": experiment.experiment_sid,
                 "pipeline_name": experiment.pipeline_name,
