@@ -6,14 +6,17 @@ set -euo pipefail
 ########################################
 PY_BIN="${PY_BIN:-python3}"
 TORCH_VENV="${TORCH_VENV:-/opt/venv_torch}"
-SCRIPT_DIR="${SCRIPT_DIR:-/workspace/unified}"          # unified가 위치한 곳
-APP_DIR="${APP_DIR:-/workspace/unified}"               # uvicorn 실행 디렉토리
+
+# unified 폴더 위치 (스크립트가 있는 경로 기준으로 자동 추론 가능)
+APP_DIR="${APP_DIR:-/workspace/unified}"
+SCRIPT_DIR="${SCRIPT_DIR:-$APP_DIR}"
+
 RFDIFFUSION_DIR="${RFDIFFUSION_DIR:-/app/RFdiffusion}"
 
 MODELS_DIR="${MODELS_DIR:-/models}"
-OUTPUTS_DIR="${OUTPUTS_DIR:-${APP_DIR}/outputs}"       # ✅ 기본을 unified/outputs로
-PORT="${PORT:-8000}"
+OUTPUTS_DIR="${OUTPUTS_DIR:-${APP_DIR}/outputs}"
 
+PORT="${PORT:-8000}"
 UVICORN_LOG="${UVICORN_LOG:-${APP_DIR}/uvicorn_${PORT}.log}"
 UVICORN_PID="${UVICORN_PID:-${APP_DIR}/uvicorn_${PORT}.pid}"
 
@@ -30,11 +33,10 @@ need_root() {
 }
 
 ensure_dir() { mkdir -p "$1"; }
-
 venv_python() { echo "${TORCH_VENV}/bin/python"; }
 
 ########################################
-# 1) Install (기존 install.sh 통합)
+# 1) Install (install.sh 통합)
 ########################################
 cmd_install() {
   need_root
@@ -69,7 +71,7 @@ cmd_install() {
 
   "$(venv_python)" -m pip install -U opt_einsum pyrsistent e3nn
 
-  # ✅ 팀장님 지시: 빠졌던 패키지 포함 + API용 패키지 포함
+  # API 서버용 패키지 포함
   "$(venv_python)" -m pip install -U fastapi uvicorn
 
   if [[ ! -d "$RFDIFFUSION_DIR" ]]; then
@@ -82,6 +84,7 @@ cmd_install() {
     log "se3_transformer already importable. Skipping."
   else
     "$(venv_python)" -m pip install -U opt_einsum
+
     "$(venv_python)" -m pip install -U \
       "git+https://github.com/NVIDIA/DeepLearningExamples.git#subdirectory=DGLPyTorch/DrugDiscovery/SE3Transformer" \
     || true
@@ -147,12 +150,15 @@ cmd_download_params() {
   log "download_params start"
   ensure_dir "$MODELS_DIR"
 
+  # AlphaFold params는 "디렉토리만 생성" (다운로드 로직은 기존 방식 유지)
   AF_DIR="${AF_DIR:-$MODELS_DIR/alphafold}"
   ensure_dir "$AF_DIR"
 
+  # RFdiffusion ckpt target
   RFD_MODELS_DIR="${RFD_MODELS_DIR:-$RFDIFFUSION_DIR/models}"
   ensure_dir "$RFD_MODELS_DIR"
 
+  # cache dir
   RFD_SOURCE_DIR="${RFD_SOURCE_DIR:-$MODELS_DIR/rfdiffusion}"
   ensure_dir "$RFD_SOURCE_DIR"
 
@@ -216,7 +222,7 @@ cmd_download_params() {
   for name in "${need_names[@]}"; do
     f="$RFD_MODELS_DIR/$name"
     if [[ ! -s "$f" ]]; then
-      echo "[download_params] ERROR: missing or empty: $f" >&2
+      echo "[download_params][ERROR] missing or empty: $f" >&2
       missing=1
     fi
   done
@@ -256,10 +262,10 @@ cmd_run() {
   ensure_dir "$MODELS_DIR"
   ensure_dir "$OUTPUTS_DIR"
 
-  # 체크포인트 다운로드/스테이징
+  # ckpt 다운로드/스테이징
   cmd_download_params
 
-  # 실제 실행
+  # 실행
   "$(venv_python)" "$SCRIPT_DIR/src/main.py" "$@"
 }
 
@@ -306,9 +312,7 @@ cmd_stop() {
 ########################################
 # 5) Logs
 ########################################
-cmd_logs_api() {
-  tail -f "$UVICORN_LOG"
-}
+cmd_logs_api() { tail -f "$UVICORN_LOG"; }
 
 cmd_logs_job() {
   local name="${1:-}"
@@ -322,13 +326,13 @@ cmd_logs_job() {
 usage() {
   cat <<EOF
 Usage:
-  ./ops.sh install                  # (root) OS deps + venv + RFdiffusion deps + uvicorn/fastapi
-  ./ops.sh download-params          # download/stage RFdiffusion checkpoints
-  ./ops.sh run [args...]            # run RFdiffusion via src/main.py (also downloads params)
-  ./ops.sh serve                    # start uvicorn on :8000 in background (nohup)
-  ./ops.sh stop                     # stop uvicorn (by pid file)
-  ./ops.sh logs:api                 # tail -f uvicorn log
-  ./ops.sh logs:job <job_name>      # tail -f job log
+  ./unified_shell_script.sh install             # (root) OS deps + venv + RFdiffusion deps + uvicorn/fastapi
+  ./unified_shell_script.sh download-params     # download/stage RFdiffusion checkpoints
+  ./unified_shell_script.sh run [args...]       # run RFdiffusion via src/main.py (also downloads params)
+  ./unified_shell_script.sh serve               # start uvicorn on :8000 in background (nohup)
+  ./unified_shell_script.sh stop                # stop uvicorn (by pid file)
+  ./unified_shell_script.sh logs:api            # tail -f uvicorn log
+  ./unified_shell_script.sh logs:job <job_name> # tail -f job log
 
 Env overrides:
   TORCH_VENV=/opt/venv_torch
@@ -353,7 +357,7 @@ main() {
     logs:api) cmd_logs_api ;;
     logs:job) cmd_logs_job "$@" ;;
     help|--help|-h) usage ;;
-    *) die "unknown command: $cmd (try: ./ops.sh help)" ;;
+    *) die "unknown command: $cmd (try: ./unified_shell_script.sh help)" ;;
   esac
 }
 
