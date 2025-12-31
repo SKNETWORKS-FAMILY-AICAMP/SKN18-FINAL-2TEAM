@@ -243,8 +243,24 @@ def uniprot_search_api(request):
 
         gene = None
         genes = item.get("genes", [])
+
         if genes:
-            gene = genes[0].get("geneName", {}).get("value")
+            g = genes[0]
+
+            if g.get("geneName"):
+                gene = g["geneName"]["value"]
+
+            elif g.get("orderedLocusNames"):
+                gene = g["orderedLocusNames"][0]["value"]
+
+            elif g.get("synonyms"):
+                gene = g["synonyms"][0]["value"]
+
+            # UI 스타일: SPAM1 (HYAL3, PH20)
+            if gene and g.get("synonyms"):
+                syns = [s["value"] for s in g["synonyms"]]
+                if syns:
+                    gene = f"{gene} ({', '.join(syns)})"
 
         organism_data = item.get("organism", {})
         scientific = organism_data.get("scientificName")
