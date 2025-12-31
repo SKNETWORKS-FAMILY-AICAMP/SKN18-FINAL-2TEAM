@@ -300,11 +300,35 @@ def uniprot_search_api(request):
                     break
 
         organism_data = item.get("organism", {})
+
         scientific = organism_data.get("scientificName")
         common = organism_data.get("commonName")
-        organism = scientific
-        if scientific and common:
-            organism = f"{scientific} ({common})"
+
+        raw_synonyms = organism_data.get("synonyms", [])
+        synonyms = []
+
+        for s in raw_synonyms:
+            if isinstance(s, dict) and s.get("value"):
+                synonyms.append(s["value"])
+            elif isinstance(s, str):
+                synonyms.append(s)
+
+        # 중복 제거 (common과 synonym 겹칠 수 있음)
+        synonyms = [s for s in synonyms if s != common]
+
+        # === 출력 조합 ===
+        organism_parts = []
+
+        if scientific:
+            organism_parts.append(scientific)
+
+        if common:
+            organism_parts.append(f"({common})")
+
+        if synonyms:
+            organism_parts.append(f"({', '.join(synonyms)})")
+
+        organism = " ".join(organism_parts)
 
         length = item.get("sequence", {}).get("length")
         annotation_score = item.get("annotationScore")
