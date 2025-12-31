@@ -261,6 +261,15 @@ def uniprot_search_api(request):
                 .get("value")
             )
 
+        ec_numbers = []
+
+        if pd.get("recommendedName", {}).get("ecNumbers"):
+            ec_numbers = [
+                f"EC:{ec['value']}"
+                for ec in pd["recommendedName"]["ecNumbers"]
+                if ec.get("value")
+            ]
+
         gene = None
         genes = item.get("genes", [])
 
@@ -299,6 +308,13 @@ def uniprot_search_api(request):
 
         length = item.get("sequence", {}).get("length")
         annotation_score = item.get("annotationScore")
+        protein_existence = None
+        pe = item.get("proteinExistence")
+
+        if isinstance(pe, dict):
+            protein_existence = pe.get("category")
+        elif isinstance(pe, str):
+            protein_existence = pe
 
         tags = [
             kw.get("name")
@@ -314,6 +330,8 @@ def uniprot_search_api(request):
             "organism": organism,
             "length": length,
             "annotation_score": annotation_score,
+            "ec_numbers": ec_numbers,
+            "protein_existence": protein_existence,
             "tags": tags,
         })
 
