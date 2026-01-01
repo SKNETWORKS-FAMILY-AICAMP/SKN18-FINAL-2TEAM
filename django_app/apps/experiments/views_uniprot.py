@@ -8,7 +8,7 @@ from rest_framework.response import Response
 @extend_schema(
     summary="UniProt 단백질 검색",
     description="UniProt 공개 REST API를 이용하여 단백질을 검색합니다.",
-    tags=["UniProt"],
+    tags=["Experiments"],
     parameters=[
         OpenApiParameter(
             name="keyword",
@@ -137,7 +137,49 @@ def uniprot_search_api(request):
     })
 
 
-@extend_schema(tags=["Experiments"])
+@extend_schema(
+    summary="UniProt 단백질 상세 정보 조회",
+    description="UniProt 공개 REST API를 이용하여 특정 단백질의 상세 정보를 조회합니다.",
+    tags=["Experiments"],
+    parameters=[
+        OpenApiParameter(
+            name="accession",
+            description="UniProt accession 번호 (예: P38567)",
+            required=True,
+            type=str,
+            location=OpenApiParameter.PATH,
+        ),
+    ],
+    responses={
+        200: {
+            'type': 'object',
+            'properties': {
+                'accession': {'type': 'string'},
+                'entry_name': {'type': 'string'},
+                'protein_recommended_name': {'type': 'string'},
+                'gene': {'type': 'string'},
+                'taxonomy_id': {'type': 'integer'},
+                'organism': {'type': 'string'},
+                'lineage': {'type': 'string'},
+                'length': {'type': 'integer'},
+                'evidence_level': {'type': 'string'},
+                'annotation_score': {'type': 'number'},
+                'description': {'type': 'string'},
+                'keywords': {'type': 'array', 'items': {'type': 'string'}},
+                'sequence': {
+                    'type': 'object',
+                    'properties': {
+                        'length': {'type': 'integer'},
+                        'mass': {'type': 'number'},
+                        'md5': {'type': 'string'},
+                        'value': {'type': 'string'},
+                        'last_updated': {'type': 'string'},
+                    }
+                },
+            }
+        }
+    },
+)
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def uniprot_detail_api(request, accession):
@@ -155,12 +197,6 @@ def uniprot_detail_api(request, accession):
     rec = pd.get("recommendedName", {})
 
     protein_name = rec.get("fullName", {}).get("value")
-
-    alternative_names = [
-        alt.get("fullName", {}).get("value")
-        for alt in pd.get("alternativeNames", [])
-        if alt.get("fullName", {}).get("value")
-    ]
 
     # --- Gene ---
     gene = None
@@ -191,47 +227,65 @@ def uniprot_detail_api(request, accession):
                     gene = f"{gene} ({', '.join(syns)})"
                 break
 
-    # --- EC numbers ---
-    ec_numbers = [
-        f"EC:{ec['value']}"
-        for ec in rec.get("ecNumbers", [])
-        if ec.get("value")
-    ]
-
     # --- Organism ---
     org = item.get("organism", {})
+    organism_display = org.get("scientificName", "")
+    if org.get("commonName"):
+        organism_display = f"{organism_display} ({org.get('commonName')})"
+    
+    lineage = org.get("lineage", [])
+    lineage_display = ", ".join(lineage) if lineage else None
 
     # --- Sequence ---
     seq = item.get("sequence", {})
     audit = item.get("entryAudit", {})
 
+    # --- Description (from FUNCTION comment) ---
+    description = None
+    comments = item.get("comments", [])
+    for comment in comments:
+        if comment.get("commentType") == "FUNCTION":
+            texts = comment.get("texts", [])
+            if texts and texts[0].get("value"):
+                description = texts[0]["value"]
+                break
+
+    # --- Protein existence (format: "1: Evidence at protein level" -> "Evidence at protein level") ---
+    protein_existence = item.get("proteinExistence")
+    if isinstance(protein_existence, str) and ":" in protein_existence:
+        protein_existence = protein_existence.split(":", 1)[1].strip()
+
+    # --- Keywords ---
+    keywords = [kw.get("name") for kw in item.get("keywords", []) if kw.get("name")]
+
+    # 템플릿에 필요한 필드만 추출
     response = {
+        # 기본 정보
         "accession": item.get("primaryAccession"),
         "entry_name": item.get("uniProtkbId"),
-        "protein_name": protein_name,
-        "alternative_names": alternative_names,
+        
+        # Names & Taxonomy
+        "protein_recommended_name": protein_name,
         "gene": gene,
-        "ec_numbers": ec_numbers,
-
-        "organism": {
-            "scientific": org.get("scientificName"),
-            "common": org.get("commonName"),
-            "taxonomy_id": org.get("taxonId"),
-            "lineage": org.get("lineage"),
-        },
-
+        "taxonomy_id": org.get("taxonId"),
+        "organism": organism_display,
+        "lineage": lineage_display,
+        
+        # 추가 정보
+        "length": seq.get("length"),
+        "evidence_level": protein_existence,
+        "annotation_score": item.get("annotationScore"),
+        "description": description,
+        "keywords": keywords,
+        
+        # Sequence 정보
         "sequence": {
             "length": seq.get("length"),
             "mass": seq.get("molWeight"),
             "md5": seq.get("md5"),
             "value": seq.get("value"),
             "last_updated": audit.get("lastSequenceUpdateDate"),
-            "version": audit.get("sequenceVersion"),
         },
-
-        "annotation_score": item.get("annotationScore"),
-        "protein_existence": item.get("proteinExistence"),
-        "keywords": [kw.get("name") for kw in item.get("keywords", []) if kw.get("name")],
     }
 
     return Response(response)
