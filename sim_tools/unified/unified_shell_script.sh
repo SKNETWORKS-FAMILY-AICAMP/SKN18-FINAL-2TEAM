@@ -20,6 +20,13 @@ PORT="${PORT:-8000}"
 UVICORN_LOG="${UVICORN_LOG:-${APP_DIR}/uvicorn_${PORT}.log}"
 UVICORN_PID="${UVICORN_PID:-${APP_DIR}/uvicorn_${PORT}.pid}"
 
+# -----------------------------
+# (옵션) S3 업로드 관련 env
+# -----------------------------
+S3_BUCKET="${S3_BUCKET:-}"
+S3_PREFIX="${S3_PREFIX:-rfdiffusion}"
+AWS_REGION="${AWS_REGION:-${AWS_DEFAULT_REGION:-}}"
+
 ########################################
 # Utils
 ########################################
@@ -48,6 +55,9 @@ cmd_up() {
   log "MODELS_DIR=$MODELS_DIR"
   log "RFDIFFUSION_DIR=$RFDIFFUSION_DIR"
   log "PORT=$PORT"
+  log "S3_BUCKET=${S3_BUCKET:-<empty>}"
+  log "S3_PREFIX=$S3_PREFIX"
+  log "AWS_REGION=${AWS_REGION:-<empty>}"
   log "========================================"
 
   # 1) install (root 필요)
@@ -105,6 +115,9 @@ cmd_install() {
   # API 서버용 패키지 포함
   "$(venv_python)" -m pip install -U fastapi uvicorn
 
+  # ✅ S3 업로드용 (boto3)
+  "$(venv_python)" -m pip install -U boto3 botocore
+
   if [[ ! -d "$RFDIFFUSION_DIR" ]]; then
     log "Cloning RFdiffusion into $RFDIFFUSION_DIR"
     git clone https://github.com/RosettaCommons/RFdiffusion.git "$RFDIFFUSION_DIR"
@@ -135,8 +148,6 @@ cmd_install() {
 
   # ------------------------------------------------------------
   # ✅ RFdiffusion runtime deps (Hydra/OmegaConf 등) 설치
-  # - pip install -e . 만으로는 deps가 안깔리는 경우가 있어 requirements를 같이 설치
-  # - 그래도 누락될 수 있어 핵심 패키지는 안전장치로 강제 설치
   # ------------------------------------------------------------
   log "installing RFdiffusion requirements (if present)"
 
@@ -160,6 +171,7 @@ cmd_install() {
   "$(venv_python)" - <<'PY'
 import sys, numpy as np, torch, dgl, e3nn, pyrsistent, se3_transformer
 import omegaconf, hydra
+import boto3
 print("python:", sys.version.split()[0])
 print("numpy :", np.__version__)
 print("torch :", torch.__version__, "cuda:", torch.version.cuda, "avail:", torch.cuda.is_available())
@@ -169,6 +181,7 @@ print("pyrsistent import: OK")
 print("se3_transformer import: OK")
 print("omegaconf:", getattr(omegaconf, "__version__", "unknown"))
 print("hydra:", getattr(hydra, "__version__", "unknown"))
+print("boto3:", getattr(boto3, "__version__", "unknown"))
 PY
 
   log "install done"
@@ -311,6 +324,9 @@ cmd_run() {
   export LD_LIBRARY_PATH="$TORCH_VENV/lib/python3.10/site-packages/nvidia/nvtx/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/nvjitlink/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/nccl/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/curand/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cufft/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cuda_runtime/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cuda_nvrtc/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cuda_cupti/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cublas/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cusparse/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cudnn/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cusolver/lib:${LD_LIBRARY_PATH:-}"
   log "LD_LIBRARY_PATH set"
 
+  # ✅ S3 env도 run 쪽에 확실히 전달(없으면 main.py가 알아서 skip)
+  export S3_BUCKET S3_PREFIX AWS_REGION AWS_DEFAULT_REGION
+
   ensure_dir "$MODELS_DIR"
   ensure_dir "$OUTPUTS_DIR"
 
@@ -348,6 +364,10 @@ cmd_serve() {
     OUTPUTS_DIR="$OUTPUTS_DIR" \
     TORCH_VENV="$TORCH_VENV" \
     PYTHONPATH="$RFDIFFUSION_DIR" \
+    S3_BUCKET="$S3_BUCKET" \
+    S3_PREFIX="$S3_PREFIX" \
+    AWS_REGION="$AWS_REGION" \
+    AWS_DEFAULT_REGION="$AWS_REGION" \
     "$(venv_python)" -m uvicorn api_server:app --host 0.0.0.0 --port "$PORT" \
     > "$UVICORN_LOG" 2>&1 &
 
@@ -356,15 +376,29 @@ cmd_serve() {
 }
 
 cmd_stop() {
+  # 1) pid 파일 기반 종료
   if [[ -f "$UVICORN_PID" ]]; then
     local pid
     pid="$(cat "$UVICORN_PID" || true)"
     if [[ -n "$pid" ]] && ps -p "$pid" >/dev/null 2>&1; then
       log "Stopping uvicorn PID=$pid"
-      kill "$pid"
+      kill "$pid" || true
+      sleep 0.2 || true
+      ps -p "$pid" >/dev/null 2>&1 && kill -9 "$pid" || true
     fi
     rm -f "$UVICORN_PID"
   fi
+
+  # 2) pid 파일이 꼬였거나 다른 프로세스로 떠있을 때도 대비
+  if command -v pgrep >/dev/null 2>&1; then
+    local pids
+    pids="$(pgrep -f "uvicorn api_server:app" || true)"
+    if [[ -n "$pids" ]]; then
+      log "Stopping uvicorn (pgrep): $pids"
+      kill $pids || true
+    fi
+  fi
+
   log "stop done"
 }
 
@@ -387,11 +421,11 @@ usage() {
 Usage:
   ./unified_shell_script.sh                      # ✅ ALL-IN-ONE (up): install + download-params + serve
   ./unified_shell_script.sh up                   # same as above
-  ./unified_shell_script.sh install              # (root) OS deps + venv + RFdiffusion deps + uvicorn/fastapi
+  ./unified_shell_script.sh install              # (root) OS deps + venv + RFdiffusion deps + uvicorn/fastapi + boto3
   ./unified_shell_script.sh download-params      # download/stage RFdiffusion checkpoints (필수지만 단독 실행도 가능)
   ./unified_shell_script.sh run [args...]        # run RFdiffusion via src/main.py (also downloads params)
   ./unified_shell_script.sh serve                # start uvicorn on :8000 in background (nohup)
-  ./unified_shell_script.sh stop                 # stop uvicorn (by pid file)
+  ./unified_shell_script.sh stop                 # stop uvicorn (by pid file / pgrep fallback)
   ./unified_shell_script.sh logs:api             # tail -f uvicorn log
   ./unified_shell_script.sh logs:job <job_name>  # tail -f job log
 
@@ -402,6 +436,13 @@ Env overrides:
   OUTPUTS_DIR=/workspace/unified/outputs
   MODELS_DIR=/models
   PORT=8000
+
+S3 upload env (optional):
+  S3_BUCKET=my-bucket
+  S3_PREFIX=rfdiffusion
+  AWS_REGION=ap-northeast-2
+  AWS_ACCESS_KEY_ID=...
+  AWS_SECRET_ACCESS_KEY=...
 EOF
 }
 
