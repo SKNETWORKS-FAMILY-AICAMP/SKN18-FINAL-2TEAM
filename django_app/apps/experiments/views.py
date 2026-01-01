@@ -346,6 +346,18 @@ def uniprot_search_api(request):
             if kw.get("name")
         ]
 
+        sequence_summary = None
+        seq = item.get("sequence")
+
+        if isinstance(seq, dict):
+            sequence_summary = {
+                "length": seq.get("length"),
+                "mass": seq.get("mass"),
+                "version": seq.get("version"),
+                # search API에서는 보통 없음 → None 허용
+                "preview": None,
+            }
+
         results.append({
             "accession": accession,
             "entry_name": entry_name,
@@ -357,6 +369,7 @@ def uniprot_search_api(request):
             "ec_numbers": ec_numbers,
             "protein_existence": protein_existence,
             "tags": tags,
+            "sequence_summary": sequence_summary,
         })
 
     # 4. Swagger 명세와 정확히 일치하는 Response 반환
