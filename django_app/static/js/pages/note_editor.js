@@ -18,6 +18,8 @@ let addingBookmarkToCategoryId = null;
 let newCategoryName = '';
 let newBookmarkTitle = '';
 let newBookmarkUrl = '';
+let openBookmarkCategoryMenuId = null;
+let editingCategoryId = null;
 
 // CKEditor5 instance
 let editorInstance = null;
@@ -619,6 +621,7 @@ async function loadBookmarks() {
         
         // Reset adding state when bookmarks are reloaded
         addingBookmarkToCategoryId = null;
+        openBookmarkCategoryMenuId = null;
 
         openBookmarkCategories = {};
     } catch (error) {
@@ -673,10 +676,21 @@ function renderBookmarks() {
     bookmarkContent.innerHTML = bookmarkCategories.map((category, index) => `
         <div class="bookmark-category">
             <div class="bookmark-category-header-wrapper">
-                <button class="bookmark-category-header" onclick="window.NoteEditorPage.toggleBookmarkCategory(${index})">
+                <button class="bookmark-category-header" onclick="${editingCategoryId === category.id ? 'event.stopPropagation();' : `window.NoteEditorPage.toggleBookmarkCategory(${index})`}">
                     <i class="fas ${openBookmarkCategories[index] ? 'fa-chevron-down' : 'fa-chevron-right'}"></i>
                     <i class="fas fa-folder"></i>
-                    <span class="bookmark-category-title">${escapeHtml(category.name)}</span>
+                    ${editingCategoryId === category.id ? `
+                        <input
+                            type="text"
+                            id="bookmarkCategoryNameInput_${category.id}"
+                            value="${escapeHtml(category.name)}"
+                            class="bookmark-category-name-input"
+                            onkeydown="if(event.key==='Enter') { event.preventDefault(); window.NoteEditorPage.saveCategoryName(${category.id}); } if(event.key==='Escape') { event.preventDefault(); window.NoteEditorPage.cancelEditCategoryName(); }"
+                            onclick="event.stopPropagation();"
+                        />
+                    ` : `
+                        <span class="bookmark-category-title">${escapeHtml(category.name)}</span>
+                    `}
                     <span class="bookmark-category-count">(${category.bookmarks.length})</span>
                 </button>
                 <button class="btn-bookmark-add-to-category" onclick="window.NoteEditorPage.showAddBookmarkForm(${category.id})" title="북마크 추가">
@@ -686,6 +700,21 @@ function renderBookmarks() {
                     <button class="btn-bookmark-delete-category" onclick="window.NoteEditorPage.deleteBookmarkCategory(${category.id}, '${escapeHtml(category.name)}')" title="카테고리 삭제">
                         <i class="fas fa-times"></i>
                     </button>
+                ` : ''}
+                <button class="btn-bookmark-category-menu" onclick="window.NoteEditorPage.toggleBookmarkCategoryMenu(${category.id}, event)" title="메뉴">
+                    <i class="fas fa-ellipsis-vertical"></i>
+                </button>
+                ${openBookmarkCategoryMenuId === category.id ? `
+                    <div class="bookmark-category-menu-popup" id="bookmarkCategoryMenu_${category.id}">
+                        <button class="bookmark-category-menu-item" onclick="window.NoteEditorPage.expandAllBookmarksInCategory(${category.id})">
+                            <i class="fas fa-chevron-down"></i>
+                            <span>북마크 모두 열기</span>
+                        </button>
+                        <button class="bookmark-category-menu-item" onclick="window.NoteEditorPage.editCategoryName(${category.id}, '${escapeHtml(category.name)}')">
+                            <i class="fas fa-pen"></i>
+                            <span>이름 수정</span>
+                        </button>
+                    </div>
                 ` : ''}
             </div>
             ${openBookmarkCategories[index] ? `
@@ -1076,6 +1105,150 @@ async function performDeleteBookmark(categoryId, bookmarkId) {
     }
 }
 
+// Toggle bookmark category menu
+function toggleBookmarkCategoryMenu(categoryId, event) {
+    if (event) {
+        event.stopPropagation();
+    }
+    
+    if (openBookmarkCategoryMenuId === categoryId) {
+        openBookmarkCategoryMenuId = null;
+    } else {
+        openBookmarkCategoryMenuId = categoryId;
+    }
+    renderBookmarks();
+    
+    // 외부 클릭 시 메뉴 닫기
+    if (openBookmarkCategoryMenuId !== null) {
+        setTimeout(() => {
+            const handleClickOutside = (e) => {
+                const menu = document.getElementById(`bookmarkCategoryMenu_${categoryId}`);
+                const menuBtn = e.target.closest('.btn-bookmark-category-menu');
+                if (menu && !menu.contains(e.target) && !menuBtn) {
+                    openBookmarkCategoryMenuId = null;
+                    renderBookmarks();
+                    document.removeEventListener('click', handleClickOutside);
+                }
+            };
+            document.addEventListener('click', handleClickOutside);
+        }, 0);
+    }
+}
+
+// Open all bookmarks in category (새 탭으로 열기)
+function expandAllBookmarksInCategory(categoryId) {
+    // 해당 카테고리의 모든 북마크를 새 탭으로 열기
+    const category = bookmarkCategories.find(cat => cat.id === categoryId);
+    if (!category || !category.bookmarks || category.bookmarks.length === 0) {
+        if (window.notyf) {
+            window.notyf.info('열 수 있는 북마크가 없습니다.');
+        }
+        openBookmarkCategoryMenuId = null;
+        renderBookmarks();
+        return;
+    }
+    
+    const bookmarksToOpen = category.bookmarks.filter(bookmark => bookmark && bookmark.url);
+    
+    if (bookmarksToOpen.length === 0) {
+        if (window.notyf) {
+            window.notyf.info('열 수 있는 북마크가 없습니다.');
+        }
+        openBookmarkCategoryMenuId = null;
+        renderBookmarks();
+        return;
+    }
+    
+    console.log(`[NoteEditor] Opening ${bookmarksToOpen.length} bookmarks in new tabs`);
+    
+    // 브라우저 popup blocker를 피하기 위해 작은 딜레이를 두고 각 탭을 엽니다
+    // 첫 번째는 즉시 열고, 나머지는 150ms 간격으로 연다
+    bookmarksToOpen.forEach((bookmark, index) => {
+        if (index === 0) {
+            // 첫 번째는 즉시 열기
+            window.open(bookmark.url, '_blank', 'noopener,noreferrer');
+        } else {
+            // 나머지는 딜레이를 두고 열기
+            setTimeout(() => {
+                window.open(bookmark.url, '_blank', 'noopener,noreferrer');
+            }, index * 150); // 각 탭마다 150ms 딜레이
+        }
+    });
+    
+    if (window.notyf) {
+        window.notyf.success(`${bookmarksToOpen.length}개의 북마크를 새 탭으로 열었습니다.`);
+    }
+    
+    openBookmarkCategoryMenuId = null;
+    renderBookmarks();
+}
+
+// Edit category name
+function editCategoryName(categoryId, currentName) {
+    editingCategoryId = categoryId;
+    openBookmarkCategoryMenuId = null;
+    renderBookmarks();
+    
+    // 편집 모드로 전환 후 입력 필드에 포커스
+    setTimeout(() => {
+        const input = document.getElementById(`bookmarkCategoryNameInput_${categoryId}`);
+        if (input) {
+            input.focus();
+            input.select();
+        }
+    }, 100);
+}
+
+// Cancel edit category name
+function cancelEditCategoryName() {
+    editingCategoryId = null;
+    renderBookmarks();
+}
+
+// Save category name
+async function saveCategoryName(categoryId) {
+    const input = document.getElementById(`bookmarkCategoryNameInput_${categoryId}`);
+    const newName = input ? input.value.trim() : '';
+    
+    if (!newName) {
+        if (window.notyf) {
+            window.notyf.error('카테고리 이름을 입력해주세요.');
+        }
+        return;
+    }
+    
+    try {
+        // TODO: API 호출로 카테고리 이름 수정
+        // const response = await fetch(bookmarkApiUrl + `categories/${categoryId}/`, {
+        //     method: 'PATCH',
+        //     headers: {
+        //         'Content-Type': 'application/json',
+        //         'X-CSRFToken': getCookie('csrftoken'),
+        //     },
+        //     credentials: 'same-origin',
+        //     body: JSON.stringify({ category_name: newName }),
+        // });
+        
+        // 임시로 클라이언트에서 수정 (API 구현 후 제거)
+        const category = bookmarkCategories.find(cat => cat.id === categoryId);
+        if (category) {
+            category.name = newName;
+        }
+        
+        editingCategoryId = null;
+        renderBookmarks();
+        
+        if (window.notyf) {
+            window.notyf.success('카테고리 이름이 수정되었습니다.');
+        }
+    } catch (error) {
+        console.error('[NoteEditor] Failed to update category name:', error);
+        if (window.notyf) {
+            window.notyf.error('카테고리 이름 수정에 실패했습니다.');
+        }
+    }
+}
+
 // Export to window
 window.NoteEditorPage = {
     handleFileRemove,
@@ -1087,4 +1260,9 @@ window.NoteEditorPage = {
     addBookmark,
     deleteBookmarkCategory,
     deleteBookmark,
+    toggleBookmarkCategoryMenu,
+    expandAllBookmarksInCategory,
+    editCategoryName,
+    cancelEditCategoryName,
+    saveCategoryName,
 };
