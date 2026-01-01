@@ -45,7 +45,7 @@
             <p class="profile-org">{% if user_data.organization %}{{ user_data.organization }}{% elif user_data.profile.organization %}{{ user_data.profile.organization }}{% elif user.profile.organization %}{{ user.profile.organization }}{% endif %}</p>
             {% endif %}
         </div>
-        <a href="{% url 'dashboard:dashboard' %}#profile" class="dropdown-item">프로필 보기</a>
+        <a href="{% url 'accounts:profile' %}" class="dropdown-item">계정 설정</a>
         <a href="{% url 'dashboard:dashboard' %}#organization" class="dropdown-item">{% if position_type == 'header' %}내 조직 관리{% else %}내 조직{% endif %}</a>
         <a href="{% url 'accounts:logout' %}" class="dropdown-item logout">로그아웃</a>
     </div>

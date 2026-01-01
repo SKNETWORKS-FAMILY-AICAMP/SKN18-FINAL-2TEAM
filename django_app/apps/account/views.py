@@ -1,3 +1,5 @@
+import json
+from pathlib import Path
 from django.shortcuts import render, redirect
 from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.decorators import login_required
@@ -5,9 +7,11 @@ from django.contrib import messages
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_protect
 from django.utils import timezone
+from django.http import JsonResponse
 
 from .forms import LoginForm, SignUpForm
 from .models import CustomUser, UserSettings
+from apps.core.utils.s3_utils import upload_file_to_s3, get_s3_url, generate_s3_key
 
 
 def index(request):
@@ -136,3 +140,155 @@ def profile_view(request):
     return render(request, 'accounts/profile.html', {
         'user': request.user,
     })
+
+
+@login_required
+@require_http_methods(["GET", "PATCH"])
+def profile_api(request):
+    """
+    프로필 API 엔드포인트
+    GET /api/profile/ - 프로필 정보 조회
+    PATCH /api/profile/ - 프로필 정보 업데이트
+    """
+    if request.method == 'GET':
+        user = request.user
+        return JsonResponse({
+            'success': True,
+            'data': {
+                'display_name': user.full_name or user.email,
+                'full_name': user.full_name or '',
+                'email': user.email,
+                'phone_number': user.phone_number or '',
+                'organization': user.company or '',
+            }
+        })
+    
+    elif request.method == 'PATCH':
+        try:
+            data = json.loads(request.body)
+            user = request.user
+            
+            # 업데이트할 필드들
+            if 'display_name' in data:
+                # display_name은 full_name으로 저장
+                user.full_name = data['display_name']
+            if 'full_name' in data:
+                user.full_name = data['full_name']
+            if 'email' in data:
+                # 이메일 중복 체크
+                new_email = data['email']
+                if new_email != user.email:
+                    if CustomUser.objects.filter(email=new_email).exists():
+                        return JsonResponse({
+                            'success': False,
+                            'error': '이미 사용 중인 이메일입니다.'
+                        }, status=400)
+                    user.email = new_email
+            if 'phone_number' in data:
+                user.phone_number = data['phone_number']
+            if 'organization' in data:
+                user.company = data['organization']
+            
+            user.save()
+            
+            return JsonResponse({
+                'success': True,
+                'message': '프로필이 업데이트되었습니다.'
+            })
+        except json.JSONDecodeError:
+            return JsonResponse({
+                'success': False,
+                'error': '잘못된 JSON 형식입니다.'
+            }, status=400)
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'error': str(e)
+            }, status=500)
+
+
+@login_required
+@require_http_methods(["POST"])
+def profile_avatar_api(request):
+    """
+    프로필 아바타 업로드 API
+    POST /api/profile/avatar/ - 프로필 사진 업로드
+    S3 저장소: s3://skn18-file-uploads/profiles/{user_id}/{email}.{확장자}
+    """
+    if 'avatar' not in request.FILES:
+        return JsonResponse({
+            'success': False,
+            'error': '파일이 제공되지 않았습니다.'
+        }, status=400)
+    
+    file = request.FILES['avatar']
+    
+    # 파일 크기 검증 (5MB)
+    if file.size > 5 * 1024 * 1024:
+        return JsonResponse({
+            'success': False,
+            'error': '파일 크기는 5MB 이하여야 합니다.'
+        }, status=400)
+    
+    # 파일 타입 검증
+    if not file.content_type.startswith('image/'):
+        return JsonResponse({
+            'success': False,
+            'error': '이미지 파일만 업로드할 수 있습니다.'
+        }, status=400)
+    
+    try:
+        user = request.user
+        
+        # 파일 확장자 추출
+        file_name = file.name
+        file_ext = Path(file_name).suffix.lower()
+        
+        # 지원하는 이미지 확장자 확인
+        allowed_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp']
+        if file_ext not in allowed_extensions:
+            return JsonResponse({
+                'success': False,
+                'error': f'지원하지 않는 파일 형식입니다. 지원 형식: {", ".join(allowed_extensions)}'
+            }, status=400)
+        
+        # S3 키 생성: profiles/{user_id}/{email}.{확장자}
+        s3_key = generate_s3_key(
+            prefix='profiles',
+            user_id=str(user.user_id),
+            filename=file_name,
+            use_email=True,
+            email=user.email
+        )
+        
+        # S3에 파일 업로드 (ACL 없이, 버킷 정책으로 접근 제어)
+        success, error_msg = upload_file_to_s3(
+            file=file,
+            s3_key=s3_key,
+            content_type=file.content_type,
+            acl=None  # ACL 비활성화된 버킷이므로 None
+        )
+        
+        if not success:
+            return JsonResponse({
+                'success': False,
+                'error': error_msg or '파일 업로드에 실패했습니다.'
+            }, status=500)
+        
+        # S3 URL 생성
+        s3_url = get_s3_url(s3_key)
+        
+        # 사용자 모델의 img_url 필드 업데이트 (zs_user.img_url)
+        user.img_url = s3_url
+        user.save(update_fields=['img_url'])  # 특정 필드만 업데이트하여 성능 최적화
+        
+        return JsonResponse({
+            'success': True,
+            'avatar_url': s3_url,
+            'message': '프로필 사진이 업로드되었습니다.'
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)

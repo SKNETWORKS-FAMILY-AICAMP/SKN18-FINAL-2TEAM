@@ -17,59 +17,44 @@
                 <p>계정 정보를 업데이트하세요.</p>
             </div>
 
-            <!-- Avatar Section - matching React -->
-            <div class="avatar-section">
+            <!-- Avatar and Name Section -->
+            <div class="avatar-name-section">
                 <label class="avatar-label">프로필 사진</label>
-                <div class="avatar-wrapper">
-                    <div class="avatar-frame">
-                        {% if user.profile.avatar %}
-                        <img src="{{ user.profile.avatar.url }}" alt="Avatar" class="avatar-img" />
-                        {% else %}
-                        <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop" alt="Avatar" class="avatar-img" />
-                        {% endif %}
+                <div class="avatar-name-wrapper">
+                    <div class="avatar-wrapper">
+                        <div class="avatar-frame">
+                            {% if user.img_url %}
+                            <img src="{{ user.img_url }}" alt="Avatar" class="avatar-img" />
+                            {% else %}
+                            <div class="avatar-placeholder">
+                                <i class="fa-solid fa-user"></i>
+                            </div>
+                            {% endif %}
+                        </div>
+                        <button class="avatar-edit-btn" id="avatarEditBtn" title="프로필 사진 편집">
+                            <i class="fa-solid fa-pencil-alt"></i>
+                        </button>
                     </div>
-                    <button class="avatar-edit-btn" id="avatarEditBtn" title="프로필 사진 편집">
-                        <i class="fa-solid fa-pencil-alt"></i>
-                    </button>
-                </div>
-            </div>
-
-            <!-- Name Fields Row - matching React: grid grid-cols-2 gap-6 mb-6 -->
-            <div class="form-row">
-                <!-- Display Name -->
-                <div class="form-group">
-                    <label class="form-label">표시 이름</label>
-                    <div class="input-wrapper">
-                        <i class="fa-solid fa-user input-icon"></i>
-                        <input
-                            type="text"
-                            id="displayName"
-                            name="display_name"
-                            value="{{ user.profile.display_name|default:user.get_full_name|default:user.email }}"
-                            placeholder="표시 이름 입력"
-                            class="form-input"
-                        />
-                    </div>
-                </div>
-
-                <!-- Full Name -->
-                <div class="form-group">
-                    <label class="form-label">이름</label>
-                    <div class="input-wrapper">
-                        <i class="fa-solid fa-user input-icon"></i>
-                        <input
-                            type="text"
-                            id="fullName"
-                            name="full_name"
-                            value="{{ user.get_full_name|default:user.email }}"
-                            placeholder="이름 입력"
-                            class="form-input"
-                        />
+                    
+                    <!-- Full Name - moved next to avatar -->
+                    <div class="name-field-wrapper">
+                        <label class="form-label">이름</label>
+                        <div class="input-wrapper">
+                            <i class="fa-solid fa-user input-icon"></i>
+                            <input
+                                type="text"
+                                id="fullName"
+                                name="full_name"
+                                value="{{ user.get_full_name|default:user.email }}"
+                                placeholder="이름 입력"
+                                class="form-input"
+                            />
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Email and Phone Fields Row - matching React: grid grid-cols-2 gap-6 mb-6 -->
+            <!-- Email and Join Date Row -->
             <div class="form-row">
                 <!-- Email -->
                 <div class="form-group">
@@ -82,6 +67,41 @@
                             name="email"
                             value="{{ user.email }}"
                             placeholder="이메일 입력"
+                            readonly
+                            class="form-input form-input-readonly"
+                        />
+                    </div>
+                </div>
+
+                <!-- Join Date -->
+                <div class="form-group">
+                    <label class="form-label">가입일</label>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-calendar input-icon"></i>
+                        <input
+                            type="text"
+                            id="joinDate"
+                            value="{{ user.join_date|date:'Y년 m월 d일' }}"
+                            readonly
+                            class="form-input form-input-readonly"
+                        />
+                    </div>
+                </div>
+            </div>
+
+            <!-- Organization and Phone Number Row -->
+            <div class="form-row">
+                <!-- Organization -->
+                <div class="form-group">
+                    <label class="form-label">소속</label>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-building input-icon"></i>
+                        <input
+                            type="text"
+                            id="organization"
+                            name="organization"
+                            value="{{ user.company|default:'' }}"
+                            placeholder="소속 입력"
                             class="form-input"
                         />
                     </div>
@@ -96,7 +116,7 @@
                             type="tel"
                             id="phoneNumber"
                             name="phone_number"
-                            value="{{ user.profile.phone_number|default:'' }}"
+                            value="{{ user.phone_number|default:'' }}"
                             placeholder="전화번호 입력"
                             class="form-input"
                         />
@@ -104,38 +124,14 @@
                 </div>
             </div>
 
-            <!-- Organization and Join Date - matching React: grid grid-cols-2 gap-6 -->
-            <div class="form-row">
-                <!-- Organization -->
-                <div class="form-group">
-                    <label class="form-label">소속</label>
-                    <div class="input-wrapper">
-                        <i class="fa-solid fa-building input-icon"></i>
-                        <input
-                            type="text"
-                            id="organization"
-                            name="organization"
-                            value="{{ user.profile.organization|default:'' }}"
-                            placeholder="소속 입력"
-                            class="form-input"
-                        />
-                    </div>
-                </div>
-
-                <!-- Join Date -->
-                <div class="form-group">
-                    <label class="form-label">가입일</label>
-                    <div class="input-wrapper">
-                        <i class="fa-solid fa-calendar input-icon"></i>
-                        <input
-                            type="text"
-                            id="joinDate"
-                            value="{{ user.date_joined|date:'Y년 m월 d일' }}"
-                            readonly
-                            class="form-input form-input-readonly"
-                        />
-                    </div>
-                </div>
+            <!-- Action Buttons -->
+            <div class="profile-actions">
+                <button type="button" class="btn btn-primary" id="saveProfileBtn">
+                    수정하기
+                </button>
+                <button type="button" class="btn btn-secondary" id="resetProfileBtn">
+                    초기화
+                </button>
             </div>
         </div>
 
