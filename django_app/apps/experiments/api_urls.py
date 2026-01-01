@@ -1,6 +1,7 @@
 from django.urls import path
 from . import views
 from . import views_runpod
+from . import views_uniprot
 
 app_name = "experiments_api"
 
@@ -12,12 +13,12 @@ urlpatterns = [
     path("runpod/run/", views_runpod.runpod_api_run, name="api_runpod_run"),
     path(
         "uniprot/search/",
-        views.uniprot_search_api,
+        views_uniprot.uniprot_search_api,
         name="api_uniprot_search",
     ),
     path(
         "uniprot/detail/<str:accession>/",
-        views.uniprot_detail_api,
+        views_uniprot.uniprot_detail_api,
         name="api_uniprot_detail",
     ),
 ]
