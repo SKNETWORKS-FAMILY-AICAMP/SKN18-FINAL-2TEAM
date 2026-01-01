@@ -302,6 +302,107 @@ def bookmark_create_api(request):
 
 
 @extend_schema(
+    summary="북마크 카테고리 수정",
+    description="북마크 카테고리의 이름을 수정합니다.",
+    tags=["Bookmark"],
+    request={
+        "type": "object",
+        "properties": {
+            "category_name": {"type": "string", "description": "새 카테고리 이름"},
+        },
+        "required": ["category_name"],
+    },
+    responses={
+        200: {
+            "type": "object",
+            "properties": {
+                "status": {"type": "string", "example": "success"},
+                "category": {
+                    "type": "object",
+                    "properties": {
+                        "category_sid": {"type": "integer"},
+                        "category_name": {"type": "string"},
+                    },
+                },
+            },
+        },
+        400: {"type": "object", "properties": {"error": {"type": "string"}}},
+        404: {"type": "object", "properties": {"error": {"type": "string"}}},
+    },
+)
+@api_view(["PATCH", "PUT"])
+@permission_classes([IsAuthenticated])
+@transaction.atomic
+def bookmark_category_update_api(request, category_sid):
+    """
+    북마크 카테고리의 이름을 수정합니다.
+    """
+    category_name = request.data.get("category_name", "").strip()
+    
+    if not category_name:
+        return Response(
+            {"status": "error", "error": "카테고리 이름은 필수입니다."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    
+    user_identifier = _get_user_identifier(request.user)
+    
+    # 카테고리 존재 확인 (사용자별 활성 상태인 것만)
+    try:
+        category = BookmarkCategory.objects.get(
+            category_sid=category_sid,
+            status='E',
+            created_id=user_identifier,
+        )
+    except BookmarkCategory.DoesNotExist:
+        return Response(
+            {"status": "error", "error": "존재하지 않는 카테고리입니다."},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+    
+    # 기존 이름과 같으면 변경 없음
+    if category.category_name == category_name:
+        return Response(
+            {
+                "status": "success",
+                "category": {
+                    "category_sid": category.category_sid,
+                    "category_name": category.category_name,
+                },
+            },
+            status=status.HTTP_200_OK,
+        )
+    
+    # 중복 체크 (같은 사용자의 활성 상태인 다른 카테고리와 중복 확인)
+    category_queryset = BookmarkCategory.objects.filter(
+        status='E',
+        created_id=user_identifier,
+    ).exclude(category_sid=category_sid)
+    
+    if category_queryset.filter(category_name=category_name).exists():
+        return Response(
+            {"status": "error", "error": "이미 존재하는 카테고리 이름입니다."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    
+    # 카테고리 이름 수정
+    category.category_name = category_name
+    category.updated_id = user_identifier
+    category.save()
+    
+    return Response(
+        {
+            "status": "success",
+            "category": {
+                "category_sid": category.category_sid,
+                "category_name": category.category_name,
+            },
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
+@extend_schema(
     summary="북마크 카테고리 삭제",
     description="북마크 카테고리를 삭제합니다 (soft delete). status를 'R'로 변경하고, 카테고리 내 모든 북마크도 함께 'R'로 변경합니다.",
     tags=["Bookmark"],
@@ -357,6 +458,99 @@ def bookmark_category_delete_api(request, category_sid):
         {
             "status": "success",
             "message": f"카테고리 '{category_name}'가 삭제되었습니다.",
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
+@extend_schema(
+    summary="북마크 수정",
+    description="북마크의 제목과 URL을 수정합니다.",
+    tags=["Bookmark"],
+    request={
+        "type": "object",
+        "properties": {
+            "title": {"type": "string", "description": "북마크 제목"},
+            "bookmark_url": {"type": "string", "description": "북마크 URL"},
+            "description": {"type": "string", "description": "북마크 설명 (선택)"},
+        },
+        "required": ["title", "bookmark_url"],
+    },
+    responses={
+        200: {
+            "type": "object",
+            "properties": {
+                "status": {"type": "string", "example": "success"},
+                "bookmark": {
+                    "type": "object",
+                    "properties": {
+                        "bookmark_sid": {"type": "integer"},
+                        "title": {"type": "string"},
+                        "url": {"type": "string"},
+                        "description": {"type": "string"},
+                    },
+                },
+            },
+        },
+        400: {"type": "object", "properties": {"error": {"type": "string"}}},
+        404: {"type": "object", "properties": {"error": {"type": "string"}}},
+    },
+)
+@api_view(["PATCH", "PUT"])
+@permission_classes([IsAuthenticated])
+@transaction.atomic
+def bookmark_update_api(request, bookmark_sid):
+    """
+    북마크의 제목과 URL을 수정합니다.
+    """
+    title = request.data.get("title", "").strip()
+    bookmark_url = request.data.get("bookmark_url", "").strip()
+    description = request.data.get("description", "").strip()
+    
+    if not title:
+        return Response(
+            {"status": "error", "error": "북마크 제목은 필수입니다."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    
+    if not bookmark_url:
+        return Response(
+            {"status": "error", "error": "북마크 URL은 필수입니다."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    
+    user_identifier = _get_user_identifier(request.user)
+    
+    # 북마크 존재 확인 (사용자별 활성 상태인 것만)
+    try:
+        bookmark = Bookmark.objects.get(
+            bookmark_sid=bookmark_sid,
+            status='E',
+            created_id=user_identifier,
+        )
+    except Bookmark.DoesNotExist:
+        return Response(
+            {"status": "error", "error": "존재하지 않는 북마크입니다."},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+    
+    # 북마크 정보 수정
+    bookmark.title = title
+    bookmark.bookmark_url = bookmark_url
+    if description:
+        bookmark.description = description
+    bookmark.updated_id = user_identifier
+    bookmark.save()
+    
+    return Response(
+        {
+            "status": "success",
+            "bookmark": {
+                "bookmark_sid": bookmark.bookmark_sid,
+                "title": bookmark.title,
+                "url": bookmark.bookmark_url,
+                "description": bookmark.description or "",
+            },
         },
         status=status.HTTP_200_OK,
     )

@@ -20,6 +20,8 @@ let newBookmarkTitle = '';
 let newBookmarkUrl = '';
 let openBookmarkCategoryMenuId = null;
 let editingCategoryId = null;
+let openBookmarkMenuId = null; // {categoryId_bookmarkId: true}
+let editingBookmarkId = null; // {categoryId_bookmarkId: true}
 
 // CKEditor5 instance
 let editorInstance = null;
@@ -151,6 +153,173 @@ function initTagify() {
     console.log('[NoteEditor] Tagify initialized successfully');
 }
 
+// Show HTML preview in a modal or new window
+function showHtmlPreview(htmlContent) {
+    if (!htmlContent || !htmlContent.trim()) {
+        if (window.notyf) {
+            window.notyf.info('미리볼 내용이 없습니다.');
+        }
+        return;
+    }
+
+    // Use SweetAlert2 for modal if available, otherwise use window.open
+    if (window.Swal) {
+        window.Swal.fire({
+            title: 'HTML 미리보기',
+            html: `
+                <div style="text-align: left;">
+                    <div style="margin-bottom: 1rem;">
+                        <button id="btnViewRendered" class="swal2-confirm swal2-styled" style="margin-right: 0.5rem; background-color: #3b82f6;">
+                            렌더링된 HTML 보기
+                        </button>
+                        <button id="btnViewSource" class="swal2-confirm swal2-styled" style="background-color: #10b981;">
+                            HTML 소스 보기
+                        </button>
+                    </div>
+                    <div id="htmlPreviewContent" style="max-height: 60vh; overflow-y: auto; padding: 1rem; border: 1px solid #ddd; border-radius: 4px; background: #fff; text-align: left;">
+                        ${htmlContent}
+                    </div>
+                    <textarea id="htmlSourceTextarea" style="display: none; width: 100%; min-height: 300px; font-family: monospace; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; background: #f9fafb; font-size: 12px; white-space: pre-wrap; word-wrap: break-word;">${escapeHtml(htmlContent)}</textarea>
+                </div>
+            `,
+            width: '90%',
+            showConfirmButton: true,
+            confirmButtonText: '닫기',
+            didOpen: () => {
+                const btnViewRendered = document.getElementById('btnViewRendered');
+                const btnViewSource = document.getElementById('btnViewSource');
+                const previewContent = document.getElementById('htmlPreviewContent');
+                const sourceTextarea = document.getElementById('htmlSourceTextarea');
+
+                if (btnViewRendered && btnViewSource && previewContent && sourceTextarea) {
+                    btnViewRendered.addEventListener('click', () => {
+                        previewContent.style.display = 'block';
+                        sourceTextarea.style.display = 'none';
+                        btnViewRendered.style.backgroundColor = '#3b82f6';
+                        btnViewSource.style.backgroundColor = '#6b7280';
+                    });
+
+                    btnViewSource.addEventListener('click', () => {
+                        previewContent.style.display = 'none';
+                        sourceTextarea.style.display = 'block';
+                        btnViewRendered.style.backgroundColor = '#6b7280';
+                        btnViewSource.style.backgroundColor = '#10b981';
+                    });
+
+                    // Default to rendered view
+                    btnViewRendered.style.backgroundColor = '#3b82f6';
+                    btnViewSource.style.backgroundColor = '#6b7280';
+                }
+            }
+        });
+    } else {
+        // Fallback: 새 창으로 열기
+        const previewWindow = window.open('', '_blank', 'width=900,height=700');
+        if (previewWindow) {
+            previewWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>HTML 미리보기</title>
+                    <meta charset="UTF-8">
+                    <style>
+                        body { 
+                            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+                            padding: 2rem; 
+                            max-width: 1200px; 
+                            margin: 0 auto; 
+                            background: #f9fafb;
+                        }
+                        .preview-container {
+                            background: white;
+                            border: 1px solid #e5e7eb;
+                            border-radius: 8px;
+                            padding: 2rem;
+                            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+                        }
+                        .tabs {
+                            display: flex;
+                            margin-bottom: 1rem;
+                            border-bottom: 2px solid #e5e7eb;
+                        }
+                        .tab {
+                            padding: 0.75rem 1.5rem;
+                            cursor: pointer;
+                            border: none;
+                            background: none;
+                            font-size: 14px;
+                            font-weight: 500;
+                            color: #6b7280;
+                            border-bottom: 2px solid transparent;
+                            margin-bottom: -2px;
+                        }
+                        .tab.active {
+                            color: #3b82f6;
+                            border-bottom-color: #3b82f6;
+                        }
+                        .tab-content {
+                            display: none;
+                        }
+                        .tab-content.active {
+                            display: block;
+                        }
+                        #renderedContent {
+                            line-height: 1.6;
+                        }
+                        #sourceContent {
+                            font-family: 'Courier New', monospace;
+                            font-size: 12px;
+                            white-space: pre-wrap;
+                            word-wrap: break-word;
+                            background: #f9fafb;
+                            padding: 1rem;
+                            border-radius: 4px;
+                            border: 1px solid #e5e7eb;
+                            max-height: 500px;
+                            overflow-y: auto;
+                        }
+                        img {
+                            max-width: 100%;
+                            height: auto;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="preview-container">
+                        <div class="tabs">
+                            <button class="tab active" onclick="showTab('rendered')">렌더링된 HTML</button>
+                            <button class="tab" onclick="showTab('source')">HTML 소스</button>
+                        </div>
+                        <div id="renderedContent" class="tab-content active">
+                            ${htmlContent}
+                        </div>
+                        <div id="sourceContent" class="tab-content"></div>
+                    </div>
+                    <script>
+                        function showTab(tabName) {
+                            // Update tabs
+                            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+                            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+                            
+                            if (tabName === 'rendered') {
+                                document.querySelectorAll('.tab')[0].classList.add('active');
+                                document.getElementById('renderedContent').classList.add('active');
+                            } else {
+                                document.querySelectorAll('.tab')[1].classList.add('active');
+                                const sourceContent = document.getElementById('sourceContent');
+                                sourceContent.textContent = ${JSON.stringify(htmlContent)};
+                                sourceContent.classList.add('active');
+                            }
+                        }
+                    </script>
+                </body>
+                </html>
+            `);
+            previewWindow.document.close();
+        }
+    }
+}
+
 // Initialize CKEditor5 using bundled version from window.CKEditor
 function initCKEditor() {
     const editorElement = document.getElementById('noteContentEditor');
@@ -196,14 +365,50 @@ function initCKEditor() {
         HorizontalLine,
         Highlight,
         Font,
-        MediaEmbed
+        MediaEmbed,
+        SourceEditing
     } = window.CKEditor;
+
+    // Plugin과 ButtonView는 선택적으로 가져오기 (없을 수 있음)
+    const Plugin = window.CKEditor.Plugin;
+    const ButtonView = window.CKEditor.ButtonView;
 
     // ClassicEditor가 있는지 확인
     if (!ClassicEditor) {
         console.error('[NoteEditor] ClassicEditor not found in window.CKEditor');
         editorElement.innerHTML = '<p style="color: #ef4444; padding: 1rem;">에디터 클래스를 찾을 수 없습니다.</p>';
         return;
+    }
+
+    // HTML 미리보기 커스텀 플러그인 정의 (Plugin과 ButtonView가 있을 경우에만)
+    let HtmlPreviewPlugin = undefined;
+    if (Plugin && ButtonView) {
+        HtmlPreviewPlugin = class extends Plugin {
+            static get pluginName() {
+                return 'HtmlPreview';
+            }
+
+            init() {
+                const editor = this.editor;
+
+                editor.ui.componentFactory.add('htmlPreview', locale => {
+                    const view = new ButtonView(locale);
+
+                    view.set({
+                        label: 'HTML 미리보기',
+                        tooltip: true,
+                        icon: '<svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M3 3h14v14H3V3zm1 1v12h12V4H4zm2 2h8v1H6V6zm0 2h8v1H6V8zm0 2h5v1H6v-1zm0 2h8v1H6v-1z"/></svg>'
+                    });
+
+                    view.on('execute', () => {
+                        const htmlContent = editor.getData();
+                        showHtmlPreview(htmlContent);
+                    });
+
+                    return view;
+                });
+            }
+        };
     }
 
     // 사용 가능한 플러그인만 필터링
@@ -232,7 +437,9 @@ function initCKEditor() {
         HorizontalLine,
         Highlight,
         Font,
-        MediaEmbed
+        MediaEmbed,
+        SourceEditing,
+        HtmlPreviewPlugin
     ].filter(plugin => plugin !== undefined);
 
     console.log('[NoteEditor] Using plugins:', availablePlugins.length);
@@ -270,6 +477,9 @@ function initCKEditor() {
                 '|',
                 'highlight',
                 '|',
+                'sourceEditing',
+                ...(HtmlPreviewPlugin ? ['htmlPreview'] : []),
+                '|',
                 'undo',
                 'redo'
             ],
@@ -301,6 +511,13 @@ function initCKEditor() {
     .then(editor => {
         editorInstance = editor;
         console.log('[NoteEditor] CKEditor5 initialized successfully');
+        
+        // HTML 미리보기 플러그인이 없을 경우, 에디터 초기화 후 버튼 추가
+        if (!HtmlPreviewPlugin && editor && editor.ui && editor.ui.componentFactory) {
+            // 에디터가 초기화된 후에 직접 버튼 추가 시도
+            // 이 부분은 SourceEditing 플러그인이 작동하는지 확인 후 필요시 추가
+            console.log('[NoteEditor] HtmlPreviewPlugin not available, using alternative method if needed');
+        }
         
         // 편집 모드인 경우 데이터 로드
         if (editingNoteId) {
@@ -622,6 +839,8 @@ async function loadBookmarks() {
         // Reset adding state when bookmarks are reloaded
         addingBookmarkToCategoryId = null;
         openBookmarkCategoryMenuId = null;
+        openBookmarkMenuId = null;
+        editingBookmarkId = null;
 
         openBookmarkCategories = {};
     } catch (error) {
@@ -706,13 +925,13 @@ function renderBookmarks() {
                 </button>
                 ${openBookmarkCategoryMenuId === category.id ? `
                     <div class="bookmark-category-menu-popup" id="bookmarkCategoryMenu_${category.id}">
-                        <button class="bookmark-category-menu-item" onclick="window.NoteEditorPage.expandAllBookmarksInCategory(${category.id})">
-                            <i class="fas fa-chevron-down"></i>
-                            <span>북마크 모두 열기</span>
-                        </button>
                         <button class="bookmark-category-menu-item" onclick="window.NoteEditorPage.editCategoryName(${category.id}, '${escapeHtml(category.name)}')">
                             <i class="fas fa-pen"></i>
                             <span>이름 수정</span>
+                        </button>
+                        <button class="bookmark-category-menu-item" onclick="window.NoteEditorPage.deleteBookmarkCategory(${category.id}, '${escapeHtml(category.name)}')">
+                            <i class="fas fa-trash"></i>
+                            <span>삭제</span>
                         </button>
                     </div>
                 ` : ''}
@@ -740,17 +959,68 @@ function renderBookmarks() {
                             </div>
                         </div>
                     ` : ''}
-                    ${category.bookmarks.map(item => `
+                    ${category.bookmarks.map(item => {
+                        const bookmarkKey = `${category.id}_${item.id}`;
+                        const isEditing = editingBookmarkId === bookmarkKey;
+                        const menuOpen = openBookmarkMenuId === bookmarkKey;
+                        return `
                         <div class="bookmark-item">
                             <div class="bookmark-item-header">
                                 <i class="fas fa-file-alt"></i>
-                                <span class="bookmark-item-title">${escapeHtml(item.title)}</span>
+                                ${isEditing ? `
+                                    <div class="bookmark-edit-form">
+                                        <input
+                                            type="text"
+                                            id="bookmarkEditTitle_${category.id}_${item.id}"
+                                            value="${escapeHtml(item.title)}"
+                                            class="bookmark-input"
+                                            placeholder="북마크 제목..."
+                                        />
+                                        <input
+                                            type="url"
+                                            id="bookmarkEditUrl_${category.id}_${item.id}"
+                                            value="${escapeHtml(item.url)}"
+                                            class="bookmark-input"
+                                            placeholder="URL (https://...)"
+                                            onkeypress="if(event.key==='Enter') window.NoteEditorPage.saveBookmark(${category.id}, ${item.id})"
+                                        />
+                                    </div>
+                                ` : `
+                                    <span class="bookmark-item-title">${escapeHtml(item.title)}</span>
+                                `}
                                 ${isBookmarkEditMode ? `
                                     <button class="btn-bookmark-delete" onclick="window.NoteEditorPage.deleteBookmark(${category.id}, ${item.id}, '${escapeHtml(item.title)}')" title="북마크 삭제">
                                         <i class="fas fa-times"></i>
                                     </button>
                                 ` : ''}
+                                ${!isEditing ? `
+                                    <button class="btn-bookmark-menu" onclick="window.NoteEditorPage.toggleBookmarkMenu(${category.id}, ${item.id}, event)" title="메뉴">
+                                        <i class="fas fa-ellipsis-vertical"></i>
+                                    </button>
+                                ` : ''}
+                                ${menuOpen ? `
+                                    <div class="bookmark-menu-popup" id="bookmarkMenu_${category.id}_${item.id}">
+                                        <button class="bookmark-menu-item" onclick="window.NoteEditorPage.openBookmarkInNewTab('${escapeHtml(item.url)}')">
+                                            <i class="fas fa-external-link-alt"></i>
+                                            <span>새 탭에서 열기</span>
+                                        </button>
+                                        <button class="bookmark-menu-item" onclick="window.NoteEditorPage.editBookmark(${category.id}, ${item.id}, '${escapeHtml(item.title)}', '${escapeHtml(item.url)}')">
+                                            <i class="fas fa-pen"></i>
+                                            <span>수정</span>
+                                        </button>
+                                        <button class="bookmark-menu-item" onclick="window.NoteEditorPage.deleteBookmark(${category.id}, ${item.id}, '${escapeHtml(item.title)}')">
+                                            <i class="fas fa-trash"></i>
+                                            <span>삭제</span>
+                                        </button>
+                                    </div>
+                                ` : ''}
                             </div>
+                            ${isEditing ? `
+                                <div class="bookmark-form-actions">
+                                    <button class="btn-bookmark-save" onclick="window.NoteEditorPage.saveBookmark(${category.id}, ${item.id})">저장</button>
+                                    <button class="btn-bookmark-cancel" onclick="window.NoteEditorPage.cancelEditBookmark()">취소</button>
+                                </div>
+                            ` : `
                             <div class="bookmark-item-actions">
                                 <button class="btn-bookmark-add" onclick="window.NoteEditorPage.addBookmarkToNote('${escapeHtml(item.title)}', '${escapeHtml(item.url)}')">
                                     <i class="fas fa-plus-circle"></i>
@@ -761,8 +1031,10 @@ function renderBookmarks() {
                                     <span>상세 보기</span>
                                 </a>
                             </div>
+                            `}
                         </div>
-                    `).join('')}
+                    `;
+                    }).join('')}
                 </div>
             ` : ''}
         </div>
@@ -850,6 +1122,13 @@ function handleToggleBookmarkEditMode() {
         } else {
             btnBookmarkEditToggle.classList.remove('active');
         }
+    }
+    // Reset menu and editing states when exiting edit mode
+    if (!isBookmarkEditMode) {
+        openBookmarkCategoryMenuId = null;
+        openBookmarkMenuId = null;
+        editingCategoryId = null;
+        editingBookmarkId = null;
     }
     renderBookmarks();
 }
@@ -996,7 +1275,7 @@ async function addBookmark(categoryId) {
 // Delete bookmark category
 async function deleteBookmarkCategory(categoryId, categoryName) {
     if (!window.Swal) {
-        if (confirm(`"${categoryName}" 카테고리를 삭제하시겠습니까? 카테고리 내 모든 북마크도 함께 삭제됩니다.`)) {
+        if (confirm('이 카테고리의 모든 북마크가 삭제됩니다. 삭제하시겠습니까?')) {
             await performDeleteCategory(categoryId);
         }
         return;
@@ -1004,7 +1283,7 @@ async function deleteBookmarkCategory(categoryId, categoryName) {
 
     window.Swal.fire({
         title: '카테고리 삭제',
-        html: `"<strong>${escapeHtml(categoryName)}</strong>" 카테고리를 삭제하시겠습니까?<br><br>카테고리 내 모든 북마크도 함께 삭제됩니다.`,
+        html: '이 카테고리의 모든 북마크가 삭제됩니다. 삭제하시겠습니까?',
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#dc2626',
@@ -1022,7 +1301,7 @@ async function deleteBookmarkCategory(categoryId, categoryName) {
 // Perform delete category
 async function performDeleteCategory(categoryId) {
     try {
-        const response = await fetch(bookmarkApiUrl + `categories/${categoryId}/`, {
+        const response = await fetch(bookmarkApiUrl + `categories/${categoryId}/delete/`, {
             method: 'DELETE',
             headers: {
                 'X-CSRFToken': getCookie('csrftoken'),
@@ -1078,7 +1357,7 @@ async function deleteBookmark(categoryId, bookmarkId, bookmarkTitle) {
 // Perform delete bookmark
 async function performDeleteBookmark(categoryId, bookmarkId) {
     try {
-        const response = await fetch(bookmarkApiUrl + `bookmarks/${bookmarkId}/`, {
+        const response = await fetch(bookmarkApiUrl + `bookmarks/${bookmarkId}/delete/`, {
             method: 'DELETE',
             headers: {
                 'X-CSRFToken': getCookie('csrftoken'),
@@ -1135,52 +1414,115 @@ function toggleBookmarkCategoryMenu(categoryId, event) {
     }
 }
 
-// Open all bookmarks in category (새 탭으로 열기)
-function expandAllBookmarksInCategory(categoryId) {
-    // 해당 카테고리의 모든 북마크를 새 탭으로 열기
-    const category = bookmarkCategories.find(cat => cat.id === categoryId);
-    if (!category || !category.bookmarks || category.bookmarks.length === 0) {
-        if (window.notyf) {
-            window.notyf.info('열 수 있는 북마크가 없습니다.');
-        }
-        openBookmarkCategoryMenuId = null;
-        renderBookmarks();
-        return;
+// Toggle bookmark menu
+function toggleBookmarkMenu(categoryId, bookmarkId, event) {
+    if (event) {
+        event.stopPropagation();
     }
     
-    const bookmarksToOpen = category.bookmarks.filter(bookmark => bookmark && bookmark.url);
+    const bookmarkKey = `${categoryId}_${bookmarkId}`;
     
-    if (bookmarksToOpen.length === 0) {
-        if (window.notyf) {
-            window.notyf.info('열 수 있는 북마크가 없습니다.');
-        }
-        openBookmarkCategoryMenuId = null;
-        renderBookmarks();
-        return;
+    if (openBookmarkMenuId === bookmarkKey) {
+        openBookmarkMenuId = null;
+    } else {
+        openBookmarkMenuId = bookmarkKey;
     }
     
-    console.log(`[NoteEditor] Opening ${bookmarksToOpen.length} bookmarks in new tabs`);
-    
-    // 브라우저 popup blocker를 피하기 위해 작은 딜레이를 두고 각 탭을 엽니다
-    // 첫 번째는 즉시 열고, 나머지는 150ms 간격으로 연다
-    bookmarksToOpen.forEach((bookmark, index) => {
-        if (index === 0) {
-            // 첫 번째는 즉시 열기
-            window.open(bookmark.url, '_blank', 'noopener,noreferrer');
-        } else {
-            // 나머지는 딜레이를 두고 열기
-            setTimeout(() => {
-                window.open(bookmark.url, '_blank', 'noopener,noreferrer');
-            }, index * 150); // 각 탭마다 150ms 딜레이
-        }
-    });
-    
-    if (window.notyf) {
-        window.notyf.success(`${bookmarksToOpen.length}개의 북마크를 새 탭으로 열었습니다.`);
-    }
-    
-    openBookmarkCategoryMenuId = null;
     renderBookmarks();
+}
+
+// Open bookmark in new tab
+function openBookmarkInNewTab(url) {
+    if (url) {
+        window.open(url, '_blank', 'noopener,noreferrer');
+    }
+    openBookmarkMenuId = null;
+    renderBookmarks();
+}
+
+// Edit bookmark
+function editBookmark(categoryId, bookmarkId, currentTitle, currentUrl) {
+    editingBookmarkId = `${categoryId}_${bookmarkId}`;
+    openBookmarkMenuId = null;
+    renderBookmarks();
+    
+    // Focus on title input after render
+    setTimeout(() => {
+        const titleInput = document.getElementById(`bookmarkEditTitle_${categoryId}_${bookmarkId}`);
+        if (titleInput) {
+            titleInput.focus();
+            titleInput.select();
+        }
+    }, 0);
+}
+
+// Cancel edit bookmark
+function cancelEditBookmark() {
+    editingBookmarkId = null;
+    renderBookmarks();
+}
+
+// Save bookmark
+async function saveBookmark(categoryId, bookmarkId) {
+    const titleInput = document.getElementById(`bookmarkEditTitle_${categoryId}_${bookmarkId}`);
+    const urlInput = document.getElementById(`bookmarkEditUrl_${categoryId}_${bookmarkId}`);
+    
+    const newTitle = titleInput ? titleInput.value.trim() : '';
+    const newUrl = urlInput ? urlInput.value.trim() : '';
+    
+    if (!newTitle) {
+        if (window.notyf) {
+            window.notyf.error('북마크 제목을 입력해주세요.');
+        }
+        return;
+    }
+    
+    if (!newUrl) {
+        if (window.notyf) {
+            window.notyf.error('북마크 URL을 입력해주세요.');
+        }
+        return;
+    }
+    
+    try {
+        const response = await fetch(bookmarkApiUrl + `bookmarks/${bookmarkId}/`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken'),
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({
+                title: newTitle,
+                bookmark_url: newUrl,
+            }),
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(data.error || '북마크 수정에 실패했습니다.');
+        }
+        
+        if (data.status === 'success') {
+            // 북마크 목록 새로고침하여 수정된 북마크 반영
+            await loadBookmarks();
+            
+            editingBookmarkId = null;
+            renderBookmarks();
+            
+            if (window.notyf) {
+                window.notyf.success('북마크가 수정되었습니다.');
+            }
+        } else {
+            throw new Error('응답 데이터가 올바르지 않습니다.');
+        }
+    } catch (error) {
+        console.error('[NoteEditor] Failed to update bookmark:', error);
+        if (window.notyf) {
+            window.notyf.error(error.message || '북마크 수정에 실패했습니다.');
+        }
+    }
 }
 
 // Edit category name
@@ -1218,33 +1560,39 @@ async function saveCategoryName(categoryId) {
     }
     
     try {
-        // TODO: API 호출로 카테고리 이름 수정
-        // const response = await fetch(bookmarkApiUrl + `categories/${categoryId}/`, {
-        //     method: 'PATCH',
-        //     headers: {
-        //         'Content-Type': 'application/json',
-        //         'X-CSRFToken': getCookie('csrftoken'),
-        //     },
-        //     credentials: 'same-origin',
-        //     body: JSON.stringify({ category_name: newName }),
-        // });
+        const response = await fetch(bookmarkApiUrl + `categories/${categoryId}/`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken'),
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({ category_name: newName }),
+        });
         
-        // 임시로 클라이언트에서 수정 (API 구현 후 제거)
-        const category = bookmarkCategories.find(cat => cat.id === categoryId);
-        if (category) {
-            category.name = newName;
+        const data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(data.error || '카테고리 이름 수정에 실패했습니다.');
         }
         
-        editingCategoryId = null;
-        renderBookmarks();
-        
-        if (window.notyf) {
-            window.notyf.success('카테고리 이름이 수정되었습니다.');
+        if (data.status === 'success' && data.category) {
+            // 북마크 목록 새로고침하여 수정된 카테고리 이름 반영
+            await loadBookmarks();
+            
+            editingCategoryId = null;
+            renderBookmarks();
+            
+            if (window.notyf) {
+                window.notyf.success('카테고리 이름이 수정되었습니다.');
+            }
+        } else {
+            throw new Error('응답 데이터가 올바르지 않습니다.');
         }
     } catch (error) {
         console.error('[NoteEditor] Failed to update category name:', error);
         if (window.notyf) {
-            window.notyf.error('카테고리 이름 수정에 실패했습니다.');
+            window.notyf.error(error.message || '카테고리 이름 수정에 실패했습니다.');
         }
     }
 }
@@ -1261,8 +1609,12 @@ window.NoteEditorPage = {
     deleteBookmarkCategory,
     deleteBookmark,
     toggleBookmarkCategoryMenu,
-    expandAllBookmarksInCategory,
     editCategoryName,
     cancelEditCategoryName,
     saveCategoryName,
+    toggleBookmarkMenu,
+    openBookmarkInNewTab,
+    editBookmark,
+    cancelEditBookmark,
+    saveBookmark,
 };

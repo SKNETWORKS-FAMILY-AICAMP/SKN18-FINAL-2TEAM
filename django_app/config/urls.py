@@ -43,6 +43,7 @@ urlpatterns = [
     path("api/experiments/", include("apps.experiments.api_urls")),
     path("api/notes/", include("apps.notes.api_urls")),
     path("api/bookmarks/", include("apps.bookmark.api_urls")),
+    path("api/profile/", include("apps.account.api_urls")),
     
     # Swagger/OpenAPI (인증 없이 접근 가능)
     path("api/schema/", csrf_exempt(SpectacularAPIView.as_view()), name="schema"),
