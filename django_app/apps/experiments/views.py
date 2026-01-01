@@ -196,85 +196,46 @@ def index(request):
     ],
     responses={200: dict},
 )
-@api_view(['GET', 'POST'])
+@api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def uniprot_search_api(request):
-    # 1. Query parameter 수집
+    """
+    GET /api/uniprot/search?keyword=xxx
+    → UniProtKB search (요약 목록)
+    """
     keyword = request.query_params.get("keyword")
     size = int(request.query_params.get("size", 10))
 
     if not keyword:
-        return Response(
-            {"error": "keyword query parameter is required"},
-            status=400,
-        )
+        return Response({"error": "keyword is required"}, status=400)
 
-    # 2. UniProt REST API 호출
-    uniprot_url = "https://rest.uniprot.org/uniprotkb/search"
+    url = "https://rest.uniprot.org/uniprotkb/search"
     params = {
         "query": keyword,
         "format": "json",
         "size": size,
     }
 
-    try:
-        r = requests.get(uniprot_url, params=params, timeout=10)
-        r.raise_for_status()
-    except requests.RequestException as e:
-        return Response(
-            {"error": "Failed to fetch data from UniProt", "detail": str(e)},
-            status=502,
-        )
+    r = requests.get(url, params=params, timeout=10)
+    r.raise_for_status()
 
-    data = r.json()
-    raw_results = data.get("results", [])
-
-    # 3. UniProt JSON → Swagger 응답 구조로 매핑
     results = []
 
-    for item in raw_results:
-        accession = item.get("primaryAccession")
-        entry_name = item.get("uniProtkbId")
+    for item in r.json().get("results", []):
 
-        protein_name = None
+        # --- Protein name ---
         pd = item.get("proteinDescription", {})
+        rec = pd.get("recommendedName", {})
 
-        # 1️⃣ Reviewed (Swiss-Prot)
-        if pd.get("recommendedName"):
-            protein_name = (
-                pd["recommendedName"]
-                .get("fullName", {})
-                .get("value")
-            )
+        protein_name = (
+            rec.get("fullName", {}).get("value")
+        )
 
-        # 2️⃣ Unreviewed (TrEMBL)
-        if not protein_name and pd.get("submissionNames"):
-            protein_name = (
-                pd["submissionNames"][0]
-                .get("fullName", {})
-                .get("value")
-            )
-
-        # 3️⃣ Alternative names (fallback)
-        if not protein_name and pd.get("alternativeNames"):
-            protein_name = (
-                pd["alternativeNames"][0]
-                .get("fullName", {})
-                .get("value")
-            )
-
-        ec_numbers = []
-
-        if pd.get("recommendedName", {}).get("ecNumbers"):
-            ec_numbers = [
-                f"EC:{ec['value']}"
-                for ec in pd["recommendedName"]["ecNumbers"]
-                if ec.get("value")
-            ]
-
+        # --- Gene ---
         gene = None
         genes = item.get("genes", [])
 
+        # 1️⃣ 우선순위 기반 gene 식별
         for g in genes:
             if g.get("geneName"):
                 gene = g["geneName"]["value"]
@@ -292,7 +253,7 @@ def uniprot_search_api(request):
                 gene = g["synonyms"][0]["value"]
                 break
 
-        # UI-style synonym 표시 (geneName 있을 때만)
+        # 2️⃣ UI 표시용 synonym 결합 (geneName이 있을 때만)
         if gene:
             for g in genes:
                 if g.get("geneName") and g.get("synonyms"):
@@ -301,90 +262,148 @@ def uniprot_search_api(request):
                         gene = f"{gene} ({', '.join(syns)})"
                     break
 
-        organism_data = item.get("organism", {})
+        # --- Organism ---
+        org = item.get("organism", {})
+        organism = org.get("scientificName")
+        if org.get("commonName"):
+            organism = f"{organism} ({org.get('commonName')})"
 
-        scientific = organism_data.get("scientificName")
-        common = organism_data.get("commonName")
+        # --- EC numbers ---
+        ec_numbers = [
+            f"EC:{ec['value']}"
+            for ec in rec.get("ecNumbers", [])
+            if ec.get("value")
+        ]
 
-        raw_synonyms = organism_data.get("synonyms", [])
-        synonyms = []
-
-        for s in raw_synonyms:
-            if isinstance(s, dict) and s.get("value"):
-                synonyms.append(s["value"])
-            elif isinstance(s, str):
-                synonyms.append(s)
-
-        # 중복 제거 (common과 synonym 겹칠 수 있음)
-        synonyms = [s for s in synonyms if s != common]
-
-        # === 출력 조합 ===
-        organism_parts = []
-
-        if scientific:
-            organism_parts.append(scientific)
-
-        if common:
-            organism_parts.append(f"({common})")
-
-        if synonyms:
-            organism_parts.append(f"({', '.join(synonyms)})")
-
-        organism = " ".join(organism_parts)
-
-        length = item.get("sequence", {}).get("length")
-        annotation_score = item.get("annotationScore")
-        protein_existence = None
+        # --- Protein existence ---
         pe = item.get("proteinExistence")
+        protein_existence = (
+            pe.get("type") if isinstance(pe, dict) else None
+        )
 
-        if isinstance(pe, dict):
-            protein_existence = pe.get("category")
-        elif isinstance(pe, str):
-            protein_existence = pe
-
-        tags = [
+        # --- Keywords ---
+        keywords = [
             kw.get("name")
             for kw in item.get("keywords", [])
             if kw.get("name")
         ]
 
-        sequence_summary = None
-        seq = item.get("sequence")
-        audit = item.get("entryAudit", {})
-
-        if isinstance(seq, dict):
-            sequence_summary = {
-                "length": seq.get("length"),
-                "last_updated": audit.get("lastSequenceUpdateDate"),
-                "version": audit.get("sequenceVersion"),
-                "mass": seq.get("molWeight"),
-                "md5": seq.get("md5"),
-                "sequence": seq.get("value"),
-            }
-
         results.append({
-            "accession": accession,
-            "entry_name": entry_name,
-            "protein_name": protein_name,
-            "gene": gene,
-            "organism": organism,
-            "length": length,
-            "annotation_score": annotation_score,
-            "ec_numbers": ec_numbers,
-            "protein_existence": protein_existence,
-            "tags": tags,
-            "sequence_summary": sequence_summary,
+            "accession": item.get("primaryAccession"),          # P38567
+            "entry_name": item.get("uniProtkbId"),              # HYALP_HUMAN
+            "protein_name": protein_name,                       # Hyaluronidase PH-20
+            "gene": gene,                                       # SPAM1 (HYAL3, PH20)
+            "organism": organism,                               # Homo sapiens (Human)
+            "ec_numbers": ec_numbers,                           # EC:3.2.1.35
+            "length": item.get("sequence", {}).get("length"),   # 509
+            "protein_existence": protein_existence,             # Evidence at protein level
+            "annotation_score": item.get("annotationScore"),    # 5
+            "keywords": keywords,                               # Glycosidase, ...
         })
 
-    # 4. Swagger 명세와 정확히 일치하는 Response 반환
-    return Response(
-        {
-            "keyword": keyword,
-            "count": len(results),
-            "results": results,
+    return Response({
+        "keyword": keyword,
+        "count": len(results),
+        "results": results,
+    })
+@extend_schema(tags=["Experiments"])
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def uniprot_detail_api(request, accession):
+
+    url = f"https://rest.uniprot.org/uniprotkb/{accession}"
+    params = {"format": "json"}
+
+    r = requests.get(url, params=params, timeout=10)
+    r.raise_for_status()
+
+    item = r.json()
+
+    # --- Protein description ---
+    pd = item.get("proteinDescription", {})
+    rec = pd.get("recommendedName", {})
+
+    protein_name = rec.get("fullName", {}).get("value")
+
+    alternative_names = [
+        alt.get("fullName", {}).get("value")
+        for alt in pd.get("alternativeNames", [])
+        if alt.get("fullName", {}).get("value")
+    ]
+
+    # --- Gene ---
+    gene = None
+    genes = item.get("genes", [])
+
+    for g in genes:
+        if g.get("geneName"):
+            gene = g["geneName"]["value"]
+            break
+
+        if g.get("orderedLocusNames"):
+            gene = g["orderedLocusNames"][0]["value"]
+            break
+
+        if g.get("orfNames"):
+            gene = g["orfNames"][0]["value"]
+            break
+
+        if g.get("synonyms"):
+            gene = g["synonyms"][0]["value"]
+            break
+
+    if gene:
+        for g in genes:
+            if g.get("geneName") and g.get("synonyms"):
+                syns = [s["value"] for s in g["synonyms"]]
+                if syns:
+                    gene = f"{gene} ({', '.join(syns)})"
+                break
+
+    # --- EC numbers ---
+    ec_numbers = [
+        f"EC:{ec['value']}"
+        for ec in rec.get("ecNumbers", [])
+        if ec.get("value")
+    ]
+
+    # --- Organism ---
+    org = item.get("organism", {})
+
+    # --- Sequence ---
+    seq = item.get("sequence", {})
+    audit = item.get("entryAudit", {})
+
+    response = {
+        "accession": item.get("primaryAccession"),
+        "entry_name": item.get("uniProtkbId"),
+        "protein_name": protein_name,
+        "alternative_names": alternative_names,
+        "gene": gene,
+        "ec_numbers": ec_numbers,
+
+        "organism": {
+            "scientific": org.get("scientificName"),
+            "common": org.get("commonName"),
+            "taxonomy_id": org.get("taxonId"),
+            "lineage": org.get("lineage"),
         },
-        status=200,
-    )
+
+        "sequence": {
+            "length": seq.get("length"),
+            "mass": seq.get("molWeight"),
+            "md5": seq.get("md5"),
+            "value": seq.get("value"),
+            "last_updated": audit.get("lastSequenceUpdateDate"),
+            "version": audit.get("sequenceVersion"),
+        },
+
+        "annotation_score": item.get("annotationScore"),
+        "protein_existence": item.get("proteinExistence"),
+        "keywords": [kw.get("name") for kw in item.get("keywords", []) if kw.get("name")],
+    }
+
+    return Response(response)
 def experiments_api(request):
     """API endpoint router for experiments (GET /api/experiments/ and POST /api/experiments/)."""
     if request.method == 'GET':

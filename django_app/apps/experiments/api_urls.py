@@ -15,4 +15,9 @@ urlpatterns = [
         views.uniprot_search_api,
         name="api_uniprot_search",
     ),
+    path(
+        "uniprot/detail/<str:accession>/",
+        views.uniprot_detail_api,
+        name="api_uniprot_detail",
+    ),
 ]
