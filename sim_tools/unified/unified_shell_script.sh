@@ -1,3 +1,4 @@
+# unified_shell_script.sh (FULL)
 #!/usr/bin/env bash
 set -euo pipefail
 
@@ -44,7 +45,6 @@ venv_python() { echo "${TORCH_VENV}/bin/python"; }
 
 ########################################
 # 0) Up (ALL-IN-ONE)
-# - 딱 한 번 실행으로: install + download-params + serve
 ########################################
 cmd_up() {
   log "========================================"
@@ -60,13 +60,8 @@ cmd_up() {
   log "AWS_REGION=${AWS_REGION:-<empty>}"
   log "========================================"
 
-  # 1) install (root 필요)
   cmd_install
-
-  # 2) download params (필수)
   cmd_download_params
-
-  # 3) serve (API 백그라운드)
   cmd_serve
 
   log "========================================"
@@ -77,7 +72,7 @@ cmd_up() {
 }
 
 ########################################
-# 1) Install (install.sh 통합)
+# 1) Install
 ########################################
 cmd_install() {
   need_root
@@ -115,7 +110,7 @@ cmd_install() {
   # API 서버용 패키지 포함
   "$(venv_python)" -m pip install -U fastapi uvicorn
 
-  # ✅ S3 업로드용 (boto3)
+  # ✅ S3 업로드용
   "$(venv_python)" -m pip install -U boto3 botocore
 
   if [[ ! -d "$RFDIFFUSION_DIR" ]]; then
@@ -146,20 +141,16 @@ cmd_install() {
     fi
   fi
 
-  # ------------------------------------------------------------
-  # ✅ RFdiffusion runtime deps (Hydra/OmegaConf 등) 설치
-  # ------------------------------------------------------------
+  # RFdiffusion deps
   log "installing RFdiffusion requirements (if present)"
-
   if [[ -f "$RFDIFFUSION_DIR/requirements.txt" ]]; then
     "$(venv_python)" -m pip install -r "$RFDIFFUSION_DIR/requirements.txt"
   fi
-
   if [[ -f "$RFDIFFUSION_DIR/env/requirements.txt" ]]; then
     "$(venv_python)" -m pip install -r "$RFDIFFUSION_DIR/env/requirements.txt"
   fi
 
-  # 안전장치: run_inference.py에서 바로 필요한 핵심 deps
+  # 안전장치
   "$(venv_python)" -m pip install -U omegaconf hydra-core
 
   log "installing RFdiffusion (editable)"
@@ -188,7 +179,7 @@ PY
 }
 
 ########################################
-# 2) Download params (download_params.sh 통합) - 필수
+# 2) Download params
 ########################################
 download_http() {
   local url="$1"
@@ -215,15 +206,12 @@ cmd_download_params() {
   log "download_params start"
   ensure_dir "$MODELS_DIR"
 
-  # AlphaFold params는 "디렉토리만 생성" (다운로드 로직은 기존 방식 유지)
   AF_DIR="${AF_DIR:-$MODELS_DIR/alphafold}"
   ensure_dir "$AF_DIR"
 
-  # RFdiffusion ckpt target
   RFD_MODELS_DIR="${RFD_MODELS_DIR:-$RFDIFFUSION_DIR/models}"
   ensure_dir "$RFD_MODELS_DIR"
 
-  # cache dir
   RFD_SOURCE_DIR="${RFD_SOURCE_DIR:-$MODELS_DIR/rfdiffusion}"
   ensure_dir "$RFD_SOURCE_DIR"
 
@@ -302,7 +290,7 @@ cmd_download_params() {
 }
 
 ########################################
-# 3) Run (run.sh 통합)
+# 3) Run
 ########################################
 cmd_run() {
   log "run start"
@@ -324,32 +312,27 @@ cmd_run() {
   export LD_LIBRARY_PATH="$TORCH_VENV/lib/python3.10/site-packages/nvidia/nvtx/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/nvjitlink/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/nccl/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/curand/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cufft/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cuda_runtime/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cuda_nvrtc/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cuda_cupti/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cublas/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cusparse/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cudnn/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cusolver/lib:${LD_LIBRARY_PATH:-}"
   log "LD_LIBRARY_PATH set"
 
-  # ✅ S3 env도 run 쪽에 확실히 전달(없으면 main.py가 알아서 skip)
+  # ✅ S3 env도 run 쪽에 확실히 전달
   export S3_BUCKET S3_PREFIX AWS_REGION AWS_DEFAULT_REGION
 
   ensure_dir "$MODELS_DIR"
   ensure_dir "$OUTPUTS_DIR"
 
-  # ckpt 다운로드/스테이징 (필수)
   cmd_download_params
-
-  # 실행
   "$(venv_python)" "$SCRIPT_DIR/src/main.py" "$@"
 }
 
 ########################################
-# 4) Serve (uvicorn nohup) (통합 + 절대 안깨지게 env 주입)
+# 4) Serve
 ########################################
 cmd_serve() {
   log "serve start"
   ensure_dir "$APP_DIR"
   ensure_dir "$OUTPUTS_DIR"
 
-  # uvicorn/fastapi 없으면 설치
   "$(venv_python)" -c "import uvicorn, fastapi" >/dev/null 2>&1 || \
     "$(venv_python)" -m pip install -U uvicorn fastapi
 
-  # 이미 떠있으면 종료(중복 실행 방지)
   if [[ -f "$UVICORN_PID" ]] && ps -p "$(cat "$UVICORN_PID")" >/dev/null 2>&1; then
     log "Already running: PID=$(cat "$UVICORN_PID")"
     exit 0
@@ -357,7 +340,6 @@ cmd_serve() {
 
   cd "$APP_DIR"
 
-  # ✅ 핵심: API가 참조하는 env들을 강제 주입(환경/재시작/사용자 차이에도 절대 안깨짐)
   nohup env \
     SCRIPT_DIR="$SCRIPT_DIR" \
     OPS_SH="$SCRIPT_DIR/unified_shell_script.sh" \
@@ -376,7 +358,6 @@ cmd_serve() {
 }
 
 cmd_stop() {
-  # 1) pid 파일 기반 종료
   if [[ -f "$UVICORN_PID" ]]; then
     local pid
     pid="$(cat "$UVICORN_PID" || true)"
@@ -389,7 +370,6 @@ cmd_stop() {
     rm -f "$UVICORN_PID"
   fi
 
-  # 2) pid 파일이 꼬였거나 다른 프로세스로 떠있을 때도 대비
   if command -v pgrep >/dev/null 2>&1; then
     local pids
     pids="$(pgrep -f "uvicorn api_server:app" || true)"
@@ -419,15 +399,15 @@ cmd_logs_job() {
 usage() {
   cat <<EOF
 Usage:
-  ./unified_shell_script.sh                      # ✅ ALL-IN-ONE (up): install + download-params + serve
-  ./unified_shell_script.sh up                   # same as above
-  ./unified_shell_script.sh install              # (root) OS deps + venv + RFdiffusion deps + uvicorn/fastapi + boto3
-  ./unified_shell_script.sh download-params      # download/stage RFdiffusion checkpoints (필수지만 단독 실행도 가능)
-  ./unified_shell_script.sh run [args...]        # run RFdiffusion via src/main.py (also downloads params)
-  ./unified_shell_script.sh serve                # start uvicorn on :8000 in background (nohup)
-  ./unified_shell_script.sh stop                 # stop uvicorn (by pid file / pgrep fallback)
-  ./unified_shell_script.sh logs:api             # tail -f uvicorn log
-  ./unified_shell_script.sh logs:job <job_name>  # tail -f job log
+  ./unified_shell_script.sh
+  ./unified_shell_script.sh up
+  ./unified_shell_script.sh install
+  ./unified_shell_script.sh download-params
+  ./unified_shell_script.sh run [args...]
+  ./unified_shell_script.sh serve
+  ./unified_shell_script.sh stop
+  ./unified_shell_script.sh logs:api
+  ./unified_shell_script.sh logs:job <job_name>
 
 Env overrides:
   TORCH_VENV=/opt/venv_torch
@@ -447,7 +427,7 @@ EOF
 }
 
 main() {
-  local cmd="${1:-up}"   # ✅ 기본 실행을 up으로 변경
+  local cmd="${1:-up}"
   shift || true
 
   case "$cmd" in
