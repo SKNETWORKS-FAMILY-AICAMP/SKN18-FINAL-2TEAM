@@ -9,16 +9,14 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.authentication import SessionAuthentication
 from rest_framework.views import APIView
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import extend_schema, OpenApiParameter
 from .models import ExperimentTool, Experiment, ExperimentToolSelection, ExperimentToolOption
 from django.db import transaction
 from django_app.apps.core.queue import publish_simulation
 
-from django.utils import timezone
 
 def _get_user_identifier(user):
     return str(user.user_id) if hasattr(user, 'user_id') else str(user.pk)
-from .models import ExperimentTool, Experiment
 
 
 @login_required
@@ -142,7 +140,6 @@ def index(request):
         }
     }
 )
-
 @extend_schema(
     summary="실험 생성",
     description="새로운 실험을 생성합니다.",
@@ -176,6 +173,9 @@ def index(request):
         }
     }
 )
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
 def experiments_api(request):
     """API endpoint router for experiments (GET /api/experiments/ and POST /api/experiments/)."""
     if request.method == 'GET':
