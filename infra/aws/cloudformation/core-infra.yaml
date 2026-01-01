@@ -151,11 +151,17 @@ Resources:
       BucketName: skn18-file-uploads
       VersioningConfiguration:
         Status: Enabled
+      # ACL 비활성화 (최신 AWS 권장사항)
+      # 버킷 정책으로 접근 제어
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
-        BlockPublicPolicy: true
+        BlockPublicPolicy: false  # 버킷 정책을 통한 공개 접근 허용
         IgnorePublicAcls: true
-        RestrictPublicBuckets: true
+        RestrictPublicBuckets: false  # 버킷 정책을 통한 공개 접근 허용
+      # Object Ownership 설정 (ACL 비활성화)
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
       # 사용자 업로드 파일 라이프사이클 정책
       # 프로필 이미지, 노트 첨부 파일, 시뮬레이션 결과 파일 등
       LifecycleConfiguration:
@@ -180,6 +186,24 @@ Resources:
           Value: "skn18-file-uploads"
         - Key: Purpose
           Value: "user-file-uploads"
+
+  # =========================
+  # S3 버킷 정책 (프로필 이미지 공개 읽기 허용)
+  # =========================
+  UserUploadBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref UserUploadBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          # profiles/* 경로의 파일에 대한 공개 읽기 권한
+          - Sid: PublicReadProfiles
+            Effect: Allow
+            Principal: "*"
+            Action:
+              - s3:GetObject
+            Resource: !Sub "arn:aws:s3:::${UserUploadBucket}/profiles/*"
 
   # =========================
   # S3 버킷 폴더 생성 (Neo4j 데이터용) - Custom Resource 사용
