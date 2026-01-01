@@ -64,10 +64,22 @@ function initProfile() {
         avatarEditBtn.addEventListener('click', handleAvatarEdit);
     }
 
-    // Google link button handler
+    // Google link button handler (더 이상 사용하지 않음)
     if (linkGoogleBtn) {
         linkGoogleBtn.addEventListener('click', handleGoogleLink);
     }
+
+    // Unlink account button handlers
+    const unlinkButtons = document.querySelectorAll('.linked-account-unlink');
+    unlinkButtons.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const provider = e.target.getAttribute('data-provider') || 
+                           e.target.closest('.linked-account-unlink')?.getAttribute('data-provider');
+            if (provider) {
+                handleUnlinkAccount(provider);
+            }
+        });
+    });
 
     // Save button handler
     if (saveProfileBtn) {
@@ -198,10 +210,46 @@ function uploadAvatar(file) {
     });
 }
 
-// Handle Google account link
+// Handle Google account link (더 이상 사용하지 않음, 템플릿에서 직접 링크 사용)
 function handleGoogleLink() {
     // Redirect to Google OAuth
     window.location.href = '/accounts/google/login/';
+}
+
+// Handle unlink account
+function handleUnlinkAccount(provider) {
+    if (!confirm(`${provider === 'google' ? 'Google' : provider} 계정 연동을 해제하시겠습니까?`)) {
+        return;
+    }
+
+    fetch(`/api/profile/linked-accounts/?provider=${provider}`, {
+        method: 'DELETE',
+        headers: {
+            'X-CSRFToken': getCsrfToken(),
+        },
+    })
+    .then(response => {
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            return response.text().then(text => {
+                throw new Error(`서버 응답이 JSON이 아닙니다: ${text.substring(0, 100)}`);
+            });
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            alert(data.message || '계정 연동이 해제되었습니다.');
+            // 페이지 새로고침하여 UI 업데이트
+            window.location.reload();
+        } else {
+            alert('계정 연동 해제에 실패했습니다: ' + (data.error || '알 수 없는 오류'));
+        }
+    })
+    .catch(error => {
+        console.error('Error unlinking account:', error);
+        alert('계정 연동 해제 중 오류가 발생했습니다: ' + error.message);
+    });
 }
 
 // Handle save profile (수정하기 버튼 클릭)

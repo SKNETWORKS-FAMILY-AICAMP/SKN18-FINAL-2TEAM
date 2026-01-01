@@ -287,6 +287,14 @@ class LinkedAccount(models.Model):
         verbose_name='토큰 만료 시간'
     )
     
+    # OAuth 권한 범위 (scope)
+    scope = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name='권한 범위',
+        help_text='OAuth 제공자에서 부여된 권한 목록 (공백으로 구분)'
+    )
+    
     # 타임스탬프
     created_at = models.DateTimeField(
         auto_now_add=True,
@@ -317,3 +325,57 @@ class LinkedAccount(models.Model):
         if not self.token_expires_at:
             return True
         return timezone.now() >= self.token_expires_at
+    
+    def refresh_access_token(self):
+        """
+        refresh_token을 사용하여 access_token 갱신
+        Google OAuth 전용 (다른 제공자는 필요시 확장)
+        """
+        if self.provider != 'google':
+            return False
+        
+        if not self.refresh_token:
+            return False
+        
+        from django.conf import settings
+        import requests
+        from datetime import timedelta
+        
+        try:
+            data = {
+                "client_id": settings.GOOGLE_CLIENT_ID,
+                "client_secret": settings.GOOGLE_CLIENT_SECRET,
+                "refresh_token": self.refresh_token,
+                "grant_type": "refresh_token",
+            }
+            
+            res = requests.post("https://oauth2.googleapis.com/token", data=data, timeout=10)
+            res.raise_for_status()
+            token_info = res.json()
+            
+            new_access_token = token_info.get("access_token")
+            expires_in = token_info.get("expires_in", 3600)
+            
+            if new_access_token:
+                self.access_token = new_access_token
+                self.token_expires_at = timezone.now() + timedelta(seconds=expires_in)
+                # refresh_token은 Google이 새로 발급하지 않으므로 유지
+                self.save(update_fields=['access_token', 'token_expires_at'])
+                return True
+            
+            return False
+        except Exception as e:
+            # 로깅은 필요시 추가
+            return False
+    
+    def get_valid_access_token(self):
+        """
+        유효한 access_token 반환
+        만료되었으면 자동으로 갱신 시도
+        """
+        if self.is_token_expired():
+            if self.refresh_access_token():
+                return self.access_token
+            else:
+                return None
+        return self.access_token
