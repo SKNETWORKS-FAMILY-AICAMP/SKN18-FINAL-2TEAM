@@ -1,0 +1,162 @@
+#!/usr/bin/env python3
+import os
+import uuid
+import subprocess
+from pathlib import Path
+from typing import Optional, Literal
+
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel, Field
+
+# ---- Config ----
+SCRIPT_DIR = os.environ.get("SCRIPT_DIR", "/workspace/unified")
+OPS_SH = os.environ.get("OPS_SH", f"{SCRIPT_DIR}/unified_shell_script.sh")
+
+OUTPUTS_DIR = os.environ.get("OUTPUTS_DIR", f"{SCRIPT_DIR}/outputs")
+TORCH_VENV = os.environ.get("TORCH_VENV", "/opt/venv_torch")
+PYTHONPATH = os.environ.get("PYTHONPATH", "/app/RFdiffusion")
+
+# (선택) 간단한 보호장치
+API_KEY = os.environ.get("API_KEY")  # 설정 안 하면 인증 없이 동작
+
+app = FastAPI(title="RFdiffusion Runner API")
+
+
+# ---------------- Models ----------------
+class RunRequest(BaseModel):
+    mode: Literal["backbone", "binder", "other"] = "backbone"
+    name: Optional[str] = None
+    contigs: str = Field(default="100")
+    iterations: int = Field(default=1, ge=1, le=1000)
+
+
+class RunResponse(BaseModel):
+    ok: bool
+    job_id: str
+    name: str
+    outputs_dir: str
+    cmd: list[str]
+
+
+class StatusResponse(BaseModel):
+    ok: bool
+    job_id: str
+    name: str
+    status: str
+    log_path: str
+    expected_pdb: str
+
+
+# ---------------- Utils ----------------
+def _ensure_paths():
+    if not Path(OPS_SH).is_file():
+        raise RuntimeError(f"unified_shell_script.sh not found: {OPS_SH}")
+    Path(OUTPUTS_DIR).mkdir(parents=True, exist_ok=True)
+
+
+def _auth_or_throw(x_api_key: Optional[str]):
+    if API_KEY and x_api_key != API_KEY:
+        raise HTTPException(status_code=401, detail="Invalid API key")
+
+
+def _job_paths(name: str):
+    logs_dir = Path(OUTPUTS_DIR) / "_logs"
+    logs_dir.mkdir(parents=True, exist_ok=True)
+    log_path = logs_dir / f"{name}.log"
+    pid_path = logs_dir / f"{name}.pid"
+    return log_path, pid_path
+
+
+def _status_from_files(name: str) -> str:
+    pdb0 = Path(OUTPUTS_DIR) / f"{name}_0.pdb"
+    log_path, pid_path = _job_paths(name)
+
+    if pdb0.exists():
+        return "done"
+
+    if pid_path.exists():
+        try:
+            pid = int(pid_path.read_text().strip())
+            if Path(f"/proc/{pid}").exists():
+                return "running"
+            else:
+                return "failed"
+        except Exception:
+            return "unknown"
+
+    return "unknown"
+
+
+# ---------------- Routes ----------------
+@app.get("/health")
+def health():
+    _ensure_paths()
+    return {
+        "ok": True,
+        "ops_sh": OPS_SH,
+        "outputs_dir": OUTPUTS_DIR,
+        "torch_venv": TORCH_VENV,
+        "pythonpath": PYTHONPATH,
+    }
+
+
+@app.post("/run", response_model=RunResponse)
+def run(req: RunRequest, x_api_key: Optional[str] = None):
+    _auth_or_throw(x_api_key)
+    _ensure_paths()
+
+    job_id = uuid.uuid4().hex[:12]
+    name = req.name or f"job_{job_id}"
+
+    log_path, pid_path = _job_paths(name)
+
+    args = [
+        "run",
+        "--mode", req.mode,
+        "--name", name,
+        "--contigs", req.contigs,
+        "--iterations", str(req.iterations),
+    ]
+
+    env = os.environ.copy()
+    env["TORCH_VENV"] = TORCH_VENV
+    env["PYTHONPATH"] = PYTHONPATH
+    env["OUTPUTS_DIR"] = OUTPUTS_DIR
+    env["SCRIPT_DIR"] = SCRIPT_DIR
+
+    with open(log_path, "ab") as f:
+        p = subprocess.Popen(
+            ["bash", OPS_SH, *args],
+            env=env,
+            stdout=f,
+            stderr=subprocess.STDOUT,
+            cwd=SCRIPT_DIR,
+        )
+
+    pid_path.write_text(str(p.pid))
+
+    return RunResponse(
+        ok=True,
+        job_id=job_id,
+        name=name,
+        outputs_dir=OUTPUTS_DIR,
+        cmd=["bash", OPS_SH, *args],
+    )
+
+
+@app.get("/status/{name}", response_model=StatusResponse)
+def status(name: str, x_api_key: Optional[str] = None):
+    _auth_or_throw(x_api_key)
+    _ensure_paths()
+
+    log_path, _ = _job_paths(name)
+    st = _status_from_files(name)
+
+    return StatusResponse(
+        ok=True,
+        job_id="(use name)",
+        name=name,
+        status=st,
+        log_path=str(log_path),
+        expected_pdb=str(Path(OUTPUTS_DIR) / f"{name}_0.pdb"),
+    )
