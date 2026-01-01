@@ -350,14 +350,16 @@ def uniprot_search_api(request):
 
         sequence_summary = None
         seq = item.get("sequence")
+        audit = item.get("entryAudit", {})
 
         if isinstance(seq, dict):
             sequence_summary = {
                 "length": seq.get("length"),
-                "mass": seq.get("mass"),
-                "version": seq.get("version"),
-                # search API에서는 보통 없음 → None 허용
-                "preview": None,
+                "last_updated": audit.get("lastSequenceUpdateDate"),
+                "version": audit.get("sequenceVersion"),
+                "mass": seq.get("molWeight"),
+                "md5": seq.get("md5"),
+                "sequence": seq.get("value"),
             }
 
         results.append({
