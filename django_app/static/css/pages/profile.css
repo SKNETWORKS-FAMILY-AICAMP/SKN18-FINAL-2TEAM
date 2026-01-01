@@ -13,7 +13,8 @@
 }
 
 /* Profile Section - matching React: bg-white rounded-xl shadow-sm border border-gray-200 p-8 mb-6 */
-.profile-section {
+/* 프로필 페이지 내부의 섹션만 스타일링 (사이드바의 profile-section과 충돌 방지) */
+.profile-page .profile-section {
     background: var(--color-bg-white); /* bg-white */
     border-radius: 0.75rem; /* rounded-xl */
     box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); /* shadow-sm */
@@ -22,7 +23,7 @@
     margin-bottom: 1.5rem; /* mb-6 */
 }
 
-.profile-section:last-child {
+.profile-page .profile-section:last-child {
     margin-bottom: 0;
 }
 
@@ -262,10 +263,21 @@
     cursor: pointer;
     transition: background-color 0.2s;
     font-weight: 500;
+    text-decoration: none;
+    display: inline-block;
 }
 
 .linked-account-btn:hover {
     background: #f9fafb; /* hover:bg-gray-50 */
+}
+
+.linked-account-unlink {
+    color: #dc2626; /* text-red-600 */
+}
+
+.linked-account-unlink:hover {
+    background: #fef2f2; /* hover:bg-red-50 */
+    border-color: #dc2626;
 }
 
 /* Responsive Design */
@@ -274,7 +286,7 @@
         padding: 1rem;
     }
 
-    .profile-section {
+    .profile-page .profile-section {
         padding: 1.5rem;
     }
 
