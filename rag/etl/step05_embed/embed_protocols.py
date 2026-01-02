@@ -26,7 +26,6 @@ if str(PROJECT_ROOT) not in sys.path:
 
 import pandas as pd
 from dotenv import load_dotenv
-from openai import OpenAI
 from datetime import datetime
 
 # DB insert는 upsert_protocols.py로 이동했으므로 주석처리
@@ -35,36 +34,19 @@ from datetime import datetime
 # schedule_store는 is_completed 키워드 조회용으로 사용
 from rag.etl.step01_ingest.modules import schedule_store
 
+from sentence_transformers import SentenceTransformer
+
 load_dotenv()
 
-def get_openai_api_key() -> str:
-    """OpenAI API Key를 가져옵니다 (환경 변수 또는 SSM Parameter Store)"""
-    # 1. 환경 변수에서 먼저 확인
-    api_key = os.getenv("OPENAI_API_KEY")
-    if api_key:
-        return api_key
-    
-    # 2. Lambda 환경에서 SSM Parameter Store에서 가져오기
-    if os.environ.get("AWS_LAMBDA_FUNCTION_NAME"):
-        parameter_path = os.getenv("OPENAI_API_KEY_PARAMETER_PATH", "/skn18/openai-api-key")
-        try:
-            import boto3
-            ssm_client = boto3.client('ssm')
-            response = ssm_client.get_parameter(
-                Name=parameter_path,
-                WithDecryption=True
-            )
-            return response['Parameter']['Value']
-        except Exception as e:
-            raise RuntimeError(f"SSM Parameter Store에서 OpenAI API Key를 가져올 수 없습니다 ({parameter_path}): {e}")
-    
-    # 3. 로컬 환경에서는 환경 변수 필수
-    raise RuntimeError("OPENAI_API_KEY 환경 변수가 필요합니다.")
+EMBEDDING_MODEL = os.getenv("PROTOCOL_EMBED_MODEL")
 
-OPENAI_API_KEY = get_openai_api_key()
+_embedder: SentenceTransformer | None = None
 
-# OpenAI 초기화
-client = OpenAI(api_key=OPENAI_API_KEY)
+def get_embedder() -> SentenceTransformer:
+    global _embedder
+    if _embedder is None:
+        _embedder = SentenceTransformer(EMBEDDING_MODEL)
+    return _embedder
 
 # Lambda 환경 감지 및 경로 조정
 def _get_base_path() -> Path:
@@ -80,7 +62,6 @@ BASE_PATH = _get_base_path()
 INPUT_ROOT = BASE_PATH / "data/processed/protocols/success"  # 기존 청크 파일 위치 (fallback)
 CHUNKS_SPLIT_ROOT = BASE_PATH / "data/chunks/protocols"  # 분할된 청크 파일 위치 (우선 사용)
 OUTPUT_ROOT = BASE_PATH / "data/embeddings/protocols"
-EMBEDDING_MODEL = "text-embedding-3-small"
 EMBEDDING_DIM = 1536
 TABLE_NAME = "ts_protocol_embedding"
 
@@ -126,12 +107,57 @@ USE_SPLIT_CHUNKS = os.getenv("PROTOCOL_EMBED_USE_SPLIT_CHUNKS", "true").lower() 
 
 
 def embed_text(text: str) -> list[float]:
-    """텍스트를 임베딩 벡터로 변환"""
-    response = client.embeddings.create(
-        model=EMBEDDING_MODEL,
-        input=text
+    model = get_embedder()
+    vec = model.encode(
+        text,
+        normalize_embeddings=True,
+        show_progress_bar=False
     )
-    return response.data[0].embedding
+    return vec.tolist()
+
+def load_table_metadata(table_csv_path: Path) -> dict[str, list[dict]]:
+    """
+    chunk_id → table_metadata 리스트
+    """
+    if not table_csv_path.exists():
+        return {}
+
+    df = pd.read_csv(table_csv_path)
+    table_map: dict[str, list[dict]] = {}
+
+    for _, row in df.iterrows():
+        chunk_id = str(row["chunk_id"])
+        table_map.setdefault(chunk_id, []).append({
+            "table_id": row["table_id"],
+            "table_json": json.loads(row["table_json"]),
+        })
+
+    return table_map
+
+def summarize_table_for_embedding(table_json: dict) -> str:
+    """
+    table_json → embedding용 자연어 요약
+    """
+    headers = table_json.get("header", [])
+    rows = table_json.get("rows", [])
+
+    if not headers or not rows:
+        return ""
+
+    lines = []
+    lines.append(f"This table contains the following columns: {', '.join(headers)}.")
+
+    # 상위 몇 개 row만 요약 (전체 숫자 나열 방지)
+    for row in rows[:5]:
+        row_desc = []
+        for h, v in zip(headers, row):
+            row_desc.append(f"{h}: {v}")
+        lines.append("; ".join(row_desc))
+
+    if len(rows) > 5:
+        lines.append(f"The table contains {len(rows)} total rows.")
+
+    return " ".join(lines)
 
 
 def split_sections(text: str) -> dict[str, str]:
@@ -181,7 +207,7 @@ def split_sections(text: str) -> dict[str, str]:
 #         conn.commit()
 
 
-def process_csv_simple(csv_path: Path, keyword: str, output_path: Path) -> None:
+def process_csv_simple(csv_path: Path, keyword: str, output_path: Path, table_metadata_map: dict[str, list[dict]]) -> None:
     """
     단순 모드: 텍스트 전체를 그대로 임베딩 (소스 파일 방식)
     섹션 분리 없이 각 행의 전체 텍스트를 직접 임베딩한다.
@@ -208,6 +234,23 @@ def process_csv_simple(csv_path: Path, keyword: str, output_path: Path) -> None:
 
     for idx, row in df.iterrows():
         text = str(row["text"]).strip()
+        chunking_id = str(row["chunking_id"])
+
+        tables = table_metadata_map.get(chunking_id, [])
+
+        table_summaries = []
+        for t in tables:
+            summary = summarize_table_for_embedding(t["table_json"])
+            if summary:
+                table_summaries.append(summary)
+
+        embedding_input = text
+        if table_summaries:
+            embedding_input = (
+                text
+                + "\n\n[Associated Tables]\n"
+                + "\n".join(table_summaries)
+            )
         
         # chunking_id, url, title은 선택적 (없으면 빈 문자열)
         chunking_id = str(row.get("chunking_id", ""))
@@ -218,7 +261,7 @@ def process_csv_simple(csv_path: Path, keyword: str, output_path: Path) -> None:
             continue
 
         # 텍스트 전체를 그대로 embedding
-        embedding = embed_text(text)
+        embedding = embed_text(embedding_input)
         
         # CSV 행 데이터 준비
         csv_rows.append({
@@ -269,6 +312,32 @@ def process_csv_simple(csv_path: Path, keyword: str, output_path: Path) -> None:
 
     print(f"[EMBED][Protocol.io][{keyword}] 🎉 모든 CSV 데이터 임베딩 및 저장 완료! 출력: {output_path}")
 
+def build_embedding_output_path(keyword: str, status: str = "success", part_suffix: str | None = None) -> Path:
+    """
+    data/embeddings/protocols/{success|fail}/year=YYYY/month=MM/day=DD/stage=embedded/
+      protocol_embedded_{keyword}[ _partXXX].csv
+    """
+    now = datetime.now()
+
+    filename = f"protocol_embedded_{keyword}"
+    if part_suffix:
+        filename += f"_part{part_suffix}"
+    filename += ".csv"
+
+    parts = [
+        OUTPUT_ROOT,
+        status,
+        f"year={now.year:04d}",
+        f"month={now.month:02d}",
+        f"day={now.day:02d}",
+        "stage=embedded",
+        filename,
+    ]
+
+    path = Path(*parts)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    return path
+
 def is_table_like_text(text: str, min_rows: int = 3, min_cols: int = 3) -> bool:
     """
     텍스트가 표(tabular) 형태인지 간단히 판별
@@ -294,19 +363,37 @@ def is_table_like_text(text: str, min_rows: int = 3, min_cols: int = 3) -> bool:
     return avg_cols >= min_cols
 
 
-def process_csv(csv_path: Path, keyword: str, output_path: Path) -> None:
+def process_csv(csv_path: Path, keyword: str, output_path: Path, table_metadata_map: dict[str, list[dict]]) -> None:
     """CSV 파일을 읽어서 임베딩 생성 및 CSV 파일 저장 (배치 처리)"""
     # 단순 모드 사용 여부 확인
     if USE_SIMPLE_MODE:
-        return process_csv_simple(csv_path, keyword, output_path)
-    
+        return process_csv_simple(csv_path, keyword, output_path, table_metadata_map)
     print(f"[EMBED][Protocol.io][{keyword}] >>> CSV 불러오는 중: {csv_path}")
     df = pd.read_csv(csv_path)
 
-    required_columns = ["chunking_id", "url", "title", "text"]
-    missing_columns = [col for col in required_columns if col not in df.columns]
-    if missing_columns:
-        raise ValueError(f"*** !!! CSV 파일에 필수 컬럼이 없습니다: {missing_columns} !!! ***")
+    # ================================
+    # 필수 컬럼 / 텍스트 컬럼 결정 (스키마 호환)
+    # ================================
+
+    # chunking_id는 반드시 필요
+    if "chunking_id" not in df.columns:
+        raise ValueError(
+            "*** !!! CSV 파일에 필수 컬럼 chunking_id가 없습니다 !!! ***"
+        )
+
+    # 텍스트 컬럼 자동 선택
+    if "text" in df.columns:
+        text_col = "text"
+    elif "content" in df.columns:
+        text_col = "content"
+    elif "chunk_text" in df.columns:
+        text_col = "chunk_text"
+    else:
+        raise ValueError(
+            "*** !!! CSV 파일에 텍스트 컬럼이 없습니다. "
+            "가능 컬럼: text, content, chunk_text / "
+            f"실제 컬럼: {list(df.columns)} !!! ***"
+        )
 
     print(f"[EMBED][Protocol.io][{keyword}] 🔍 총 {len(df)}개의 행 처리 시작")
     
@@ -318,7 +405,7 @@ def process_csv(csv_path: Path, keyword: str, output_path: Path) -> None:
     total_processed = 0
 
     for idx, row in df.iterrows():
-        text = str(row["text"]).strip()
+        text = str(row[text_col]).strip()
         chunking_id = str(row["chunking_id"])
         url = str(row["url"])
         title = str(row["title"])
@@ -430,7 +517,7 @@ def _save_batch(csv_rows: list[dict], output_path: Path, is_first_batch: bool, k
     print(f"[EMBED][Protocol.io][{keyword}] ✓ 배치 저장 완료: {processed}개 임베딩 생성됨 (입력 청크: {total}개)", flush=True)
 
 
-def process_file(csv_path: Path, embeddings_base_dir: Path | None = None) -> None:
+def process_file(csv_path: Path, embeddings_base_dir: Path | None = None, table_metadata_map: dict[str, list[dict]] | None = None) -> None:
     """단일 CSV 파일 처리 (에러 핸들링 포함)"""
     # 파일명에서 키워드 추출
     # 분할 파일: protocol_chunked_{keyword}_part{번호}.csv
@@ -443,29 +530,24 @@ def process_file(csv_path: Path, embeddings_base_dir: Path | None = None) -> Non
         # 기존 파일: protocol_chunked_{keyword}
         keyword = filename.replace("protocol_chunked_", "")
     
-    # 출력 경로 설정: data/embeddings/protocols/{keyword}/protocol_embedded_{keyword}.csv
-    if embeddings_base_dir is None:
-        embeddings_base_dir = OUTPUT_ROOT
-    else:
-        # embeddings_base_dir이 이미 "protocols"까지 포함하고 있는지 확인
-        if embeddings_base_dir.name == "protocols":
-            embeddings_base_dir = embeddings_base_dir
-        else:
-            embeddings_base_dir = Path(embeddings_base_dir) / "protocols"
-    
-    # 키워드별 디렉토리 생성
-    keyword_dir = embeddings_base_dir / keyword
-    keyword_dir.mkdir(parents=True, exist_ok=True)
-    
-    # 분할 파일의 경우 파일명에 part 번호 포함
+    status = "success"
+
     if "_part" in filename:
         part_num = filename.split("_part")[1]
-        output_path = keyword_dir / f"protocol_embedded_{keyword}_part{part_num}.csv"
+        output_path = build_embedding_output_path(
+            keyword=keyword,
+            status=status,
+            part_suffix=part_num,
+        )
     else:
-        output_path = keyword_dir / f"protocol_embedded_{keyword}.csv"
+        output_path = build_embedding_output_path(
+            keyword=keyword,
+            status=status,
+        )
+
     
     try:
-        process_csv(csv_path, keyword, output_path)
+        process_csv(csv_path, keyword, output_path, table_metadata_map or {})
         print(f"[EMBED][Protocol.io][{keyword}] 처리 완료: {output_path}")
     except Exception as exc:
         print(f"[EMBED][Protocol.io][{keyword}] 실패: {exc}")
@@ -484,20 +566,6 @@ def main(embeddings_dir: str | None = None) -> None:
     
     # DB 테이블 생성은 upsert 단계로 이동
     # ensure_table()
-    
-    # 출력 디렉토리 설정 (base directory)
-    if embeddings_dir:
-        # embeddings_dir이 이미 "protocols"까지 포함하고 있는지 확인
-        embeddings_path = Path(embeddings_dir)
-        if embeddings_path.name == "protocols":
-            output_base_dir = embeddings_path
-        else:
-            output_base_dir = embeddings_path / "protocols"
-    else:
-        output_base_dir = OUTPUT_ROOT
-    
-    output_base_dir.mkdir(parents=True, exist_ok=True)
-    print(f"[EMBED][Protocol.io] 출력 기본 디렉토리: {output_base_dir}")
     
     # is_completed=True이고 is_embeded=False인 키워드만 조회 (임베딩이 아직 완료되지 않은 완료된 키워드)
     completed_keywords = None
@@ -630,11 +698,25 @@ def main(embeddings_dir: str | None = None) -> None:
             
             files_for_keyword = keyword_files[matched_keyword]
             print(f"[EMBED][Protocol.io] 키워드 '{matched_keyword}' (DB: '{keyword_from_db}') 처리 시작: {len(files_for_keyword)}개 파일")
-            
-            # 해당 키워드의 모든 파일 처리
+
+            print(f"[EMBED][Protocol.io] 키워드 '{matched_keyword}' 처리 시작")
+
+            # ✅ (1) table metadata 경로 생성
+            table_csv_path = (
+                BASE_PATH
+                / "data/entities/protocols/success"
+                / f"protocol_table_{matched_keyword}.csv"
+            )
+
+            # ✅ (2) table metadata 로드 (키워드당 1회)
+            table_metadata_map = load_table_metadata(table_csv_path)
+
+            # ✅ (3) 해당 키워드의 모든 chunk 파일 처리
             for csv_path in files_for_keyword:
-                print(f"[EMBED][Protocol.io] processing {csv_path}")
-                process_file(csv_path, embeddings_base_dir=output_base_dir)
+                process_file(
+                    csv_path,
+                    table_metadata_map=table_metadata_map,  # ← 반드시 전달
+                )
             
             # 키워드의 모든 파일 처리가 완료되면 is_embeded=True로 설정 (DB의 원본 키워드 사용)
             print(f"[EMBED][Protocol.io] 키워드 '{matched_keyword}' (DB: '{keyword_from_db}')의 모든 파일 처리 완료. is_embeded=True로 설정합니다.")
