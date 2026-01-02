@@ -50,12 +50,15 @@ def upload_job_outputs(
     if upload_logs:
         candidates.append(out / "_logs" / f"{job_name}.log")
 
+    # ✅ prefix 정규화: 앞/뒤 '/' 제거해서 key 깨짐 방지
+    prefix = (prefix or "rfdiffusion").strip().strip("/")
+
     uploaded: list[str] = []
     for p in candidates:
         if not p.exists() or p.stat().st_size <= 0:
             continue
 
-        key = f"{prefix.rstrip('/')}/{job_name}/{p.name}"
+        key = f"{prefix}/{job_name}/{p.name}"
         content_type = "chemical/x-pdb" if p.suffix == ".pdb" else "application/octet-stream"
         uploaded.append(upload_file_to_s3(str(p), bucket, key, content_type=content_type))
 

@@ -31,15 +31,18 @@ AWS_REGION="${AWS_REGION:-${AWS_DEFAULT_REGION:-}}"
 AWS_S3_BUCKET="${AWS_S3_BUCKET:-}"
 AWS_S3_BASE_PATH="${AWS_S3_BASE_PATH:-}"
 
-# ✅ [핵심] AWS_S3_* -> S3_* 자동 매핑
+# ✅ [핵심] AWS_S3_* -> S3_* 자동 매핑 (항상 일관되게)
 if [[ -z "${S3_BUCKET}" && -n "${AWS_S3_BUCKET}" ]]; then
   S3_BUCKET="${AWS_S3_BUCKET}"
 fi
 
-# S3_PREFIX가 기본값(rfdiffusion)일 때만 AWS_S3_BASE_PATH로 덮어씀
-if [[ "${S3_PREFIX}" == "rfdiffusion" && -n "${AWS_S3_BASE_PATH}" ]]; then
+# S3_PREFIX가 비었거나 기본값(rfdiffusion)일 때만 AWS_S3_BASE_PATH로 덮어씀
+if { [[ -z "${S3_PREFIX}" ]] || [[ "${S3_PREFIX}" == "rfdiffusion" ]]; } && [[ -n "${AWS_S3_BASE_PATH}" ]]; then
   S3_PREFIX="${AWS_S3_BASE_PATH}"
 fi
+
+# prefix 정리 (양끝 슬래시 제거)
+S3_PREFIX="$(echo "${S3_PREFIX}" | sed 's#^/*##; s#/*$##')"
 
 ########################################
 # Utils
@@ -327,9 +330,19 @@ cmd_run() {
   export LD_LIBRARY_PATH="$TORCH_VENV/lib/python3.10/site-packages/nvidia/nvtx/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/nvjitlink/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/nccl/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/curand/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cufft/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cuda_runtime/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cuda_nvrtc/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cuda_cupti/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cublas/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cusparse/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cudnn/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cusolver/lib:${LD_LIBRARY_PATH:-}"
   log "LD_LIBRARY_PATH set"
 
-  # ✅ S3 env 전달 (없으면 main.py가 알아서 skip)
-  export S3_BUCKET S3_PREFIX AWS_REGION AWS_DEFAULT_REGION
+  # ✅ S3/AWS env 전달
+  export AWS_REGION AWS_DEFAULT_REGION
   export AWS_S3_BUCKET AWS_S3_BASE_PATH
+
+  # ✅ [핵심] 자식 프로세스(main.py)에서도 확실히 보이도록 S3_*를 최종 확정
+  export S3_BUCKET="${S3_BUCKET:-${AWS_S3_BUCKET:-}}"
+  export S3_PREFIX="${S3_PREFIX:-${AWS_S3_BASE_PATH:-rfdiffusion}}"
+  S3_PREFIX="$(echo "${S3_PREFIX}" | sed 's#^/*##; s#/*$##')"
+  export S3_PREFIX
+
+  log "S3_BUCKET=${S3_BUCKET:-<empty>}"
+  log "S3_PREFIX=${S3_PREFIX:-<empty>}"
+  log "AWS_REGION=${AWS_REGION:-<empty>}"
 
   ensure_dir "$MODELS_DIR"
   ensure_dir "$OUTPUTS_DIR"

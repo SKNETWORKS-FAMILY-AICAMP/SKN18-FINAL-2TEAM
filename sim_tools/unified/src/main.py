@@ -47,6 +47,27 @@ def pick_python() -> str:
     return sys.executable
 
 
+def _get_s3_bucket_default() -> str:
+    """
+    Priority:
+      1) S3_BUCKET
+      2) AWS_S3_BUCKET
+    """
+    return (os.environ.get("S3_BUCKET") or os.environ.get("AWS_S3_BUCKET") or "").strip()
+
+
+def _get_s3_prefix_default() -> str:
+    """
+    Priority:
+      1) S3_PREFIX
+      2) AWS_S3_BASE_PATH
+      3) rfdiffusion
+    Normalize: strip leading/trailing slashes.
+    """
+    raw = os.environ.get("S3_PREFIX") or os.environ.get("AWS_S3_BASE_PATH") or "rfdiffusion"
+    return str(raw).strip().strip("/")
+
+
 def parse_args():
     p = argparse.ArgumentParser()
 
@@ -67,12 +88,13 @@ def parse_args():
     # ✅ S3 업로드 옵션 (S3_*가 없으면 AWS_S3_* fallback 지원)
     p.add_argument(
         "--s3_bucket",
-        default=os.environ.get("S3_BUCKET") or os.environ.get("AWS_S3_BUCKET", ""),
+        default=_get_s3_bucket_default(),
         help="If set, upload outputs to S3",
     )
     p.add_argument(
         "--s3_prefix",
-        default=os.environ.get("S3_PREFIX") or os.environ.get("AWS_S3_BASE_PATH", "rfdiffusion"),
+        default=_get_s3_prefix_default(),
+        help="S3 key prefix (folder path). Default uses S3_PREFIX or AWS_S3_BASE_PATH or 'rfdiffusion'",
     )
     p.add_argument("--s3_upload_logs", action="store_true", help="Also upload job log if exists")
     p.add_argument("--fail_on_s3_error", action="store_true", help="If upload fails, exit non-zero")
@@ -133,6 +155,9 @@ def main():
         print("[s3] S3_BUCKET/AWS_S3_BUCKET not set; skip upload")
         return
 
+    prefix = (args.s3_prefix or "rfdiffusion").strip().strip("/")
+    print(f"[s3] bucket={bucket} prefix={prefix}")
+
     try:
         from s3_uploader import upload_job_outputs
     except Exception as e:
@@ -146,7 +171,7 @@ def main():
             outputs_dir=str(outputs_dir),
             job_name=args.name,
             bucket=bucket,
-            prefix=args.s3_prefix,
+            prefix=prefix,
             upload_logs=args.s3_upload_logs,
         )
         if uploaded:
