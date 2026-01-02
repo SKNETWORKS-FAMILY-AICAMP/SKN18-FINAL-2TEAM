@@ -198,7 +198,15 @@ X_FRAME_OPTIONS = "SAMEORIGIN"
 # ───────────────────────────────────
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
-GOOGLE_REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI", "")
+
+# 용도별 리디렉션 URI
+GOOGLE_REDIRECT_URIS = {
+    'calendar': os.getenv("GOOGLE_CALENDAR_REDIRECT_URI", "http://localhost:8000/schedule/google/oauth2/callback/"),
+    'profile': os.getenv("GOOGLE_PROFILE_REDIRECT_URI", "http://localhost:8000/accounts/google/login/callback/"),
+}
+
+# 기존 호환성 유지
+GOOGLE_REDIRECT_URI = GOOGLE_REDIRECT_URIS.get('calendar', os.getenv("GOOGLE_REDIRECT_URI", ""))
 
 GOOGLE_CALENDAR_SCOPE = os.getenv(
     "GOOGLE_CALENDAR_SCOPE",

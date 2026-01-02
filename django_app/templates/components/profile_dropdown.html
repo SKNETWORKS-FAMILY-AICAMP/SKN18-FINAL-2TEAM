@@ -13,14 +13,14 @@
 
 <div class="{{ wrapper_class }}">
     <button class="{{ button_class }}" id="{{ button_id }}" data-profile-dropdown>
-        {% if user_data.avatar or user_data.profile.avatar %}
-        <img src="{% if user_data.avatar %}{{ user_data.avatar }}{% else %}{{ user_data.profile.avatar.url }}{% endif %}" 
+        {% if user_data.img_url %}
+        <img src="{{ user_data.img_url }}" 
              alt="Profile" 
              class="{% if position_type == 'header' %}profile-avatar{% else %}profile-image{% endif %}" />
         {% else %}
-        <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop" 
-             alt="Profile" 
-             class="{% if position_type == 'header' %}profile-avatar{% else %}profile-image{% endif %}" />
+        <div class="{% if position_type == 'header' %}profile-avatar profile-avatar-placeholder{% else %}profile-image profile-image-placeholder{% endif %}">
+            <i class="fa-solid fa-user"></i>
+        </div>
         {% endif %}
         
         {% if show_name_email %}
@@ -45,7 +45,7 @@
             <p class="profile-org">{% if user_data.organization %}{{ user_data.organization }}{% elif user_data.profile.organization %}{{ user_data.profile.organization }}{% elif user.profile.organization %}{{ user.profile.organization }}{% endif %}</p>
             {% endif %}
         </div>
-        <a href="{% url 'dashboard:dashboard' %}#profile" class="dropdown-item">프로필 보기</a>
+        <a href="{% url 'accounts:profile' %}" class="dropdown-item">계정 설정</a>
         <a href="{% url 'dashboard:dashboard' %}#organization" class="dropdown-item">{% if position_type == 'header' %}내 조직 관리{% else %}내 조직{% endif %}</a>
         <a href="{% url 'accounts:logout' %}" class="dropdown-item logout">로그아웃</a>
     </div>
