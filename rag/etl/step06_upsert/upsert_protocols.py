@@ -38,8 +38,6 @@ def ensure_table() -> None:
                 CREATE TABLE IF NOT EXISTS {TABLE_NAME} (
                     id SERIAL PRIMARY KEY,
                     chunking_id TEXT UNIQUE NOT NULL,
-                    url TEXT,
-                    title TEXT,
                     text TEXT,
                     embedding vector({EMBEDDING_DIM})
                 );
@@ -82,7 +80,7 @@ def iter_csv_rows(csv_path: Path) -> Generator[dict[str, str], None, None]:
     if not csv_path.exists():
         raise FileNotFoundError(f"임베딩 CSV 파일을 찾을 수 없습니다: {csv_path}")
 
-    required_cols = ["chunking_id", "url", "title", "text", "embedding"]
+    required_cols = ["chunking_id", "text", "embedding"]
     
     with csv_path.open("r", encoding="utf-8-sig", newline="") as inf:
         reader = csv.DictReader(inf)
@@ -131,8 +129,6 @@ def upsert_csv(csv_path: Path, expected_dim: int = EMBEDDING_DIM, batch_size: in
                     # 데이터 준비
                     rows_buffer.append((
                         row["chunking_id"],
-                        row["url"],
-                        row["title"],
                         row["text"],
                         embedding_str,
                     ))
@@ -143,18 +139,14 @@ def upsert_csv(csv_path: Path, expected_dim: int = EMBEDDING_DIM, batch_size: in
                             f"""
                             INSERT INTO {TABLE_NAME} (
                                 chunking_id,
-                                url,
-                                title,
                                 text,
                                 embedding
                             )
                             VALUES (
-                                %s, %s, %s, %s, %s::vector
+                                %s, %s, %s::vector
                             )
                             ON CONFLICT (chunking_id)
                             DO UPDATE SET
-                                url = EXCLUDED.url,
-                                title = EXCLUDED.title,
                                 text = EXCLUDED.text,
                                 embedding = EXCLUDED.embedding;
                             """,
@@ -170,18 +162,14 @@ def upsert_csv(csv_path: Path, expected_dim: int = EMBEDDING_DIM, batch_size: in
                         f"""
                         INSERT INTO {TABLE_NAME} (
                             chunking_id,
-                            url,
-                            title,
                             text,
                             embedding
                         )
                         VALUES (
-                            %s, %s, %s, %s, %s::vector
+                            %s, %s, %s::vector
                         )
                         ON CONFLICT (chunking_id)
                         DO UPDATE SET
-                            url = EXCLUDED.url,
-                            title = EXCLUDED.title,
                             text = EXCLUDED.text,
                             embedding = EXCLUDED.embedding;
                         """,
