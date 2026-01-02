@@ -10,7 +10,13 @@ from rest_framework.response import Response
 from rest_framework.authentication import SessionAuthentication
 from rest_framework.views import APIView
 from drf_spectacular.utils import extend_schema, OpenApiParameter
-from .models import ExperimentTool, Experiment
+from .models import ExperimentTool, Experiment, ExperimentToolSelection, ExperimentToolOption
+from django.db import transaction
+from django_app.apps.core.queue import publish_simulation
+
+
+def _get_user_identifier(user):
+    return str(user.user_id) if hasattr(user, 'user_id') else str(user.pk)
 
 
 @login_required
@@ -92,7 +98,7 @@ def index(request):
     # 실험 목록 조회 (사용자별로 필터링)
     # created_id는 user_id (UUID 문자열)를 저장
     # CustomUser는 user_id를 primary key로 사용하므로 user_id 속성 사용
-    user_identifier = str(request.user.user_id) if hasattr(request.user, 'user_id') else str(request.user.pk)
+    user_identifier = _get_user_identifier(request.user)
     experiments = Experiment.objects.filter(
         created_id=user_identifier
     ).prefetch_related('tools').order_by('-created_at')[:20]  # 최근 20개만
@@ -167,6 +173,7 @@ def index(request):
         }
     }
 )
+
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 def experiments_api(request):
@@ -188,9 +195,9 @@ def _list_experiments_api(request):
     print(f"[Experiments API] User pk: {request.user.pk}")
     print(f"[Experiments API] User pk type: {type(request.user.pk)}")
     
-    # 실험 목록 조회 (사용자별로 필터링)
+    # 실험 목록 조회 (사용자별로 필터링) 
     # CustomUser는 user_id를 primary key로 사용하므로 user_id 속성 사용
-    user_identifier = str(request.user.user_id) if hasattr(request.user, 'user_id') else str(request.user.pk)
+    user_identifier = _get_user_identifier(request.user)
     print(f"[Experiments API] User identifier (string): {user_identifier}")
     print(f"[Experiments API] User has user_id attr: {hasattr(request.user, 'user_id')}")
     if hasattr(request.user, 'user_id'):
@@ -268,6 +275,57 @@ def _list_experiments_api(request):
     }, status=200)
 
 
+TOOL_NAME_QUEUE_MAP = {
+    "RFdiffusion": "rfdiffusion",
+    "ProteinMPNN": "protein_mpnn",
+    "AlphaFold3": "alphafold3",
+}
+
+
+def enqueue_simulation_tasks(experiment, selections, user):
+    """
+    실험 생성 직후, 첫 단계 selection 하나만 RabbitMQ에 넣는다.
+    나머지 단계는 worker에서 순차적으로 enqueue.
+    """
+    user_id = getattr(user, "user_id", None) or getattr(user, "pk", None)
+    if not selections:
+        return []
+
+    # sort_order 기준 첫 단계
+    first_sel = sorted(selections, key=lambda s: s.sort_order)[0]
+    total_steps = len(selections)
+
+    tool_name_display = first_sel.tool.tool_name
+    tool_name_for_queue = TOOL_NAME_QUEUE_MAP.get(tool_name_display)
+    if not tool_name_for_queue:
+        return []
+
+    try:
+        tool_options = json.loads(first_sel.tool_options_json or "{}")
+    except json.JSONDecodeError:
+        tool_options = {}
+
+    payload = {
+        "protein_sequence": experiment.protein_sequence,
+        "protein_name": experiment.protein_name,
+        "selection_sid": first_sel.selection_sid,
+        "tool_sid": first_sel.tool_id,
+        "tool_name": tool_name_display,
+        "sort_order": first_sel.sort_order,   # 현재 단계 index
+        "total_steps": total_steps,           # 파이프라인 전체 길이
+        "tool_options": tool_options,
+    }
+
+    task_id = publish_simulation(
+        tool_name=tool_name_for_queue,
+        experiment_sid=experiment.experiment_sid,
+        payload=payload,
+        user_id=user_id,
+    )
+    return [task_id]
+
+
+
 def _create_experiment_api(request):
     """POST /api/experiments/ - 실험 생성."""
     print("=" * 80)
@@ -302,14 +360,145 @@ def _create_experiment_api(request):
     
     print("[Experiments API] ====== End of request log ======")
     print("=" * 80)
+
+
+    # ------------------------
+    # 1) 입력값 검증
+    # ------------------------
+    tools = body.get("tools") or []
+    if not isinstance(tools, list) or not tools:
+        return Response(
+            {"error": "tools is required and must be a non-empty list"},
+            status=400,
+        )
+
+    protein_sequence = (body.get("protein_sequence") or "").strip()
+    if not protein_sequence:
+        return Response({"error": "protein_sequence is required"}, status=400)
+
+    pipeline_name = (body.get("pipeline_name") or "").strip()
+    if not pipeline_name:
+        pipeline_name = f"Pipeline {timezone.now().strftime('%Y-%m-%d %H:%M:%S')}"
+
+    protein_name = (body.get("protein_name") or "").strip()
+    tool_options = body.get("tool_options") or {}
+    if not isinstance(tool_options, dict):
+        tool_options = {}
+
+    # 새로: 옵션 정의(테이블 t_experiment_tool_option용)
+    tool_option_defs = body.get("tool_option_defs") or {}
+    if not isinstance(tool_option_defs, dict):
+        tool_option_defs = {}
+
+    # ------------------------
+    # 2) 사용자 식별자
+    # ------------------------
+    user_identifier = _get_user_identifier(request.user)
+    selections = []
+    created_tools = []
+    # ------------------------
+    # 3) t_experiment + t_experiment_tool_selection + t_experiment_tool_option 한번에
+    # ------------------------
+    with transaction.atomic():
+        # t_experiment insert
+        experiment = Experiment.objects.create(
+            pipeline_name=pipeline_name,
+            status="E",  # Ready
+            progress=0,
+            protein_sequence=protein_sequence,
+            protein_name=protein_name or None,
+            created_id=user_identifier,
+            updated_id=user_identifier,
+        )
+        print(f"[Experiments API] Created Experiment: experiment_sid={experiment.experiment_sid}")
+
+        # 각 tool_sid 기준으로 selection + option 정의 생성
+        for sort_order, raw_tool_id in enumerate(tools):
+            try:
+                tool_id = int(raw_tool_id)
+            except (TypeError, ValueError):
+                print(f"[Experiments API] Invalid tool id in tools list: {raw_tool_id}")
+                continue
+
+            tool = ExperimentTool.objects.filter(tool_sid=tool_id, status="E").first()
+            if not tool:
+                print(f"[Experiments API] Tool not found or disabled: tool_sid={tool_id}")
+                continue
+
+        # 1) 사용자가 보낸 옵션 값 (일부만 있을 수 있음)
+            user_options = (
+                tool_options.get(str(tool_id))
+                or tool_options.get(tool_id)
+                or {}
+            )
+            if not isinstance(user_options, dict):
+                user_options = {}
+
+            # 2) 도구 정의 테이블에서 기본값 가져오기
+            merged_options = {}
+            for opt in ExperimentToolOption.objects.filter(tool=tool).order_by("sort_order", "field_name"):
+                if opt.default_value is not None:
+                    merged_options[opt.field_name] = opt.default_value
+
+            # 3) 사용자가 변경한 값으로 덮어쓰기
+            for key, value in user_options.items():
+                merged_options[key] = value
+
+            # 4) JSON 저장
+            try:
+                options_json = json.dumps(merged_options, ensure_ascii=False)
+            except TypeError:
+                options_json = "{}"
+
+            selection = ExperimentToolSelection.objects.create(
+                experiment=experiment,
+                tool=tool,
+                sort_order=sort_order,
+                tool_options_json=options_json,
+                created_id=user_identifier,
+                updated_id=user_identifier,
+            )
+            selections.append(selection)
+            created_tools.append(tool.tool_name)
     
-    # Return success response (no actual processing)
-    return Response({
-        'status': 'success',
-        'message': 'Experiment creation request received',
-        'data': {
-            'tools_count': len(body.get('tools', [])),
-            'sequence_length': len(body.get('protein_sequence', '')),
-            'pipeline_name': body.get('pipeline_name', ''),
-        }
-    }, status=200)
+    # 3) 메시지 큐에 작업 발행
+    try:
+        task_ids = enqueue_simulation_tasks(experiment, selections, request.user)
+
+    except Exception as e:
+        print(f"Failed to publish simulation tasks: {e}")
+        return Response(
+            {
+                "status": "error",
+                "message": "Failed to enqueue simulation tasks",
+                "detail": str(e),
+            },
+            status=500,
+        )
+    
+    # # 4) 상태를 'R'(진행중)으로 업데이트
+    # experiment.status = 'R'
+    # experiment.progress = 0
+    # experiment.save(update_fields=['status', 'progress', 'updated_at'])
+
+    # 5) 클라이언트 응답 (실험 생성 + 큐 등록 정보 포함)
+    return Response(
+        {
+            "status": "queued",  # 큐에 올라갔다는 상태
+            "message": "Simulation task has been queued",
+            "experiment_sid": experiment.experiment_sid,
+            "task_ids": task_ids,
+            # 실험 상세 정보도 함께 내려줌
+            "data": {
+                "id": experiment.experiment_sid,
+                "pipeline_name": experiment.pipeline_name,
+                "status": experiment.status,
+                "progress": experiment.progress,
+                "tools": created_tools,
+                "tools_count": len(body.get("tools", [])),
+                "sequence_length": len(body.get("protein_sequence", "")),
+                "pipeline_name_input": body.get("pipeline_name", ""),
+            },
+        },
+        status=200,
+    )

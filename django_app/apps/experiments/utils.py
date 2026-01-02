@@ -25,7 +25,7 @@ def update_experiment_status(
         progress: 진행률 (0-100, 선택)
         error_message: 에러 메시지 (실패 시, 선택)
     """
-    from django_app.apps.experiments.models import Experiment
+    from apps.experiments.models import Experiment
     
     with transaction.atomic():
         # SELECT FOR UPDATE로 동시성 제어

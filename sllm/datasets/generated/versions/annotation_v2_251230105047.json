@@ -1,0 +1,438 @@
+[
+  {
+    "sid": 1,
+    "section_id": "38598310_sec8",
+    "observations": [
+      "PreD is capable of attaining all stable triene arrangements in the free scenario.",
+      "Encapsulated PreD shows restricted torsional movement of the triene moiety.",
+      "Simulations for the encapsulated system become trapped in the torsional space associated with the starting conformer."
+    ],
+    "question": "How does the torsional movement of the triene moiety differ between free and encapsulated PreD?",
+    "conclusion": {
+      "interpretation": [
+        "Free PreD can access all stable triene arrangements, while encapsulated PreD shows restricted torsional movement."
+      ],
+      "interpretation_limits": [
+        "The comparison is limited to the specific conditions of free versus encapsulated PreD at the reaction temperature."
+      ],
+      "cautions": [
+        "The findings are specific to the conditions of the MD simulations and may not generalize beyond these conditions."
+      ],
+      "suggested_next_steps": [
+        "Conduct experiments to test the torsional movement of PreD under different temperatures or encapsulation conditions."
+      ]
+    },
+    "interpretation_boundary": {
+      "can_conclude": [
+        "Free PreD can access all stable triene arrangements, while encapsulated PreD shows restricted torsional movement."
+      ],
+      "cannot_conclude": [
+        "ANY molecular, structural, catalytic, physiological, or clinical explanations.",
+        "ANY causal or mechanistic claims not explicitly demonstrated."
+      ]
+    }
+  },
+  {
+    "sid": 2,
+    "section_id": "38598310_sec9",
+    "observations": [
+      "TorsiFlex identified 103 conformers for PreD and 24 conformers for each transition state.",
+      "The first reactive conformation is 1.58 kcal/mol higher in energy than the most stable conformer.",
+      "The optimal −c−c conformation is 1.67 kcal/mol higher in energy than the most stable conformer.",
+      "Direct interconversion between −c−c and +c+c conformers is hindered by a high energy barrier.",
+      "Interconversion barriers between conformers are less than 6 kcal/mol.",
+      "The thermal reaction barrier height (V_0) is 28.07 kcal/mol for the (+) pathway and 29.61 kcal/mol for the (−) pathway.",
+      "The energy difference between the barriers of the two pathways is 1.54 kcal/mol.",
+      "Encapsulation within the β-CD dimer changes the conformational energy distribution.",
+      "Encapsulation restricts the reactant and transition state to the −c−c triene setup, reducing the reaction energy barrier to V_0 = 27.63 kcal/mol.",
+      "The reaction barrier decreases by ΔV_0 = −0.44 kcal/mol upon encapsulation.",
+      "In a solvent environment, the energy barrier rises from V_0 = 27.40 to V_0 = 27.88 kcal/mol upon encapsulation."
+    ],
+    "question": "How does encapsulation affect the reaction energy barrier compared to the solvent environment?",
+    "conclusion": {
+      "interpretation": [
+        "Encapsulation reduces the reaction energy barrier by 0.44 kcal/mol.",
+        "In a solvent environment, encapsulation increases the energy barrier by 0.48 kcal/mol."
+      ],
+      "interpretation_limits": [
+        "The reported energy changes are specific to the conditions tested, such as encapsulation and solvent environment.",
+        "Only the specific conformers and pathways mentioned were analyzed."
+      ],
+      "cautions": [
+        "The findings are limited to the specific experimental conditions and may not be generalizable to other systems.",
+        "The results are based on computational models and simulations."
+      ],
+      "suggested_next_steps": [
+        "Conduct experiments to measure reaction barriers under varying temperatures.",
+        "Test the effect of different encapsulation materials on the reaction energy barrier."
+      ]
+    },
+    "interpretation_boundary": {
+      "can_conclude": [
+        "Encapsulation reduces the reaction energy barrier by 0.44 kcal/mol.",
+        "In a solvent environment, encapsulation increases the energy barrier by 0.48 kcal/mol."
+      ],
+      "cannot_conclude": [
+        "ANY molecular, structural, catalytic, physiological, or clinical explanations.",
+        "ANY causal or mechanistic claims not explicitly demonstrated."
+      ]
+    }
+  },
+  {
+    "sid": 3,
+    "section_id": "38598310_sec10",
+    "observations": [
+      "Rate constants are 1.01×10^{–5} s^{–1} for the free system in n-hexane and 6.07×10^{–4} s^{–1} for the encapsulated system in water.",
+      "Both rate constants align closely with the experimental outcome reported by Holick and co-workers (0.68×10^{–5} and 3.07×10^{–4} s^{–1}), but are slightly overestimated.",
+      "The rate constant for the free system closely agrees with a previous computational study, which reported a value of 0.90×10^{–5} s^{–1}.",
+      "The computed catalytic effect approximates 60, which closely aligns with the experimentally observed value of 45.",
+      "φ_{PreD} is identified as the most significant contributor to the catalytic effect.",
+      "Reduction in the number of conformers from 103 to 22 upon encapsulation.",
+      "The first three vibrational frequencies for the −c−c conformers of the reactant in gas phase are 24 ± 5, 31 ± 5, and 46 ± 5 cm^{–1}, whereas these frequencies are 42 ± 5, 54 ± 4, and 64 ± 3 cm^{–1} for the encapsulated system."
+    ],
+    "question": "How do the rate constants for the free and encapsulated systems compare in different solvents?",
+    "conclusion": {
+      "interpretation": [
+        "The rate constant is higher for the encapsulated system in water compared to the free system in n-hexane.",
+        "The computed catalytic effect is approximately 60, which is higher than the experimentally observed value of 45."
+      ],
+      "interpretation_limits": [
+        "The comparisons are limited to the specific conditions of n-hexane and water solvents.",
+        "Only the −c−c triene arrangement was considered for the encapsulated scenario."
+      ],
+      "cautions": [
+        "The results are specific to the conditions tested and may not be generalizable to other systems or conditions.",
+        "The observed effects are based on computational simulations and may differ in experimental settings."
+      ],
+      "suggested_next_steps": [
+        "Conduct experiments to measure rate constants in additional solvents to verify the computational predictions.",
+        "Repeat the comparison using different conformational arrangements to assess their impact on the rate constants."
+      ]
+    },
+    "interpretation_boundary": {
+      "can_conclude": [
+        "The rate constant is higher for the encapsulated system in water than for the free system in n-hexane."
+      ],
+      "cannot_conclude": [
+        "ANY molecular, structural, catalytic, physiological, or clinical explanations.",
+        "ANY causal or mechanistic claims not explicitly demonstrated."
+      ]
+    }
+  },
+  {
+    "sid": 4,
+    "section_id": "39739814_sec2",
+    "observations": [
+      "Significant upregulation of GPX4 mRNA in tumor tissues compared to adjacent nontumor tissues.",
+      "In a cohort of 365 HCC patients, those with the highest levels of GPX4 mRNA in their tumors experienced the poorest survival outcomes.",
+      "Genetic inhibition of GPX4 markedly suppressed the proliferation of Huh7 and SK-Hep1 cells.",
+      "In PLC/PRF/5 cells, MALT1-knockout cells exhibited comparable mRNA levels but significantly reduced GPX4 protein levels compared to control cells.",
+      "In Hep3B cells, a 40 to 50% reduction in GPX4 mRNA levels was observed in MALT1-knockout cells, but this did not fully correspond to the nearly complete loss of GPX4 protein.",
+      "Reduction in GPX4 protein levels caused by MALT1-knockout could be mitigated by the proteasome inhibitor MG132 and enhanced by the protein synthesis inhibitor, cycloheximide.",
+      "Elevated levels of GPX4 ubiquitination were observed in MALT1-knockout cells.",
+      "MALT1-knockout increased the susceptibility of liver cancer cells to ferroptosis induced by GPX4 inhibitors RSL3 or ML210.",
+      "A positive correlation between MALT1 and GPX4 protein levels was identified across CCLE pan-cancer cell lines, with particularly strong correlations in liver cancer cell lines.",
+      "Tissue array analysis of MALT1 and GPX4 in 75 human HCC tissues revealed a significant positive correlation between their protein levels."
+    ],
+    "question": "How do GPX4 mRNA and protein levels differ between MALT1-knockout and control cells?",
+    "conclusion": {
+      "interpretation": [
+        "GPX4 mRNA is upregulated in tumor tissues compared to nontumor tissues.",
+        "High GPX4 mRNA levels are associated with poorer survival outcomes in HCC patients.",
+        "Genetic inhibition of GPX4 suppresses proliferation in certain liver cancer cell lines.",
+        "MALT1-knockout results in reduced GPX4 protein levels in PLC/PRF/5 cells.",
+        "MALT1-knockout in Hep3B cells leads to a greater reduction in GPX4 protein levels than mRNA levels."
+      ],
+      "interpretation_limits": [
+        "Observations are limited to specific cell lines and conditions tested.",
+        "The correlation between MALT1 and GPX4 protein levels is specific to the cell lines and tissues analyzed."
+      ],
+      "cautions": [
+        "Results may not be generalizable beyond the specific cell lines and conditions tested.",
+        "The study focuses on liver cancer cell lines and may not apply to other cancer types."
+      ],
+      "suggested_next_steps": [
+        "Conduct experiments to assess GPX4 mRNA and protein levels in additional liver cancer cell lines.",
+        "Test the effects of MALT1-knockout on GPX4 levels under varying concentrations of proteasome and protein synthesis inhibitors."
+      ]
+    },
+    "interpretation_boundary": {
+      "can_conclude": [
+        "GPX4 mRNA is upregulated in tumor tissues.",
+        "High GPX4 mRNA levels correlate with poorer survival in HCC patients.",
+        "MALT1-knockout reduces GPX4 protein levels in specific cell lines."
+      ],
+      "cannot_conclude": [
+        "Any molecular or mechanistic explanations for the observed changes.",
+        "Causal relationships between MALT1 and GPX4 regulation."
+      ]
+    }
+  },
+  {
+    "sid": 5,
+    "section_id": "39739814_sec3",
+    "observations": [
+      "1,427 differentially expressed proteins were identified in control and MALT1-knockout PLC/PRF/5 cells.",
+      "16 proteins that modulate GPX4 protein levels were identified by overlapping differentially expressed proteins with FACS screening data.",
+      "MALT1 ablation increased RC3H1 protein expression while reducing its cleavage compared to control cells.",
+      "A notable interaction between GPX4 and RC3H1 was observed.",
+      "Knockdown of RC3H1 in liver cancer cells led to a substantial increase in GPX4 protein levels, accompanied by reduced GPX4 ubiquitination.",
+      "Overexpression of RC3H1 enhanced the ubiquitin-dependent degradation of GPX4 protein.",
+      "Knockdown of RC3H1 blocked the reduction in GPX4 protein levels facilitated by cycloheximide (CHX).",
+      "Interference with RC3H1 in MALT1-deficient cells reversed ubiquitin-dependent degradation of GPX4 expression."
+    ],
+    "question": "How do GPX4 protein levels compare between RC3H1 knockdown and overexpression conditions?",
+    "conclusion": {
+      "interpretation": [
+        "RC3H1 knockdown increased GPX4 protein levels and reduced its ubiquitination.",
+        "RC3H1 overexpression enhanced GPX4 ubiquitin-dependent degradation."
+      ],
+      "interpretation_limits": [
+        "The observations are limited to liver cancer cells and specific experimental conditions.",
+        "Only the effects of RC3H1 knockdown and overexpression on GPX4 were tested."
+      ],
+      "cautions": [
+        "Results are specific to the cell line and conditions used in the study.",
+        "Generalizability to other cell types or conditions is not established."
+      ],
+      "suggested_next_steps": [
+        "Repeat the experiments with different cell lines to assess the generalizability of the findings.",
+        "Test the effects of varying RC3H1 expression levels on GPX4 protein levels."
+      ]
+    },
+    "interpretation_boundary": {
+      "can_conclude": [
+        "RC3H1 knockdown increases GPX4 protein levels and reduces its ubiquitination.",
+        "RC3H1 overexpression enhances GPX4 ubiquitin-dependent degradation."
+      ],
+      "cannot_conclude": [
+        "ANY molecular, structural, catalytic, physiological, or clinical explanations.",
+        "ANY causal or mechanistic claims not explicitly demonstrated."
+      ]
+    }
+  },
+  {
+    "sid": 6,
+    "section_id": "39739814_sec4",
+    "observations": [
+      "The compound screening assay identified MI-2, EX 527(selisistat), and AI-10-49 as potential candidate drugs capable of inducing ferroptosis in both cell lines.",
+      "EX 527(selisistat) and AI-10-49 were excluded from further analysis due to high-concentration requirements and narrow concentration range of rescue effects.",
+      "MI-2 showed notable efficacy against activated B cell-like diffuse large B cell lymphoma (ABC-DLBCL) in both in vitro and in vivo studies.",
+      "Cell death induced by MI-2 in Huh7, SK-Hep1, and SNU398 cells could be rescued effectively by ferrostatin-1.",
+      "Other types of cell death inhibitors were ineffective in suppressing the cell death induced by MI-2.",
+      "An increase in lipid reactive oxygen species (ROS) levels and mitochondrial damage was observed in Huh7, SK-Hep1, and SNU398 cells treated with MI-2.",
+      "MI-2 significantly suppressed growth of Huh7 xenografts, accompanied by increased lipid peroxidation levels evidenced by 4-HNE staining, and decreased proliferation, as indicated by Ki67 staining.",
+      "The unbiased genome-wide CRISPR screening identified the essential role of three genes (ACSL4, LPCAT3, and AGPAT3) in MI-2-induced cell death.",
+      "Resistant cells displayed similar increased sensitivity to both MI-2 and RSL3 treatments, which could be rescued by the addition of ferrostatin-1."
+    ],
+    "question": "How does the sensitivity to MI-2 compare to the sensitivity to traditional GPX4 inhibitors in liver cancer cell lines?",
+    "conclusion": {
+      "interpretation": [
+        "MI-2 induces cell death in certain liver cancer cell lines, which can be rescued by ferrostatin-1.",
+        "MI-2 treatment results in increased lipid ROS levels and mitochondrial damage in specific cell lines.",
+        "MI-2 suppresses growth of Huh7 xenografts and is associated with increased lipid peroxidation and decreased proliferation."
+      ],
+      "interpretation_limits": [
+        "The effects were observed specifically in Huh7, SK-Hep1, and SNU398 cell lines.",
+        "The study focused on liver cancer cell lines and may not be generalizable to other cancer types.",
+        "Only certain concentrations and conditions were tested."
+      ],
+      "cautions": [
+        "The findings are limited to the cell lines and conditions tested.",
+        "Generalizability to other cell types or in vivo systems is not established."
+      ],
+      "suggested_next_steps": [
+        "Conduct experiments with varying concentrations of MI-2 to assess dose-response relationships.",
+        "Test the effects of MI-2 on additional liver cancer cell lines or other cancer types.",
+        "Evaluate the long-term effects of MI-2 treatment in vivo."
+      ]
+    },
+    "interpretation_boundary": {
+      "can_conclude": [
+        "MI-2 induces cell death in specific liver cancer cell lines, which can be rescued by ferrostatin-1.",
+        "MI-2 treatment is associated with increased lipid ROS levels and mitochondrial damage in certain cell lines."
+      ],
+      "cannot_conclude": [
+        "ANY molecular, structural, catalytic, physiological, or clinical explanations.",
+        "ANY causal or mechanistic claims not explicitly demonstrated."
+      ]
+    }
+  },
+  {
+    "sid": 7,
+    "section_id": "39739814_sec5",
+    "observations": [
+      "Treatment with the MALT1 inhibitor MI-2 led to a reduction of GPX4 protein levels in liver cancer cells.",
+      "Similar effects in down-regulating GPX4 protein level were observed with the MALT1 inhibitor safimaltib without affecting its mRNA level.",
+      "The reduction in GPX4 protein levels induced by MI-2 could be blocked by the proteasome inhibitor MG132 and facilitated by the protein synthesis inhibitor cycloheximide.",
+      "MI-2-treated cells exhibited increased ubiquitination of GPX4.",
+      "MI-2-treated cells displayed comparable mRNA levels but increased protein expression of RC3H1 compared to control cells.",
+      "RC3H1 knockdown effectively prevented MALT1 inhibition-induced GPX4 downregulation and ubiquitination."
+    ],
+    "question": "How does treatment with MALT1 inhibitors affect GPX4 protein levels compared to control conditions?",
+    "conclusion": {
+      "interpretation": [
+        "MI-2 and safimaltib treatments are associated with decreased GPX4 protein levels.",
+        "MI-2 treatment is associated with increased ubiquitination of GPX4.",
+        "RC3H1 protein expression is increased in MI-2-treated cells."
+      ],
+      "interpretation_limits": [
+        "The effects were observed specifically in liver cancer cells.",
+        "The study focused on the effects of MALT1 inhibitors MI-2 and safimaltib."
+      ],
+      "cautions": [
+        "The findings are specific to the experimental conditions used, including cell type and inhibitor concentration."
+      ],
+      "suggested_next_steps": [
+        "Conduct experiments to test the effects of MALT1 inhibitors on GPX4 protein levels in different cell lines.",
+        "Investigate the effects of varying concentrations of MI-2 and safimaltib on GPX4 protein levels."
+      ]
+    },
+    "interpretation_boundary": {
+      "can_conclude": [
+        "MI-2 and safimaltib treatments decrease GPX4 protein levels.",
+        "MI-2 treatment increases GPX4 ubiquitination."
+      ],
+      "cannot_conclude": [
+        "ANY molecular, structural, catalytic, physiological, or clinical explanations.",
+        "ANY causal or mechanistic claims not explicitly demonstrated."
+      ]
+    }
+  },
+  {
+    "sid": 8,
+    "section_id": "39739814_sec6",
+    "observations": [
+      "MI-2 reduced GPX4 protein levels in Hep3B, SNU449, and MHCC97H cells.",
+      "Strong synergies between MI-2 and sorafenib or regorafenib were observed in Hep3B, SNU449, and MHCC97H cells.",
+      "No synergistic effect was observed when cells were treated with MI-2 and lenvatinib.",
+      "Ferroptosis-specific mitochondrial alterations and increasing lipid peroxides accumulation were observed in liver cancer cell lines treated with sorafenib when combined with MI-2 or RSL3.",
+      "Sorafenib treatment induced a notable reduction in both cystine uptake and biosynthesis of GSH.",
+      "Expression of SLC7A11 was significantly associated with the sensitivity to GPX4 inhibitor in liver cancer cell line panel and pan-cancer cell lines.",
+      "The combination of MI-2 and sorafenib notably suppressed the proliferation of patient-derived liver cancer organoids.",
+      "Combined administration of MI-2 and sorafenib demonstrated a substantial inhibition of tumor growth in nude mice with MHCC97H cell-derived tumors.",
+      "Synergistic effects on cell proliferation were observed when sorafenib or regorafenib was combined with MI-2 in thyroid cancer, kidney cancer, and colorectal cancer cell lines.",
+      "Cell death induced by these combinations was attributable to ferroptosis, as evidenced by the rescue effects of ferrostatin-1.",
+      "An increase in lipid ROS levels was noted in KTC-1, OSRC-2, and LoVo cells upon combination treatment.",
+      "Mice bearing OSRC-2 and LoVo xenografts that received combination therapy exhibited a significant reduction in tumor burden compared to those receiving monotherapy.",
+      "Ferroptosis induction in vivo was evident in tumor tissues with combination treatment, as demonstrated by GPX4 and 4-HNE staining."
+    ],
+    "question": "How does the combination of MI-2 with sorafenib or regorafenib affect cell proliferation and tumor growth compared to monotherapy?",
+    "conclusion": {
+      "interpretation": [
+        "MI-2 reduced GPX4 protein levels in specific liver cancer cell lines.",
+        "Synergistic effects were observed with MI-2 and sorafenib or regorafenib in multiple cancer cell lines.",
+        "Combination treatments led to increased lipid peroxides and ROS levels, and reduced tumor growth in vivo."
+      ],
+      "interpretation_limits": [
+        "The results are limited to the specific cell lines and conditions tested.",
+        "Synergistic effects were not observed with lenvatinib."
+      ],
+      "cautions": [
+        "Findings are based on specific cell lines and may not be generalizable to all cancer types.",
+        "In vivo results are based on specific mouse models."
+      ],
+      "suggested_next_steps": [
+        "Test the combination treatments at different concentrations and time points.",
+        "Evaluate the effects in additional cancer cell lines and in vivo models."
+      ]
+    },
+    "interpretation_boundary": {
+      "can_conclude": [
+        "MI-2 and sorafenib or regorafenib show synergistic effects in reducing cell proliferation and tumor growth."
+      ],
+      "cannot_conclude": [
+        "Any molecular or mechanistic explanations for the observed synergy.",
+        "Any causal relationships not explicitly demonstrated in the results."
+      ]
+    }
+  },
+  {
+    "sid": 9,
+    "section_id": "39742998_sec2",
+    "observations": [
+      "The active site of RNase J2 has a single metal ion (Mn^{2+}).",
+      "The coordination geometry of the bound manganese ion is octahedral and is coordinated by residues H76, H78, H80, H144, and E166.",
+      "Mutation E166A caused a ten-fold decrease in catalytic activity.",
+      "Mutation H80A caused a two-fold decrease in catalytic activity.",
+      "Mutations H76A and H144A had no impact on enzyme activity.",
+      "Mutation H78A resulted in five-fold higher catalytic activity compared to wild-type RNase J2.",
+      "RNase J2 H78A exhibits a significantly smaller zone of clearance, indicating reduced hemolysis."
+    ],
+    "question": "How does the catalytic activity of RNase J2 mutants compare to the wild-type enzyme?",
+    "conclusion": {
+      "interpretation": [
+        "E166A mutation decreases catalytic activity ten-fold.",
+        "H80A mutation decreases catalytic activity two-fold.",
+        "H76A and H144A mutations do not affect catalytic activity.",
+        "H78A mutation increases catalytic activity five-fold.",
+        "H78A mutation is associated with reduced hemolysis."
+      ],
+      "interpretation_limits": [
+        "The reported effects are specific to the mutations tested in RNase J2.",
+        "The hemolysis assay was performed under specific conditions using a sheep blood agar plate."
+      ],
+      "cautions": [
+        "The findings are limited to the specific mutations and conditions tested.",
+        "Generalizability to other systems or conditions is not established."
+      ],
+      "suggested_next_steps": [
+        "Repeat the catalytic activity assays with different concentrations of substrate.",
+        "Perform hemolysis assays under varying environmental conditions."
+      ]
+    },
+    "interpretation_boundary": {
+      "can_conclude": [
+        "E166A and H80A mutations decrease catalytic activity.",
+        "H76A and H144A mutations do not affect catalytic activity.",
+        "H78A mutation increases catalytic activity and reduces hemolysis."
+      ],
+      "cannot_conclude": [
+        "ANY molecular, structural, catalytic, physiological, or clinical explanations.",
+        "ANY causal or mechanistic claims not explicitly demonstrated."
+      ]
+    }
+  },
+  {
+    "sid": 10,
+    "section_id": "39742998_sec4",
+    "observations": [
+      "The mutation of H78 to alanine enhanced the catalytic activity of the enzyme.",
+      "Electron density, modeled as Mn _{B}, was observed in both the H78A and H80A RNaseJ2 mutants.",
+      "The lack of electron density corresponding to the Mn ion was noted in the crystal structures of the H76A, H144A, and E166A mutants.",
+      "H78 adopts different rotamers across multiple structures in electron density maps.",
+      "H78 is amongst the most dynamic residues at the active site in the ensemble models.",
+      "The other residues, H76, H80, H144, and E166, are less dynamic."
+    ],
+    "question": "How does the mutation of H78 to alanine compare to other mutations in terms of catalytic activity and metal ion presence at the active site?",
+    "conclusion": {
+      "interpretation": [
+        "The H78A mutation is associated with enhanced catalytic activity.",
+        "Mn ion presence is observed in H78A and H80A mutants but not in H76A, H144A, and E166A mutants.",
+        "H78 shows higher dynamic behavior compared to H76, H80, H144, and E166."
+      ],
+      "interpretation_limits": [
+        "The observations are limited to the specific mutations studied and the conditions under which the experiments were conducted.",
+        "The findings are based on crystal structures and ensemble models."
+      ],
+      "cautions": [
+        "The results are specific to the RNase J2 enzyme and the mutations tested.",
+        "Generalizability to other enzymes or conditions is not established."
+      ],
+      "suggested_next_steps": [
+        "Conduct experiments to test the catalytic activity of the H78A mutant under varying temperatures or pH levels.",
+        "Examine the presence of Mn ion in other potential active site mutants."
+      ]
+    },
+    "interpretation_boundary": {
+      "can_conclude": [
+        "The H78A mutation enhances catalytic activity and shows Mn ion presence.",
+        "H78 is more dynamic compared to other residues studied."
+      ],
+      "cannot_conclude": [
+        "ANY molecular, structural, catalytic, physiological, or clinical explanations.",
+        "ANY causal or mechanistic claims not explicitly demonstrated."
+      ]
+    }
+  }
+]
