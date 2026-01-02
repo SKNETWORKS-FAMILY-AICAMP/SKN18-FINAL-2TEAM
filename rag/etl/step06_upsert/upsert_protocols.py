@@ -21,18 +21,8 @@ if str(PROJECT_ROOT) not in sys.path:
 from rag.etl.common.db_connection import get_connection
 from rag.etl.step01_ingest.modules import schedule_store
 
-# psycopg2 extras는 get_connection 내부에서 사용 가능
-try:
-    from psycopg2.extras import execute_batch  # type: ignore
-except ImportError:
-    # psycopg2가 없으면 psycopg 사용
-    try:
-        from psycopg.extras import execute_batch  # type: ignore
-    except ImportError:
-        raise ImportError("psycopg2 또는 psycopg가 필요합니다.")
-
 TABLE_NAME = "ts_protocol_embedding"
-EMBEDDING_DIM = 1536
+EMBEDDING_DIM = 1024
 BATCH_SIZE = int(os.getenv("PROTOCOL_UPSERT_BATCH_SIZE", "1000"))
 
 
@@ -47,7 +37,7 @@ def ensure_table() -> None:
             cur.execute(f"""
                 CREATE TABLE IF NOT EXISTS {TABLE_NAME} (
                     id SERIAL PRIMARY KEY,
-                    chunking_id TEXT UNIQUE,
+                    chunking_id TEXT UNIQUE NOT NULL,
                     url TEXT,
                     title TEXT,
                     text TEXT,
@@ -149,8 +139,7 @@ def upsert_csv(csv_path: Path, expected_dim: int = EMBEDDING_DIM, batch_size: in
 
                     # 배치 크기에 도달하면 DB에 저장
                     if len(rows_buffer) >= batch_size:
-                        execute_batch(
-                            cur,
+                        cur.executemany(
                             f"""
                             INSERT INTO {TABLE_NAME} (
                                 chunking_id,
@@ -177,8 +166,7 @@ def upsert_csv(csv_path: Path, expected_dim: int = EMBEDDING_DIM, batch_size: in
 
                 # 남은 데이터 저장
                 if rows_buffer:
-                    execute_batch(
-                        cur,
+                    cur.executemany(
                         f"""
                         INSERT INTO {TABLE_NAME} (
                             chunking_id,
@@ -223,12 +211,14 @@ def run(embeddings_dir: str) -> None:
     
     # embeddings_dir이 이미 "protocols"까지 포함하고 있는지 확인
     if embeddings_path.name == "protocols":
-        protocols_dir = embeddings_path
+        protocols_root = embeddings_path
     else:
-        protocols_dir = embeddings_path / "protocols"
-    
-    if not protocols_dir.exists():
-        print(f"[UPSERT][Protocol.io] ⚠️  디렉토리가 존재하지 않습니다: {protocols_dir}")
+        protocols_root = embeddings_path / "protocols"
+
+    success_dir = protocols_root / "success"
+
+    if not success_dir.exists():
+        print(f"[UPSERT][Protocol.io] ⚠️ success 디렉토리가 존재하지 않습니다: {success_dir}")
         return
     
     # 테이블 생성 확인
@@ -247,29 +237,25 @@ def run(embeddings_dir: str) -> None:
         return
 
     embedded_keywords_set = {k.lower(): k for k in embedded_keywords}
-    keyword_dirs = {
-        d.name.lower(): d for d in sorted(protocols_dir.iterdir()) if d.is_dir()
-    }
-
     keyword_to_files: dict[str, list[Path]] = {}
+
     for lower_keyword, original_keyword in embedded_keywords_set.items():
-        dir_path = keyword_dirs.get(lower_keyword)
-        if not dir_path:
+        csv_name = f"protocol_embedded_{original_keyword}.csv"
+
+        # 대소문자 무시 검색
+        matched_files = list(
+            success_dir.glob(f"**/{csv_name}")
+        )
+
+
+        if not matched_files:
             print(
-                f"[UPSERT][Protocol.io] ⚠️  키워드 '{original_keyword}'의 임베딩 디렉토리를 찾을 수 없습니다.",
+                f"[UPSERT][Protocol.io] ⚠️  키워드 '{original_keyword}'의 임베딩 CSV를 찾을 수 없습니다. ({csv_name})",
                 flush=True,
             )
             continue
 
-        keyword_files = sorted(dir_path.glob("protocol_embedded_*.csv"))
-        if not keyword_files:
-            print(
-                f"[UPSERT][Protocol.io] ⚠️  키워드 '{original_keyword}'의 CSV 파일이 없습니다. ({dir_path})",
-                flush=True,
-            )
-            continue
-
-        keyword_to_files[original_keyword] = keyword_files
+        keyword_to_files[original_keyword] = matched_files
 
     if not keyword_to_files:
         print("[UPSERT][Protocol.io] ⚠️  처리할 CSV 파일이 없습니다 (is_embeded=True 조건에 해당하는 디렉토리 없음).")
