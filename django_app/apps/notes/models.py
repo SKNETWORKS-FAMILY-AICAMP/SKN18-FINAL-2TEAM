@@ -22,6 +22,7 @@ class Note(models.Model):
         default='E',
         db_column='status'
     )
+    is_public = models.BooleanField(default=False, db_column='is_public')
     created_at = models.DateTimeField(auto_now_add=True, db_column='created_at')
     created_id = models.CharField(max_length=60, db_column='created_id')
     updated_at = models.DateTimeField(auto_now=True, db_column='updated_at')

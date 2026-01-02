@@ -9,6 +9,7 @@ class BookmarkCategory(models.Model):
     category_sid = models.AutoField(primary_key=True, db_column='category_sid')
     category_name = models.CharField(max_length=255, db_column='category_name')
     sort_order = models.IntegerField(default=0, db_column='sort_order')
+    status = models.CharField(max_length=1, default='E', db_column='status')  # E: Enabled, R: Removed
     created_at = models.DateTimeField(auto_now_add=True, db_column='created_at')
     created_id = models.CharField(max_length=60, db_column='created_id')
     updated_at = models.DateTimeField(auto_now=True, db_column='updated_at')
@@ -33,6 +34,7 @@ class Bookmark(models.Model):
     title = models.CharField(max_length=500, db_column='title')
     bookmark_url = models.CharField(max_length=1000, db_column='bookmark_url')
     description = models.TextField(null=True, blank=True, db_column='description')
+    status = models.CharField(max_length=1, default='E', db_column='status')  # E: Enabled, R: Removed
     categories = models.ManyToManyField(
         BookmarkCategory,
         through='BookmarkMap',

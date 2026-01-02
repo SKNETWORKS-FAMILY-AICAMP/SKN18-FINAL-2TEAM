@@ -108,7 +108,8 @@
 }
 
 /* 프로필 버튼에는 span이 없으므로 이미지만 표시 */
-.profile-section .sidebar-item span {
+.sidebar-bottom .profile-section .sidebar-item span,
+.sidebar-rail .profile-section .sidebar-item span {
     display: none; /* 프로필 버튼에는 span이 없으므로 숨김 */
 }
 
