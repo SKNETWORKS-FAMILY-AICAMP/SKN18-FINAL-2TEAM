@@ -35,12 +35,27 @@ from datetime import datetime
 from rag.etl.step01_ingest.modules import schedule_store
 
 from sentence_transformers import SentenceTransformer
+import re
 
 load_dotenv()
 
 EMBEDDING_MODEL = os.getenv("PROTOCOL_EMBED_MODEL")
 
 _embedder: SentenceTransformer | None = None
+
+CHUNK_ID_PATTERN = re.compile(
+    r"^(.+?_chunk_\d+)"
+)
+
+def normalize_chunking_id(chunking_id: str) -> str:
+    """
+    chunking_id에서 chunk 단위까지만 유지
+    예: Cell_xxx_chunk_2_step_content_1 → Cell_xxx_chunk_2
+    """
+    m = CHUNK_ID_PATTERN.match(chunking_id)
+    if not m:
+        raise ValueError(f"Invalid chunking_id format: {chunking_id}")
+    return m.group(1)
 
 def get_embedder() -> SentenceTransformer:
     global _embedder
@@ -407,8 +422,7 @@ def process_csv(csv_path: Path, keyword: str, output_path: Path, table_metadata_
     for idx, row in df.iterrows():
         text = str(row[text_col]).strip()
         chunking_id = str(row["chunking_id"])
-        url = str(row["url"])
-        title = str(row["title"])
+        chunking_id = normalize_chunking_id(chunking_id)
 
         if not text:
             continue
@@ -429,11 +443,7 @@ def process_csv(csv_path: Path, keyword: str, output_path: Path, table_metadata_
             embedding = embed_text(text)
             csv_rows.append({
                 "chunking_id": chunking_id,
-                "url": url,
-                "title": title,
                 "text": text,
-                "embedding_model": EMBEDDING_MODEL,
-                "embedding_dim": EMBEDDING_DIM,
                 "embedding": json.dumps(embedding, ensure_ascii=False)
             })
             total_processed += 1
@@ -448,48 +458,51 @@ def process_csv(csv_path: Path, keyword: str, output_path: Path, table_metadata_
                 print(f"[EMBED][Protocol.io][{keyword}] ✓ {idx + 1}/{len(df)} 저장 완료 (전체 텍스트)", flush=True)
             continue
 
-        # 각 섹션별로 임베딩 생성 및 저장
-        for section_key, section_value in sections.items():
-            if not section_value.strip():
-                continue
+        # ================================
+        # 섹션이 있는 경우: chunk당 1회 embedding
+        # ================================
+        combined_text_parts = []
 
-            # 섹션별로 줄 단위로 분리하여 처리
-            lines = section_value.split("\n")
-            for line_idx, line in enumerate(lines):
-                if not line.strip():
-                    continue
+        for section_key in ["abstract", "step_content", "guidelines"]:
+            section_text = sections.get(section_key, "").strip()
+            if section_text:
+                combined_text_parts.append(
+                    f"[{section_key.upper()}]\n{section_text}"
+                )
 
-                # 첫 번째 줄은 섹션 태그와 함께, 나머지는 줄만
-                if line_idx == 0:
-                    embedding_text = f"{section_key}\n{line}"
-                    save_text = f"{section_key}\n{line}"
-                else:
-                    embedding_text = line
-                    save_text = line
+        final_text = (
+            "\n\n".join(combined_text_parts)
+            if combined_text_parts
+            else text
+        )
 
-                # 임베딩 생성
-                embedding = embed_text(embedding_text)
+        embedding = embed_text(final_text)
+
+        csv_rows.append({
+            "chunking_id": chunking_id,   # ✅ 항상 1개
+            "text": final_text,
+            "embedding": json.dumps(embedding, ensure_ascii=False)
+        })
+        total_processed += 1
+
+        # 배치 저장 체크
+        if len(csv_rows) >= BATCH_SIZE:
+            _save_batch(
+                csv_rows,
+                output_path,
+                is_first_batch,
+                keyword,
+                total_processed,
+                len(df),
+            )
+            csv_rows.clear()
+            is_first_batch = False
                 
-                # chunking_id에 섹션 정보 추가하여 고유성 보장
-                section_chunking_id = f"{chunking_id}_{section_key}_{line_idx}"
-                
-                # CSV 행 데이터 준비
-                csv_rows.append({
-                    "chunking_id": section_chunking_id,
-                    "url": url,
-                    "title": title,
-                    "text": save_text,
-                    "embedding_model": EMBEDDING_MODEL,
-                    "embedding_dim": EMBEDDING_DIM,
-                    "embedding": json.dumps(embedding, ensure_ascii=False)
-                })
-                total_processed += 1
-                
-                # 배치 저장 체크
-                if len(csv_rows) >= BATCH_SIZE:
-                    _save_batch(csv_rows, output_path, is_first_batch, keyword, total_processed, len(df))
-                    csv_rows.clear()
-                    is_first_batch = False
+            # 배치 저장 체크
+            if len(csv_rows) >= BATCH_SIZE:
+                _save_batch(csv_rows, output_path, is_first_batch, keyword, total_processed, len(df))
+                csv_rows.clear()
+                is_first_batch = False
 
         if (idx + 1) % 10 == 0 or idx == 0:
             print(f"[EMBED][Protocol.io][{keyword}] ✓ {idx + 1}/{len(df)} 저장 완료", flush=True)
