@@ -13,6 +13,7 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter
 from .models import ExperimentTool, Experiment, ExperimentToolSelection, ExperimentToolOption
 from django.db import transaction
 from django_app.apps.core.queue import publish_simulation
+from django.utils import timezone
 
 
 def _get_user_identifier(user):
