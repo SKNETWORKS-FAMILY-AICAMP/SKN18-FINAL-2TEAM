@@ -1,4 +1,3 @@
-# unified_shell_script.sh (FULL)
 #!/usr/bin/env bash
 set -euo pipefail
 
@@ -8,7 +7,7 @@ set -euo pipefail
 PY_BIN="${PY_BIN:-python3}"
 TORCH_VENV="${TORCH_VENV:-/opt/venv_torch}"
 
-# unified 폴더 위치 (스크립트가 있는 경로 기준으로 자동 추론 가능)
+# unified 폴더 위치
 APP_DIR="${APP_DIR:-/workspace/unified}"
 SCRIPT_DIR="${SCRIPT_DIR:-$APP_DIR}"
 
@@ -340,6 +339,7 @@ cmd_serve() {
 
   cd "$APP_DIR"
 
+  # ✅ 중요: API 서버에 S3 env 주입
   nohup env \
     SCRIPT_DIR="$SCRIPT_DIR" \
     OPS_SH="$SCRIPT_DIR/unified_shell_script.sh" \

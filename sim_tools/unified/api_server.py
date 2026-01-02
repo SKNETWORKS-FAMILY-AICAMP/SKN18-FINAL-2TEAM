@@ -29,6 +29,9 @@ class RunRequest(BaseModel):
     contigs: str = Field(default="100")
     iterations: int = Field(default=1, ge=1, le=1000)
 
+    # ✅ (선택) API 요청에서 로그 업로드까지 하고 싶으면 true
+    s3_upload_logs: bool = Field(default=False)
+
 
 class RunResponse(BaseModel):
     ok: bool
@@ -97,6 +100,9 @@ def health():
         "outputs_dir": OUTPUTS_DIR,
         "torch_venv": TORCH_VENV,
         "pythonpath": PYTHONPATH,
+        "s3_bucket": os.environ.get("S3_BUCKET", ""),
+        "s3_prefix": os.environ.get("S3_PREFIX", "rfdiffusion"),
+        "aws_region": os.environ.get("AWS_REGION", os.environ.get("AWS_DEFAULT_REGION", "")),
     }
 
 
@@ -110,6 +116,7 @@ def run(req: RunRequest, x_api_key: Optional[str] = None):
 
     log_path, pid_path = _job_paths(name)
 
+    # ✅ 여기서 main.py에 s3_upload_logs 옵션을 넘겨줄지 결정
     args = [
         "run",
         "--mode", req.mode,
@@ -117,12 +124,20 @@ def run(req: RunRequest, x_api_key: Optional[str] = None):
         "--contigs", req.contigs,
         "--iterations", str(req.iterations),
     ]
+    if req.s3_upload_logs:
+        args.append("--s3_upload_logs")
 
     env = os.environ.copy()
     env["TORCH_VENV"] = TORCH_VENV
     env["PYTHONPATH"] = PYTHONPATH
     env["OUTPUTS_DIR"] = OUTPUTS_DIR
     env["SCRIPT_DIR"] = SCRIPT_DIR
+
+    # ✅ 중요: S3 관련 env를 자식 프로세스(run)에도 확실히 전달
+    env["S3_BUCKET"] = os.environ.get("S3_BUCKET", "")
+    env["S3_PREFIX"] = os.environ.get("S3_PREFIX", "rfdiffusion")
+    env["AWS_REGION"] = os.environ.get("AWS_REGION", os.environ.get("AWS_DEFAULT_REGION", ""))
+    env["AWS_DEFAULT_REGION"] = os.environ.get("AWS_DEFAULT_REGION", env["AWS_REGION"])
 
     with open(log_path, "ab") as f:
         p = subprocess.Popen(

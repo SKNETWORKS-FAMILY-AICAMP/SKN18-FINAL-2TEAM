@@ -1,10 +1,12 @@
-# src/main.py (FULL)
 #!/usr/bin/env python3
 import os
 import sys
 import argparse
 import subprocess
 from pathlib import Path
+
+# ✅ 어떤 cwd로 실행되든 src 폴더를 import 기준에 강제로 추가 (절대 안깨짐)
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 
 def resolve_rfdiffusion_entry() -> str:
@@ -66,7 +68,7 @@ def parse_args():
     p.add_argument("--outputs_dir", default=os.environ.get("OUTPUTS_DIR", "/outputs"))
     p.add_argument("--models_dir", default=os.environ.get("MODELS_DIR", "/models"))
 
-    # S3 업로드 옵션
+    # ✅ S3 업로드 옵션
     p.add_argument("--s3_bucket", default=os.environ.get("S3_BUCKET", ""), help="If set, upload outputs to S3")
     p.add_argument("--s3_prefix", default=os.environ.get("S3_PREFIX", "rfdiffusion"))
     p.add_argument("--s3_upload_logs", action="store_true", help="Also upload job log if exists")
@@ -128,7 +130,6 @@ def main():
         print("[s3] S3_BUCKET not set; skip upload")
         return
 
-    # src/ 폴더에서 import 가능해야 함 (main.py와 s3_uploader.py를 같은 폴더에 두는 이유)
     try:
         from s3_uploader import upload_job_outputs
     except Exception as e:

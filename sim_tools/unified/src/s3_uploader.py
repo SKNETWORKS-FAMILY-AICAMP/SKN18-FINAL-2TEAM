@@ -1,4 +1,3 @@
-# src/s3_uploader.py (FULL)
 import os
 from pathlib import Path
 import boto3
@@ -11,7 +10,7 @@ def _region() -> str | None:
 def upload_file_to_s3(local_path: str, bucket: str, key: str, content_type: str | None = None) -> str:
     """
     Upload a single file to S3 and return s3:// URL.
-    Requires AWS creds in env or shared config.
+    Requires AWS creds in env or instance/role config.
     """
     s3 = boto3.client("s3", region_name=_region())
 
@@ -27,7 +26,13 @@ def upload_file_to_s3(local_path: str, bucket: str, key: str, content_type: str 
     return f"s3://{bucket}/{key}"
 
 
-def upload_job_outputs(outputs_dir: str, job_name: str, bucket: str, prefix: str = "rfdiffusion", upload_logs: bool = False) -> list[str]:
+def upload_job_outputs(
+    outputs_dir: str,
+    job_name: str,
+    bucket: str,
+    prefix: str = "rfdiffusion",
+    upload_logs: bool = False
+) -> list[str]:
     """
     Upload:
       - {job_name}_0.pdb
