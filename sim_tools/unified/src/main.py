@@ -5,9 +5,6 @@ import argparse
 import subprocess
 from pathlib import Path
 
-# ✅ 어떤 cwd로 실행되든 src 폴더를 import 기준에 강제로 추가 (절대 안깨짐)
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-
 
 def resolve_rfdiffusion_entry() -> str:
     env_entry = os.environ.get("RFDIFFUSION_ENTRY")
@@ -61,16 +58,22 @@ def parse_args():
         help="RFdiffusion contig string, e.g. 100 or 'A1-100' or 'A1-50 0 A51-100'",
     )
     p.add_argument("--iterations", type=int, default=50, help="num designs")
-
     p.add_argument("--cautious", action="store_true", help="Set inference.cautious=True (skip existing outputs)")
 
     p.add_argument("--rfdiffusion_entry", default=resolve_rfdiffusion_entry())
     p.add_argument("--outputs_dir", default=os.environ.get("OUTPUTS_DIR", "/outputs"))
     p.add_argument("--models_dir", default=os.environ.get("MODELS_DIR", "/models"))
 
-    # ✅ S3 업로드 옵션
-    p.add_argument("--s3_bucket", default=os.environ.get("S3_BUCKET", ""), help="If set, upload outputs to S3")
-    p.add_argument("--s3_prefix", default=os.environ.get("S3_PREFIX", "rfdiffusion"))
+    # ✅ S3 업로드 옵션 (S3_*가 없으면 AWS_S3_* fallback 지원)
+    p.add_argument(
+        "--s3_bucket",
+        default=os.environ.get("S3_BUCKET") or os.environ.get("AWS_S3_BUCKET", ""),
+        help="If set, upload outputs to S3",
+    )
+    p.add_argument(
+        "--s3_prefix",
+        default=os.environ.get("S3_PREFIX") or os.environ.get("AWS_S3_BASE_PATH", "rfdiffusion"),
+    )
     p.add_argument("--s3_upload_logs", action="store_true", help="Also upload job log if exists")
     p.add_argument("--fail_on_s3_error", action="store_true", help="If upload fails, exit non-zero")
 
@@ -127,7 +130,7 @@ def main():
     # 3) (옵션) S3 업로드
     bucket = (args.s3_bucket or "").strip()
     if not bucket:
-        print("[s3] S3_BUCKET not set; skip upload")
+        print("[s3] S3_BUCKET/AWS_S3_BUCKET not set; skip upload")
         return
 
     try:

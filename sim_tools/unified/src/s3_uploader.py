@@ -10,7 +10,7 @@ def _region() -> str | None:
 def upload_file_to_s3(local_path: str, bucket: str, key: str, content_type: str | None = None) -> str:
     """
     Upload a single file to S3 and return s3:// URL.
-    Requires AWS creds in env or instance/role config.
+    Requires AWS creds in env or shared config.
     """
     s3 = boto3.client("s3", region_name=_region())
 

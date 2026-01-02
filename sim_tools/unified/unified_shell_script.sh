@@ -7,7 +7,7 @@ set -euo pipefail
 PY_BIN="${PY_BIN:-python3}"
 TORCH_VENV="${TORCH_VENV:-/opt/venv_torch}"
 
-# unified 폴더 위치
+# unified 폴더 위치 (스크립트가 있는 경로 기준으로 자동 추론 가능)
 APP_DIR="${APP_DIR:-/workspace/unified}"
 SCRIPT_DIR="${SCRIPT_DIR:-$APP_DIR}"
 
@@ -26,6 +26,20 @@ UVICORN_PID="${UVICORN_PID:-${APP_DIR}/uvicorn_${PORT}.pid}"
 S3_BUCKET="${S3_BUCKET:-}"
 S3_PREFIX="${S3_PREFIX:-rfdiffusion}"
 AWS_REGION="${AWS_REGION:-${AWS_DEFAULT_REGION:-}}"
+
+# ✅ AWS_S3_*도 지원 (RunPod Secret에서 AWS_S3_*만 넣어도 동작)
+AWS_S3_BUCKET="${AWS_S3_BUCKET:-}"
+AWS_S3_BASE_PATH="${AWS_S3_BASE_PATH:-}"
+
+# ✅ [핵심] AWS_S3_* -> S3_* 자동 매핑
+if [[ -z "${S3_BUCKET}" && -n "${AWS_S3_BUCKET}" ]]; then
+  S3_BUCKET="${AWS_S3_BUCKET}"
+fi
+
+# S3_PREFIX가 기본값(rfdiffusion)일 때만 AWS_S3_BASE_PATH로 덮어씀
+if [[ "${S3_PREFIX}" == "rfdiffusion" && -n "${AWS_S3_BASE_PATH}" ]]; then
+  S3_PREFIX="${AWS_S3_BASE_PATH}"
+fi
 
 ########################################
 # Utils
@@ -57,6 +71,8 @@ cmd_up() {
   log "S3_BUCKET=${S3_BUCKET:-<empty>}"
   log "S3_PREFIX=$S3_PREFIX"
   log "AWS_REGION=${AWS_REGION:-<empty>}"
+  log "AWS_S3_BUCKET=${AWS_S3_BUCKET:-<empty>}"
+  log "AWS_S3_BASE_PATH=${AWS_S3_BASE_PATH:-<empty>}"
   log "========================================"
 
   cmd_install
@@ -311,8 +327,9 @@ cmd_run() {
   export LD_LIBRARY_PATH="$TORCH_VENV/lib/python3.10/site-packages/nvidia/nvtx/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/nvjitlink/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/nccl/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/curand/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cufft/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cuda_runtime/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cuda_nvrtc/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cuda_cupti/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cublas/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cusparse/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cudnn/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cusolver/lib:${LD_LIBRARY_PATH:-}"
   log "LD_LIBRARY_PATH set"
 
-  # ✅ S3 env도 run 쪽에 확실히 전달
+  # ✅ S3 env 전달 (없으면 main.py가 알아서 skip)
   export S3_BUCKET S3_PREFIX AWS_REGION AWS_DEFAULT_REGION
+  export AWS_S3_BUCKET AWS_S3_BASE_PATH
 
   ensure_dir "$MODELS_DIR"
   ensure_dir "$OUTPUTS_DIR"
@@ -339,7 +356,6 @@ cmd_serve() {
 
   cd "$APP_DIR"
 
-  # ✅ 중요: API 서버에 S3 env 주입
   nohup env \
     SCRIPT_DIR="$SCRIPT_DIR" \
     OPS_SH="$SCRIPT_DIR/unified_shell_script.sh" \
@@ -350,6 +366,8 @@ cmd_serve() {
     S3_PREFIX="$S3_PREFIX" \
     AWS_REGION="$AWS_REGION" \
     AWS_DEFAULT_REGION="$AWS_REGION" \
+    AWS_S3_BUCKET="$AWS_S3_BUCKET" \
+    AWS_S3_BASE_PATH="$AWS_S3_BASE_PATH" \
     "$(venv_python)" -m uvicorn api_server:app --host 0.0.0.0 --port "$PORT" \
     > "$UVICORN_LOG" 2>&1 &
 
@@ -418,9 +436,14 @@ Env overrides:
   PORT=8000
 
 S3 upload env (optional):
+  # Preferred (existing)
   S3_BUCKET=my-bucket
   S3_PREFIX=rfdiffusion
   AWS_REGION=ap-northeast-2
+
+  # Also supported (AWS-style)
+  AWS_S3_BUCKET=my-bucket
+  AWS_S3_BASE_PATH=simulations/sim_result
   AWS_ACCESS_KEY_ID=...
   AWS_SECRET_ACCESS_KEY=...
 EOF
