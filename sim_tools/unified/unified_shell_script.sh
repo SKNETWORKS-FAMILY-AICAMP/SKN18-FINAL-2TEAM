@@ -31,19 +31,6 @@ AWS_REGION="${AWS_REGION:-${AWS_DEFAULT_REGION:-}}"
 AWS_S3_BUCKET="${AWS_S3_BUCKET:-}"
 AWS_S3_BASE_PATH="${AWS_S3_BASE_PATH:-}"
 
-# ✅ [핵심] AWS_S3_* -> S3_* 자동 매핑 (항상 일관되게)
-if [[ -z "${S3_BUCKET}" && -n "${AWS_S3_BUCKET}" ]]; then
-  S3_BUCKET="${AWS_S3_BUCKET}"
-fi
-
-# S3_PREFIX가 비었거나 기본값(rfdiffusion)일 때만 AWS_S3_BASE_PATH로 덮어씀
-if { [[ -z "${S3_PREFIX}" ]] || [[ "${S3_PREFIX}" == "rfdiffusion" ]]; } && [[ -n "${AWS_S3_BASE_PATH}" ]]; then
-  S3_PREFIX="${AWS_S3_BASE_PATH}"
-fi
-
-# prefix 정리 (양끝 슬래시 제거)
-S3_PREFIX="$(echo "${S3_PREFIX}" | sed 's#^/*##; s#/*$##')"
-
 ########################################
 # Utils
 ########################################
@@ -69,10 +56,56 @@ add_env_if_nonempty() {
   fi
 }
 
+# ✅ RunPod에서 /proc/1(environ)에만 AWS/S3가 있고 현재 쉘에는 없을 때가 있음
+#    -> 그 경우 PID1의 AWS_/S3_만 안전하게 가져와서 export
+load_aws_env_from_pid1_if_missing() {
+  # 현재 쉘에 AWS_/S3_가 하나라도 있으면 아무것도 안 함
+  if env | egrep -q '^(AWS_|S3_)'; then
+    return 0
+  fi
+
+  # /proc/1/environ 에서 AWS_/S3_만 골라 export
+  if [[ -r /proc/1/environ ]]; then
+    while IFS= read -r kv; do
+      [[ "$kv" == *=* ]] || continue
+      export "$kv"
+    done < <(tr '\0' '\n' </proc/1/environ | egrep '^(AWS_|S3_)')
+  fi
+}
+
+# ✅ env 로드 후, AWS_S3_* -> S3_* 매핑 + prefix 정리 + region 보정
+refresh_s3_mapping() {
+  # region 동기화
+  AWS_REGION="${AWS_REGION:-${AWS_DEFAULT_REGION:-}}"
+  if [[ -n "${AWS_REGION:-}" && -z "${AWS_DEFAULT_REGION:-}" ]]; then
+    AWS_DEFAULT_REGION="$AWS_REGION"
+  fi
+
+  # AWS_S3_* 값 확보
+  AWS_S3_BUCKET="${AWS_S3_BUCKET:-}"
+  AWS_S3_BASE_PATH="${AWS_S3_BASE_PATH:-}"
+
+  # AWS_S3_* -> S3_* 자동 매핑
+  if [[ -z "${S3_BUCKET:-}" && -n "${AWS_S3_BUCKET:-}" ]]; then
+    S3_BUCKET="${AWS_S3_BUCKET}"
+  fi
+
+  # S3_PREFIX가 비었거나 기본값(rfdiffusion)일 때만 AWS_S3_BASE_PATH로 덮어씀
+  if { [[ -z "${S3_PREFIX:-}" ]] || [[ "${S3_PREFIX}" == "rfdiffusion" ]]; } && [[ -n "${AWS_S3_BASE_PATH:-}" ]]; then
+    S3_PREFIX="${AWS_S3_BASE_PATH}"
+  fi
+
+  # prefix 정리 (양끝 슬래시 제거) + 기본값 보장
+  S3_PREFIX="$(echo "${S3_PREFIX:-rfdiffusion}" | sed 's#^/*##; s#/*$##')"
+}
+
 ########################################
 # 0) Up (ALL-IN-ONE)
 ########################################
 cmd_up() {
+  load_aws_env_from_pid1_if_missing
+  refresh_s3_mapping
+
   log "========================================"
   log "ALL-IN-ONE UP: install -> download-params -> serve"
   log "APP_DIR=$APP_DIR"
@@ -321,6 +354,9 @@ cmd_download_params() {
 # 3) Run
 ########################################
 cmd_run() {
+  load_aws_env_from_pid1_if_missing
+  refresh_s3_mapping
+
   log "run start"
   export MODELS_DIR OUTPUTS_DIR RFDIFFUSION_DIR TORCH_VENV
 
@@ -340,7 +376,7 @@ cmd_run() {
   export LD_LIBRARY_PATH="$TORCH_VENV/lib/python3.10/site-packages/nvidia/nvtx/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/nvjitlink/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/nccl/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/curand/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cufft/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cuda_runtime/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cuda_nvrtc/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cuda_cupti/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cublas/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cusparse/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cudnn/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cusolver/lib:${LD_LIBRARY_PATH:-}"
   log "LD_LIBRARY_PATH set"
 
-  # ✅ 1번 방식 적용: 비어있으면 export 자체를 하지 않음 (빈 값으로 덮어쓰기 방지)
+  # ✅ 1번 방식: 비어있으면 export 자체를 하지 않음 (빈 값으로 덮어쓰기 방지)
   if [[ -n "${AWS_REGION:-}" ]]; then
     export AWS_REGION
     export AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION:-$AWS_REGION}"
@@ -348,16 +384,6 @@ cmd_run() {
   [[ -n "${AWS_S3_BUCKET:-}" ]] && export AWS_S3_BUCKET
   [[ -n "${AWS_S3_BASE_PATH:-}" ]] && export AWS_S3_BASE_PATH
 
-  # ✅ 최종 S3_* 확정 (비어있으면 비어있는대로 두되, prefix는 기본값 유지)
-  if [[ -z "${S3_BUCKET:-}" && -n "${AWS_S3_BUCKET:-}" ]]; then
-    S3_BUCKET="${AWS_S3_BUCKET}"
-  fi
-  if { [[ -z "${S3_PREFIX:-}" ]] || [[ "${S3_PREFIX}" == "rfdiffusion" ]]; } && [[ -n "${AWS_S3_BASE_PATH:-}" ]]; then
-    S3_PREFIX="${AWS_S3_BASE_PATH}"
-  fi
-  S3_PREFIX="$(echo "${S3_PREFIX:-rfdiffusion}" | sed 's#^/*##; s#/*$##')"
-
-  # ✅ 1번 방식: 비어있으면 export하지 않음
   [[ -n "${S3_BUCKET:-}" ]] && export S3_BUCKET
   [[ -n "${S3_PREFIX:-}" ]] && export S3_PREFIX
 
@@ -376,6 +402,9 @@ cmd_run() {
 # 4) Serve
 ########################################
 cmd_serve() {
+  load_aws_env_from_pid1_if_missing
+  refresh_s3_mapping
+
   log "serve start"
   ensure_dir "$APP_DIR"
   ensure_dir "$OUTPUTS_DIR"
@@ -405,7 +434,6 @@ cmd_serve() {
   add_env_if_nonempty env_kv "S3_PREFIX" "${S3_PREFIX:-}"
 
   add_env_if_nonempty env_kv "AWS_REGION" "${AWS_REGION:-}"
-  # 보통 AWS_DEFAULT_REGION도 같이 쓰니까, REGION이 있을 때만 같이 넘김
   if [[ -n "${AWS_REGION:-}" ]]; then
     add_env_if_nonempty env_kv "AWS_DEFAULT_REGION" "${AWS_DEFAULT_REGION:-$AWS_REGION}"
   else
@@ -414,6 +442,11 @@ cmd_serve() {
 
   add_env_if_nonempty env_kv "AWS_S3_BUCKET" "${AWS_S3_BUCKET:-}"
   add_env_if_nonempty env_kv "AWS_S3_BASE_PATH" "${AWS_S3_BASE_PATH:-}"
+
+  # (옵션) creds도 같이 넘기고 싶으면 여기도 nonempty로 추가 가능
+  add_env_if_nonempty env_kv "AWS_ACCESS_KEY_ID" "${AWS_ACCESS_KEY_ID:-}"
+  add_env_if_nonempty env_kv "AWS_SECRET_ACCESS_KEY" "${AWS_SECRET_ACCESS_KEY:-}"
+  add_env_if_nonempty env_kv "AWS_SESSION_TOKEN" "${AWS_SESSION_TOKEN:-}"
 
   nohup env "${env_kv[@]}" \
     "$(venv_python)" -m uvicorn api_server:app --host 0.0.0.0 --port "$PORT" \
