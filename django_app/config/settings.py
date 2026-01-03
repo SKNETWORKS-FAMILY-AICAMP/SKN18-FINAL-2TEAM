@@ -68,6 +68,8 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "apps.account.middleware.UserActivityLoggingMiddleware",
+    "apps.account.middleware.SessionTimeoutMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -171,6 +173,17 @@ LOGIN_URL = 'accounts:login'
 LOGIN_REDIRECT_URL = 'dashboard:dashboard'
 LOGOUT_REDIRECT_URL = 'accounts:login'
 AUTH_USER_MODEL = 'account.CustomUser'
+
+# 기본 세션 만료 설정
+SESSION_COOKIE_AGE = 60 * 60  # 기본 세션 쿠키 만료 (1시간)
+SESSION_SAVE_EVERY_REQUEST = False
+SESSION_REFRESH_SECONDS = 60 * 60  # 활동 시마다 연장할 시간
+SESSION_MAX_IDLE_SECONDS = 3 * 60 * 60  # 최대 무활동 허용 시간
+
+# # 테스트(예: 10초 후 만료, 5초마다 연장) 시 아래 값으로 임시 대체
+# SESSION_COOKIE_AGE = 10
+# SESSION_REFRESH_SECONDS = 5
+# SESSION_MAX_IDLE_SECONDS = 10
 
 
 # Default primary key field type

@@ -379,3 +379,32 @@ class LinkedAccount(models.Model):
             else:
                 return None
         return self.access_token
+
+
+class UserActivityLog(models.Model):
+    """
+    인증된 사용자의 요청 활동을 단순히 기록한다.
+    """
+
+    user = models.ForeignKey(
+        CustomUser,
+        on_delete=models.CASCADE,
+        related_name="activity_logs",
+        to_field='user_id',
+        db_column='user_id',
+        verbose_name='사용자'
+    )
+    path = models.CharField(max_length=512, verbose_name='경로')
+    method = models.CharField(max_length=10, verbose_name='HTTP 메서드')
+    user_agent = models.CharField(max_length=512, blank=True, verbose_name='User Agent')
+    ip_address = models.GenericIPAddressField(null=True, blank=True, verbose_name='IP 주소')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='생성일시')
+
+    class Meta:
+        db_table = 'zh_user_activity_logs'
+        ordering = ["-created_at"]
+        verbose_name = '사용자 활동 로그'
+        verbose_name_plural = '사용자 활동 로그 목록'
+
+    def __str__(self):
+        return f"{self.user.get_full_name()} @ {self.path}"
