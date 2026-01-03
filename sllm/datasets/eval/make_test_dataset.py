@@ -1,24 +1,11 @@
 r'''
 실제 실험결과가 있는 이미지 데이터에서 실험 결과를 추출하여 테스트 데이터셋을 만드는 스크립트
 0. CONFIG 설정
-- 원본 csv 경로: sllm\datasets\eval\t_figures_with_result_desc_v4 - t_figures_with_result_desc_v4.csv
-- 출력 JSON 경로: sllm\datasets\eval\final_test_dataset_yymmdd_hhmm.jsonl
-- LLM 모델: 단계별로 다른 모델 사용하는것 지정하도록
-- 처리할 csv 행 수: 50
+
 
 1. 이미지(fig_caption, fig_url)가 실험결과를 나타낸 표, 그래프 등의 이미지 이면 true, 아니면 false
--> fig_caption과 fig_url를 gpt-4o-mini 모델에 전달하여 이미지가 실험결과를 나타낸 표, 그래프 등의 이미지인지 판단
--> 원본 csv에 'is_ecperiment' 칼럼 추가하여 거기에 True/False 추가'
--> 이미지는 실제 이미지 파일이 아닌 이미지 url을 사용(fig_url 컬럼)
--> LLM 모델: gpt-4o-mini
 
-
-2. is_ecperiment == true인 경우
--> fig_caption과 fig_url를 gpt-4o-mini 모델에 전달하여 실험결과를 추출
--> 원본 csv에 'experiment_result' 칼럼 추가하여 거기에 실험결과 추출 결과 추가
--> - LLM 모델: gpt-4o
-
-실험 추출 결과는 json 형식으로 다음과 같은 형식으로 추출
+2. is_ecperiment == true인 경우 실험 추출 결과를 json 형식으로 추출
 {
   "assay": "IHC",
   "target": "Hyaluronan",
@@ -34,49 +21,10 @@ r'''
 }
 
 3. 예시 정답을 추가하여 테스트 데이터셋을 만들기
-- 예시 정답은 원본 csv에 'example_answer' 칼럼 추가하여 거기에 추가
-- LLM 모델: gpt-4o
-- 예시 정답은 다음과 같은 지시사항에 따라 만들기기
-
-system_prompt = """
-You are a biomedical research assistant.
-You must write a reference answer strictly grounded in the provided experimental results JSON.
-No mechanisms. No hypotheses. No causal language. No external knowledge.
-Return ONLY valid JSON matching the required schema.
-"""
-user_prompt = """
-Given the following experimental results JSON, produce a reference conclusion JSON with this schema:
-
-{
-  "interpretation": [ ... ],
-  "interpretation_limits": [ ... ],
-  "cautions": [ ... ],
-  "suggested_next_steps": [ ... ]
-}
-
-Rules:
-- Use ONLY information present in the provided JSON.
-- "interpretation": effect-level summaries only (what increased/decreased/differed/was significant).
-- "interpretation_limits": limits of comparisons/conditions/time points/groups/dose; mention missing info explicitly (e.g., "other groups not reported").
-- "cautions": generalizability constraints; avoid clinical claims.
-- "suggested_next_steps": ONLY controlled extensions of the same experiment (dose/time/replicates/quantification/controls). No new mechanisms.
-- Keep each list 2–6 bullets.
-- If key fields are missing/unclear, say so instead of guessing.
-
-Experimental results JSON:
-<experiment_result JSON here>
-
-"""
 
 4. 최종 데이터셋 만들기 jsonl 형식으로 추가
-- "instruction": "You are a biomedical research assistant.\nInterpret the experimental results strictly based on the provided observations.\nDo not infer mechanisms or conclusions beyond the data.\nClearly state interpretation limits."
-- "input": "experiment_result"
-- "output": "example_answer"
-- 중간 출력 JSON 경로: sllm\datasets\eval\middle_test_dataset_yymmdd_hhmm.jsonl
 
 5. 인풋과 아웃풋의 적절성 따져서 최종 데이터셋 만들기
-- sllm\training\dataset_auditor.py 기능 사용하여 통과한 데이터셋만 최종 데이터셋으로 정리리
-- 최종 출력 JSON 경로: sllm\datasets\eval\final_test_dataset_yymmdd_hhmm.jsonl
 
 
 유의사항
@@ -337,7 +285,7 @@ Experimental results JSON:
 # =========================
 
 def process_csv():
-    """CSV 파일 처리"""
+    """CSV 파일 처리 및 실시간 JSONL 저장"""
     print(f"📁 Reading CSV from: {CSV_PATH}")
     df = pd.read_csv(CSV_PATH, encoding='utf-8')
 
@@ -354,70 +302,67 @@ def process_csv():
     df['experiment_result'] = None
     df['example_answer'] = None
 
-    # Step 1 & 2 & 3: 각 행 처리
-    for idx, row in df.iterrows():
-        print(f"\n[{idx + 1}/{len(df)}] Processing fig_id: {row['fig_id']}")
-
-        # Step 1: 실험 이미지 판단 (gpt-4o-mini)
-        print(f"  🔍 Step 1: Checking if experiment image (model: {MODEL_STEP1_IS_EXPERIMENT})...")
-        is_exp = is_experiment_image(row)
-        df.at[idx, 'is_experiment'] = is_exp
-        print(f"  {'✅' if is_exp else '❌'} is_experiment: {is_exp}")
-
-        if is_exp:
-            # Step 2: 실험 결과 추출 (gpt-4o)
-            print(f"  📊 Step 2: Extracting experiment results (model: {MODEL_STEP2_EXTRACT_RESULT})...")
-            exp_result = extract_experiment_result(row)
-            if exp_result:
-                df.at[idx, 'experiment_result'] = json.dumps(exp_result, ensure_ascii=False)
-                print(f"  ✅ Extracted result")
-
-                # Step 3: 예시 정답 생성 (gpt-4o)
-                print(f"  💡 Step 3: Generating example answer (model: {MODEL_STEP3_EXAMPLE_ANSWER})...")
-                example_ans = generate_example_answer(exp_result)
-                if example_ans:
-                    df.at[idx, 'example_answer'] = json.dumps(example_ans, ensure_ascii=False)
-                    print(f"  ✅ Generated answer")
-
-            time.sleep(SLEEP_BETWEEN)
-
-    # CSV 저장
-    print(f"\n💾 Saving processed CSV to: {OUTPUT_CSV}")
-    df.to_csv(OUTPUT_CSV, index=False, encoding='utf-8')
-
-    return df
-
-
-def create_middle_dataset(df: pd.DataFrame):
-    """중간 데이터셋 생성 (JSONL 형식)"""
-    print(f"\n📝 Step 4: Creating middle dataset: {MIDDLE_JSONL}")
-
+    # instruction 정의
     instruction = """You are a biomedical research assistant.
 Interpret the experimental results strictly based on the provided observations.
 Do not infer mechanisms or conclusions beyond the data.
 Clearly state interpretation limits."""
 
-    count = 0
-    with open(MIDDLE_JSONL, 'w', encoding='utf-8') as f:
+    # JSONL 파일을 미리 열어서 실시간으로 저장
+    print(f"📝 Opening middle dataset for real-time writing: {MIDDLE_JSONL}")
+    jsonl_count = 0
+
+    with open(MIDDLE_JSONL, 'w', encoding='utf-8') as jsonl_file:
+        # Step 1 & 2 & 3: 각 행 처리
         for idx, row in df.iterrows():
-            if row['is_experiment'] and pd.notna(row['experiment_result']) and pd.notna(row['example_answer']):
-                try:
-                    exp_result = json.loads(row['experiment_result'])
-                    example_ans = json.loads(row['example_answer'])
+            print(f"\n[{idx + 1}/{len(df)}] Processing fig_id: {row['fig_id']}")
 
-                    sample = {
-                        "instruction": instruction,
-                        "input": exp_result,
-                        "output": example_ans
-                    }
+            # Step 1: 실험 이미지 판단 (gpt-4o-mini)
+            print(f"  🔍 Step 1: Checking if experiment image (model: {MODEL_STEP1_IS_EXPERIMENT})...")
+            is_exp = is_experiment_image(row)
+            df.at[idx, 'is_experiment'] = is_exp
+            print(f"  {'✅' if is_exp else '❌'} is_experiment: {is_exp}")
 
-                    f.write(json.dumps(sample, ensure_ascii=False) + '\n')
-                    count += 1
-                except Exception as e:
-                    print(f"  ⚠️  Row {idx} skipped: {e}")
+            if is_exp:
+                # Step 2: 실험 결과 추출 (gpt-4o)
+                print(f"  📊 Step 2: Extracting experiment results (model: {MODEL_STEP2_EXTRACT_RESULT})...")
+                exp_result = extract_experiment_result(row)
+                if exp_result:
+                    df.at[idx, 'experiment_result'] = json.dumps(exp_result, ensure_ascii=False)
+                    print(f"  ✅ Extracted result")
 
-    print(f"✅ Created {count} samples in middle dataset")
-    return count
+                    # Step 3: 예시 정답 생성 (gpt-4o)
+                    print(f"  💡 Step 3: Generating example answer (model: {MODEL_STEP3_EXAMPLE_ANSWER})...")
+                    example_ans = generate_example_answer(exp_result)
+                    if example_ans:
+                        df.at[idx, 'example_answer'] = json.dumps(example_ans, ensure_ascii=False)
+                        print(f"  ✅ Generated answer")
+
+                        # Step 4: 즉시 JSONL에 저장
+                        try:
+                            sample = {
+                                "instruction": instruction,
+                                "input": exp_result,
+                                "output": example_ans
+                            }
+                            jsonl_file.write(json.dumps(sample, ensure_ascii=False) + '\n')
+                            jsonl_file.flush()  # 즉시 디스크에 쓰기
+                            jsonl_count += 1
+                            print(f"  💾 Saved to JSONL (total: {jsonl_count})")
+                        except Exception as e:
+                            print(f"  ⚠️  Failed to save JSONL: {e}")
+
+                time.sleep(SLEEP_BETWEEN)
+
+    print(f"\n✅ Saved {jsonl_count} samples to middle dataset")
+
+    # CSV 저장
+    print(f"\n💾 Saving processed CSV to: {OUTPUT_CSV}")
+    df.to_csv(OUTPUT_CSV, index=False, encoding='utf-8')
+
+    return df, jsonl_count
+
+
 
 
 def audit_and_create_final_dataset():
@@ -433,18 +378,17 @@ def audit_and_create_final_dataset():
             "--out_final_jsonl", str(FINAL_JSONL)
         ]
 
-        print(f"  Running: {' '.join(cmd)}")
-        result = subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8')
+        print(f"  Running: {' '.join(cmd)}\n")
+        # capture_output=False로 설정하여 실시간 출력 표시
+        result = subprocess.run(cmd, encoding='utf-8')
 
         if result.returncode == 0:
-            print("✅ Dataset audit completed successfully")
-            print(result.stdout)
+            print("\n✅ Dataset audit completed successfully")
+            return True
         else:
-            print(f"❌ Dataset audit failed")
-            print(result.stderr)
+            print(f"\n❌ Dataset audit failed (return code: {result.returncode})")
             return False
 
-        return True
     except Exception as e:
         print(f"❌ Error running dataset_auditor: {e}")
         return False
@@ -459,11 +403,8 @@ def main():
     # 출력 디렉토리 생성
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    # Step 1, 2, 3: CSV 처리
-    df = process_csv()
-
-    # Step 4: 중간 데이터셋 생성
-    sample_count = create_middle_dataset(df)
+    # Step 1, 2, 3, 4: CSV 처리 및 실시간 JSONL 저장
+    df, sample_count = process_csv()
 
     if sample_count == 0:
         print("\n⚠️  No valid samples found. Exiting.")
