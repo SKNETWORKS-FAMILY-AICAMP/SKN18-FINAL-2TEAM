@@ -8,6 +8,7 @@
     let selectedOrg = 'all';
     let shareModalTab = 'find';
     let organizations = [];
+    let uniqueMembers = [];  // 중복 제거된 전체 멤버 목록
     let alreadySharedUsers = [];
     let currentNoteId = null;
 
@@ -36,34 +37,8 @@
     let shareModalShareBtn = null;
     let shareModalCancelBtn = null;
 
-    // Mock data (matching the image)
-    const mockOrganizations = [
-        {
-            id: 1,
-            name: 'BioProtia Research Lab',
-            members: [
-                { id: 1, name: 'Dr. Sarah Kim', email: 'sarah.kim@bioprotia.com', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop', role: 'Principal Investigator' },
-                { id: 2, name: 'Dr. John Lee', email: 'john.lee@bioprotia.com', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop', role: 'Senior Researcher' },
-                { id: 3, name: 'Dr. Emily Chen', email: 'emily.chen@bioprotia.com', avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop', role: 'Researcher' },
-                { id: 4, name: 'Dr. Michael Park', email: 'michael.park@bioprotia.com', avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop', role: 'Postdoc' }
-            ]
-        },
-        {
-            id: 2,
-            name: 'Genomics Division',
-            members: [
-                { id: 5, name: 'Dr. Lisa Wang', email: 'lisa.wang@bioprotia.com', avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&h=100&fit=crop', role: 'Division Head' },
-                { id: 6, name: 'Dr. David Kim', email: 'david.kim@bioprotia.com', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop', role: 'Senior Scientist' },
-                { id: 7, name: 'Dr. Anna Lee', email: 'anna.lee@bioprotia.com', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop', role: 'Research Scientist' },
-                { id: 8, name: 'Dr. James Park', email: 'james.park@bioprotia.com', avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=100&h=100&fit=crop', role: 'Lab Manager' }
-            ]
-        }
-    ];
-
-    const mockAlreadySharedUsers = [
-        { id: 1, name: 'Dr. Sarah Kim', email: 'sarah.kim@bioprotia.com', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop', role: 'Principal Investigator', sharedDate: '2025-12-10' },
-        { id: 3, name: 'Dr. Emily Chen', email: 'emily.chen@bioprotia.com', avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop', role: 'Researcher', sharedDate: '2025-12-08' }
-    ];
+    // API URL
+    const organizationApiUrl = '/api/organization/';
 
     // Initialize
     function initShareModal() {
@@ -128,9 +103,80 @@
             });
         }
 
-        // Load organizations (mock for now)
-        organizations = mockOrganizations;
-        alreadySharedUsers = mockAlreadySharedUsers;
+        // Load organizations from API
+        loadOrganizations();
+    }
+
+    // Load organizations from API
+    async function loadOrganizations() {
+        try {
+            const response = await fetch(organizationApiUrl, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'same-origin',
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            const data = await response.json();
+            
+            if (data.success && data.organizations) {
+                // Transform API response to match expected format
+                organizations = data.organizations.map(org => ({
+                    id: org.id,
+                    name: org.name,
+                    members: org.members.map(member => ({
+                        id: member.id,
+                        name: member.name,
+                        email: member.email,
+                        avatar: member.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(member.name)}&background=random`,
+                        role: member.role || 'Member'
+                    }))
+                }));
+                
+                // 중복 제거된 전체 멤버 목록 저장
+                if (data.uniqueMembers && Array.isArray(data.uniqueMembers)) {
+                    uniqueMembers = data.uniqueMembers.map(member => ({
+                        id: member.id,
+                        name: member.name,
+                        email: member.email,
+                        avatar: member.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(member.name)}&background=random`,
+                        role: 'Member'  // uniqueMembers에는 role 정보가 없으므로 기본값 사용
+                    }));
+                } else {
+                    // uniqueMembers가 없으면 기존 방식으로 중복 제거 (하위 호환)
+                    const membersMap = new Map();
+                    organizations.forEach(org => {
+                        org.members.forEach(member => {
+                            if (!membersMap.has(member.id)) {
+                                membersMap.set(member.id, member);
+                            }
+                        });
+                    });
+                    uniqueMembers = Array.from(membersMap.values());
+                }
+                
+                // Re-render if modal is open
+                if (shareModal && shareModal.classList.contains('active')) {
+                    renderOrgTabs();
+                    renderMembersList();
+                }
+            } else {
+                console.error('[ShareModal] Failed to load organizations:', data);
+                organizations = [];
+                uniqueMembers = [];
+            }
+        } catch (error) {
+            console.error('[ShareModal] Error loading organizations:', error);
+            organizations = [];
+            if (window.notyf) {
+                window.notyf.error('조직 목록을 불러오는 중 오류가 발생했습니다.');
+            }
+        }
     }
 
     // Open modal
@@ -174,12 +220,23 @@
             console.error('[ShareModal] Cannot open modal - shareModal element not found!');
         }
         
-        // Render
-        renderOrgTabs();
-        renderMembersList();
-        renderSharedUsers();
-        updateSelectedPreview();
-        switchTab('find');
+        // Load organizations if not already loaded or if orgs not provided
+        if (!orgs && organizations.length === 0) {
+            loadOrganizations().then(() => {
+                renderOrgTabs();
+                renderMembersList();
+                renderSharedUsers();
+                updateSelectedPreview();
+                switchTab('find');
+            });
+        } else {
+            // Render immediately if data is available
+            renderOrgTabs();
+            renderMembersList();
+            renderSharedUsers();
+            updateSelectedPreview();
+            switchTab('find');
+        }
 
         // Lock body scroll
         document.body.style.overflow = 'hidden';
@@ -236,8 +293,8 @@
 
     // Get filtered members
     function getFilteredMembers() {
-        const allMembers = organizations.flatMap(org => org.members);
-        let filtered = allMembers;
+        // 기본적으로 중복 제거된 전체 멤버 목록 사용
+        let filtered = uniqueMembers.length > 0 ? uniqueMembers : organizations.flatMap(org => org.members);
 
         // Filter by organization
         if (selectedOrg !== 'all') {
@@ -305,7 +362,9 @@
         }
 
         shareMembersList.innerHTML = filtered.map(member => {
-            const isSelected = selectedMembers.includes(member.id);
+            // member.id는 문자열일 수 있으므로 문자열로 비교
+            const memberIdStr = String(member.id);
+            const isSelected = selectedMembers.some(id => String(id) === memberIdStr);
             return `
                 <div class="share-member-item ${isSelected ? 'selected' : ''}" data-member-id="${member.id}">
                     <input type="checkbox" ${isSelected ? 'checked' : ''} />
@@ -313,7 +372,7 @@
                     <div class="member-info">
                         <div class="member-name">${escapeHtml(member.name)}</div>
                         <div class="member-email">${escapeHtml(member.email)}</div>
-                        <div class="member-role">${escapeHtml(member.role)}</div>
+                        <div class="member-role">${escapeHtml(member.role || 'Member')}</div>
                     </div>
                 </div>
             `;
@@ -323,7 +382,7 @@
         shareMembersList.querySelectorAll('.share-member-item').forEach(item => {
             item.addEventListener('click', (e) => {
                 if (e.target.type === 'checkbox') return;
-                const memberId = parseInt(item.getAttribute('data-member-id'));
+                const memberId = item.getAttribute('data-member-id');
                 toggleMemberSelection(memberId);
             });
         });
@@ -331,7 +390,7 @@
         // Attach checkbox listeners
         shareMembersList.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
             checkbox.addEventListener('change', (e) => {
-                const memberId = parseInt(e.target.closest('.share-member-item').getAttribute('data-member-id'));
+                const memberId = e.target.closest('.share-member-item').getAttribute('data-member-id');
                 toggleMemberSelection(memberId);
             });
         });
@@ -339,10 +398,14 @@
 
     // Toggle member selection
     function toggleMemberSelection(memberId) {
-        if (selectedMembers.includes(memberId)) {
-            selectedMembers = selectedMembers.filter(id => id !== memberId);
+        // memberId를 문자열로 정규화하여 비교
+        const memberIdStr = String(memberId);
+        const isSelected = selectedMembers.some(id => String(id) === memberIdStr);
+        
+        if (isSelected) {
+            selectedMembers = selectedMembers.filter(id => String(id) !== memberIdStr);
         } else {
-            selectedMembers = [...selectedMembers, memberId];
+            selectedMembers = [...selectedMembers, memberIdStr];
         }
         renderMembersList();
         updateSelectedPreview();
@@ -369,7 +432,8 @@
         shareSelectedPreview.style.display = 'block';
         shareSelectedCount.textContent = `${selectedMembers.length}명 선택됨`;
 
-        const allMembers = organizations.flatMap(org => org.members);
+        // 중복 제거된 전체 멤버 목록 사용
+        const allMembers = uniqueMembers.length > 0 ? uniqueMembers : organizations.flatMap(org => org.members);
         shareSelectedMembersList.innerHTML = selectedMembers.map(memberId => {
             const member = allMembers.find(m => m.id === memberId);
             if (!member) return '';
@@ -388,7 +452,7 @@
         shareSelectedMembersList.querySelectorAll('.btn-remove-member').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                const memberId = parseInt(btn.getAttribute('data-member-id'));
+                const memberId = btn.getAttribute('data-member-id');
                 toggleMemberSelection(memberId);
             });
         });
@@ -458,14 +522,15 @@
     function handleShare() {
         if (selectedMembers.length === 0) return;
 
-        // Callback to parent
-        if (window.ShareModal && window.ShareModal.onShare) {
-            window.ShareModal.onShare(selectedMembers);
-        }
+        // 선택한 멤버의 전체 정보 가져오기
+        const allMembers = uniqueMembers.length > 0 ? uniqueMembers : organizations.flatMap(org => org.members);
+        const selectedMemberDetails = selectedMembers.map(memberId => {
+            return allMembers.find(m => String(m.id) === String(memberId));
+        }).filter(member => member !== undefined); // undefined 제거
 
-        // Show success message
-        if (window.notyf) {
-            window.notyf.success(`${selectedMembers.length}명에게 공유되었습니다.`);
+        // Callback to parent (멤버 ID와 전체 정보 모두 전달)
+        if (window.ShareModal && window.ShareModal.onShare) {
+            window.ShareModal.onShare(selectedMembers, selectedMemberDetails);
         }
 
         closeModal();
@@ -515,7 +580,8 @@
 
     // Get all members from all organizations (helper for external use)
     function getAllMembers() {
-        return organizations.flatMap(org => org.members);
+        // 중복 제거된 전체 멤버 목록 반환
+        return uniqueMembers.length > 0 ? uniqueMembers : organizations.flatMap(org => org.members);
     }
 
     // Export to window
