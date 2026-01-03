@@ -321,3 +321,26 @@ class ConversationMemory(models.Model):
     
     def __str__(self):
         return f"ConversationMemory(chat_sid={self.chat_sid}, chat_room_id={self.chat_room_id}, user_id={self.user_id})"
+
+class RunpodJob(models.Model):
+    """
+    Runpod 작업 모델
+    단일 row만 사용하는 설정 테이블
+    url을 primary key로 사용 (단일 컬럼)
+    """
+    url = models.URLField(max_length=500, primary_key=True, db_column='url')
+
+    class Meta:
+        db_table = 'zs_runpod'
+
+    @classmethod
+    def get_url(cls):
+        """현재 설정된 URL 반환 (캐시 사용 권장)"""
+        obj = cls.objects.first()
+        return obj.url if obj else None
+
+    @classmethod
+    def set_url(cls, new_url):
+        """URL 업데이트 (단일 row 유지)"""
+        cls.objects.all().delete()
+        return cls.objects.create(url=new_url)
