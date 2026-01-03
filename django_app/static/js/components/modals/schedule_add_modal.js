@@ -10,7 +10,7 @@
   let sharedEmails = [];
   let prefillDate = null;
 
-  let googleCalendarsForSelect = [];
+  let availableCalendarsForSelect = [];
 
   let customRepeatInterval = 1;
   let customRepeatUnit = 'week';
@@ -52,6 +52,7 @@
   const repeatEndDateInput = document.getElementById('repeatEndDate');
   const repeatEndCountInput = document.getElementById('repeatEndCount');
   const customRepeatSummary = document.getElementById('customRepeatSummary');
+  const calendarAddInlineBtn = document.getElementById('openCalendarAddInlineBtn');
 
   // ✅ 이거 하나만 선언 (중복 금지)
   const targetCalendarSelect = document.getElementById('targetCalendarSelect');
@@ -132,8 +133,8 @@
 
     // ✅ select 클릭/포커스 때도 다시 로드 (모달 이벤트가 안 잡혀도 커버)
     if (targetCalendarSelect) {
-      targetCalendarSelect.addEventListener('focus', loadGoogleCalendarsForTargetSelect);
-      targetCalendarSelect.addEventListener('click', loadGoogleCalendarsForTargetSelect);
+      targetCalendarSelect.addEventListener('focus', loadUserCalendarsForTargetSelect);
+      targetCalendarSelect.addEventListener('click', loadUserCalendarsForTargetSelect);
     }
 
     // click outside dropdown
@@ -141,26 +142,35 @@
       if (scheduleNoteSearchInput && scheduleNoteDropdown) {
             if (!scheduleNoteSearchInput.contains(e.target) && 
                 !scheduleNoteDropdown.contains(e.target)) {
-          showNoteDropdown = false;
-          scheduleNoteDropdown.style.display = 'none';
-        }
+        showNoteDropdown = false;
+        scheduleNoteDropdown.style.display = 'none';
       }
+     }
     });
 
-    // Load notes
+    document.addEventListener('calendar:add', async () => {
+      await loadUserCalendarsForTargetSelect();
+    });
+
+    if (calendarAddInlineBtn) {
+      calendarAddInlineBtn.addEventListener('click', () => {
+        if (window.CalendarAddModal && window.CalendarAddModal.open) {
+          window.CalendarAddModal.open();
+        } else if (window.Modal) {
+          window.Modal.open('calendarAddModal');
+        }
+      });
+    }
+
+    loadUserCalendarsForTargetSelect();
     loadNotes();
   }
 
-  async function loadGoogleCalendarsForTargetSelect() {
+  async function loadUserCalendarsForTargetSelect() {
     if (!targetCalendarSelect) return;
 
-    console.log('[ScheduleAddModal] loadGoogleCalendarsForTargetSelect called');
-
     try {
-      const url = `${API_BASE}/api/google-calendar/calendars/`;
-      console.log('[ScheduleAddModal] fetching:', url);
-
-      const res = await fetch(url, {
+      const res = await fetch('/api/calendars/', {
         method: 'GET',
         credentials: 'same-origin',
         headers: {
@@ -169,24 +179,18 @@
         },
       });
 
-      console.log('[ScheduleAddModal] calendars status:', res.status);
-
       if (!res.ok) {
-        googleCalendarsForSelect = [];
-        renderTargetCalendarOptions();
-        return;
+        availableCalendarsForSelect = [];
+      } else {
+        const data = await res.json();
+        availableCalendarsForSelect = Array.isArray(data?.results) ? data.results : (Array.isArray(data) ? data : []);
       }
-
-      const data = await res.json();
-      googleCalendarsForSelect = data.results || data || [];
-      console.log('[ScheduleAddModal] calendars payload:', googleCalendarsForSelect);
-
-      renderTargetCalendarOptions();
     } catch (err) {
-      console.error('[ScheduleAddModal] calendars fetch error:', err);
-      googleCalendarsForSelect = [];
-      renderTargetCalendarOptions();
+      console.error('[ScheduleAddModal] user calendar fetch error:', err);
+      availableCalendarsForSelect = [];
     }
+
+    renderTargetCalendarOptions();
   }
 
   function renderTargetCalendarOptions() {
@@ -194,34 +198,28 @@
 
     targetCalendarSelect.innerHTML = '';
 
-    const localOpt = document.createElement('option');
-    localOpt.value = 'local';
-    localOpt.textContent = '내 일정(웹 캘린더)';
-    localOpt.selected = true;
-    targetCalendarSelect.appendChild(localOpt);
-
-    if (!googleCalendarsForSelect || googleCalendarsForSelect.length === 0) {
+    if (!availableCalendarsForSelect.length) {
+      const placeholder = document.createElement('option');
+      placeholder.value = '';
+      placeholder.textContent = '등록된 캘린더가 없습니다';
+      targetCalendarSelect.appendChild(placeholder);
+      targetCalendarSelect.disabled = true;
       return;
     }
 
-    const selected = googleCalendarsForSelect.filter(c => !!c.selected);
-    const unselected = googleCalendarsForSelect.filter(c => !c.selected);
-    const ordered = [...selected, ...unselected];
+    targetCalendarSelect.disabled = false;
 
-    ordered.forEach(cal => {
-      const calendarId = cal.calendar_id || cal.email || cal.id;
-      if (!calendarId) return;
-
-      const name = cal.name || cal.summary || 'Google Calendar';
-
+    availableCalendarsForSelect.forEach((calendar, index) => {
       const opt = document.createElement('option');
-      opt.value = `google:${String(calendarId)}`;
-      opt.textContent = cal.selected ? name : `${name} (미선택)`;
-
+      opt.value = calendar.id;
+      opt.textContent = calendar.source_type === 'google'
+        ? `${calendar.name || 'Google Calendar'} (Google)`
+        : (calendar.name || '내 캘린더');
+      if (index === 0) {
+        opt.selected = true;
+      }
       targetCalendarSelect.appendChild(opt);
     });
-
-    console.log('[ScheduleAddModal] renderTargetCalendarOptions done. option count:', targetCalendarSelect.options.length);
   }
 
   function handleModalOpen(e) {
@@ -231,34 +229,56 @@
 
     console.log('[ScheduleAddModal] modal open detected:', openedId);
 
+    // 항상 초기화 먼저
+    resetForm();
+
     const urlParams = new URLSearchParams(window.location.search);
     const dateParam = urlParams.get('date') || prefillDate;
 
     if (dateParam) {
       prefillDate = dateParam;
+      if (scheduleIsAllDay) {
+        scheduleIsAllDay.checked = true;
+        handleAllDayChange({ target: scheduleIsAllDay });
+      }
       if (scheduleStartDate) {
-          scheduleStartDate.value = dateParam;
+        scheduleStartDate.value = dateParam;
       }
       if (scheduleEndDate) {
-          scheduleEndDate.value = dateParam;
+        scheduleEndDate.value = dateParam;
       }
+      if (scheduleStartTime) scheduleStartTime.value = '';
+      if (scheduleEndTime) scheduleEndTime.value = '';
     } else {
-      // Default to today
-      const today = new Date().toISOString().split('T')[0];
-      if (scheduleStartDate) scheduleStartDate.value = today;
-      if (scheduleEndDate) scheduleEndDate.value = today;
-    }
-    
-    // Reset form
-    resetForm();
+      if (scheduleIsAllDay) {
+        scheduleIsAllDay.checked = false;
+        handleAllDayChange({ target: scheduleIsAllDay });
+      }
 
-    if (scheduleIsAllDay) handleAllDayChange({ target: scheduleIsAllDay });
+      const now = new Date();
+      const start = new Date(now.getTime() + 60 * 60 * 1000);
+      const end = new Date(start.getTime() + 60 * 60 * 1000);
+
+      const startDateStr = start.toISOString().split('T')[0];
+      const endDateStr = end.toISOString().split('T')[0];
+      const startTimeStr = start.toTimeString().slice(0, 5);
+      const endTimeStr = end.toTimeString().slice(0, 5);
+
+      if (scheduleStartDate) scheduleStartDate.value = startDateStr;
+      if (scheduleEndDate) scheduleEndDate.value = endDateStr;
+      if (scheduleStartTime) scheduleStartTime.value = startTimeStr;
+      if (scheduleEndTime) scheduleEndTime.value = endTimeStr;
+    }
+
+    if (scheduleIsAllDay && !scheduleIsAllDay.checked) {
+      handleAllDayChange({ target: scheduleIsAllDay });
+    }
 
     if (scheduleRepeatSelect) handleRepeatTypeChange({ target: scheduleRepeatSelect });
     updateCustomRepeatSummary();
 
     // ✅ 여기서도 로드
-    loadGoogleCalendarsForTargetSelect();
+    loadUserCalendarsForTargetSelect();
   }
 
   function handleModalClose(e) {
@@ -301,7 +321,14 @@
       scheduleAddModalContainer.classList.add('modal-medium');
     }
 
-    if (targetCalendarSelect) targetCalendarSelect.value = 'local';
+    if (targetCalendarSelect) {
+      const firstOption = targetCalendarSelect.querySelector('option');
+      if (firstOption) {
+        targetCalendarSelect.value = firstOption.value;
+      } else {
+        targetCalendarSelect.value = '';
+      }
+    }
   }
 
   // Load notes
@@ -388,7 +415,10 @@
     if (scheduleStartTime) scheduleStartTime.style.display = isAllDay ? 'none' : 'block';
     if (scheduleEndTime) scheduleEndTime.style.display = isAllDay ? 'none' : 'block';
 
-    if (!isAllDay) {
+    if (isAllDay) {
+      if (scheduleStartTime) scheduleStartTime.value = '00:00';
+      if (scheduleEndTime) scheduleEndTime.value = '23:59';
+    } else {
       if (scheduleStartTime && !scheduleStartTime.value) scheduleStartTime.value = '09:00';
       if (scheduleEndTime && !scheduleEndTime.value) scheduleEndTime.value = '18:00';
     }
@@ -549,23 +579,55 @@
     const formData = new FormData(scheduleAddForm);
     const isAllDay = scheduleIsAllDay?.checked || false;
     
-    // Build schedule data
     const repeatType = scheduleRepeatSelect?.value || 'none';
 
-    // Build custom repeat data
-    const customRepeatData = repeatType === 'custom' ? {
-      custom_repeat_interval: customRepeatIntervalInput?.value || 1,
-      custom_repeat_unit: customRepeatUnitSelect?.value || 'week',
-      custom_repeat_week_days: selectedWeekDays,
-      custom_repeat_end_type: repeatEndType,
-      custom_repeat_end_date: repeatEndDateInput?.value || null,
-      custom_repeat_end_count: repeatEndCountInput ? (parseInt(repeatEndCountInput.value) || 10) : 10,
-    } : {};
+    let recurrencePayload = null;
+    if (repeatType !== 'none') {
+      const freqMap = {
+        daily: 'DAILY',
+        weekly: 'WEEKLY',
+        monthly: 'MONTHLY',
+        yearly: 'YEARLY',
+        custom: customRepeatUnitSelect?.value === 'year' ? 'YEARLY'
+          : customRepeatUnitSelect?.value === 'month' ? 'MONTHLY'
+          : customRepeatUnitSelect?.value === 'day' ? 'DAILY'
+          : 'WEEKLY',
+      };
+
+      const baseFreq = repeatType === 'custom'
+        ? (customRepeatUnitSelect?.value || 'week')
+        : repeatType;
+
+      const untilStr = repeatEndType === 'date' && repeatEndDateInput?.value
+        ? `${repeatEndDateInput.value}T23:59:59`
+        : null;
+
+      const countValue = repeatEndType === 'count'
+        ? (repeatEndCountInput ? parseInt(repeatEndCountInput.value || '10', 10) : 10)
+        : null;
+
+      const monthDay = scheduleStartDate?.value
+        ? new Date(scheduleStartDate.value).getDate()
+        : null;
+
+      recurrencePayload = {
+        freq: freqMap[baseFreq] || freqMap.weekly,
+        interval: repeatType === 'custom'
+          ? parseInt(customRepeatIntervalInput?.value || '1', 10)
+          : 1,
+        week_days: (repeatType === 'weekly' || baseFreq === 'week') ? selectedWeekDays : [],
+        month_days: baseFreq === 'month' && monthDay ? [monthDay] : [],
+        until: untilStr,
+        count: countValue,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Seoul',
+      };
+    }
 
     const scheduleData = {
       title: scheduleTitleInput?.value || '',
       description: scheduleDescriptionInput?.value || '',
       location: scheduleLocationInput?.value || '',
+      is_all_day: isAllDay,
       start_datetime: isAllDay
         ? `${scheduleStartDate?.value || ''}T00:00:00`
         : `${scheduleStartDate?.value || ''}T${scheduleStartTime?.value || '00:00'}:00`,
@@ -574,11 +636,10 @@
         : `${scheduleEndDate?.value || ''}T${scheduleEndTime?.value || '00:00'}:00`,
       type: scheduleTypeSelect?.value || 'experiment',
       status: scheduleStatusSelectAdd?.value || 'scheduled',
-      repeat: repeatType,
+      recurrence: recurrencePayload,
       notification: scheduleNotificationSelect?.value || 'none',
       linked_note_id: scheduleLinkedNoteId?.value || null,
       shared_emails: sharedEmails,
-      ...customRepeatData,
     };
 
     // Validation
@@ -596,7 +657,13 @@
       return;
   }
 
-    const target = targetCalendarSelect ? targetCalendarSelect.value : 'local';
+    const selectedCalendarId = targetCalendarSelect ? targetCalendarSelect.value : '';
+    if (!selectedCalendarId) {
+      if (window.notyf) {
+        window.notyf.error('캘린더를 선택해주세요.');
+      }
+      return;
+    }
 
     try {
       const response = await fetch(`${API_BASE}/api/schedules/`, {
@@ -606,7 +673,7 @@
           'X-CSRFToken': getCsrfToken(),
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ ...scheduleData, target_calendar: target }),
+        body: JSON.stringify({ ...scheduleData, calendar_id: parseInt(selectedCalendarId, 10) || selectedCalendarId }),
       });
 
       if (response.ok) {

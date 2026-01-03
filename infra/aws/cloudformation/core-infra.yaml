@@ -188,7 +188,7 @@ Resources:
           Value: "user-file-uploads"
 
   # =========================
-  # S3 버킷 정책 (프로필 이미지 공개 읽기 허용)
+  # S3 버킷 정책 (프로필 이미지 및 시뮬레이션 파일 공개 읽기 허용)
   # =========================
   UserUploadBucketPolicy:
     Type: AWS::S3::BucketPolicy
@@ -204,6 +204,13 @@ Resources:
             Action:
               - s3:GetObject
             Resource: !Sub "arn:aws:s3:::${UserUploadBucket}/profiles/*"
+          # simulations/* 경로의 파일에 대한 공개 읽기 권한 (runpod 업로드 파일 접근용)
+          - Sid: PublicReadSimulations
+            Effect: Allow
+            Principal: "*"
+            Action:
+              - s3:GetObject
+            Resource: !Sub "arn:aws:s3:::${UserUploadBucket}/simulations/*"
 
   # =========================
   # S3 버킷 폴더 생성 (Neo4j 데이터용) - Custom Resource 사용

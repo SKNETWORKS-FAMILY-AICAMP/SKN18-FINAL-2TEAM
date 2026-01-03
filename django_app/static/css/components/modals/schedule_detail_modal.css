@@ -64,6 +64,14 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.schedule-status-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #6b7280;
+    letter-spacing: 0.02em;
 }
 
 .schedule-status-select {

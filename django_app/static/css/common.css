@@ -33,6 +33,38 @@
 }
 
 /* ============================================
+   Layout Foundations
+   ============================================ */
+html,
+body {
+    height: 100%;
+}
+
+body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--color-bg-gray-50, #f9fafb);
+    color: var(--color-text-primary, #111827);
+}
+
+.main-layout {
+    flex: 1;
+    display: flex;
+    min-height: 0;
+    width: 100%;
+}
+
+.main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    width: 100%;
+    background: var(--color-bg-gray-50, #f9fafb);
+}
+
+/* ============================================
    Common Scrollbar Styles
    ============================================ */
 
@@ -618,8 +650,12 @@
    ============================================ */
 
 div:where(.swal2-icon) {
-    width: 3.3em;
-    height: 3.3em;
+    width: 5em;
+    height: 5em;
+}
+
+div:where(.swal2-container) {
+    z-index: 12000 !important;
 }
 
 div:where(.swal2-icon) .swal2-icon-content {
@@ -662,4 +698,3 @@ div:where(.swal2-container) div:where(.swal2-html-container) {
     word-wrap: break-word !important;
     white-space: normal !important;  /* 긴 텍스트 줄바꿈 */
 }
-

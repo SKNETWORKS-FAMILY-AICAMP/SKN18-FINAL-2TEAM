@@ -3,8 +3,10 @@ S3 유틸리티 모듈
 Django 앱에서 파일을 S3에 업로드하는 공통 함수들
 """
 import os
+import uuid
 import boto3
 from pathlib import Path
+from datetime import datetime
 from typing import Optional, Tuple
 from botocore.exceptions import ClientError
 from django.core.files.uploadedfile import UploadedFile
@@ -148,4 +150,31 @@ def generate_s3_key(prefix: str, user_id: str, filename: str, use_email: bool = 
         file_name = f'{file_name}{file_ext}'
     
     return f'{prefix}/{user_id}/{file_name}'
+
+
+def generate_note_attachment_s3_key(user_id: str, original_filename: str) -> str:
+    """
+    노트 첨부 파일용 S3 키 생성
+    형식: notes/attatchment/u/{user_id}/dt={날짜}/{uuid}_{origFilename}
+    
+    Args:
+        user_id: 사용자 ID
+        original_filename: 원본 파일명
+    
+    Returns:
+        S3 키 (경로)
+    """
+    # 날짜 형식: YYYYMMDD
+    date_str = datetime.now().strftime('%Y%m%d')
+    
+    # UUID 생성
+    file_uuid = str(uuid.uuid4())
+    
+    # 원본 파일명에서 특수문자 제거 (경로 보안)
+    safe_filename = ''.join(c for c in original_filename if c.isalnum() or c in ('_', '-', '.'))
+    
+    # S3 키 생성
+    s3_key = f'notes/attatchment/u/{user_id}/dt={date_str}/{file_uuid}_{safe_filename}'
+    
+    return s3_key
 
