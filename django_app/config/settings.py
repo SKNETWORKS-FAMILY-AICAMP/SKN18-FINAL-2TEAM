@@ -68,6 +68,8 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "apps.account.middleware.UserActivityLoggingMiddleware",
+    "apps.account.middleware.SessionTimeoutMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -166,11 +168,28 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'uploads'
 
+# File upload settings
+# 1GB 파일 업로드 지원을 위한 설정
+DATA_UPLOAD_MAX_MEMORY_SIZE = 1024 * 1024 * 1024  # 1GB (기본값: 2.5MB)
+FILE_UPLOAD_MAX_MEMORY_SIZE = 1024 * 1024 * 1024  # 1GB (기본값: 2.5MB)
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 10000  # 최대 필드 수 (기본값: 1000)
+
 # 인증 관련 설정
 LOGIN_URL = 'accounts:login'
 LOGIN_REDIRECT_URL = 'dashboard:dashboard'
 LOGOUT_REDIRECT_URL = 'accounts:login'
 AUTH_USER_MODEL = 'account.CustomUser'
+
+# 기본 세션 만료 설정
+SESSION_COOKIE_AGE = 60 * 60  # 기본 세션 쿠키 만료 (1시간)
+SESSION_SAVE_EVERY_REQUEST = False
+SESSION_REFRESH_SECONDS = 60 * 60  # 활동 시마다 연장할 시간
+SESSION_MAX_IDLE_SECONDS = 3 * 60 * 60  # 최대 무활동 허용 시간
+
+# # 테스트(예: 10초 후 만료, 5초마다 연장) 시 아래 값으로 임시 대체
+# SESSION_COOKIE_AGE = 10
+# SESSION_REFRESH_SECONDS = 5
+# SESSION_MAX_IDLE_SECONDS = 10
 
 
 # Default primary key field type
@@ -198,7 +217,15 @@ X_FRAME_OPTIONS = "SAMEORIGIN"
 # ───────────────────────────────────
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
-GOOGLE_REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI", "")
+
+# 용도별 리디렉션 URI
+GOOGLE_REDIRECT_URIS = {
+    'calendar': os.getenv("GOOGLE_CALENDAR_REDIRECT_URI", "http://localhost:8000/schedule/google/oauth2/callback/"),
+    'profile': os.getenv("GOOGLE_PROFILE_REDIRECT_URI", "http://localhost:8000/accounts/google/login/callback/"),
+}
+
+# 기존 호환성 유지
+GOOGLE_REDIRECT_URI = GOOGLE_REDIRECT_URIS.get('calendar', os.getenv("GOOGLE_REDIRECT_URI", ""))
 
 GOOGLE_CALENDAR_SCOPE = os.getenv(
     "GOOGLE_CALENDAR_SCOPE",

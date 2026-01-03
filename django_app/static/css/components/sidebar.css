@@ -1,6 +1,9 @@
 .sidebar-container {
     display: flex;
     height: 100%;
+    width: 4rem;
+    flex-shrink: 0;
+    position: relative;
 }
 
 /* Sidebar Rail - matching React: w-16 bg-white border-r border-gray-200 flex flex-col */
@@ -108,7 +111,8 @@
 }
 
 /* 프로필 버튼에는 span이 없으므로 이미지만 표시 */
-.profile-section .sidebar-item span {
+.sidebar-bottom .profile-section .sidebar-item span,
+.sidebar-rail .profile-section .sidebar-item span {
     display: none; /* 프로필 버튼에는 span이 없으므로 숨김 */
 }
 
@@ -147,5 +151,4 @@
 .sidebar-item.disabled span {
     opacity: 0.5;
 }
-
 

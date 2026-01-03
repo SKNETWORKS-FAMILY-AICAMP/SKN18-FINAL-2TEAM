@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}내 조직 관리{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/pages/organization.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="organization-container">
+    <div class="organization-view">
+        <div class="organization-wrapper">
+            <div class="organization-main">
+                <!-- Fixed Header Area -->
+                <div class="org-header">
+                    <div>
+                        <h1>내 조직</h1>
+                        <p>조직을 관리하고 멤버를 초대하세요.</p>
+                    </div>
+                    <button id="createOrgBtn" class="org-create-btn">
+                        <i class="fa fa-plus"></i>
+                        새 조직 만들기
+                    </button>
+                </div>
+
+                <!-- Scrollable Content Area -->
+                <div class="organization-content">
+                    <div id="organizationsList"></div>
+                </div>
+            </div>
+            
+            <!-- 우측 사이드바 - 초대 목록 -->
+            <div class="invitations-sidebar" id="invitationsSidebar">
+                <div class="invitations-sidebar-header">
+                    <h3>받은 초대</h3>
+                    <button class="btn-close-sidebar" id="btnCloseInvitationsSidebar">
+                        <i class="fa fa-times"></i>
+                    </button>
+                </div>
+
+                <div class="invitations-sidebar-content" id="invitationsSidebarContent">
+                    <div id="invitationsList" class="org-invitations-list">
+                        <div class="org-invitations-loading">로딩 중...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- 조직 생성 모달 분리 - 컴포넌트 include -->
+{% include 'components/modals/organization_create_modal.html' %}
+<!-- 멤버 추가 모달 -->
+{% include 'components/modals/organization_add_member_modal.html' %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/pages/organization.js' %}"></script>
+{% endblock %}
+

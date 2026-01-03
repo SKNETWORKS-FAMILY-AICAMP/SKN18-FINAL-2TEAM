@@ -6,7 +6,9 @@
 }
 
 /* Profile Section (Sidebar) */
-.profile-section {
+/* 사이드바 내부의 profile-section만 스타일링 (프로필 페이지와 충돌 방지) */
+.sidebar-bottom .profile-section,
+.sidebar-rail .profile-section {
     position: relative;
     display: block;
     visibility: visible;
@@ -38,7 +40,8 @@
 }
 
 /* Profile Button (Sidebar) */
-.profile-section .sidebar-item {
+.sidebar-bottom .profile-section .sidebar-item,
+.sidebar-rail .profile-section .sidebar-item {
     width: 100%;
     display: flex;
     flex-direction: column;
@@ -58,12 +61,14 @@
     z-index: 1;
 }
 
-.profile-section .sidebar-item:hover {
+.sidebar-bottom .profile-section .sidebar-item:hover,
+.sidebar-rail .profile-section .sidebar-item:hover {
     background: var(--color-bg-gray-50);
     color: var(--color-primary);
 }
 
-.profile-section .sidebar-item:hover .profile-image {
+.sidebar-bottom .profile-section .sidebar-item:hover .profile-image,
+.sidebar-rail .profile-section .sidebar-item:hover .profile-image {
     border-color: var(--color-primary);
 }
 
@@ -76,13 +81,47 @@
     object-fit: cover;
 }
 
-.profile-section .profile-image {
+.sidebar-bottom .profile-section .profile-image,
+.sidebar-rail .profile-section .profile-image {
     width: 2rem;
     height: 2rem;
     border: none;
     transition: border-color 0.2s;
     display: block;
     flex-shrink: 0;
+}
+
+/* Profile Avatar/Image Placeholder */
+.profile-avatar-placeholder,
+.profile-image-placeholder {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 9999px;
+    background: var(--color-bg-gray-200);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-text-muted);
+    flex-shrink: 0;
+}
+
+.sidebar-bottom .profile-section .profile-image-placeholder,
+.sidebar-rail .profile-section .profile-image-placeholder {
+    width: 2rem;
+    height: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.profile-avatar-placeholder i,
+.profile-image-placeholder i {
+    font-size: 1.25rem;
+}
+
+.sidebar-bottom .profile-section .profile-image-placeholder i,
+.sidebar-rail .profile-section .profile-image-placeholder i {
+    font-size: 1rem;
 }
 
 /* Profile Info (Header only) */
@@ -114,7 +153,8 @@
 
 /* Profile Dropdown */
 .profile-wrapper .profile-dropdown,
-.profile-section .profile-dropdown {
+.sidebar-bottom .profile-section .profile-dropdown,
+.sidebar-rail .profile-section .profile-dropdown {
     position: absolute;
     top: 100%;
     right: 0;
@@ -129,13 +169,15 @@
     display: none;
 }
 
-.profile-section .profile-dropdown {
+.sidebar-bottom .profile-section .profile-dropdown,
+.sidebar-rail .profile-section .profile-dropdown {
     position: fixed;
     z-index: 10000;
 }
 
 .profile-wrapper .profile-dropdown.show,
-.profile-section .profile-dropdown.show {
+.sidebar-bottom .profile-section .profile-dropdown.show,
+.sidebar-rail .profile-section .profile-dropdown.show {
     display: block;
 }
 
@@ -154,7 +196,8 @@
 
 /* Dropdown Header - base styles in common.css */
 .profile-wrapper .profile-dropdown .dropdown-header,
-.profile-section .profile-dropdown .dropdown-header {
+.sidebar-bottom .profile-section .profile-dropdown .dropdown-header,
+.sidebar-rail .profile-section .profile-dropdown .dropdown-header {
     padding: 0.75rem 1rem;
     border-bottom: 1px solid var(--color-bg-gray-100);
 }
@@ -163,7 +206,8 @@
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
-    .profile-section .profile-dropdown {
+    .sidebar-bottom .profile-section .profile-dropdown,
+    .sidebar-rail .profile-section .profile-dropdown {
         width: 14rem;
     }
 }

@@ -24,6 +24,7 @@ urlpatterns = [
 
     # FullCalendar/프론트가 읽는 구글 이벤트
     path("api/google-events/", service.google_events_api, name="google_events_api"),
+    path("api/google-events/sync/", service.google_events_sync, name="google_events_sync"),
 
     # 이벤트 CRUD
     path("api/google-events/create/", service.google_event_create, name="google_event_create"),

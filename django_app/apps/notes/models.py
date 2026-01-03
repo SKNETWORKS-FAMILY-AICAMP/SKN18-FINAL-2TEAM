@@ -16,12 +16,20 @@ class Note(models.Model):
     note_sid = models.AutoField(primary_key=True, db_column='note_sid')
     title = models.CharField(max_length=500, db_column='title')
     content = models.TextField(null=True, blank=True, db_column='content')
+    content_preview = models.CharField(
+        max_length=200,
+        null=True,
+        blank=True,
+        db_column='content_preview',
+        help_text='HTML 태그가 제거된 텍스트 미리보기 (최대 200자)'
+    )
     status = models.CharField(
         max_length=1,
         choices=STATUS_CHOICES,
         default='E',
         db_column='status'
     )
+    is_public = models.BooleanField(default=False, db_column='is_public')
     created_at = models.DateTimeField(auto_now_add=True, db_column='created_at')
     created_id = models.CharField(max_length=60, db_column='created_id')
     updated_at = models.DateTimeField(auto_now=True, db_column='updated_at')
@@ -73,6 +81,13 @@ class NoteComment(models.Model):
     노트 댓글 모델
     """
     
+    # 상태 선택지
+    STATUS_CHOICES = [
+        ('E', '사용'),
+        ('D', 'Disabled'),
+        ('R', 'Removed'),
+    ]
+    
     comment_sid = models.AutoField(primary_key=True, db_column='comment_sid')
     note = models.ForeignKey(
         Note,
@@ -88,6 +103,12 @@ class NoteComment(models.Model):
     )
     comment_text = models.TextField(db_column='comment_text')
     position_top = models.SmallIntegerField(default=0, db_column='position_top')
+    status = models.CharField(
+        max_length=1,
+        choices=STATUS_CHOICES,
+        default='E',
+        db_column='status'
+    )
     created_at = models.DateTimeField(auto_now_add=True, db_column='created_at')
     created_id = models.CharField(max_length=60, db_column='created_id')
     updated_at = models.DateTimeField(auto_now=True, db_column='updated_at')
