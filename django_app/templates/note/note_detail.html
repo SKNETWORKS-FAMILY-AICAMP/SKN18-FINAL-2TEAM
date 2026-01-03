@@ -78,6 +78,13 @@
                             <!-- Attachments will be rendered here -->
                         </div>
                     </div>
+
+                    <!-- Delete Button Section -->
+                    <div class="note-delete-section">
+                        <button class="btn-delete-note" id="btnDeleteNote">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -133,6 +140,6 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/pages/note_detail.js' %}"></script>
 <script src="{% static 'js/components/modals/share_modal.js' %}"></script>
+<script src="{% static 'js/pages/note_detail.js' %}"></script>
 {% endblock %}

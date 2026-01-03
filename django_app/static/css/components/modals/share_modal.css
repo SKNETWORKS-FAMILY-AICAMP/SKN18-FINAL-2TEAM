@@ -318,6 +318,9 @@
 .share-empty-state {
     text-align: center;
     padding: 3rem 1rem;
+    display: flex;
+    align-items: center;
+    flex-direction: column;
 }
 
 .share-empty-state i {

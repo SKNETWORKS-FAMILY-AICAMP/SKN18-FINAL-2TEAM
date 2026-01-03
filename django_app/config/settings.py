@@ -168,6 +168,12 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'uploads'
 
+# File upload settings
+# 1GB 파일 업로드 지원을 위한 설정
+DATA_UPLOAD_MAX_MEMORY_SIZE = 1024 * 1024 * 1024  # 1GB (기본값: 2.5MB)
+FILE_UPLOAD_MAX_MEMORY_SIZE = 1024 * 1024 * 1024  # 1GB (기본값: 2.5MB)
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 10000  # 최대 필드 수 (기본값: 1000)
+
 # 인증 관련 설정
 LOGIN_URL = 'accounts:login'
 LOGIN_REDIRECT_URL = 'dashboard:dashboard'

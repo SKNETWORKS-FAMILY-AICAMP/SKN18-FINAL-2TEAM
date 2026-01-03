@@ -21,6 +21,13 @@
                 </button>
             </div>
             <div class="header-controls">
+                <!-- My Notes Only Filter -->
+                <div class="filter-checkbox-wrapper">
+                    <label class="filter-checkbox-label">
+                        <input type="checkbox" id="chkMyNotesOnly" class="filter-checkbox" />
+                        <span>내 노트만</span>
+                    </label>
+                </div>
                 <!-- Date Filter -->
                 <div class="date-filter-wrapper">
                     <button class="btn-date-filter" id="btnDateFilter">
@@ -39,7 +46,7 @@
                 <!-- Search Input -->
                 <div class="search-wrapper">
                     <i class="fa-solid fa-search"></i>
-                    <input type="text" placeholder="노트 검색..." class="search-input" id="searchInput" />
+                    <input type="text" placeholder="노트 검색 (제목, 내용, 작성자)..." class="search-input" id="searchInput" />
                 </div>
                 <!-- Reset Button -->
                 <button class="btn-reset" id="btnResetSearch">

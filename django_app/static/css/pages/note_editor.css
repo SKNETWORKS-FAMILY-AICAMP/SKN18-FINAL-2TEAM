@@ -395,9 +395,9 @@
 
 .ckeditor-wrapper .ck.ck-editor__main > .ck-editor__editable {
     min-height: 400px;
-    padding: 1.5rem;
+    padding: 2rem; /* note-content-box의 padding과 동일하게 맞춤 */
     font-size: 1rem;
-    line-height: 1.75;
+    line-height: 1.625; /* note-content-text의 line-height와 동일하게 맞춤 */
     color: #111827;
 }
 
@@ -476,21 +476,78 @@
     color: #1d4ed8;
 }
 
+/* CKEditor Table Styles - note_detail.css와 동일한 스타일 */
+/* detail의 스타일을 기준으로 editor를 맞춤 (detail이 최종 뷰이므로) */
+/* figure.table 스타일 (CKEditor가 figure로 감싸는 경우) - note_detail.css와 동일 */
+.ckeditor-wrapper .ck-content figure.table {
+    margin: 1.5rem 0;
+    overflow-x: auto;
+    /* detail과 동일한 너비 제한 없음 (부모 컨테이너에 맞춤) */
+}
+
+.ckeditor-wrapper .ck-content figure.table table {
+    width: 100%;
+    max-width: 100%; /* detail과 동일하게 최대 너비 제한 */
+    border-collapse: collapse;
+    border: 1px solid #e5e7eb;
+    background: white;
+    margin: 0;
+    table-layout: auto; /* detail과 동일하게 자동 레이아웃 */
+}
+
+.ckeditor-wrapper .ck-content figure.table table td,
+.ckeditor-wrapper .ck-content figure.table table th {
+    padding: 0.75rem;
+    border: 1px solid #e5e7eb;
+    text-align: left;
+    vertical-align: top;
+}
+
+.ckeditor-wrapper .ck-content figure.table table th {
+    background: #f9fafb;
+    font-weight: 600;
+    color: #111827;
+}
+
+.ckeditor-wrapper .ck-content figure.table table tr:nth-child(even) {
+    background: #f9fafb;
+}
+
+.ckeditor-wrapper .ck-content figure.table table tr:hover {
+    background: #f3f4f6;
+}
+
+/* 일반 table 스타일 (figure 없이 사용된 경우) - note_detail.css와 동일 */
 .ckeditor-wrapper .ck-content table {
     width: 100%;
+    max-width: 100%; /* detail과 동일하게 최대 너비 제한 */
     border-collapse: collapse;
-    margin: 1rem 0;
+    border: 1px solid #e5e7eb;
+    background: white;
+    margin: 1.5rem 0;
+    table-layout: auto; /* detail과 동일하게 자동 레이아웃 */
 }
 
 .ckeditor-wrapper .ck-content table td,
 .ckeditor-wrapper .ck-content table th {
     border: 1px solid #e5e7eb;
-    padding: 0.5rem;
+    padding: 0.75rem;
+    text-align: left;
+    vertical-align: top;
 }
 
 .ckeditor-wrapper .ck-content table th {
-    background: #f3f4f6;
+    background: #f9fafb;
     font-weight: 600;
+    color: #111827;
+}
+
+.ckeditor-wrapper .ck-content table tr:nth-child(even) {
+    background: #f9fafb;
+}
+
+.ckeditor-wrapper .ck-content table tr:hover {
+    background: #f3f4f6;
 }
 
 .ckeditor-wrapper .ck-content code {
