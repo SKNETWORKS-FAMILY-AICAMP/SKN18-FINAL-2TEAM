@@ -1,7 +1,9 @@
 // 조직 관리 페이지 JavaScript
 
 let organizations = [];
-let inviteEmails = [''];
+let inviteEmails = [];
+// 조직별 탭 상태 관리 (orgId -> 'members' | 'pending')
+let orgTabs = {};
 
 // CSRF 토큰 가져오기
 function getCsrfToken() {
@@ -101,36 +103,92 @@ function renderOrganizations() {
                     </div>
                 </div>
                 <div class="org-members" id="org-members-${org.id}" style="display:none;">
-                    <div class="org-members-header">
-                        <h3>멤버 목록</h3>
-                        ${org.role === 'owner' ? `
-                            <button class="org-add-member-btn" onclick="openAddMemberModal('${org.id}')">
-                                <i class="fa fa-user-plus"></i>
-                                멤버 초대
-                            </button>
-                        ` : ''}
+                    <!-- Tab Navigation -->
+                    <div class="org-tabs-nav">
+                        <button 
+                            class="org-tab-btn ${(orgTabs[org.id] || 'members') === 'members' ? 'active' : ''}"
+                            onclick="switchOrgTab('${org.id}', 'members')"
+                        >
+                            멤버 목록
+                        </button>
+                        <button 
+                            class="org-tab-btn ${orgTabs[org.id] === 'pending' ? 'active' : ''}"
+                            onclick="switchOrgTab('${org.id}', 'pending')"
+                        >
+                            대기 멤버
+                        </button>
                     </div>
-                    <div class="org-members-list">
-                        ${org.members.map(m => `
-                            <div class="org-member">
-                                <div class="org-member-info-wrapper">
-                                    ${m.avatar ? 
-                                        `<img class="org-avatar" src="${escapeHtml(m.avatar)}" alt="${escapeHtml(m.name)}" />` :
-                                        `<div class="org-avatar org-avatar-placeholder"><i class="fa fa-user"></i></div>`
-                                    }
-                                    <div class="org-member-info">
-                                        <span class="org-member-name">${escapeHtml(m.name)}</span>
-                                        <span class="org-member-email">${escapeHtml(m.email)}</span>
-                                    </div>
-                                </div>
+
+                    <!-- Tab Content -->
+                    ${(orgTabs[org.id] || 'members') === 'members' ? `
+                        <div class="org-tab-content">
+                            <div class="org-members-header">
+                                <h3>멤버 목록</h3>
                                 ${org.role === 'owner' ? `
-                                    <button class="org-remove-member-btn" onclick="handleRemoveMember('${org.id}', '${m.id}', '${escapeHtml(m.name)}')" title="멤버 제거">
-                                        <i class="fa fa-user-minus"></i>
+                                    <button class="org-add-member-btn" onclick="openAddMemberModal('${org.id}')">
+                                        <i class="fa fa-user-plus"></i>
+                                        멤버 초대
                                     </button>
                                 ` : ''}
                             </div>
-                        `).join('')}
-                    </div>
+                            <div class="org-members-list">
+                                ${org.members.map(m => `
+                                    <div class="org-member">
+                                        <div class="org-member-info-wrapper">
+                                            ${m.avatar ? 
+                                                `<img class="org-avatar" src="${escapeHtml(m.avatar)}" alt="${escapeHtml(m.name)}" />` :
+                                                `<div class="org-avatar org-avatar-placeholder"><i class="fa fa-user"></i></div>`
+                                            }
+                                            <div class="org-member-info">
+                                                <span class="org-member-name">${escapeHtml(m.name)}</span>
+                                                <span class="org-member-email">${escapeHtml(m.email)}</span>
+                                            </div>
+                                        </div>
+                                        ${org.role === 'owner' ? `
+                                            <button class="org-remove-member-btn" onclick="handleRemoveMember('${org.id}', '${m.id}', '${escapeHtml(m.name)}')" title="멤버 제거">
+                                                <i class="fa fa-user-minus"></i>
+                                            </button>
+                                        ` : ''}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : `
+                        <div class="org-tab-content">
+                            <div class="org-members-header">
+                                <h3>대기 멤버</h3>
+                                <p class="org-pending-count">${(org.pendingMembers || []).length}명 대기 중</p>
+                            </div>
+                            ${(org.pendingMembers || []).length > 0 ? `
+                                <div class="org-pending-members-list">
+                                    ${(org.pendingMembers || []).map(pending => `
+                                        <div class="org-pending-member">
+                                            <div class="org-pending-member-info">
+                                                <div class="org-pending-icon">
+                                                    <i class="fa fa-envelope"></i>
+                                                </div>
+                                                <div class="org-pending-details">
+                                                    <p class="org-pending-email">${escapeHtml(pending.email)}</p>
+                                                    <p class="org-pending-meta">
+                                                        ${escapeHtml(pending.invitedBy)}님이 초대 • ${escapeHtml(pending.invitedAt)}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <span class="org-pending-badge">대기 중</span>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            ` : `
+                                <div class="org-pending-empty">
+                                    <div class="org-pending-empty-icon">
+                                        <i class="fa fa-envelope"></i>
+                                    </div>
+                                    <p class="org-pending-empty-title">대기 중인 멤버가 없습니다</p>
+                                    <p class="org-pending-empty-subtitle">초대를 보낸 멤버가 여기에 표시됩니다</p>
+                                </div>
+                            `}
+                        </div>
+                    `}
                 </div>
             </div>
         `;
@@ -152,6 +210,18 @@ window.toggleOrgMembers = function(orgId) {
                 btn.textContent = isVisible ? '멤버 보기' : '접기';
             }
         });
+    }
+};
+
+// 조직 탭 전환
+window.switchOrgTab = function(orgId, tab) {
+    orgTabs[orgId] = tab;
+    // 해당 조직의 멤버 섹션만 다시 렌더링
+    renderOrganizations();
+    // 멤버 섹션이 닫혀있으면 열기
+    const section = document.getElementById('org-members-' + orgId);
+    if (section && section.style.display === 'none') {
+        section.style.display = 'block';
     }
 };
 
