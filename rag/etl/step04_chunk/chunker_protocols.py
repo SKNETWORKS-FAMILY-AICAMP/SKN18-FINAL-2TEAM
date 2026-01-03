@@ -610,6 +610,42 @@ def process_file(csv_path: Path) -> None:
                 f"(전체 {total_rows}개 모두 중복)",
                 flush=True,
             )
+            # 새 데이터가 없어도 기존 청크 파일이 있으면 분할 실행
+            # 오늘 날짜의 청크 파일이 없으면 모든 날짜에서 찾기
+            chunk_file_to_split = None
+            if out_path.exists():
+                chunk_file_to_split = out_path
+            else:
+                # 모든 날짜의 청크 파일 검색
+                chunk_files = sorted(OUTPUT_ROOT.glob(f"**/stage=chunked/protocol_chunked_{keyword}.csv"))
+                if chunk_files:
+                    # 가장 최근 파일 사용
+                    chunk_file_to_split = chunk_files[-1]
+                    print(
+                        f"[CHUNK][Protocol.io][{keyword}] 오늘 날짜 청크 파일 없음. "
+                        f"최근 청크 파일 사용: {chunk_file_to_split}",
+                        flush=True,
+                    )
+
+            if chunk_file_to_split and chunk_file_to_split.exists():
+                print(f"[CHUNK][Protocol.io][{keyword}] 기존 청크 파일 분할 시작: {chunk_file_to_split}", flush=True)
+                split_files = split_chunk_file(chunk_file_to_split, keyword, rows_per_file=SPLIT_ROWS_PER_FILE)
+                if split_files:
+                    # 저장 위치 출력 (날짜_시분 디렉토리 포함)
+                    now = datetime.now()
+                    date_str = now.strftime("%Y%m%d")
+                    time_str = now.strftime("%H%M")
+                    date_time_dir = f"{date_str}_{time_str}"
+                    print(
+                        f"[CHUNK][Protocol.io][{keyword}] 분할 완료: {len(split_files)}개 파일 생성 "
+                        f"(저장 위치: {CHUNKS_SPLIT_ROOT / date_time_dir / keyword})",
+                        flush=True,
+                    )
+            else:
+                print(
+                    f"[CHUNK][Protocol.io][{keyword}] 분할할 청크 파일이 없습니다.",
+                    flush=True,
+                )
             return
 
         print(
