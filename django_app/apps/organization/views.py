@@ -33,6 +33,9 @@ def organization_list_api(request):
     ).select_related('organization')
     
     organizations_data = []
+    unique_members_dict = {}  # 중복 제거를 위한 딕셔너리 (user_id -> member_data)
+    user_identifier = str(user.user_id)  # 현재 로그인한 사용자 ID
+    
     for member in member_orgs:
         org = member.organization
         # 사용자의 역할 확인 (소유자인지 멤버인지)
@@ -46,16 +49,52 @@ def organization_list_api(request):
         for mem in members:
             mem_user = mem.user
             if mem_user:
+                mem_user_id_str = str(mem_user.user_id)
+                
+                # 현재 로그인한 사용자는 제외
+                if mem_user_id_str == user_identifier:
+                    continue
+                
                 # 소유자가 아닌 멤버 수 카운트
                 if mem.user_id != org.created_by_user_id:
                     other_members_count += 1
                 
-                members_data.append({
-                    'id': str(mem_user.user_id),
+                member_data = {
+                    'id': mem_user_id_str,
                     'name': mem_user.full_name or mem_user.email,
                     'email': mem_user.email,
                     'avatar': mem_user.img_url or '',
-                })
+                }
+                members_data.append(member_data)
+                
+                # 중복 제거를 위한 unique_members_dict에 추가 (같은 user_id가 여러 조직에 속할 수 있음)
+                # 현재 로그인한 사용자는 제외
+                if mem_user_id_str != user_identifier and mem_user_id_str not in unique_members_dict:
+                    unique_members_dict[mem_user_id_str] = member_data
+        
+        # 대기 멤버 목록 조회 (pending 상태인 초대만)
+        pending_invitations = OrganizationInvitation.objects.filter(
+            organization=org,
+            status=OrganizationInvitation.Status.PENDING
+        )
+        
+        # 초대한 사용자 정보를 한 번에 조회하기 위해 user_id 수집
+        from apps.account.models import CustomUser
+        inviter_user_ids = [inv.invited_by_user_id for inv in pending_invitations]
+        inviters_dict = {}
+        if inviter_user_ids:
+            inviters = CustomUser.objects.filter(user_id__in=inviter_user_ids)
+            inviters_dict = {str(inv.user_id): inv for inv in inviters}
+        
+        pending_members_data = []
+        for invitation in pending_invitations:
+            inviter = inviters_dict.get(invitation.invited_by_user_id)
+            pending_members_data.append({
+                'id': str(invitation.id),
+                'email': invitation.email,
+                'invitedBy': inviter.full_name or inviter.email if inviter else '알 수 없음',
+                'invitedAt': invitation.invited_at.strftime('%Y년 %m월 %d일'),
+            })
         
         organizations_data.append({
             'id': str(org.organization_sid),
@@ -65,11 +104,20 @@ def organization_list_api(request):
             'members': members_data,
             'memberCount': len(members_data),
             'otherMembersCount': other_members_count,  # 소유자를 제외한 멤버 수
+            'pendingMembers': pending_members_data,  # 대기 멤버 목록
         })
+    
+    # 중복 제거된 전체 멤버 목록 (모든 조직에 속한 멤버 중복 제거)
+    # 현재 로그인한 사용자는 제외
+    unique_members = [
+        member for member_id, member in unique_members_dict.items()
+        if member_id != user_identifier
+    ]
     
     return JsonResponse({
         'success': True,
-        'organizations': organizations_data
+        'organizations': organizations_data,
+        'uniqueMembers': unique_members  # 중복 제거된 전체 멤버 목록 (현재 사용자 제외)
     })
 
 
