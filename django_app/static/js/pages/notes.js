@@ -115,8 +115,10 @@ function normalizeApiNote(note) {
         title: note?.title || '제목 없음',
         content: note?.content || '',
         date: note?.date || '',
+        author: note?.author || '',
         shared: typeof note?.shared === 'number' ? note.shared : 0,
         comments: typeof note?.comments === 'number' ? note.comments : 0,
+        isPublic: Boolean(note?.is_public),
         tags: Array.isArray(note?.tags) ? note.tags : [],
     };
 }
@@ -334,6 +336,9 @@ function renderCardView(currentNotes) {
 
     notesGrid.innerHTML = currentNotes.map(note => {
         const previewContent = getNoteContentPreview(note.content);
+        const lockIcon = note.isPublic ? 'fa-lock-open' : 'fa-lock';
+        const lockStateClass = note.isPublic ? 'lock-public' : 'lock-private';
+        const lockTooltip = note.isPublic ? '모두가 검색할 수 있는 공개 노트 입니다' : '비공개 노트 입니다';
         return `
         <div class="note-card" data-note-id="${note.id}">
             <h3 class="note-title">${escapeHtml(note.title)}</h3>
@@ -342,7 +347,13 @@ function renderCardView(currentNotes) {
                 ${note.tags.map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join('')}
             </div>
             <div class="note-footer">
-                <span class="note-date">${note.date}</span>
+                <div class="note-author-date author-date">
+                    ${note.author ? `
+                        <span class="author-label">${escapeHtml(note.author)}</span>
+                        <span class="author-separator">|</span>
+                    ` : ''}
+                    <span class="note-date date-label">${escapeHtml(note.date)}</span>
+                </div>
                 <div class="note-stats">
                     <span class="stat">
                         <i class="fas fa-share-nodes"></i>
@@ -351,6 +362,9 @@ function renderCardView(currentNotes) {
                     <span class="stat">
                         <i class="fas fa-comment-dots"></i>
                         ${note.comments}
+                    </span>
+                    <span class="stat stat-lock ${lockStateClass}" data-tooltip="${lockTooltip}">
+                        <i class="fas ${lockIcon}"></i>
                     </span>
                 </div>
             </div>
@@ -398,7 +412,10 @@ function renderTableView(currentNotes) {
         const rowNumber = startIndex + index + 1;
         const contentLines = note.content.split('\n');
         const firstLine = contentLines[0] || '';
-        const contentPreview = firstLine.length > 50 ? firstLine.substring(0, 50) + '...' : firstLine;
+        const contentPreview = firstLine.length > 100 ? firstLine.substring(0, 100) + '...' : firstLine;
+        const lockIcon = note.isPublic ? 'fa-lock-open' : 'fa-lock';
+        const lockStateClass = note.isPublic ? 'lock-public' : 'lock-private';
+        const lockTooltip = note.isPublic ? '모두가 검색할 수 있는 공개 노트 입니다' : '비공개 노트 입니다';
         
         return `
         <tr data-note-id="${note.id}">
@@ -407,12 +424,18 @@ function renderTableView(currentNotes) {
                 <h4>${escapeHtml(note.title)}</h4>
                 <p>${escapeHtml(contentPreview)}</p>
             </td>
+            <td class="table-cell-author">${escapeHtml(note.author || '-')}</td>
             <td class="table-cell-date">${escapeHtml(note.date)}</td>
             <td class="table-cell-tags">
                 ${note.tags.map(tag => `<span class="meta-tag">${escapeHtml(tag)}</span>`).join('')}
             </td>
             <td class="table-cell-shared">${note.shared}</td>
             <td class="table-cell-comments">${note.comments}</td>
+            <td class="table-cell-visibility">
+                <span class="lock-icon ${lockStateClass}" data-tooltip="${lockTooltip}">
+                    <i class="fas ${lockIcon}"></i>
+                </span>
+            </td>
         </tr>
     `;
     }).join('');
@@ -441,6 +464,7 @@ function filterNotes() {
         filtered = filtered.filter(note => 
             note.title.toLowerCase().includes(query) ||
             note.content.toLowerCase().includes(query) ||
+            (note.author && note.author.toLowerCase().includes(query)) ||
             note.tags.some(tag => tag.toLowerCase().includes(query))
         );
     }

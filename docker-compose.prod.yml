@@ -59,6 +59,9 @@ services:
     ports:
       # ALB를 통해 접근하므로 내부용으로만 사용
       - "8000:8000"
+    volumes:
+      # 모델 파일 영구 저장 (컨테이너 재기동 시에도 유지)
+      - /home/ec2-user/models:/app/models
     restart: unless-stopped
     network_mode: bridge
 

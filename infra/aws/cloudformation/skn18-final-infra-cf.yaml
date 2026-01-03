@@ -118,6 +118,14 @@ Outputs:
     Description: "ETL 데이터 저장용 S3 버킷 이름"
     Value: !GetAtt CoreInfraStack.Outputs.EtlDataBucketName
 
+  UserUploadBucketName:
+    Description: "사용자 업로드 파일 저장용 S3 버킷 이름"
+    Value: !GetAtt CoreInfraStack.Outputs.UserUploadBucketName
+
+  UserUploadBucketArn:
+    Description: "사용자 업로드 파일 저장용 S3 버킷 ARN"
+    Value: !GetAtt CoreInfraStack.Outputs.UserUploadBucketArn
+
   # Protocols Lambda Outputs
   ProtocolsLambdaArnProtein:
     Description: "Protocols ETL Lambda 함수 ARN (Protein)"

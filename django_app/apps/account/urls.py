@@ -14,4 +14,9 @@ urlpatterns = [
     
     # 프로필
     path('profile/', views.profile_view, name='profile'),
+    
+    # Google OAuth (로그인 및 연동)
+    path('google/login/', views.google_login_start, name='google_login_start'),
+    path('google/login/callback/', views.google_profile_callback, name='google_profile_callback'),
+    path('google/link/', views.google_profile_login, name='google_profile_login'),  # 프로필 연동용 (로그인한 사용자)
 ]

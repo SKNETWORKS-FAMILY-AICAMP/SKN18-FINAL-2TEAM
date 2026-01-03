@@ -320,6 +320,21 @@ Resources:
                   - ec2:DescribeInstances
                   - ec2:DescribeInstanceAttribute
                 Resource: "*"
+        # 사용자 업로드 S3 버킷 접근 권한
+        - PolicyName: UserUploadBucketAccessPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                  - s3:DeleteObject
+                  - s3:ListBucket
+                  - s3:GetObjectVersion
+                Resource:
+                  - !Sub "arn:aws:s3:::skn18-file-uploads/*"
+                  - !Sub "arn:aws:s3:::skn18-file-uploads"
 
   AppEc2InstanceProfile:
     Type: AWS::IAM::InstanceProfile
@@ -382,6 +397,10 @@ Resources:
           # 프로젝트 디렉토리 생성
           mkdir -p /home/ec2-user/app
           chown ec2-user:ec2-user /home/ec2-user/app
+          
+          # 모델 파일 영구 저장 디렉토리 생성 (컨테이너 재기동 시에도 유지)
+          mkdir -p /home/ec2-user/models
+          chown ec2-user:ec2-user /home/ec2-user/models
 
           # ========================================
           # ALB Target Group 자동 등록
