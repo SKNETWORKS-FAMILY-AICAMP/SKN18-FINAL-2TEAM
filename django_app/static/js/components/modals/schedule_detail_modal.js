@@ -163,23 +163,57 @@ function renderScheduleDetail(schedule) {
     
     // Date and time
     if (scheduleDateTime) {
+        const isAllDay = schedule.is_all_day === true || schedule.is_all_day === 'Y';
         if (schedule.start_datetime) {
-            const startDate = new Date(schedule.start_datetime);
-            const dateStr = startDate.toLocaleDateString('ko-KR', { 
-                year: 'numeric', 
-                month: '2-digit', 
-                day: '2-digit' 
-            });
-            
-            if (schedule.is_all_day) {
-                scheduleDateTime.textContent = dateStr;
+            if (isAllDay) {
+                const startDateRaw = (schedule.start_datetime || '').split('T')[0];
+                const endDateRaw = (schedule.end_datetime || schedule.start_datetime || '').split('T')[0];
+                const startDisplay = formatDateOnlyFromISO(startDateRaw);
+                const endDisplay = formatDateOnlyFromISO(endDateRaw);
+
+                if (startDisplay && endDisplay && startDisplay !== endDisplay) {
+                    scheduleDateTime.textContent = `${startDisplay} ~ ${endDisplay} · 하루 종일`;
+                } else if (startDisplay) {
+                    scheduleDateTime.textContent = `${startDisplay} · 하루 종일`;
+                } else {
+                    scheduleDateTime.textContent = '날짜 정보 없음';
+                }
             } else {
-                const timeStr = startDate.toLocaleTimeString('ko-KR', { 
-                    hour: '2-digit', 
-                    minute: '2-digit',
-                    hour12: false
+                const startDate = new Date(schedule.start_datetime);
+                const endDate = schedule.end_datetime ? new Date(schedule.end_datetime) : null;
+
+                const startDateStr = startDate.toLocaleDateString('ko-KR', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
                 });
-                scheduleDateTime.textContent = `${dateStr} ${timeStr}`;
+                const endDateStr = endDate
+                    ? endDate.toLocaleDateString('ko-KR', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                      })
+                    : '';
+
+                const startTimeStr = startDate.toLocaleTimeString('ko-KR', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false,
+                });
+                const endTimeStr = endDate
+                    ? endDate.toLocaleTimeString('ko-KR', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: false,
+                      })
+                    : '';
+                const endSegment = endDate
+                    ? `${endDateStr} ${endTimeStr}`.trim()
+                    : '';
+                const startSegment = `${startDateStr} ${startTimeStr}`.trim();
+                scheduleDateTime.textContent = endSegment
+                    ? `${startSegment} ~ ${endSegment}`
+                    : startSegment;
             }
         } else {
             scheduleDateTime.textContent = '날짜 정보 없음';
@@ -324,9 +358,7 @@ function handleLinkedNoteClick() {
     
     const noteId = linkedNoteBtn.getAttribute('data-note-id');
     if (noteId) {
-        if (confirm('노트 페이지로 이동하시겠습니까?')) {
-            window.location.href = `/notes/${noteId}/`;
-        }
+        window.location.href = `/notes/detail/?id=${noteId}`;
     }
 }
 
@@ -352,7 +384,8 @@ function handleShareClick() {
                 loadSharedUsers(selectedScheduleData.id);
             }
         };
-        window.ShareModal.open(selectedScheduleData ? selectedScheduleData.id : null, null, null, '일정 공유');
+        // context를 'schedule'로 지정하여 일정 공유로 처리
+        window.ShareModal.open(selectedScheduleData ? selectedScheduleData.id : null, null, null, '일정 공유', 'schedule');
     } else {
         console.warn('ShareModal not loaded. Please refresh the page.');
         if (window.notyf) {
@@ -421,6 +454,18 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+function formatDateOnlyFromISO(dateString) {
+    if (!dateString) return '';
+    const [year, month, day] = dateString.split('-');
+    if (!year || !month || !day) return dateString || '';
+    const localDate = new Date(`${year}-${month}-${day}T00:00:00`);
+    return localDate.toLocaleDateString('ko-KR', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+    });
 }
 
 // Initialize when DOM is ready

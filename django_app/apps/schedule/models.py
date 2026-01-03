@@ -58,6 +58,15 @@ class Schedule(models.Model):
     # linked_note = models.ForeignKey('notes.Note', on_delete=models.SET_NULL, null=True, blank=True, db_column='linked_note_sid')
     linked_note_sid = models.IntegerField(null=True, blank=True, db_column='linked_note_sid')
 
+    calendar = models.ForeignKey(
+        'UserCalendar',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='schedules',
+        db_column='calendar_sid',
+    )
+
     repeat_type = models.CharField(
         max_length=1, choices=REPEAT_CHOICES, default='N', db_column='repeat_type'
     )
@@ -108,6 +117,65 @@ class Schedule(models.Model):
 
 
 # ============================================================
+# 반복 규칙 (RRULE)
+# ============================================================
+class ScheduleRecurrence(models.Model):
+    class Frequency(models.TextChoices):
+        DAILY = "DAILY", "매일"
+        WEEKLY = "WEEKLY", "매주"
+        MONTHLY = "MONTHLY", "매월"
+        YEARLY = "YEARLY", "매년"
+
+    schedule = models.OneToOneField(
+        Schedule,
+        on_delete=models.CASCADE,
+        related_name="recurrence",
+        db_column="schedule_sid",
+        primary_key=True,
+    )
+
+    freq = models.CharField(max_length=20, choices=Frequency.choices, db_column="freq")
+    interval = models.PositiveIntegerField(default=1, db_column="interval")
+    week_days = models.JSONField(default=list, blank=True, db_column="week_days")
+    month_days = models.JSONField(default=list, blank=True, db_column="month_days")
+    count = models.PositiveIntegerField(null=True, blank=True, db_column="count")
+    until = models.DateTimeField(null=True, blank=True, db_column="until")
+    timezone = models.CharField(max_length=64, default="Asia/Seoul", db_column="timezone")
+    metadata = models.JSONField(default=dict, blank=True, db_column="metadata")
+
+    created_at = models.DateTimeField(auto_now_add=True, db_column="created_at")
+    updated_at = models.DateTimeField(auto_now=True, db_column="updated_at")
+
+    class Meta:
+        db_table = "t_schedule_recurrence"
+
+    def __str__(self):
+        return f"Recurrence({self.schedule_id}, {self.freq})"
+
+
+# ============================================================
+# 반복 예외(스킵/변경)
+# ============================================================
+class ScheduleException(models.Model):
+    recurrence = models.ForeignKey(
+        ScheduleRecurrence,
+        on_delete=models.CASCADE,
+        related_name="exceptions",
+        db_column="recurrence_sid",
+    )
+    exception_date = models.DateField(db_column="exception_date")
+    note = models.CharField(max_length=255, blank=True, db_column="note")
+    created_at = models.DateTimeField(auto_now_add=True, db_column="created_at")
+
+    class Meta:
+        db_table = "t_schedule_exception"
+        unique_together = ("recurrence", "exception_date")
+
+    def __str__(self):
+        return f"{self.recurrence_id} @ {self.exception_date}"
+
+
+# ============================================================
 # ScheduleShare
 # ============================================================
 class ScheduleShare(models.Model):
@@ -142,6 +210,10 @@ class ScheduleShare(models.Model):
 # UserCalendar (웹 캘린더 그룹)
 # ============================================================
 class UserCalendar(models.Model):
+    class Source(models.TextChoices):
+        LOCAL = "local", "로컬"
+        GOOGLE = "google", "Google"
+
     """
     사용자 캘린더 모델
     """
@@ -151,6 +223,13 @@ class UserCalendar(models.Model):
     color = models.CharField(max_length=20, null=True, blank=True, db_column='color')
     is_visible = models.SmallIntegerField(default=1, db_column='is_visible')
     sort_order = models.IntegerField(default=0, db_column='sort_order')
+    source_type = models.CharField(
+        max_length=20,
+        choices=Source.choices,
+        default=Source.LOCAL,
+        db_column='source_type',
+    )
+    external_id = models.CharField(max_length=255, null=True, blank=True, db_column='external_id')
     created_at = models.DateTimeField(auto_now_add=True, db_column='created_at')
     created_id = models.CharField(max_length=60, db_column='created_id')
     updated_at = models.DateTimeField(auto_now=True, db_column='updated_at')
@@ -238,3 +317,48 @@ class SyncedCalendar(models.Model):
 
     def __str__(self):
         return f"{self.summary}"
+
+
+class GoogleSyncedEvent(models.Model):
+    """
+    구글 이벤트와 RDB 일정(Schedule)을 연결하는 캐시 테이블.
+    실제 일정 데이터는 t_schedule에 저장하고 동기화 메타데이터만 별도로 관리한다.
+    """
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="google_synced_events",
+        db_column="user_id",
+    )
+
+    calendar = models.ForeignKey(
+        SyncedCalendar,
+        on_delete=models.CASCADE,
+        related_name="synced_events",
+        db_column="calendar_id",
+    )
+
+    schedule = models.OneToOneField(
+        Schedule,
+        on_delete=models.CASCADE,
+        related_name="google_sync",
+        db_column="schedule_sid",
+    )
+
+    event_id = models.CharField(max_length=255, db_column="event_id")
+    status = models.CharField(max_length=20, default="active", db_column="status")
+    etag = models.CharField(max_length=255, null=True, blank=True, db_column="etag")
+    summary = models.CharField(max_length=255, null=True, blank=True, db_column="summary")
+    raw_payload = models.JSONField(null=True, blank=True, db_column="raw_payload")
+    google_updated = models.DateTimeField(null=True, blank=True, db_column="google_updated")
+
+    created_at = models.DateTimeField(auto_now_add=True, db_column="created_at")
+    updated_at = models.DateTimeField(auto_now=True, db_column="updated_at")
+
+    class Meta:
+        db_table = "t_google_synced_event"
+        unique_together = ("user", "calendar", "event_id")
+
+    def __str__(self):
+        return f"{self.calendar.summary} / {self.event_id}"

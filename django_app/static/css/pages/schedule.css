@@ -242,6 +242,14 @@
     font-size: 0.75rem;
 }
 
+.calendar-name-meta {
+    color: #4b5563;
+}
+
+.calendar-name-meta i {
+    color: #10b981;
+}
+
 .schedule-list-header i.fa-file-lines {
     color: #9ca3af;
     flex-shrink: 0;
@@ -258,6 +266,13 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    justify-content: space-between;
+}
+
+.schedule-badges {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
 }
 
 .schedule-type {
@@ -270,6 +285,24 @@
     color: #374151;
     text-transform: uppercase;
     line-height: 1.2;
+}
+
+.schedule-source-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.625rem;
+    font-weight: 600;
+    padding: 0.25rem 0.5rem;
+    border-radius: 999px;
+    background: #e6f0ff;
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
+    text-transform: uppercase;
+}
+
+.schedule-source-badge i {
+    font-size: 0.625rem;
 }
 
 .status-select {
@@ -893,4 +926,29 @@
 .gc-btn.secondary {
     background: #fff;
     color: #111827;
+}
+.calendar-select-with-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.calendar-add-inline-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    border: 1px solid var(--color-border-gray);
+    border-radius: 0.5rem;
+    background: var(--color-bg-white);
+    color: var(--color-text-secondary);
+    font-size: 0.9rem;
+    transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.calendar-add-inline-btn:hover {
+    background: var(--color-bg-gray-50);
+    border-color: var(--color-text-muted);
+    color: var(--color-text-primary);
 }

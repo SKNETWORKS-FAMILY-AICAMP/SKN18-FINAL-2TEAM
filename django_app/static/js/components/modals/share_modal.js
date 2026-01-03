@@ -11,6 +11,8 @@
     let uniqueMembers = [];  // 중복 제거된 전체 멤버 목록
     let alreadySharedUsers = [];
     let currentNoteId = null;
+    let currentScheduleId = null;
+    let shareContext = 'editor';  // 'editor', 'detail', or 'schedule'
 
     // DOM Elements
     let shareModal = null;
@@ -180,8 +182,8 @@
     }
 
     // Open modal
-    function openModal(noteId, orgs, sharedUsers, title) {
-        console.log('[ShareModal] openModal called with:', { noteId, orgs, sharedUsers, title });
+    async function openModal(resourceId, orgs, sharedUsers, title, context) {
+        console.log('[ShareModal] openModal called with:', { resourceId, orgs, sharedUsers, title, context });
         console.log('[ShareModal] shareModal element:', shareModal);
         console.log('[ShareModal] shareModalTitle element:', shareModalTitle);
         
@@ -192,9 +194,28 @@
             console.log('[ShareModal] Re-queried shareModal:', shareModal);
         }
         
-        currentNoteId = noteId;
+        shareContext = context || 'editor';  // 기본값은 'editor'
+        
+        // context에 따라 resourceId를 적절한 변수에 할당
+        if (shareContext === 'schedule') {
+            currentScheduleId = resourceId;
+            currentNoteId = null;
+        } else {
+            currentNoteId = resourceId;
+            currentScheduleId = null;
+        }
+        
+        console.log('[ShareModal] Set currentNoteId:', currentNoteId, 'currentScheduleId:', currentScheduleId, 'shareContext:', shareContext);
         if (orgs) organizations = orgs;
-        if (sharedUsers) alreadySharedUsers = sharedUsers;
+        if (sharedUsers) {
+            alreadySharedUsers = sharedUsers;
+        } else if (currentNoteId && shareContext !== 'schedule') {
+            // noteId가 있으면 API로 공유된 사용자 목록 가져오기
+            await loadSharedUsers(currentNoteId);
+        } else if (currentScheduleId && shareContext === 'schedule') {
+            // scheduleId가 있으면 API로 공유된 사용자 목록 가져오기
+            await loadSharedScheduleUsers(currentScheduleId);
+        }
         
         // Set title
         if (shareModalTitle && title) {
@@ -222,24 +243,88 @@
         
         // Load organizations if not already loaded or if orgs not provided
         if (!orgs && organizations.length === 0) {
-            loadOrganizations().then(() => {
-                renderOrgTabs();
-                renderMembersList();
-                renderSharedUsers();
-                updateSelectedPreview();
-                switchTab('find');
-            });
-        } else {
-            // Render immediately if data is available
+            await loadOrganizations();
             renderOrgTabs();
             renderMembersList();
             renderSharedUsers();
             updateSelectedPreview();
             switchTab('find');
+        } else {
+            // Render immediately if data is available
+        renderOrgTabs();
+        renderMembersList();
+        renderSharedUsers();
+        updateSelectedPreview();
+        switchTab('find');
         }
 
         // Lock body scroll
         document.body.style.overflow = 'hidden';
+    }
+
+    // Load shared users from API
+    async function loadSharedUsers(noteId) {
+        console.log('[ShareModal] loadSharedUsers called for noteId:', noteId);
+        try {
+            const response = await fetch(`/api/notes/${noteId}/`, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                },
+                credentials: 'same-origin'
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            const data = await response.json();
+            console.log('[ShareModal] Loaded note data:', data);
+
+            if (data.status === 'success' && data.note && data.note.shared_users_list) {
+                alreadySharedUsers = data.note.shared_users_list;
+                console.log('[ShareModal] Loaded shared users:', alreadySharedUsers);
+            } else {
+                alreadySharedUsers = [];
+                console.log('[ShareModal] No shared users found');
+            }
+        } catch (error) {
+            console.error('[ShareModal] Error loading shared users:', error);
+            alreadySharedUsers = [];
+        }
+    }
+
+    // Load shared schedule users from API
+    async function loadSharedScheduleUsers(scheduleId) {
+        console.log('[ShareModal] loadSharedScheduleUsers called for scheduleId:', scheduleId);
+        try {
+            const response = await fetch(`/schedule/api/schedules/${scheduleId}/shared/`, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken'),
+                },
+                credentials: 'same-origin'
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            const data = await response.json();
+            console.log('[ShareModal] Loaded schedule shared users data:', data);
+
+            if (data.results) {
+                alreadySharedUsers = data.results;
+                console.log('[ShareModal] Loaded shared schedule users:', alreadySharedUsers);
+            } else {
+                alreadySharedUsers = [];
+                console.log('[ShareModal] No shared schedule users found');
+            }
+        } catch (error) {
+            console.error('[ShareModal] Error loading shared schedule users:', error);
+            alreadySharedUsers = [];
+        }
     }
 
     // Close modal
@@ -254,6 +339,7 @@
         shareSearchQuery = '';
         selectedOrg = 'all';
         shareModalTab = 'find';
+        // Note: currentNoteId, currentScheduleId, shareContext는 다음 openModal 호출 시 설정됨
     }
 
     // Switch tab
@@ -309,6 +395,13 @@
                     member.name.toLowerCase().includes(shareSearchQuery.toLowerCase()) ||
                     member.email.toLowerCase().includes(shareSearchQuery.toLowerCase())
             );
+        }
+
+        // 이미 공유된 사용자 제외
+        if (alreadySharedUsers && alreadySharedUsers.length > 0) {
+            const sharedUserIds = alreadySharedUsers.map(user => String(user.id));
+            filtered = filtered.filter(member => !sharedUserIds.includes(String(member.id)));
+            console.log('[ShareModal] Filtered out shared users. Remaining:', filtered.length);
         }
 
         return filtered;
@@ -519,8 +612,17 @@
     }
 
     // Handle share
-    function handleShare() {
-        if (selectedMembers.length === 0) return;
+    async function handleShare() {
+        console.log('[ShareModal] handleShare called');
+        console.log('[ShareModal] selectedMembers:', selectedMembers);
+        console.log('[ShareModal] shareContext:', shareContext);
+        console.log('[ShareModal] currentNoteId:', currentNoteId);
+        console.log('[ShareModal] currentScheduleId:', currentScheduleId);
+        
+        if (selectedMembers.length === 0) {
+            console.log('[ShareModal] No members selected, returning');
+            return;
+        }
 
         // 선택한 멤버의 전체 정보 가져오기
         const allMembers = uniqueMembers.length > 0 ? uniqueMembers : organizations.flatMap(org => org.members);
@@ -528,12 +630,190 @@
             return allMembers.find(m => String(m.id) === String(memberId));
         }).filter(member => member !== undefined); // undefined 제거
 
-        // Callback to parent (멤버 ID와 전체 정보 모두 전달)
-        if (window.ShareModal && window.ShareModal.onShare) {
-            window.ShareModal.onShare(selectedMembers, selectedMemberDetails);
+        console.log('[ShareModal] selectedMemberDetails:', selectedMemberDetails);
+
+        // context에 따라 다르게 처리
+        if (shareContext === 'schedule' && currentScheduleId) {
+            console.log('[ShareModal] Context is schedule, calling performShareSchedule');
+            // schedule: 바로 공유 API 호출
+            await performShareSchedule(currentScheduleId, selectedMemberDetails);
+        } else if (shareContext === 'detail' && currentNoteId) {
+            console.log('[ShareModal] Context is detail, calling performShareNote');
+            // note_detail: 바로 공유 API 호출
+            await performShareNote(currentNoteId, selectedMemberDetails);
+        } else {
+            console.log('[ShareModal] Context is editor or no resourceId, using callback');
+            console.log('[ShareModal] shareContext:', shareContext, 'currentNoteId:', currentNoteId, 'currentScheduleId:', currentScheduleId);
+            // note_editor: 콜백으로 전달 (노트 저장 시 함께 저장)
+            if (window.ShareModal && window.ShareModal.onShare) {
+                console.log('[ShareModal] Calling onShare callback');
+                window.ShareModal.onShare(selectedMembers, selectedMemberDetails);
+            } else {
+                console.log('[ShareModal] onShare callback not found');
+            }
         }
 
         closeModal();
+    }
+
+    // Get CSRF token helper
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    // Perform share schedule (API 호출)
+    async function performShareSchedule(scheduleId, selectedMemberDetails) {
+        console.log('[ShareModal] performShareSchedule called');
+        console.log('[ShareModal] scheduleId:', scheduleId);
+        console.log('[ShareModal] selectedMemberDetails:', selectedMemberDetails);
+        
+        try {
+            const csrfToken = getCookie('csrftoken');
+            console.log('[ShareModal] CSRF Token:', csrfToken ? 'Found' : 'Not found');
+            
+            const apiUrl = `/schedule/api/schedules/${scheduleId}/shared/`;
+            const requestBody = {
+                sharedMembers: selectedMemberDetails
+            };
+            
+            console.log('[ShareModal] API URL:', apiUrl);
+            console.log('[ShareModal] Request body:', requestBody);
+
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify(requestBody)
+            });
+
+            console.log('[ShareModal] Response status:', response.status);
+            console.log('[ShareModal] Response ok:', response.ok);
+
+            const data = await response.json();
+            console.log('[ShareModal] Response data:', data);
+
+            if (!response.ok) {
+                throw new Error(data.error || '일정 공유에 실패했습니다.');
+            }
+
+            if (data.status === 'success') {
+                console.log('[ShareModal] Share successful');
+                if (window.notyf) {
+                    window.notyf.success(selectedMemberDetails.length + '명과 공유되었습니다.');
+                }
+                
+                // 공유된 사용자 목록 다시 로드
+                if (scheduleId) {
+                    await loadSharedScheduleUsers(scheduleId);
+                    renderSharedUsers();
+                    renderMembersList();  // 이미 공유된 사용자 제외를 위해 다시 렌더링
+                }
+                
+                // 콜백 호출 (일정 상세 정보 다시 로드 등)
+                if (window.ShareModal && window.ShareModal.onShare) {
+                    console.log('[ShareModal] Calling onShare callback after successful share');
+                    window.ShareModal.onShare(selectedMembers, selectedMemberDetails);
+                }
+            } else {
+                throw new Error(data.error || '응답 데이터가 올바르지 않습니다.');
+            }
+        } catch (error) {
+            console.error('[ShareModal] Failed to share schedule:', error);
+            console.error('[ShareModal] Error details:', {
+                message: error.message,
+                stack: error.stack
+            });
+            if (window.notyf) {
+                window.notyf.error(error.message || '일정 공유에 실패했습니다.');
+            }
+        }
+    }
+
+    // Perform share note (API 호출)
+    async function performShareNote(noteId, selectedMemberDetails) {
+        console.log('[ShareModal] performShareNote called');
+        console.log('[ShareModal] noteId:', noteId);
+        console.log('[ShareModal] selectedMemberDetails:', selectedMemberDetails);
+        
+        try {
+            const csrfToken = getCookie('csrftoken');
+            console.log('[ShareModal] CSRF Token:', csrfToken ? 'Found' : 'Not found');
+            
+            const apiUrl = `/api/notes/${noteId}/share/`;
+            const requestBody = {
+                sharedMembers: selectedMemberDetails
+            };
+            
+            console.log('[ShareModal] API URL:', apiUrl);
+            console.log('[ShareModal] Request body:', requestBody);
+
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify(requestBody)
+            });
+
+            console.log('[ShareModal] Response status:', response.status);
+            console.log('[ShareModal] Response ok:', response.ok);
+
+            const data = await response.json();
+            console.log('[ShareModal] Response data:', data);
+
+            if (!response.ok) {
+                throw new Error(data.error || '노트 공유에 실패했습니다.');
+            }
+
+            if (data.status === 'success') {
+                console.log('[ShareModal] Share successful');
+                if (window.notyf) {
+                    window.notyf.success(selectedMemberDetails.length + '명과 공유되었습니다.');
+                }
+                
+                // 공유된 사용자 목록 다시 로드
+                if (noteId) {
+                    await loadSharedUsers(noteId);
+                    renderSharedUsers();
+                    renderMembersList();  // 이미 공유된 사용자 제외를 위해 다시 렌더링
+                }
+                
+                // 콜백 호출 (노트 상세 정보 다시 로드 등)
+                if (window.ShareModal && window.ShareModal.onShare) {
+                    console.log('[ShareModal] Calling onShare callback after successful share');
+                    window.ShareModal.onShare(selectedMembers, selectedMemberDetails);
+                }
+            } else {
+                throw new Error(data.error || '응답 데이터가 올바르지 않습니다.');
+            }
+        } catch (error) {
+            console.error('[ShareModal] Failed to share note:', error);
+            console.error('[ShareModal] Error details:', {
+                message: error.message,
+                stack: error.stack
+            });
+            if (window.notyf) {
+                window.notyf.error(error.message || '노트 공유에 실패했습니다.');
+            } else {
+                alert(error.message || '노트 공유에 실패했습니다.');
+            }
+        }
     }
 
     // Handle invite external
@@ -542,7 +822,7 @@
 
         // TODO: Implement external invite API call
         if (window.notyf) {
-            window.notyf.success(`${shareSearchQuery}로 초대 메일이 전송되었습니다.`);
+            window.notyf.success(shareSearchQuery + '로 초대 메일이 전송되었습니다.');
         }
 
         closeModal();
@@ -567,6 +847,24 @@
         return div.innerHTML;
     }
 
+    // Get all members from all organizations (helper for external use)
+    function getAllMembers() {
+        // 중복 제거된 전체 멤버 목록 반환
+        return uniqueMembers.length > 0 ? uniqueMembers : organizations.flatMap(org => org.members);
+    }
+
+    // Export to window (IIFE 내부에서 즉시 실행)
+    console.log('[ShareModal] Setting window.ShareModal');
+    window.ShareModal = {
+        open: openModal,
+        close: closeModal,
+        toggleMemberSelection,
+        removeSharedUser,
+        _getAllMembers: getAllMembers,
+        onShare: null // Will be set by parent
+    };
+    console.log('[ShareModal] window.ShareModal set:', window.ShareModal);
+
     // Initialize on DOM ready
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => {
@@ -577,20 +875,4 @@
         console.log('[ShareModal] DOM already ready - initializing...');
         initShareModal();
     }
-
-    // Get all members from all organizations (helper for external use)
-    function getAllMembers() {
-        // 중복 제거된 전체 멤버 목록 반환
-        return uniqueMembers.length > 0 ? uniqueMembers : organizations.flatMap(org => org.members);
-    }
-
-    // Export to window
-    window.ShareModal = {
-        open: openModal,
-        close: closeModal,
-        toggleMemberSelection,
-        removeSharedUser,
-        _getAllMembers: getAllMembers,
-        onShare: null // Will be set by parent
-    };
 })();
