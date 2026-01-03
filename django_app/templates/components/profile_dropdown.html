@@ -46,7 +46,7 @@
             {% endif %}
         </div>
         <a href="{% url 'accounts:profile' %}" class="dropdown-item">계정 설정</a>
-        <a href="{% url 'dashboard:dashboard' %}#organization" class="dropdown-item">{% if position_type == 'header' %}내 조직 관리{% else %}내 조직{% endif %}</a>
+        <a href="{% url 'accounts:organization' %}" class="dropdown-item">내 조직 관리</a>
         <a href="{% url 'accounts:logout' %}" class="dropdown-item logout">로그아웃</a>
     </div>
 </div>

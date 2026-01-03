@@ -1,18 +1,19 @@
 /* Notes Container */
 .notes-container {
-    height: 100%;
+    flex: 1;
     display: flex;
     flex-direction: column;
+    min-height: 0;
     background: var(--color-bg-gray-50);
-    /* sidebar(4rem = 64px)를 고려하여 왼쪽 여백 설정 - subsidebar 없음 */
-    margin-left: 4rem;
+    /* padding: 1.5rem; */
 }
 
 /* Notes List View */
 .notes-list-view {
-    height: 100%;
+    flex: 1;
     display: flex;
     flex-direction: column;
+    min-height: 0;
 }
 
 .notes-header {
@@ -205,6 +206,7 @@
 
 .notes-content {
     flex: 1;
+    min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
     padding: 1.5rem 2rem;

@@ -1,11 +1,10 @@
 /* Experiment Page Styles */
 
 .experiment-container {
-    height: calc(100vh - 4rem); /* header height */
+    flex: 1;
     display: flex;
+    min-height: 0;
     overflow: hidden;
-    /* sidebar(4rem)를 고려하여 좌측 마진 추가 */
-    margin-left: 4rem;
 }
 
 /* Tool Sidebar (subsidebar 역할) */
@@ -15,7 +14,7 @@
     border-right: 1px solid var(--color-border-light);
     display: flex;
     flex-direction: column;
-    height: 100%;
+    min-height: 0;
     overflow: hidden;
     flex-shrink: 0;
     /* z-index를 sidebar보다 낮게 설정하여 올바르게 표시 */
@@ -1340,7 +1339,6 @@
 @media (max-width: 768px) {
     .experiment-container {
         flex-direction: column;
-        margin-left: 0; /* 모바일에서는 sidebar가 없으므로 margin 제거 */
     }
 
     .tool-sidebar {
@@ -1673,4 +1671,3 @@
         max-width: 100vw;
     }
 }
-

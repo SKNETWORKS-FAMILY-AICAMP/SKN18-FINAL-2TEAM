@@ -153,6 +153,15 @@ def profile_view(request):
 
 
 @login_required
+def organization_view(request):
+    """
+    조직 관리 뷰 (organization 앱의 뷰로 리디렉션)
+    """
+    from apps.organization.views import organization_view as org_view
+    return org_view(request)
+
+
+@login_required
 @require_http_methods(["GET", "PATCH"])
 def profile_api(request):
     """

@@ -315,8 +315,8 @@
     flex-direction: column;
     background: white;
     overflow: hidden;
-    /* sidebar(4rem) + subsidebar(260px) = 324px를 고려하여 중앙 정렬 */
-    margin-left: 324px;
+    /* subsidebar(260px)를 고려하여 중앙 정렬 */
+    margin-left: 260px;
     margin-right: 0;
     height: 100%;
     min-height: 0;

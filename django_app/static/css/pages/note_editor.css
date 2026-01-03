@@ -1,25 +1,27 @@
 /* Note Editor Container */
 .note-editor-container {
-    height: 100%;
+    flex: 1;
     display: flex;
     flex-direction: column;
+    min-height: 0;
     background: var(--color-bg-white);
-    /* sidebar(4rem = 64px)를 고려하여 왼쪽 여백 설정 - subsidebar 없음 */
-    margin-left: 4rem;
+    /* padding: 2rem; */
 }
 
 /* Note Editor View */
 .note-editor-view {
-    height: 100%;
+    flex: 1;
     display: flex;
     flex-direction: column;
+    min-height: 0;
     background: var(--color-bg-white);
 }
 
 .note-editor-wrapper {
-    height: 100%;
+    flex: 1;
     display: flex;
     flex-direction: column;
+    min-height: 0;
     background: var(--color-bg-white);
 }
 
@@ -160,11 +162,13 @@
 .editor-content-wrapper {
     flex: 1;
     display: flex;
+    min-height: 0;
     overflow: hidden;
 }
 
 .editor-content {
     flex: 1;
+    min-height: 0;
     overflow-y: auto;
 }
 
