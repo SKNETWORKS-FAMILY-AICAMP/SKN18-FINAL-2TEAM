@@ -59,6 +59,16 @@ need_root() {
 ensure_dir() { mkdir -p "$1"; }
 venv_python() { echo "${TORCH_VENV}/bin/python"; }
 
+# ✅ 1번 방식: "비어있으면 env로 넘기지 않기" 헬퍼
+add_env_if_nonempty() {
+  local -n _arr="$1"
+  local k="$2"
+  local v="${3:-}"
+  if [[ -n "${v}" ]]; then
+    _arr+=("${k}=${v}")
+  fi
+}
+
 ########################################
 # 0) Up (ALL-IN-ONE)
 ########################################
@@ -330,15 +340,26 @@ cmd_run() {
   export LD_LIBRARY_PATH="$TORCH_VENV/lib/python3.10/site-packages/nvidia/nvtx/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/nvjitlink/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/nccl/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/curand/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cufft/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cuda_runtime/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cuda_nvrtc/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cuda_cupti/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cublas/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cusparse/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cudnn/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cusolver/lib:${LD_LIBRARY_PATH:-}"
   log "LD_LIBRARY_PATH set"
 
-  # ✅ S3/AWS env 전달
-  export AWS_REGION AWS_DEFAULT_REGION
-  export AWS_S3_BUCKET AWS_S3_BASE_PATH
+  # ✅ 1번 방식 적용: 비어있으면 export 자체를 하지 않음 (빈 값으로 덮어쓰기 방지)
+  if [[ -n "${AWS_REGION:-}" ]]; then
+    export AWS_REGION
+    export AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION:-$AWS_REGION}"
+  fi
+  [[ -n "${AWS_S3_BUCKET:-}" ]] && export AWS_S3_BUCKET
+  [[ -n "${AWS_S3_BASE_PATH:-}" ]] && export AWS_S3_BASE_PATH
 
-  # ✅ [핵심] 자식 프로세스(main.py)에서도 확실히 보이도록 S3_*를 최종 확정
-  export S3_BUCKET="${S3_BUCKET:-${AWS_S3_BUCKET:-}}"
-  export S3_PREFIX="${S3_PREFIX:-${AWS_S3_BASE_PATH:-rfdiffusion}}"
-  S3_PREFIX="$(echo "${S3_PREFIX}" | sed 's#^/*##; s#/*$##')"
-  export S3_PREFIX
+  # ✅ 최종 S3_* 확정 (비어있으면 비어있는대로 두되, prefix는 기본값 유지)
+  if [[ -z "${S3_BUCKET:-}" && -n "${AWS_S3_BUCKET:-}" ]]; then
+    S3_BUCKET="${AWS_S3_BUCKET}"
+  fi
+  if { [[ -z "${S3_PREFIX:-}" ]] || [[ "${S3_PREFIX}" == "rfdiffusion" ]]; } && [[ -n "${AWS_S3_BASE_PATH:-}" ]]; then
+    S3_PREFIX="${AWS_S3_BASE_PATH}"
+  fi
+  S3_PREFIX="$(echo "${S3_PREFIX:-rfdiffusion}" | sed 's#^/*##; s#/*$##')"
+
+  # ✅ 1번 방식: 비어있으면 export하지 않음
+  [[ -n "${S3_BUCKET:-}" ]] && export S3_BUCKET
+  [[ -n "${S3_PREFIX:-}" ]] && export S3_PREFIX
 
   log "S3_BUCKET=${S3_BUCKET:-<empty>}"
   log "S3_PREFIX=${S3_PREFIX:-<empty>}"
@@ -369,18 +390,32 @@ cmd_serve() {
 
   cd "$APP_DIR"
 
-  nohup env \
-    SCRIPT_DIR="$SCRIPT_DIR" \
-    OPS_SH="$SCRIPT_DIR/unified_shell_script.sh" \
-    OUTPUTS_DIR="$OUTPUTS_DIR" \
-    TORCH_VENV="$TORCH_VENV" \
-    PYTHONPATH="$RFDIFFUSION_DIR" \
-    S3_BUCKET="$S3_BUCKET" \
-    S3_PREFIX="$S3_PREFIX" \
-    AWS_REGION="$AWS_REGION" \
-    AWS_DEFAULT_REGION="$AWS_REGION" \
-    AWS_S3_BUCKET="$AWS_S3_BUCKET" \
-    AWS_S3_BASE_PATH="$AWS_S3_BASE_PATH" \
+  # ✅ 1번 방법 핵심:
+  #   env ... AWS_REGION="" 같은 "빈 값"을 넘기면 자식 프로세스에서 빈 값으로 덮어써짐.
+  #   따라서 "값이 있을 때만" env로 넘기도록 구성.
+  local env_kv=()
+  env_kv+=("SCRIPT_DIR=$SCRIPT_DIR")
+  env_kv+=("OPS_SH=$SCRIPT_DIR/unified_shell_script.sh")
+  env_kv+=("OUTPUTS_DIR=$OUTPUTS_DIR")
+  env_kv+=("TORCH_VENV=$TORCH_VENV")
+  env_kv+=("PYTHONPATH=$RFDIFFUSION_DIR")
+
+  # S3/AWS는 값이 있을 때만 넘김 (빈 값 전달 금지)
+  add_env_if_nonempty env_kv "S3_BUCKET" "${S3_BUCKET:-}"
+  add_env_if_nonempty env_kv "S3_PREFIX" "${S3_PREFIX:-}"
+
+  add_env_if_nonempty env_kv "AWS_REGION" "${AWS_REGION:-}"
+  # 보통 AWS_DEFAULT_REGION도 같이 쓰니까, REGION이 있을 때만 같이 넘김
+  if [[ -n "${AWS_REGION:-}" ]]; then
+    add_env_if_nonempty env_kv "AWS_DEFAULT_REGION" "${AWS_DEFAULT_REGION:-$AWS_REGION}"
+  else
+    add_env_if_nonempty env_kv "AWS_DEFAULT_REGION" "${AWS_DEFAULT_REGION:-}"
+  fi
+
+  add_env_if_nonempty env_kv "AWS_S3_BUCKET" "${AWS_S3_BUCKET:-}"
+  add_env_if_nonempty env_kv "AWS_S3_BASE_PATH" "${AWS_S3_BASE_PATH:-}"
+
+  nohup env "${env_kv[@]}" \
     "$(venv_python)" -m uvicorn api_server:app --host 0.0.0.0 --port "$PORT" \
     > "$UVICORN_LOG" 2>&1 &
 
