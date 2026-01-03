@@ -329,7 +329,9 @@ async function handleSearch() {
 
     try {
         // Call API to search proteins
-        const response = await fetch(`/api/proteins/search/?sequence=${encodeURIComponent(sequenceQuery)}`, {
+        const response = await fetch(
+            `/api/experiments/uniprot/search/?keyword=${encodeURIComponent(sequenceQuery)}`,
+            {
             method: 'GET',
             headers: {
                 'X-CSRFToken': getCsrfToken(),
@@ -339,18 +341,37 @@ async function handleSearch() {
 
         if (response.ok) {
             const data = await response.json();
-            searchResults = data.results || data || [];
+            const apiResults = data.results || [];
+
+            // (원하면 여기서 실제 응답 확인)
+            // console.log('[UniProt] raw', data);
+            // console.log('[UniProt] first', apiResults[0]);
+
+            // ✅ 2) UniProt 응답 → 화면에서 쓰는 구조로 매핑
+            searchResults = apiResults.map((r, idx) => ({
+                id: idx + 1,
+                proteinId: r.accession,         // -> "P01308"
+                proteinName: r.entry_name,      // -> "INS_HUMAN"
+                description: r.protein_name,    // -> "Insulin"
+                recommendedName: r.protein_name,
+                gene: r.gene,                   // -> "INS"
+                organism: r.organism,           // -> "Homo sapiens (Human)"
+                length: r.length,               // -> 110 amino acids
+                evidenceLevel: r.protein_existence,       // -> Evidence at protein level
+                annotationScore: r.annotation_score,      // -> 5
+                tags: r.keywords || [],         // -> #Hormone, ...
+            }));
+
             currentPage = 1;
             renderSearchResults();
         } else {
-            // Fallback: Use mock data for now
+            // 필요하면 기존 mock fallback 유지
             searchResults = generateMockSearchResults();
             currentPage = 1;
             renderSearchResults();
         }
     } catch (error) {
         console.error('Error searching proteins:', error);
-        // Fallback: Use mock data
         searchResults = generateMockSearchResults();
         currentPage = 1;
         renderSearchResults();
@@ -359,150 +380,150 @@ async function handleSearch() {
 
 // Generate mock search results for testing
 // Data structure: proteinId, proteinName, description, gene, organism, tags, sequence, etc.
-function generateMockSearchResults() {
-    return [
-        {
-            id: 1,
-            proteinId: "P01308",
-            proteinName: "INS_HUMAN",
-            description: "Insulin",
-            recommendedName: "Insulin",
-            cleavedChains: ["Insulin B chain", "Insulin A chain"],
-            gene: "INS",
-            organism: "Homo sapiens (Human)",
-            taxonomicId: "9606 (NCBI)",
-            taxonomicLineage: "cellular organisms > Eukaryota (eukaryotes) > Opisthokonta > Metazoa (metazoans) > Eumetazoa > Bilateria > Deuterostomia > Chordata (chordates) > Craniata > Vertebrata (vertebrates) > Gnathostomata (jawed vertebrates) > Teleostomi > Euteleostomi (bony vertebrates) > Sarcopterygii > Dipnotetrapodomorpha > Tetrapoda > Amniota > Mammalia > Theria > Eutheria > Boreoeutheria > Euarchontoglires > Primates > Haplorrhini > Simiiformes > Catarrhini > Hominoidea (apes) > Hominidae (great apes) > Homininae > Homo > Homo sapiens (Human)",
-            length: 110,
-            mass: 12171,
-            lastUpdated: "2024-03-15 v3",
-            md5Checksum: "A1B2C3D4E5F6G7H8I9J0K1L2M3N4O5P6",
-            evidenceLevel: "Evidence at protein level",
-            annotationScore: 5,
-            tags: ["Hormone", "Carbohydrate metabolism", "Glucose metabolism", "Diabetes mellitus", "Disease variant"],
-            sequence: "MALWMRLLPLLALLALWGPDPAAAFVNQHLCGSHLVEALYLVCGERGFFYTPKTRREAEDLQVGQVELGGGPGAGSLQPLALEGSLQKRGIVEQCCTSICSLYQLENYCN",
-        },
-        {
-            id: 2,
-            proteinId: "P68871",
-            proteinName: "HBB_HUMAN",
-            description: "Hemoglobin subunit beta",
-            recommendedName: "Hemoglobin subunit beta",
-            cleavedChains: null,
-            gene: "HBB",
-            organism: "Homo sapiens (Human)",
-            taxonomicId: "9606 (NCBI)",
-            taxonomicLineage: "cellular organisms > Eukaryota (eukaryotes) > Opisthokonta > Metazoa (metazoans) > Eumetazoa > Bilateria > Deuterostomia > Chordata (chordates) > Craniata > Vertebrata (vertebrates) > Gnathostomata (jawed vertebrates) > Teleostomi > Euteleostomi (bony vertebrates) > Sarcopterygii > Dipnotetrapodomorpha > Tetrapoda > Amniota > Mammalia > Theria > Eutheria > Boreoeutheria > Euarchontoglires > Primates > Haplorrhini > Simiiformes > Catarrhini > Hominoidea (apes) > Hominidae (great apes) > Homininae > Homo > Homo sapiens (Human)",
-            length: 147,
-            mass: 15998,
-            lastUpdated: "2024-02-20 v2",
-            md5Checksum: "Q9W8E7R6T5Y4U3I2O1P0A9S8D7F6G5H4",
-            evidenceLevel: "Evidence at protein level",
-            annotationScore: 5,
-            tags: ["Oxygen transport", "Heme", "Iron", "Disease variant", "Sickle cell anemia"],
-            sequence: "MVHLTPEEKSAVTALWGKVNVDEVGGEALGRLLVVYPWTQRFFESFGDLSTPDAVMGNPKVKAHGKKVLGAFSDGLAHLDNLKGTFATLSELHCDKLHVDPENFRLLGNVLVCVLAHHFGKEFTPPVQAAYQKVVAGVANALAHKYH",
-        },
-        {
-            id: 3,
-            proteinId: "P04637",
-            proteinName: "P53_HUMAN",
-            description: "Cellular tumor antigen p53",
-            recommendedName: "Cellular tumor antigen p53",
-            cleavedChains: null,
-            gene: "TP53",
-            organism: "Homo sapiens (Human)",
-            taxonomicId: "9606 (NCBI)",
-            taxonomicLineage: "cellular organisms > Eukaryota (eukaryotes) > Opisthokonta > Metazoa (metazoans) > Eumetazoa > Bilateria > Deuterostomia > Chordata (chordates) > Craniata > Vertebrata (vertebrates) > Gnathostomata (jawed vertebrates) > Teleostomi > Euteleostomi (bony vertebrates) > Sarcopterygii > Dipnotetrapodomorpha > Tetrapoda > Amniota > Mammalia > Theria > Eutheria > Boreoeutheria > Euarchontoglires > Primates > Haplorrhini > Simiiformes > Catarrhini > Hominoidea (apes) > Hominidae (great apes) > Homininae > Homo > Homo sapiens (Human)",
-            length: 393,
-            mass: 43653,
-            lastUpdated: "2024-01-10 v4",
-            md5Checksum: "Z1X2C3V4B5N6M7A8S9D0F1G2H3J4K5L6",
-            evidenceLevel: "Evidence at protein level",
-            annotationScore: 5,
-            tags: ["Tumor suppressor", "DNA binding", "Apoptosis", "Cell cycle", "Cancer"],
-            sequence: "MEEPQSDPSVEPPLSQETFSDLWKLLPENNVLSPLPSQAMDDLMLSPDDIEQWFTEDPGPDEAPRMPEAAPPVAPAPAAPTPAAPAPAPSWPLSSSVPSQKTYQGSYGFRLGFLHSGTAKSVTCTYSPALNKMFCQLAKTCPVQLWVDSTPPPGTRVRAMAIYKQSQHMTEVVRRCPHHERCSDSDGLAPPQHLIRVEGNLRVEYLDDRNTFRHSVVVPYEPPEVGSDCTTIHYNYMCNSSCMGGMNRRPILTIITLEDSSGNLLGRNSFEVRVCACPGRDRRTEEENLRKKGEPHHELPPGSTKRALPNNTSSSPQPKKKPLDGEYFTLQIRGRERFEMFRELNEALELKDAQAGKEPGGSRAHSSHLKSKKGQSTSRHKKLMFKTEGPDSD",
-        },
-        {
-            id: 4,
-            proteinId: "P02768",
-            proteinName: "ALBU_HUMAN",
-            description: "Serum albumin",
-            recommendedName: "Serum albumin",
-            cleavedChains: null,
-            gene: "ALB",
-            organism: "Homo sapiens (Human)",
-            taxonomicId: "9606 (NCBI)",
-            taxonomicLineage: "cellular organisms > Eukaryota (eukaryotes) > Opisthokonta > Metazoa (metazoans) > Eumetazoa > Bilateria > Deuterostomia > Chordata (chordates) > Craniata > Vertebrata (vertebrates) > Gnathostomata (jawed vertebrates) > Teleostomi > Euteleostomi (bony vertebrates) > Sarcopterygii > Dipnotetrapodomorpha > Tetrapoda > Amniota > Mammalia > Theria > Eutheria > Boreoeutheria > Euarchontoglires > Primates > Haplorrhini > Simiiformes > Catarrhini > Hominoidea (apes) > Hominidae (great apes) > Homininae > Homo > Homo sapiens (Human)",
-            length: 609,
-            mass: 69367,
-            lastUpdated: "2024-05-08 v2",
-            md5Checksum: "B1C2D3E4F5G6H7I8J9K0L1M2N3O4P5Q6",
-            evidenceLevel: "Evidence at protein level",
-            annotationScore: 5,
-            tags: ["Transport", "Blood protein", "Plasma", "Pharmaceutical"],
-            sequence: "MKWVTFISLLFLFSSAYSRGVFRRDAHKSEVAHRFKDLGEENFKALVLIAFAQYLQQCPFEDHVKLVNEVTEFAKTCVADESAENCDKSLHTLFGDKLCTVATLRETYGEMADCCAKQEPERNECFLQHKDDNPNLPRLVRPEVDVMCTAFHDNEETFLKKYLYEIARRHPYFYAPELLFFAKRYKAAFTECCQAADKAACLLPKLDELRDEGKASSAKQRLKCASLQKFGERAFKAWAVARLSQRFPKAEFAEVSKLVTDLTKVHTECCHGDLLECADDRADLAKYICENQDSISSKLKECCEKPLLEKSHCIAEVENDEMPADLPSLAADFVESKDVCKNYAEAKDVFLGMFLYEYARRHPDYSVVLLLRLAKTYETTLEKCCAAADPHECYAKVFDEFKPLVEEPQNLIKQNCELFEQLGEYKFQNALLVRYTKKVPQVSTPTLVEVSRNLGKVGSKCCKHPEAKRMPCAEDYLSVVLNQLCVLHEKTPVSDRVTKCCTESLVNRRPCFSALEVDETYVPKEFNAETFTFHADICTLSEKERQIKKQTALVELVKHKPKATKEQLKAVMDDFAAFVEKCCKADDKETCFAEEGKKLVAASQAALGL",
-        },
-        {
-            id: 5,
-            proteinId: "P62988",
-            proteinName: "UBIQ_HUMAN",
-            description: "Ubiquitin",
-            recommendedName: "Ubiquitin",
-            cleavedChains: null,
-            gene: "UBB",
-            organism: "Homo sapiens (Human)",
-            taxonomicId: "9606 (NCBI)",
-            taxonomicLineage: "cellular organisms > Eukaryota (eukaryotes) > Opisthokonta > Metazoa (metazoans) > Eumetazoa > Bilateria > Deuterostomia > Chordata (chordates) > Craniata > Vertebrata (vertebrates) > Gnathostomata (jawed vertebrates) > Teleostomi > Euteleostomi (bony vertebrates) > Sarcopterygii > Dipnotetrapodomorpha > Tetrapoda > Amniota > Mammalia > Theria > Eutheria > Boreoeutheria > Euarchontoglires > Primates > Haplorrhini > Simiiformes > Catarrhini > Hominoidea (apes) > Hominidae (great apes) > Homininae > Homo > Homo sapiens (Human)",
-            length: 76,
-            mass: 8565,
-            lastUpdated: "2024-04-12 v1",
-            md5Checksum: "C1D2E3F4G5H6I7J8K9L0M1N2O3P4Q5R6",
-            evidenceLevel: "Evidence at protein level",
-            annotationScore: 5,
-            tags: ["Protein degradation", "Ubiquitination", "Proteasome"],
-            sequence: "MQIFVKTLTGKTITLEVEPSDTIENVKAKIQDKEGIPPDQQRLIFAGKQLEDGRTLSDYNIQKESTLHLVLRLRGG",
-        },
-        {
-            id: 6,
-            proteinId: "P01112",
-            proteinName: "RASH_HUMAN",
-            description: "GTPase HRas",
-            recommendedName: "GTPase HRas",
-            cleavedChains: null,
-            gene: "HRAS",
-            organism: "Homo sapiens (Human)",
-            taxonomicId: "9606 (NCBI)",
-            taxonomicLineage: "cellular organisms > Eukaryota (eukaryotes) > Opisthokonta > Metazoa (metazoans) > Eumetazoa > Bilateria > Deuterostomia > Chordata (chordates) > Craniata > Vertebrata (vertebrates) > Gnathostomata (jawed vertebrates) > Teleostomi > Euteleostomi (bony vertebrates) > Sarcopterygii > Dipnotetrapodomorpha > Tetrapoda > Amniota > Mammalia > Theria > Eutheria > Boreoeutheria > Euarchontoglires > Primates > Haplorrhini > Simiiformes > Catarrhini > Hominoidea (apes) > Hominidae (great apes) > Homininae > Homo > Homo sapiens (Human)",
-            length: 189,
-            mass: 21295,
-            lastUpdated: "2024-03-22 v2",
-            md5Checksum: "D1E2F3G4H5I6J7K8L9M0N1O2P3Q4R5S6",
-            evidenceLevel: "Evidence at protein level",
-            annotationScore: 5,
-            tags: ["GTPase", "Oncogene", "Signal transduction", "Cancer"],
-            sequence: "MTEYKLVVVGAGGVGKSALTIQLIQNHFVDEYDPTIEDSYRKQVVIDGETCLLDILDTAGQEEYSAMRDQYMRTGEGFLCVFAINNTKSFEDIHHYREQIKRVKDSEDVPMVLVGNKCDLPSRTVDTKQAQDLARSYGIPFIETSAKTRQGVDDAFYTLVREIRKHKEKMSKDGKKKKKKSKTKCVIM",
-        },
-        {
-            id: 7,
-            proteinId: "P12931",
-            proteinName: "SRC_HUMAN",
-            description: "Proto-oncogene tyrosine-protein kinase Src",
-            recommendedName: "Proto-oncogene tyrosine-protein kinase Src",
-            cleavedChains: null,
-            gene: "SRC",
-            organism: "Homo sapiens (Human)",
-            taxonomicId: "9606 (NCBI)",
-            taxonomicLineage: "cellular organisms > Eukaryota (eukaryotes) > Opisthokonta > Metazoa (metazoans) > Eumetazoa > Bilateria > Deuterostomia > Chordata (chordates) > Craniata > Vertebrata (vertebrates) > Gnathostomata (jawed vertebrates) > Teleostomi > Euteleostomi (bony vertebrates) > Sarcopterygii > Dipnotetrapodomorpha > Tetrapoda > Amniota > Mammalia > Theria > Eutheria > Boreoeutheria > Euarchontoglires > Primates > Haplorrhini > Simiiformes > Catarrhini > Hominoidea (apes) > Hominidae (great apes) > Homininae > Homo > Homo sapiens (Human)",
-            length: 536,
-            mass: 59912,
-            lastUpdated: "2024-02-15 v3",
-            md5Checksum: "E1F2G3H4I5J6K7L8M9N0O1P2Q3R4S5T6",
-            evidenceLevel: "Evidence at protein level",
-            annotationScore: 5,
-            tags: ["Kinase", "Tyrosine-protein kinase", "Proto-oncogene", "Signal transduction"],
-            sequence: "MGSNKSKPKDASQRRRSLEPAENVHGAGGGAFPASQTPSKPASADGHRGPSAAFAPAAAEPKLFGGFNSSDTVTSPQRAGPLAGGVTTFVALYDYESRTETDLSFKKGERLQIVNNTEGDWWLAHSLSTGQTGYIPSNYVAPSDSIQAEEWYFGKITRRESERLLLNAENPRGTFLVRESETTKGAYCLSVSDFDNAKGLNVKHYKIRKLDSGGFYITSRTQFNSLQQLVAYYSKHADGLCHRLTTVCPTSKPQTQGLAKDAWEIPRESLRLEVKLGQGCFGEVWMGTWNGTTRVAIKTLKPGTMSPEAFLQEAQVMKKLRHEKLVQLYAVVSEEPIYIVTEYMSKGSLLDFLKGETGKYLRLPQLVDMAAQIASGMAYVERMNYVHRDLRAANILVGENLVCKVADFGLARLIEDNEYTARQGAKFPIKWTAPEAALYGRFTIKSDVWSFGILLTELTTKGRVPYPGMVNREVLDQVERGYRMPCPPECPESLHDLMCQCWRKEPEERPTFEYLQAFLEDYFTSTEPQYQPGENL",
-        },
-    ];
-}
+// function generateMockSearchResults() {
+//     return [
+//         {
+//             id: 1,
+//             proteinId: "P01308",
+//             proteinName: "INS_HUMAN",
+//             description: "Insulin",
+//             recommendedName: "Insulin",
+//             cleavedChains: ["Insulin B chain", "Insulin A chain"],
+//             gene: "INS",
+//             organism: "Homo sapiens (Human)",
+//             taxonomicId: "9606 (NCBI)",
+//             taxonomicLineage: "cellular organisms > Eukaryota (eukaryotes) > Opisthokonta > Metazoa (metazoans) > Eumetazoa > Bilateria > Deuterostomia > Chordata (chordates) > Craniata > Vertebrata (vertebrates) > Gnathostomata (jawed vertebrates) > Teleostomi > Euteleostomi (bony vertebrates) > Sarcopterygii > Dipnotetrapodomorpha > Tetrapoda > Amniota > Mammalia > Theria > Eutheria > Boreoeutheria > Euarchontoglires > Primates > Haplorrhini > Simiiformes > Catarrhini > Hominoidea (apes) > Hominidae (great apes) > Homininae > Homo > Homo sapiens (Human)",
+//             length: 110,
+//             mass: 12171,
+//             lastUpdated: "2024-03-15 v3",
+//             md5Checksum: "A1B2C3D4E5F6G7H8I9J0K1L2M3N4O5P6",
+//             evidenceLevel: "Evidence at protein level",
+//             annotationScore: 5,
+//             tags: ["Hormone", "Carbohydrate metabolism", "Glucose metabolism", "Diabetes mellitus", "Disease variant"],
+//             sequence: "MALWMRLLPLLALLALWGPDPAAAFVNQHLCGSHLVEALYLVCGERGFFYTPKTRREAEDLQVGQVELGGGPGAGSLQPLALEGSLQKRGIVEQCCTSICSLYQLENYCN",
+//         },
+//         {
+//             id: 2,
+//             proteinId: "P68871",
+//             proteinName: "HBB_HUMAN",
+//             description: "Hemoglobin subunit beta",
+//             recommendedName: "Hemoglobin subunit beta",
+//             cleavedChains: null,
+//             gene: "HBB",
+//             organism: "Homo sapiens (Human)",
+//             taxonomicId: "9606 (NCBI)",
+//             taxonomicLineage: "cellular organisms > Eukaryota (eukaryotes) > Opisthokonta > Metazoa (metazoans) > Eumetazoa > Bilateria > Deuterostomia > Chordata (chordates) > Craniata > Vertebrata (vertebrates) > Gnathostomata (jawed vertebrates) > Teleostomi > Euteleostomi (bony vertebrates) > Sarcopterygii > Dipnotetrapodomorpha > Tetrapoda > Amniota > Mammalia > Theria > Eutheria > Boreoeutheria > Euarchontoglires > Primates > Haplorrhini > Simiiformes > Catarrhini > Hominoidea (apes) > Hominidae (great apes) > Homininae > Homo > Homo sapiens (Human)",
+//             length: 147,
+//             mass: 15998,
+//             lastUpdated: "2024-02-20 v2",
+//             md5Checksum: "Q9W8E7R6T5Y4U3I2O1P0A9S8D7F6G5H4",
+//             evidenceLevel: "Evidence at protein level",
+//             annotationScore: 5,
+//             tags: ["Oxygen transport", "Heme", "Iron", "Disease variant", "Sickle cell anemia"],
+//             sequence: "MVHLTPEEKSAVTALWGKVNVDEVGGEALGRLLVVYPWTQRFFESFGDLSTPDAVMGNPKVKAHGKKVLGAFSDGLAHLDNLKGTFATLSELHCDKLHVDPENFRLLGNVLVCVLAHHFGKEFTPPVQAAYQKVVAGVANALAHKYH",
+//         },
+//         {
+//             id: 3,
+//             proteinId: "P04637",
+//             proteinName: "P53_HUMAN",
+//             description: "Cellular tumor antigen p53",
+//             recommendedName: "Cellular tumor antigen p53",
+//             cleavedChains: null,
+//             gene: "TP53",
+//             organism: "Homo sapiens (Human)",
+//             taxonomicId: "9606 (NCBI)",
+//             taxonomicLineage: "cellular organisms > Eukaryota (eukaryotes) > Opisthokonta > Metazoa (metazoans) > Eumetazoa > Bilateria > Deuterostomia > Chordata (chordates) > Craniata > Vertebrata (vertebrates) > Gnathostomata (jawed vertebrates) > Teleostomi > Euteleostomi (bony vertebrates) > Sarcopterygii > Dipnotetrapodomorpha > Tetrapoda > Amniota > Mammalia > Theria > Eutheria > Boreoeutheria > Euarchontoglires > Primates > Haplorrhini > Simiiformes > Catarrhini > Hominoidea (apes) > Hominidae (great apes) > Homininae > Homo > Homo sapiens (Human)",
+//             length: 393,
+//             mass: 43653,
+//             lastUpdated: "2024-01-10 v4",
+//             md5Checksum: "Z1X2C3V4B5N6M7A8S9D0F1G2H3J4K5L6",
+//             evidenceLevel: "Evidence at protein level",
+//             annotationScore: 5,
+//             tags: ["Tumor suppressor", "DNA binding", "Apoptosis", "Cell cycle", "Cancer"],
+//             sequence: "MEEPQSDPSVEPPLSQETFSDLWKLLPENNVLSPLPSQAMDDLMLSPDDIEQWFTEDPGPDEAPRMPEAAPPVAPAPAAPTPAAPAPAPSWPLSSSVPSQKTYQGSYGFRLGFLHSGTAKSVTCTYSPALNKMFCQLAKTCPVQLWVDSTPPPGTRVRAMAIYKQSQHMTEVVRRCPHHERCSDSDGLAPPQHLIRVEGNLRVEYLDDRNTFRHSVVVPYEPPEVGSDCTTIHYNYMCNSSCMGGMNRRPILTIITLEDSSGNLLGRNSFEVRVCACPGRDRRTEEENLRKKGEPHHELPPGSTKRALPNNTSSSPQPKKKPLDGEYFTLQIRGRERFEMFRELNEALELKDAQAGKEPGGSRAHSSHLKSKKGQSTSRHKKLMFKTEGPDSD",
+//         },
+//         {
+//             id: 4,
+//             proteinId: "P02768",
+//             proteinName: "ALBU_HUMAN",
+//             description: "Serum albumin",
+//             recommendedName: "Serum albumin",
+//             cleavedChains: null,
+//             gene: "ALB",
+//             organism: "Homo sapiens (Human)",
+//             taxonomicId: "9606 (NCBI)",
+//             taxonomicLineage: "cellular organisms > Eukaryota (eukaryotes) > Opisthokonta > Metazoa (metazoans) > Eumetazoa > Bilateria > Deuterostomia > Chordata (chordates) > Craniata > Vertebrata (vertebrates) > Gnathostomata (jawed vertebrates) > Teleostomi > Euteleostomi (bony vertebrates) > Sarcopterygii > Dipnotetrapodomorpha > Tetrapoda > Amniota > Mammalia > Theria > Eutheria > Boreoeutheria > Euarchontoglires > Primates > Haplorrhini > Simiiformes > Catarrhini > Hominoidea (apes) > Hominidae (great apes) > Homininae > Homo > Homo sapiens (Human)",
+//             length: 609,
+//             mass: 69367,
+//             lastUpdated: "2024-05-08 v2",
+//             md5Checksum: "B1C2D3E4F5G6H7I8J9K0L1M2N3O4P5Q6",
+//             evidenceLevel: "Evidence at protein level",
+//             annotationScore: 5,
+//             tags: ["Transport", "Blood protein", "Plasma", "Pharmaceutical"],
+//             sequence: "MKWVTFISLLFLFSSAYSRGVFRRDAHKSEVAHRFKDLGEENFKALVLIAFAQYLQQCPFEDHVKLVNEVTEFAKTCVADESAENCDKSLHTLFGDKLCTVATLRETYGEMADCCAKQEPERNECFLQHKDDNPNLPRLVRPEVDVMCTAFHDNEETFLKKYLYEIARRHPYFYAPELLFFAKRYKAAFTECCQAADKAACLLPKLDELRDEGKASSAKQRLKCASLQKFGERAFKAWAVARLSQRFPKAEFAEVSKLVTDLTKVHTECCHGDLLECADDRADLAKYICENQDSISSKLKECCEKPLLEKSHCIAEVENDEMPADLPSLAADFVESKDVCKNYAEAKDVFLGMFLYEYARRHPDYSVVLLLRLAKTYETTLEKCCAAADPHECYAKVFDEFKPLVEEPQNLIKQNCELFEQLGEYKFQNALLVRYTKKVPQVSTPTLVEVSRNLGKVGSKCCKHPEAKRMPCAEDYLSVVLNQLCVLHEKTPVSDRVTKCCTESLVNRRPCFSALEVDETYVPKEFNAETFTFHADICTLSEKERQIKKQTALVELVKHKPKATKEQLKAVMDDFAAFVEKCCKADDKETCFAEEGKKLVAASQAALGL",
+//         },
+//         {
+//             id: 5,
+//             proteinId: "P62988",
+//             proteinName: "UBIQ_HUMAN",
+//             description: "Ubiquitin",
+//             recommendedName: "Ubiquitin",
+//             cleavedChains: null,
+//             gene: "UBB",
+//             organism: "Homo sapiens (Human)",
+//             taxonomicId: "9606 (NCBI)",
+//             taxonomicLineage: "cellular organisms > Eukaryota (eukaryotes) > Opisthokonta > Metazoa (metazoans) > Eumetazoa > Bilateria > Deuterostomia > Chordata (chordates) > Craniata > Vertebrata (vertebrates) > Gnathostomata (jawed vertebrates) > Teleostomi > Euteleostomi (bony vertebrates) > Sarcopterygii > Dipnotetrapodomorpha > Tetrapoda > Amniota > Mammalia > Theria > Eutheria > Boreoeutheria > Euarchontoglires > Primates > Haplorrhini > Simiiformes > Catarrhini > Hominoidea (apes) > Hominidae (great apes) > Homininae > Homo > Homo sapiens (Human)",
+//             length: 76,
+//             mass: 8565,
+//             lastUpdated: "2024-04-12 v1",
+//             md5Checksum: "C1D2E3F4G5H6I7J8K9L0M1N2O3P4Q5R6",
+//             evidenceLevel: "Evidence at protein level",
+//             annotationScore: 5,
+//             tags: ["Protein degradation", "Ubiquitination", "Proteasome"],
+//             sequence: "MQIFVKTLTGKTITLEVEPSDTIENVKAKIQDKEGIPPDQQRLIFAGKQLEDGRTLSDYNIQKESTLHLVLRLRGG",
+//         },
+//         {
+//             id: 6,
+//             proteinId: "P01112",
+//             proteinName: "RASH_HUMAN",
+//             description: "GTPase HRas",
+//             recommendedName: "GTPase HRas",
+//             cleavedChains: null,
+//             gene: "HRAS",
+//             organism: "Homo sapiens (Human)",
+//             taxonomicId: "9606 (NCBI)",
+//             taxonomicLineage: "cellular organisms > Eukaryota (eukaryotes) > Opisthokonta > Metazoa (metazoans) > Eumetazoa > Bilateria > Deuterostomia > Chordata (chordates) > Craniata > Vertebrata (vertebrates) > Gnathostomata (jawed vertebrates) > Teleostomi > Euteleostomi (bony vertebrates) > Sarcopterygii > Dipnotetrapodomorpha > Tetrapoda > Amniota > Mammalia > Theria > Eutheria > Boreoeutheria > Euarchontoglires > Primates > Haplorrhini > Simiiformes > Catarrhini > Hominoidea (apes) > Hominidae (great apes) > Homininae > Homo > Homo sapiens (Human)",
+//             length: 189,
+//             mass: 21295,
+//             lastUpdated: "2024-03-22 v2",
+//             md5Checksum: "D1E2F3G4H5I6J7K8L9M0N1O2P3Q4R5S6",
+//             evidenceLevel: "Evidence at protein level",
+//             annotationScore: 5,
+//             tags: ["GTPase", "Oncogene", "Signal transduction", "Cancer"],
+//             sequence: "MTEYKLVVVGAGGVGKSALTIQLIQNHFVDEYDPTIEDSYRKQVVIDGETCLLDILDTAGQEEYSAMRDQYMRTGEGFLCVFAINNTKSFEDIHHYREQIKRVKDSEDVPMVLVGNKCDLPSRTVDTKQAQDLARSYGIPFIETSAKTRQGVDDAFYTLVREIRKHKEKMSKDGKKKKKKSKTKCVIM",
+//         },
+//         {
+//             id: 7,
+//             proteinId: "P12931",
+//             proteinName: "SRC_HUMAN",
+//             description: "Proto-oncogene tyrosine-protein kinase Src",
+//             recommendedName: "Proto-oncogene tyrosine-protein kinase Src",
+//             cleavedChains: null,
+//             gene: "SRC",
+//             organism: "Homo sapiens (Human)",
+//             taxonomicId: "9606 (NCBI)",
+//             taxonomicLineage: "cellular organisms > Eukaryota (eukaryotes) > Opisthokonta > Metazoa (metazoans) > Eumetazoa > Bilateria > Deuterostomia > Chordata (chordates) > Craniata > Vertebrata (vertebrates) > Gnathostomata (jawed vertebrates) > Teleostomi > Euteleostomi (bony vertebrates) > Sarcopterygii > Dipnotetrapodomorpha > Tetrapoda > Amniota > Mammalia > Theria > Eutheria > Boreoeutheria > Euarchontoglires > Primates > Haplorrhini > Simiiformes > Catarrhini > Hominoidea (apes) > Hominidae (great apes) > Homininae > Homo > Homo sapiens (Human)",
+//             length: 536,
+//             mass: 59912,
+//             lastUpdated: "2024-02-15 v3",
+//             md5Checksum: "E1F2G3H4I5J6K7L8M9N0O1P2Q3R4S5T6",
+//             evidenceLevel: "Evidence at protein level",
+//             annotationScore: 5,
+//             tags: ["Kinase", "Tyrosine-protein kinase", "Proto-oncogene", "Signal transduction"],
+//             sequence: "MGSNKSKPKDASQRRRSLEPAENVHGAGGGAFPASQTPSKPASADGHRGPSAAFAPAAAEPKLFGGFNSSDTVTSPQRAGPLAGGVTTFVALYDYESRTETDLSFKKGERLQIVNNTEGDWWLAHSLSTGQTGYIPSNYVAPSDSIQAEEWYFGKITRRESERLLLNAENPRGTFLVRESETTKGAYCLSVSDFDNAKGLNVKHYKIRKLDSGGFYITSRTQFNSLQQLVAYYSKHADGLCHRLTTVCPTSKPQTQGLAKDAWEIPRESLRLEVKLGQGCFGEVWMGTWNGTTRVAIKTLKPGTMSPEAFLQEAQVMKKLRHEKLVQLYAVVSEEPIYIVTEYMSKGSLLDFLKGETGKYLRLPQLVDMAAQIASGMAYVERMNYVHRDLRAANILVGENLVCKVADFGLARLIEDNEYTARQGAKFPIKWTAPEAALYGRFTIKSDVWSFGILLTELTTKGRVPYPGMVNREVLDQVERGYRMPCPPECPESLHDLMCQCWRKEPEERPTFEYLQAFLEDYFTSTEPQYQPGENL",
+//         },
+//     ];
+// }
 
 // Handle clear search
 function handleClearSearch() {
@@ -786,24 +807,90 @@ function fallbackCopySequence(sequence) {
 }
 
 // Handle protein detail click
-function handleProteinDetailClick(result) {
+async function handleProteinDetailClick(result) {
     if (!result) {
         console.error('Protein detail click: No result data provided');
         return;
     }
-    
-    // Set as selected protein for pipeline first
-    selectedProtein = result;
-    if (window.ExperimentPage) {
-        window.ExperimentPage.selectedProtein = result;
+    let detail = { ...result };
+
+    try {
+        if (!result.proteinId) {
+            console.error('No accession/proteinId on result:', result);
+        } else {
+            const response = await fetch(
+                `/api/experiments/uniprot/detail/${encodeURIComponent(result.proteinId)}/`,
+                {
+                    method: 'GET',
+                    headers: {
+                        'X-CSRFToken': getCsrfToken(),
+                        'Content-Type': 'application/json',
+                    },
+                },
+            );
+
+            if (response.ok) {
+                const data = await response.json();
+                const seq = data.sequence || {};
+
+                // ✅ uniprot_detail_api 응답 → mock 구조 그대로 채우기
+                detail = {
+                    // 리스트 id는 그대로 유지
+                    id: result.id || 0,
+
+                    // 기본 ID / 이름
+                    proteinId: data.accession,              // "P38567"
+                    proteinName: data.entry_name,           // "HYALP_HUMAN"
+
+                    // 설명/이름
+                    description: data.description || result.description || '',
+                    recommendedName: data.protein_recommended_name || result.recommendedName || result.description || '',
+
+                    // cleaved chains (API에는 없으니 검색 결과/기본값 유지)
+                    cleavedChains: result.cleavedChains || null,
+
+                    // Names & Taxonomy
+                    gene: data.gene || result.gene || '',
+                    organism: data.organism || result.organism || '',
+                    taxonomicId: data.taxonomy_id ? `${data.taxonomy_id} (NCBI)` : (result.taxonomicId || ''),
+                    taxonomicLineage: data.lineage || result.taxonomicLineage || '',
+
+                    // 추가 정보
+                    length: data.length || seq.length || result.length || 0,
+                    mass: seq.mass || result.mass || '',
+                    lastUpdated: seq.last_updated || result.lastUpdated || '',
+                    md5Checksum: seq.md5 || result.md5Checksum || '',
+                    evidenceLevel: data.evidence_level || result.evidenceLevel || '',
+                    annotationScore: data.annotation_score ?? result.annotationScore ?? 0,
+
+                    // 태그
+                    tags: data.keywords || result.tags || [],
+
+                    // 서열
+                    sequence: seq.value || result.sequence || '',
+                };
+
+                // 디버깅용
+                // console.log('[UniProt detail mapped]', detail);
+            } else {
+                console.error('UniProt detail API error', response.status);
+            }
+        }
+    } catch (error) {
+        console.error('Error loading UniProt detail:', error);
     }
-    
+    // Set as selected protein for pipeline first
+    selectedProtein = detail;
+    if (window.ExperimentPage) {
+        window.ExperimentPage.selectedProtein = detail;
+    }
+
     // Update pipeline visualization
     updatePipelineSection();
     
     // Open detail modal
     if (window.ProteinDetailModal && window.ProteinDetailModal.open) {
-        window.ProteinDetailModal.open(result);
+        window.ProteinDetailModal.open(detail);
     } else {
         console.error('ProteinDetailModal not available. Make sure protein_detail_modal.js is loaded.');
         // Fallback: try to initialize modal if it exists
@@ -811,7 +898,7 @@ function handleProteinDetailClick(result) {
         if (modal && typeof initProteinDetailModal === 'function') {
             initProteinDetailModal();
             if (window.ProteinDetailModal && window.ProteinDetailModal.open) {
-                window.ProteinDetailModal.open(result);
+                window.ProteinDetailModal.open(detail);
             }
         }
     }

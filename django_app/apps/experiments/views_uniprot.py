@@ -123,7 +123,7 @@ def uniprot_search_api(request):
             "protein_name": protein_name,                       # Hyaluronidase PH-20
             "gene": gene,                                       # SPAM1 (HYAL3, PH20)
             "organism": organism,                               # Homo sapiens (Human)
-            "ec_numbers": ec_numbers,                           # EC:3.2.1.35
+            # "ec_numbers": ec_numbers,                           # EC:3.2.1.35
             "length": item.get("sequence", {}).get("length"),   # 509
             "protein_existence": protein_existence,             # Evidence at protein level
             "annotation_score": item.get("annotationScore"),    # 5

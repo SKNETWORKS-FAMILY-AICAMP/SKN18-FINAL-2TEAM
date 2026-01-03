@@ -371,3 +371,4 @@ def start_simulation_consumer(tool_name: str):
     routing_key = f"sim.run.{tool_name}"
     consumer = BaseConsumer(routing_key, handle_simulation_task)
     consumer.start_consuming()
+
