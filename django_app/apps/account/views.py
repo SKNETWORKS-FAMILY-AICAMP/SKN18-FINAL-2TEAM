@@ -16,6 +16,7 @@ import requests
 from .forms import LoginForm, SignUpForm
 from .models import CustomUser, UserSettings, LinkedAccount
 from apps.core.utils.s3_utils import upload_file_to_s3, get_s3_url, generate_s3_key
+from apps.chat.models.models import RunpodJob
 
 
 def index(request):
@@ -53,11 +54,14 @@ def login_view(request):
                 request.session.set_expiry(60 * 60 * 24 * 14)
             
             login(request, user)
-            
+
             # 마지막 로그인 시간 업데이트
             user.last_login = timezone.now()
             user.save(update_fields=['last_login'])
-            
+
+            # Runpod URL을 캐시에 로드 (최초 1회만 DB 조회)
+            RunpodJob.get_url()
+
             messages.success(request, f'환영합니다, {user.get_full_name()}님!')
             
             # next 파라미터가 있으면 해당 페이지로, 없으면 대시보드로
@@ -503,6 +507,10 @@ def google_profile_callback(request):
                 # 연동된 계정이 있으면 해당 사용자로 로그인
                 user = linked_account.user
                 login(request, user)
+
+                # Runpod URL을 캐시에 로드 (최초 1회만 DB 조회)
+                RunpodJob.get_url()
+
                 messages.success(request, f'Google 계정({google_email})으로 로그인했습니다.')
                 return redirect('dashboard:dashboard')
             
@@ -522,6 +530,10 @@ def google_profile_callback(request):
                     }
                 )
                 login(request, user)
+
+                # Runpod URL을 캐시에 로드 (최초 1회만 DB 조회)
+                RunpodJob.get_url()
+
                 messages.success(request, f'Google 계정({google_email})이 기존 계정과 연결되었습니다.')
                 return redirect('dashboard:dashboard')
             except CustomUser.DoesNotExist:
@@ -546,8 +558,12 @@ def google_profile_callback(request):
                     token_expires_at=token_expires_at,
                     scope=scope,
                 )
-                
+
                 login(request, user)
+
+                # Runpod URL을 캐시에 로드 (최초 1회만 DB 조회)
+                RunpodJob.get_url()
+
                 messages.success(request, f'Google 계정({google_email})으로 새 계정이 생성되었습니다.')
                 return redirect('dashboard:dashboard')
         
