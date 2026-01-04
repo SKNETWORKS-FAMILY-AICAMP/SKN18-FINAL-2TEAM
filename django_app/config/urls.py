@@ -18,6 +18,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import include, path
 from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse
 from apps.account.views import index as root_index, settings_api
 from apps.schedule import views as schedule_views
 from drf_spectacular.views import (
@@ -26,7 +27,19 @@ from drf_spectacular.views import (
     SpectacularSwaggerView,
 )
 
+
+def health_check(request):
+    """
+    ALB 헬스체크용 간단한 엔드포인트
+    DB 연결 없이 빠르게 응답하여 헬스체크 성능 최적화
+    """
+    return JsonResponse({"status": "healthy", "service": "django-app"})
+
+
 urlpatterns = [
+    # 헬스체크 엔드포인트 (ALB용, 인증 불필요)
+    path("health", health_check, name="health"),
+    
     # 루트 URL - 인증 상태에 따라 리디렉트
     path("", root_index, name="root"),
     
