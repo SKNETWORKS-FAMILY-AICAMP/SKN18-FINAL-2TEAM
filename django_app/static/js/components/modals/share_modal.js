@@ -458,10 +458,16 @@
             // member.id는 문자열일 수 있으므로 문자열로 비교
             const memberIdStr = String(member.id);
             const isSelected = selectedMembers.some(id => String(id) === memberIdStr);
+            const hasAvatar = member.avatar && member.avatar.trim() !== '';
+            const avatarStyle = hasAvatar ? `style="background-image: url('${escapeHtml(member.avatar)}');"` : '';
+            const avatarHtml = `<div class="profile-avatar profile-avatar-placeholder" ${avatarStyle}>
+                    <i class="fa-solid fa-user"></i>
+                   </div>`;
+            
             return `
                 <div class="share-member-item ${isSelected ? 'selected' : ''}" data-member-id="${member.id}">
                     <input type="checkbox" ${isSelected ? 'checked' : ''} />
-                    <img src="${escapeHtml(member.avatar)}" alt="${escapeHtml(member.name)}" class="member-avatar" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(member.name)}&background=random';" />
+                    ${avatarHtml}
                     <div class="member-info">
                         <div class="member-name">${escapeHtml(member.name)}</div>
                         <div class="member-email">${escapeHtml(member.email)}</div>

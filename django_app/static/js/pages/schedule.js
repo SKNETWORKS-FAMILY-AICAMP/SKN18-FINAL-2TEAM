@@ -44,6 +44,11 @@ let isGoogleConnected = scheduleRoot?.dataset.googleConnected === 'true';
 function initSchedule() {
     initFullCalendar();
     loadUserCalendars();
+    initInvitationDrawer();
+    // 초기 로드 시 badge 업데이트
+    setTimeout(() => {
+        loadInvitationBadge();
+    }, 500);
 
     if (scheduleSearchInput) {
         scheduleSearchInput.addEventListener('input', handleScheduleSearch);
@@ -92,6 +97,12 @@ function initSchedule() {
     const addCalendarBtn = document.getElementById('addCalendarBtn');
     if (addCalendarBtn) {
         addCalendarBtn.addEventListener('click', handleAddCalendar);
+    }
+
+    // Manage calendar button handler
+    const manageCalendarBtn = document.getElementById('manageCalendarBtn');
+    if (manageCalendarBtn) {
+        manageCalendarBtn.addEventListener('click', handleManageCalendar);
     }
 
     if (isGoogleConnected) {
@@ -520,6 +531,15 @@ function handleAddCalendar() {
     }
 }
 
+// Handle manage calendar button click
+function handleManageCalendar() {
+    if (window.CalendarManageModal && window.CalendarManageModal.open) {
+        window.CalendarManageModal.open();
+    } else if (window.Modal) {
+        window.Modal.open('calendarManageModal');
+    }
+}
+
 // Handle today button
 function handleToday() {
     if (calendar) {
@@ -917,10 +937,475 @@ if (document.readyState === 'loading') {
     initSchedule();
 }
 
+// Invitation Drawer Functions
+function initInvitationDrawer() {
+    const invitationListBtn = document.getElementById('invitationListBtn');
+    const invitationDrawer = document.getElementById('invitationDrawer');
+    
+    if (!invitationListBtn || !invitationDrawer) return;
+    
+    invitationListBtn.addEventListener('click', () => {
+        invitationDrawer.show();
+        loadInvitationsForDrawer();
+    });
+    
+    // Drawer가 열릴 때마다 초대 목록 새로고침
+    invitationDrawer.addEventListener('sl-show', () => {
+        loadInvitationsForDrawer();
+    });
+    
+    // 초기 로드 시 badge 업데이트
+    loadInvitationBadge();
+}
+
+async function loadInvitationBadge() {
+    const badge = document.getElementById('invitationBadge');
+    if (!badge) return;
+    
+    try {
+        const response = await fetch(`${API_BASE}/api/invitations/`);
+        if (!response.ok) return;
+        
+        const data = await response.json();
+        const invitations = data.results || [];
+        
+        if (invitations.length > 0) {
+            badge.textContent = invitations.length;
+            badge.style.display = 'flex';
+        } else {
+            badge.style.display = 'none';
+        }
+    } catch (error) {
+        console.error('Error loading invitation badge:', error);
+    }
+}
+
+async function loadInvitationsForDrawer() {
+    const drawerContent = document.getElementById('invitationDrawerContent');
+    const drawerEmpty = document.getElementById('invitationDrawerEmpty');
+    const drawerCount = document.getElementById('invitationDrawerCount');
+    const badge = document.getElementById('invitationBadge');
+    
+    try {
+        const response = await fetch(`${API_BASE}/api/invitations/`);
+        if (!response.ok) throw new Error('Failed to load invitations');
+        
+        const data = await response.json();
+        const invitations = data.results || [];
+        
+        // Count badge 업데이트
+        if (badge) {
+            if (invitations.length > 0) {
+                badge.textContent = invitations.length;
+                badge.style.display = 'flex';
+            } else {
+                badge.style.display = 'none';
+            }
+        }
+        
+        // Drawer count 업데이트
+        if (drawerCount) {
+            drawerCount.textContent = invitations.length;
+        }
+        
+        // Empty state
+        if (invitations.length === 0) {
+            if (drawerContent) drawerContent.style.display = 'none';
+            if (drawerEmpty) drawerEmpty.style.display = 'flex';
+            return;
+        }
+        
+        if (drawerContent) drawerContent.style.display = 'block';
+        if (drawerEmpty) drawerEmpty.style.display = 'none';
+        
+        // Render invitations
+        if (drawerContent) {
+            drawerContent.innerHTML = invitations.map(invitation => {
+                const startDate = invitation.schedule_start_date 
+                    ? new Date(invitation.schedule_start_date).toLocaleDateString('ko-KR')
+                    : '';
+                const endDate = invitation.schedule_end_date
+                    ? new Date(invitation.schedule_end_date).toLocaleDateString('ko-KR')
+                    : '';
+                const location = invitation.schedule_location || '';
+                
+                // 공유자 정보 표시
+                const sharerName = invitation.sharer_name || invitation.sharer_id || '알 수 없음';
+                const sharerEmail = invitation.sharer_email || '';
+                const sharerDisplay = sharerEmail 
+                    ? `${escapeHtml(sharerName)} (${escapeHtml(sharerEmail)})`
+                    : escapeHtml(sharerName);
+                
+                return `
+                    <div class="invitation-drawer-item" data-invitation-id="${invitation.id}">
+                        <div class="invitation-drawer-item-header">
+                            <div>
+                                <h4 class="invitation-drawer-item-title">${escapeHtml(invitation.schedule_title || '제목 없음')}</h4>
+                                <p class="invitation-drawer-item-info">${sharerDisplay}님이 공유했습니다</p>
+                            </div>
+                        </div>
+                        <div class="invitation-drawer-item-details">
+                            ${startDate ? `
+                                <div class="invitation-drawer-item-detail">
+                                    <i class="fa-solid fa-calendar"></i>
+                                    <span>${startDate}${endDate && endDate !== startDate ? ` ~ ${endDate}` : ''}</span>
+                                </div>
+                            ` : ''}
+                            ${location ? `
+                                <div class="invitation-drawer-item-detail">
+                                    <i class="fa-solid fa-location-dot"></i>
+                                    <span>${escapeHtml(location)}</span>
+                                </div>
+                            ` : ''}
+                            ${invitation.schedule_description ? `
+                                <div class="invitation-drawer-item-detail">
+                                    <i class="fa-solid fa-file-lines"></i>
+                                    <span>${escapeHtml(invitation.schedule_description)}</span>
+                                </div>
+                            ` : ''}
+                        </div>
+                        <div class="invitation-drawer-item-actions">
+                            <button class="invitation-drawer-accept-btn" onclick="handleAcceptInvitationFromDrawer(${invitation.id})">
+                                수락
+                            </button>
+                            <button class="invitation-drawer-reject-btn" onclick="handleRejectInvitationFromDrawer(${invitation.id})">
+                                거절
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+    } catch (error) {
+        console.error('Error loading invitations:', error);
+        if (drawerContent) drawerContent.innerHTML = '<p style="color: #ef4444; padding: 1rem;">초대 목록을 불러오는 중 오류가 발생했습니다.</p>';
+    }
+}
+
+async function handleAcceptInvitationFromDrawer(invitationId) {
+    // invitation_accept_modal.js의 함수 사용
+    // 여러 방법으로 함수 찾기 시도 (스크립트 로드 순서 문제 대응)
+    let openModalFunc = null;
+    
+    // 1. window.openInvitationAcceptModal 확인
+    if (typeof window.openInvitationAcceptModal === 'function') {
+        openModalFunc = window.openInvitationAcceptModal;
+    } 
+    // 2. window.InvitationAcceptModal.open 확인
+    else if (typeof window.InvitationAcceptModal !== 'undefined' && typeof window.InvitationAcceptModal.open === 'function') {
+        openModalFunc = window.InvitationAcceptModal.open;
+    }
+    // 3. 약간의 지연 후 다시 시도 (스크립트 로드 지연 대응)
+    else {
+        // 100ms 후 다시 시도
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        if (typeof window.openInvitationAcceptModal === 'function') {
+            openModalFunc = window.openInvitationAcceptModal;
+        } else if (typeof window.InvitationAcceptModal !== 'undefined' && typeof window.InvitationAcceptModal.open === 'function') {
+            openModalFunc = window.InvitationAcceptModal.open;
+        }
+    }
+    
+    if (openModalFunc) {
+        openModalFunc(invitationId, () => {
+            // 수락 후 drawer 새로고침
+            loadInvitationsForDrawer();
+            loadInvitationBadge();
+            
+            // SweetAlert2로 성공 메시지 (모달에서 이미 표시할 수도 있지만, 추가로 표시)
+            if (typeof window.Swal !== 'undefined') {
+                window.Swal.fire({
+                    title: '수락 완료',
+                    text: '초대를 수락했습니다.',
+                    icon: 'success',
+                    confirmButtonText: '확인',
+                    timer: 2000,
+                    timerProgressBar: true
+                });
+            }
+        });
+    } else {
+        console.error('openInvitationAcceptModal function not found');
+        console.log('Debug info:', {
+            windowOpenInvitationAcceptModal: typeof window.openInvitationAcceptModal,
+            windowInvitationAcceptModal: typeof window.InvitationAcceptModal
+        });
+        
+        // 함수를 찾을 수 없으면 직접 모달 열기 및 초기화
+        const modal = document.getElementById('invitationAcceptModal');
+        if (modal) {
+            // 모달 직접 열기
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+            
+            // invitationId 저장 (전역 변수로)
+            if (!window.currentInvitationId) {
+                window.currentInvitationId = invitationId;
+            }
+            
+            // 모달 이벤트 리스너 설정 (한 번만)
+            if (!modal.dataset.initialized) {
+                modal.dataset.initialized = 'true';
+                
+                // 캘린더 목록 로드
+                loadCalendarsForInvitationModal();
+                
+                // 수락 버튼 이벤트
+                const acceptBtn = document.getElementById('acceptInvitationBtn');
+                if (acceptBtn) {
+                    acceptBtn.onclick = async () => {
+                        await handleAcceptInvitationDirect(invitationId);
+                    };
+                }
+                
+                // 닫기 버튼 이벤트
+                const closeBtn = modal.querySelector('.modal-close-btn');
+                if (closeBtn) {
+                    closeBtn.onclick = () => {
+                        modal.classList.remove('active');
+                        document.body.style.overflow = '';
+                    };
+                }
+                
+                // 취소 버튼 이벤트
+                const cancelBtn = modal.querySelector('[data-action="close"]');
+                if (cancelBtn) {
+                    cancelBtn.onclick = () => {
+                        modal.classList.remove('active');
+                        document.body.style.overflow = '';
+                    };
+                }
+            }
+        } else {
+            // 모달이 없으면 에러 메시지
+            if (typeof window.Swal !== 'undefined') {
+                await window.Swal.fire({
+                    title: '오류',
+                    text: '초대 수락 기능을 사용할 수 없습니다. 페이지를 새로고침해주세요.',
+                    icon: 'error',
+                    confirmButtonText: '확인'
+                });
+            } else {
+                alert('초대 수락 기능을 사용할 수 없습니다. 페이지를 새로고침해주세요.');
+            }
+        }
+    }
+}
+
+// 캘린더 목록 로드 (모달용)
+async function loadCalendarsForInvitationModal() {
+    const calendarSelect = document.getElementById('calendarSelect');
+    if (!calendarSelect) return;
+    
+    try {
+        const response = await fetch('/api/calendars/', {
+            method: 'GET',
+            headers: {
+                'X-CSRFToken': getCsrfToken(),
+                'Content-Type': 'application/json',
+            },
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            // API는 {"results": [...]} 형태로 반환
+            const calendars = Array.isArray(data?.results) ? data.results : (Array.isArray(data) ? data : []);
+            
+            // 구글 캘린더 제외 (source_type이 'google'이 아닌 캘린더만)
+            const localCalendars = calendars.filter(cal => {
+                return cal.source_type !== 'google' && cal.source_type !== 'GOOGLE';
+            });
+            
+            calendarSelect.innerHTML = '<option value="">캘린더를 선택하세요</option>' +
+                localCalendars.map(cal => `
+                    <option value="${cal.id}">${escapeHtml(cal.name || '')}</option>
+                `).join('');
+        } else {
+            console.error('Failed to load calendars');
+            calendarSelect.innerHTML = '<option value="">캘린더를 불러올 수 없습니다</option>';
+        }
+    } catch (error) {
+        console.error('Error loading calendars:', error);
+        calendarSelect.innerHTML = '<option value="">캘린더를 불러올 수 없습니다</option>';
+    }
+}
+
+// 초대 수락 직접 처리
+async function handleAcceptInvitationDirect(invitationId) {
+    const calendarSelect = document.getElementById('calendarSelect');
+    if (!calendarSelect || !calendarSelect.value) {
+        if (typeof window.Swal !== 'undefined') {
+            await window.Swal.fire({
+                title: '알림',
+                text: '캘린더를 선택해주세요.',
+                icon: 'warning',
+                confirmButtonText: '확인'
+            });
+        } else {
+            alert('캘린더를 선택해주세요.');
+        }
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${API_BASE}/api/invitations/${invitationId}/accept/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCsrfToken(),
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                calendar_id: parseInt(calendarSelect.value)
+            }),
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            
+            // 모달 닫기
+            const modal = document.getElementById('invitationAcceptModal');
+            if (modal) {
+                modal.classList.remove('active');
+                document.body.style.overflow = '';
+            }
+            
+            // Drawer 새로고침
+            loadInvitationsForDrawer();
+            loadInvitationBadge();
+            
+            // 캘린더 새로고침
+            if (window.SchedulePage) {
+                if (window.SchedulePage.refreshCalendar) {
+                    window.SchedulePage.refreshCalendar();
+                }
+                if (window.SchedulePage.loadSchedules) {
+                    window.SchedulePage.loadSchedules();
+                }
+            }
+            
+            // SweetAlert2로 성공 메시지
+            if (typeof window.Swal !== 'undefined') {
+                await window.Swal.fire({
+                    title: '수락 완료',
+                    text: data.message || '초대를 수락했습니다.',
+                    icon: 'success',
+                    confirmButtonText: '확인',
+                    timer: 2000,
+                    timerProgressBar: true
+                });
+            }
+        } else {
+            const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+            if (typeof window.Swal !== 'undefined') {
+                await window.Swal.fire({
+                    title: '오류',
+                    text: error.error || '초대 수락에 실패했습니다.',
+                    icon: 'error',
+                    confirmButtonText: '확인'
+                });
+            } else {
+                alert(error.error || '초대 수락에 실패했습니다.');
+            }
+        }
+    } catch (error) {
+        console.error('Error accepting invitation:', error);
+        if (typeof window.Swal !== 'undefined') {
+            await window.Swal.fire({
+                title: '오류',
+                text: '초대 수락 중 오류가 발생했습니다.',
+                icon: 'error',
+                confirmButtonText: '확인'
+            });
+        } else {
+            alert('초대 수락 중 오류가 발생했습니다.');
+        }
+    }
+}
+
+async function handleRejectInvitationFromDrawer(invitationId) {
+    // SweetAlert2로 확인
+    if (typeof window.Swal === 'undefined') {
+        // SweetAlert가 없으면 기본 confirm 사용
+        if (!confirm('초대를 거절하시겠습니까?')) return;
+    } else {
+        const result = await window.Swal.fire({
+            title: '초대 거절',
+            text: '정말로 이 초대를 거절하시겠습니까?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: '거절',
+            cancelButtonText: '취소',
+            reverseButtons: true
+        });
+        
+        if (!result.isConfirmed) {
+            return;
+        }
+    }
+    
+    try {
+        const response = await fetch(`${API_BASE}/api/invitations/${invitationId}/reject/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken(),
+            },
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || 'Failed to reject invitation');
+        }
+        
+        // Drawer 새로고침
+        loadInvitationsForDrawer();
+        loadInvitationBadge();
+        
+        // SweetAlert2로 성공 메시지
+        if (typeof window.Swal !== 'undefined') {
+            await window.Swal.fire({
+                title: '거절 완료',
+                text: '초대를 거절했습니다.',
+                icon: 'success',
+                confirmButtonText: '확인',
+                timer: 2000,
+                timerProgressBar: true
+            });
+        } else if (typeof notyf !== 'undefined') {
+            notyf.success('초대를 거절했습니다.');
+        }
+    } catch (error) {
+        console.error('Error rejecting invitation:', error);
+        
+        // SweetAlert2로 에러 메시지
+        if (typeof window.Swal !== 'undefined') {
+            await window.Swal.fire({
+                title: '오류',
+                text: error.message || '초대 거절 중 오류가 발생했습니다.',
+                icon: 'error',
+                confirmButtonText: '확인'
+            });
+        } else if (typeof notyf !== 'undefined') {
+            notyf.error(error.message || '초대 거절 중 오류가 발생했습니다.');
+        }
+    }
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
 // Export for use in other modules
 if (typeof window !== 'undefined') {
     window.SchedulePage = {
         initSchedule,
+        loadInvitationBadge,
         loadSchedules,
         refreshCalendar,
         reloadCalendars: loadUserCalendars,

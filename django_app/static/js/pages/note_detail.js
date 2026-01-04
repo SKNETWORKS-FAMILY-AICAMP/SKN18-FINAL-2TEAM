@@ -11,7 +11,7 @@ let editingCommentId = null;  // 수정 중인 댓글 ID
 
 // DOM Elements
 let noteDetailView, noteDetailWrapper;
-let btnBack, noteDetailTitle, noteDetailAuthor, noteDetailDate, noteDetailTags;
+let btnBack, noteDetailTitle, noteDetailAuthor, noteDetailAuthorAvatar, noteDetailAuthorAvatarPlaceholder, noteDetailDate, noteDetailTags;
 let btnShareDetail, btnCommentToggle, btnAttachmentsScroll, btnEditNote, btnDeleteNote;
 let noteContentBox, noteContentText, noteAttachmentsSection, attachmentsList;
 let commentSidebar, commentSidebarContent, btnCloseCommentSidebar;
@@ -31,6 +31,8 @@ function initNoteDetail() {
     btnBack = document.getElementById('btnBack');
     noteDetailTitle = document.getElementById('noteDetailTitle');
     noteDetailAuthor = document.getElementById('noteDetailAuthor');
+    noteDetailAuthorAvatar = document.getElementById('noteDetailAuthorAvatar');
+    noteDetailAuthorAvatarPlaceholder = document.getElementById('noteDetailAuthorAvatarPlaceholder');
     noteDetailDate = document.getElementById('noteDetailDate');
     noteDetailTags = document.getElementById('noteDetailTags');
     btnShareDetail = document.getElementById('btnShareDetail');
@@ -140,6 +142,21 @@ function renderNoteDetail(note) {
     if (noteDetailTitle) noteDetailTitle.textContent = note.title || '제목 없음';
     if (noteDetailDate) noteDetailDate.textContent = note.date || '';
     if (noteDetailAuthor) noteDetailAuthor.textContent = note.author || '';
+    
+    // 작성자 프로필 이미지 처리
+    if (noteDetailAuthorAvatar && noteDetailAuthorAvatarPlaceholder) {
+        if (note.author_avatar) {
+            // 프로필 이미지가 있는 경우
+            noteDetailAuthorAvatar.src = note.author_avatar;
+            noteDetailAuthorAvatar.alt = note.author || 'Author';
+            noteDetailAuthorAvatar.style.display = 'block';
+            noteDetailAuthorAvatarPlaceholder.style.display = 'none';
+        } else {
+            // 프로필 이미지가 없는 경우 플레이스홀더 표시
+            noteDetailAuthorAvatar.style.display = 'none';
+            noteDetailAuthorAvatarPlaceholder.style.display = 'flex';
+        }
+    }
     
     // Content는 HTML이므로 innerHTML 사용 (CKEditor에서 생성된 HTML)
     if (noteContentText) {
@@ -576,18 +593,23 @@ function renderComments() {
         const highlightedText = comment.highlighted_text || comment.highlightedText || '';
         const commentText = comment.comment || comment.comment_text || '';
         const authorName = comment.author || '';
-        const avatarUrl = comment.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(authorName)}&background=random`;
+        const avatarUrl = comment.avatar || '';
         const timeAgo = comment.time || '';
         const commentId = comment.id || comment.comment_sid;
         const isMine = comment.is_mine === true;  // 본인이 작성한 댓글인지 확인
         const isEditing = editingCommentId === commentId;  // 수정 모드인지 확인
+        
+        // 프로필 이미지가 있으면 img 태그, 없으면 플레이스홀더
+        const avatarHtml = avatarUrl 
+            ? `<img src="${escapeHtml(avatarUrl)}" alt="${escapeHtml(authorName)}" class="comment-avatar" />`
+            : `<div class="comment-avatar comment-avatar-placeholder"><i class="fa-solid fa-user"></i></div>`;
         
         return `
         <div class="comment-item ${activeCommentId === commentId ? 'active' : ''}" 
              onclick="${!isEditing ? `window.NoteDetailPage.setActiveComment(${commentId})` : ''}">
             ${highlightedText ? `<div class="comment-highlighted-text">"${escapeHtml(highlightedText)}"</div>` : ''}
             <div class="comment-header">
-                <img src="${escapeHtml(avatarUrl)}" alt="${escapeHtml(authorName)}" class="comment-avatar" />
+                ${avatarHtml}
                 <div class="comment-author-info">
                     <p class="comment-author-name">${escapeHtml(authorName)}</p>
                     <p class="comment-time">${escapeHtml(timeAgo)}</p>
@@ -858,7 +880,7 @@ function handleDownloadAttachment(fileId, filePath) {
     window.open(downloadUrl, '_blank');
     
     if (window.notyf) {
-        window.notyf.info('파일 다운로드를 시작합니다.');
+        window.notyf.success('파일 다운로드를 시작합니다.');
     }
 }
 

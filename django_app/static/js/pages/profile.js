@@ -217,39 +217,117 @@ function handleGoogleLink() {
 }
 
 // Handle unlink account
-function handleUnlinkAccount(provider) {
-    if (!confirm(`${provider === 'google' ? 'Google' : provider} 계정 연동을 해제하시겠습니까?`)) {
+async function handleUnlinkAccount(provider) {
+    let confirmResult;
+    
+    if (provider === 'google') {
+        // SweetAlert2 사용
+        if (window.Swal) {
+            confirmResult = await window.Swal.fire({
+                title: 'Google 계정 연결 해제',
+                html: '<div style="text-align: center; padding: 0 1rem;">' +
+                      '<p style="margin-bottom: 0.5rem;">Google 계정 연결을 해제하시겠습니까?</p>' +
+                      '<ul style="margin: 0.5rem 0; padding-left: 1.5rem;">' +
+                      '<li>Google 계정 로그인이 해제됩니다</li>' +
+                      '<li>캘린더 연동도 함께 중단됩니다</li>' +
+                      '<li>기존 일정은 보존되지만 숨김 처리됩니다</li>' +
+                      '<li>재연동 시 OAuth 인증을 다시 진행해야 합니다</li>' +
+                      '</ul></div>',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: '연결 해제',
+                cancelButtonText: '취소',
+                confirmButtonColor: '#ef4444',
+                cancelButtonColor: '#6b7280',
+                reverseButtons: true,
+            });
+        } else {
+            // Fallback to confirm
+            const confirmMessage = 'Google 계정 연결을 해제하시겠습니까?\n\n' +
+                                 '• Google 계정 로그인이 해제됩니다\n' +
+                                 '• 캘린더 연동도 함께 중단됩니다\n' +
+                                 '• 기존 일정은 보존되지만 숨김 처리됩니다\n' +
+                                 '• 재연동 시 OAuth 인증을 다시 진행해야 합니다';
+            confirmResult = { isConfirmed: confirm(confirmMessage) };
+        }
+    } else {
+        if (window.Swal) {
+            confirmResult = await window.Swal.fire({
+                title: '계정 연동 해제',
+                text: `${provider} 계정 연동을 해제하시겠습니까?`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: '해제',
+                cancelButtonText: '취소',
+                confirmButtonColor: '#ef4444',
+                cancelButtonColor: '#6b7280',
+            });
+        } else {
+            confirmResult = { isConfirmed: confirm(`${provider} 계정 연동을 해제하시겠습니까?`) };
+        }
+    }
+    
+    if (!confirmResult.isConfirmed) {
         return;
     }
 
-    fetch(`/api/profile/linked-accounts/?provider=${provider}`, {
-        method: 'DELETE',
-        headers: {
-            'X-CSRFToken': getCsrfToken(),
-        },
-    })
-    .then(response => {
+    try {
+        const response = await fetch(`/api/profile/linked-accounts/?provider=${provider}`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': getCsrfToken(),
+            },
+        });
+        
         const contentType = response.headers.get('content-type');
         if (!contentType || !contentType.includes('application/json')) {
-            return response.text().then(text => {
-                throw new Error(`서버 응답이 JSON이 아닙니다: ${text.substring(0, 100)}`);
-            });
+            const text = await response.text();
+            throw new Error(`서버 응답이 JSON이 아닙니다: ${text.substring(0, 100)}`);
         }
-        return response.json();
-    })
-    .then(data => {
+        
+        const data = await response.json();
+        
         if (data.success) {
-            alert(data.message || '계정 연동이 해제되었습니다.');
+            if (window.Swal) {
+                await window.Swal.fire({
+                    title: '완료',
+                    text: data.message || '계정 연동이 해제되었습니다.',
+                    icon: 'success',
+                    confirmButtonText: '확인',
+                    confirmButtonColor: '#2563eb',
+                });
+            } else {
+                alert(data.message || '계정 연동이 해제되었습니다.');
+            }
             // 페이지 새로고침하여 UI 업데이트
             window.location.reload();
         } else {
-            alert('계정 연동 해제에 실패했습니다: ' + (data.error || '알 수 없는 오류'));
+            if (window.Swal) {
+                await window.Swal.fire({
+                    title: '오류',
+                    text: '계정 연동 해제에 실패했습니다: ' + (data.error || '알 수 없는 오류'),
+                    icon: 'error',
+                    confirmButtonText: '확인',
+                    confirmButtonColor: '#ef4444',
+                });
+            } else {
+                alert('계정 연동 해제에 실패했습니다: ' + (data.error || '알 수 없는 오류'));
+            }
         }
-    })
-    .catch(error => {
+    } catch (error) {
         console.error('Error unlinking account:', error);
-        alert('계정 연동 해제 중 오류가 발생했습니다: ' + error.message);
-    });
+        if (window.Swal) {
+            await window.Swal.fire({
+                title: '오류',
+                text: '계정 연동 해제 중 오류가 발생했습니다: ' + error.message,
+                icon: 'error',
+                confirmButtonText: '확인',
+                confirmButtonColor: '#ef4444',
+            });
+        } else {
+            alert('계정 연동 해제 중 오류가 발생했습니다: ' + error.message);
+        }
+    }
 }
 
 // Handle save profile (수정하기 버튼 클릭)

@@ -71,6 +71,16 @@ class Schedule(models.Model):
         max_length=1, choices=REPEAT_CHOICES, default='N', db_column='repeat_type'
     )
 
+    original_schedule = models.ForeignKey(
+        'self',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='shared_copies',
+        db_column='original_schedule_sid'
+    )
+    is_shared_copy = models.BooleanField(default=False, db_column='is_shared_copy')
+    
     created_at = models.DateTimeField(auto_now_add=True, db_column='created_at')
     created_id = models.CharField(max_length=60, db_column='created_id')
     updated_at = models.DateTimeField(auto_now=True, db_column='updated_at')
@@ -176,11 +186,75 @@ class ScheduleException(models.Model):
 
 
 # ============================================================
-# ScheduleShare
+# ScheduleInvitation (일정 공유 초대)
+# ============================================================
+class ScheduleInvitation(models.Model):
+    """
+    일정 공유 초대 모델
+    공유자가 수락/거부하기 전의 초대 상태를 관리
+    """
+    
+    class Status(models.TextChoices):
+        PENDING = "pending", "대기중"
+        ACCEPTED = "accepted", "수락됨"
+        REJECTED = "rejected", "거절됨"
+    
+    invitation_sid = models.AutoField(primary_key=True, db_column='invitation_sid')
+    schedule = models.ForeignKey(
+        Schedule,
+        on_delete=models.CASCADE,
+        related_name='invitations',
+        db_column='schedule_sid'
+    )
+    user_id = models.CharField(max_length=60, db_column='user_id')  # 초대받은 사용자
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.PENDING,
+        db_column='status'
+    )
+    accepted_at = models.DateTimeField(null=True, blank=True, db_column='accepted_at')
+    rejected_at = models.DateTimeField(null=True, blank=True, db_column='rejected_at')
+    accepted_calendar = models.ForeignKey(
+        'UserCalendar',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='accepted_invitations',
+        db_column='accepted_calendar_sid'
+    )
+    shared_schedule = models.ForeignKey(
+        'Schedule',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='shared_from_invitation',
+        db_column='shared_schedule_sid'
+    )
+    created_at = models.DateTimeField(auto_now_add=True, db_column='created_at')
+    created_id = models.CharField(max_length=60, db_column='created_id')  # 초대한 사용자
+    
+    class Meta:
+        db_table = 't_schedule_invitation'
+        ordering = ['-created_at']
+        verbose_name = '일정 공유 초대'
+        verbose_name_plural = '일정 공유 초대들'
+        indexes = [
+            models.Index(fields=['schedule', 'user_id']),
+            models.Index(fields=['user_id', 'status']),
+            models.Index(fields=['status']),
+        ]
+    
+    def __str__(self):
+        return f"{self.schedule.title} → {self.user_id} ({self.status})"
+
+
+# ============================================================
+# ScheduleShare (수락된 일정 공유)
 # ============================================================
 class ScheduleShare(models.Model):
     """
-    일정 공유 모델
+    일정 공유 모델 (수락된 공유만 저장)
     """
     
     schedule_share_sid = models.AutoField(primary_key=True, db_column='schedule_share_sid')
@@ -191,6 +265,14 @@ class ScheduleShare(models.Model):
         db_column='schedule_sid'
     )
     user_id = models.CharField(max_length=60, db_column='user_id')
+    shared_schedule = models.ForeignKey(
+        'Schedule',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='shared_from',
+        db_column='shared_schedule_sid'
+    )
     created_at = models.DateTimeField(auto_now_add=True, db_column='created_at')
     created_id = models.CharField(max_length=60, db_column='created_id')
     
@@ -201,6 +283,7 @@ class ScheduleShare(models.Model):
         verbose_name_plural = '일정 공유들'
         indexes = [
             models.Index(fields=['schedule', 'user_id']),
+            models.Index(fields=['user_id']),
         ]
     
     def __str__(self):

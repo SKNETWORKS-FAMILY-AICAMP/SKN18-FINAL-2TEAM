@@ -81,6 +81,332 @@
     font-size: 0.875rem;
 }
 
+.google-calendar-hint {
+    margin-top: 0.5rem;
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-size: 0.8125rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.invitations-section {
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--color-border-light);
+}
+
+.invitations-section .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.75rem;
+}
+
+.invitations-section .section-header h3 {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin: 0;
+}
+
+.invitation-count {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--color-text-muted);
+    background: var(--color-bg-gray-100);
+    padding: 0.125rem 0.5rem;
+    border-radius: 0.75rem;
+}
+
+.invitations-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.invitation-item {
+    padding: 0.75rem;
+    background: var(--color-bg-white);
+    border: 1px solid var(--color-border-light);
+    border-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    transition: background-color 0.2s;
+}
+
+.invitation-item:hover {
+    background: var(--color-bg-gray-50);
+}
+
+.invitation-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.invitation-title {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-text-primary);
+    margin-bottom: 0.25rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.invitation-meta {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+}
+
+.invitation-separator {
+    color: var(--color-text-muted);
+}
+
+.invitation-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.invitation-accept-btn,
+.invitation-reject-btn {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.invitation-accept-btn {
+    background: var(--color-primary);
+    color: white;
+    border: none;
+}
+
+.invitation-accept-btn:hover {
+    background: var(--color-primary-dark);
+}
+
+.invitation-reject-btn {
+    background: transparent;
+    color: var(--color-text-secondary);
+    border: 1px solid var(--color-border-gray);
+}
+
+.invitation-reject-btn:hover {
+    background: var(--color-bg-gray-100);
+    border-color: var(--color-text-muted);
+}
+
+.invitations-empty {
+    text-align: center;
+    padding: 2rem 1rem;
+    color: var(--color-text-muted);
+    font-size: 0.875rem;
+}
+
+/* Invitation List Button */
+.invitation-list-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: white;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: #374151;
+    font-size: 0.875rem;
+    font-weight: 500;
+    position: relative;
+}
+
+.invitation-list-btn:hover {
+    background: #f3f4f6;
+    border-color: #9ca3af;
+}
+
+.invitation-list-btn i {
+    font-size: 0.875rem;
+}
+
+.invitation-badge {
+    position: absolute;
+    top: -0.25rem;
+    right: -0.25rem;
+    background: #ef4444;
+    color: white;
+    border-radius: 50%;
+    width: 1.25rem;
+    height: 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1;
+}
+
+/* Invitation Drawer */
+.invitation-drawer {
+    --width: 400px;
+}
+
+.invitation-drawer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem;
+    border-bottom: 1px solid #e5e7eb;
+    margin-bottom: 1rem;
+}
+
+.invitation-drawer-header h3 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #111827;
+    margin: 0;
+}
+
+.invitation-drawer-count {
+    background: #3b82f6;
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.invitation-drawer-content {
+    padding: 0 1rem;
+    max-height: calc(100vh - 200px);
+    overflow-y: auto;
+}
+
+.invitation-drawer-item {
+    padding: 1rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    margin-bottom: 0.75rem;
+    background: white;
+    transition: all 0.2s;
+}
+
+.invitation-drawer-item:hover {
+    border-color: #3b82f6;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.invitation-drawer-item-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 0.75rem;
+}
+
+.invitation-drawer-item-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #111827;
+    margin: 0 0 0.25rem 0;
+}
+
+.invitation-drawer-item-info {
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin: 0;
+}
+
+.invitation-drawer-item-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    font-size: 0.875rem;
+    color: #6b7280;
+}
+
+.invitation-drawer-item-detail {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.invitation-drawer-item-detail i {
+    width: 1rem;
+    color: #9ca3af;
+}
+
+.invitation-drawer-item-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.invitation-drawer-accept-btn,
+.invitation-drawer-reject-btn {
+    flex: 1;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid;
+}
+
+.invitation-drawer-accept-btn {
+    background: #3b82f6;
+    color: white;
+    border-color: #3b82f6;
+}
+
+.invitation-drawer-accept-btn:hover {
+    background: #2563eb;
+    border-color: #2563eb;
+}
+
+.invitation-drawer-reject-btn {
+    background: white;
+    color: #6b7280;
+    border-color: #d1d5db;
+}
+
+.invitation-drawer-reject-btn:hover {
+    background: #f3f4f6;
+    border-color: #9ca3af;
+}
+
+.invitation-drawer-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 1rem;
+    text-align: center;
+    color: #9ca3af;
+}
+
+.invitation-drawer-empty i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+.invitation-drawer-empty p {
+    font-size: 0.875rem;
+    margin: 0;
+}
+
 .my-calendars-section {
     padding-bottom: 1rem;
     border-bottom: 1px solid var(--color-border-light);
@@ -93,6 +419,12 @@
     margin-bottom: 0.5rem;
 }
 
+.my-calendars-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
 .my-calendars-section h3 {
     font-size: 0.75rem;
     font-weight: 600;
@@ -102,6 +434,7 @@
     letter-spacing: 0.05em;
 }
 
+.edit-calendar-btn,
 .add-calendar-btn {
     display: flex;
     align-items: center;
@@ -118,11 +451,13 @@
     flex-shrink: 0;
 }
 
+.edit-calendar-btn:hover,
 .add-calendar-btn:hover {
     background: var(--color-bg-gray-100);
     color: var(--color-primary);
 }
 
+.edit-calendar-btn i,
 .add-calendar-btn i {
     font-size: 0.875rem;
 }
@@ -424,6 +759,12 @@
 .nav-btn-icon i {
     font-size: 0.875rem;
     color: #374151;
+}
+
+.calendar-header-right {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
 }
 
 .view-mode-control {
