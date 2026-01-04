@@ -6,6 +6,7 @@ let searchQuery = "";
 let selectedDateRange = undefined;
 let notesPerPage = 10;
 let viewMode = 'card';
+let myNotesOnly = false;
 
 // DOM Elements
 let notesListView;
@@ -17,6 +18,8 @@ let btnCardView, btnTableView;
 let btnDateFilter, dateFilterText, dateFilterPopover, dateFilterCalendar, dateFilterActions, btnDateReset;
 // Search buttons
 let btnResetSearch, btnSearch;
+// My notes only checkbox
+let chkMyNotesOnly;
 // window.airDatepickerInstance는 window 객체에 저장 (중복 초기화 방지 및 디버깅용)
 
 // Notes data state
@@ -47,6 +50,8 @@ function initNotes() {
     // Search buttons
     btnResetSearch = document.getElementById('btnResetSearch');
     btnSearch = document.getElementById('btnSearch');
+    // My notes only checkbox
+    chkMyNotesOnly = document.getElementById('chkMyNotesOnly');
 
     // Attach event listeners
     if (btnCreateNote) btnCreateNote.addEventListener('click', handleCreateNote);
@@ -68,6 +73,10 @@ function initNotes() {
     // Search button event listeners
     if (btnResetSearch) btnResetSearch.addEventListener('click', handleResetAllFilters);
     if (btnSearch) btnSearch.addEventListener('click', handleSearchSubmit);
+    // My notes only checkbox event listener
+    if (chkMyNotesOnly) {
+        chkMyNotesOnly.addEventListener('change', handleMyNotesOnlyChange);
+    }
     
     // Initialize AirDatepicker
     initDateFilter();
@@ -86,7 +95,18 @@ async function loadNotesFromApi() {
     isLoadingNotes = true;
     
     try {
-        const response = await fetch('/api/notes/', {
+        // Build query parameters
+        const params = new URLSearchParams();
+        if (myNotesOnly) {
+            params.append('my_notes_only', 'true');
+        }
+        if (searchQuery) {
+            params.append('search', searchQuery);
+        }
+        
+        const url = '/api/notes/' + (params.toString() ? '?' + params.toString() : '');
+        
+        const response = await fetch(url, {
             method: 'GET',
             headers: {
                 'Accept': 'application/json',
@@ -114,11 +134,13 @@ function normalizeApiNote(note) {
         id: note?.id ?? null,
         title: note?.title || '제목 없음',
         content: note?.content || '',
+        contentPreview: note?.contentPreview || '',  // 백엔드에서 제공하는 텍스트 미리보기
         date: note?.date || '',
         author: note?.author || '',
         shared: typeof note?.shared === 'number' ? note.shared : 0,
         comments: typeof note?.comments === 'number' ? note.comments : 0,
         isPublic: Boolean(note?.is_public),
+        isShared: Boolean(note?.is_shared),  // 공유받은 노트인지 여부
         tags: Array.isArray(note?.tags) ? note.tags : [],
     };
 }
@@ -258,23 +280,34 @@ function handleResetAllFilters() {
         searchInput.value = "";
     }
     
+    // 내 노트만 필터 초기화
+    myNotesOnly = false;
+    if (chkMyNotesOnly) {
+        chkMyNotesOnly.checked = false;
+    }
+    
     // 페이지 초기화 및 리렌더링
     currentPage = 1;
-    renderNotesList();
-    renderPagination();
+    loadNotesFromApi();
 }
 
 // Handle search submit (검색 버튼 클릭 시)
 function handleSearchSubmit() {
     searchQuery = searchInput?.value || "";
     currentPage = 1;
-    renderNotesList();
-    renderPagination();
+    loadNotesFromApi();
     
     // 날짜 필터 팝오버 닫기
     if (dateFilterPopover) {
         dateFilterPopover.style.display = 'none';
     }
+}
+
+// Handle my notes only checkbox change
+function handleMyNotesOnlyChange() {
+    myNotesOnly = chkMyNotesOnly?.checked || false;
+    currentPage = 1;
+    loadNotesFromApi();
 }
 
 // Update date filter text
@@ -335,7 +368,8 @@ function renderCardView(currentNotes) {
     }
 
     notesGrid.innerHTML = currentNotes.map(note => {
-        const previewContent = getNoteContentPreview(note.content);
+        // 백엔드에서 제공하는 contentPreview 사용 (없으면 기존 함수 사용)
+        const previewContent = note.contentPreview || getNoteContentPreview(note.content);
         const lockIcon = note.isPublic ? 'fa-lock-open' : 'fa-lock';
         const lockStateClass = note.isPublic ? 'lock-public' : 'lock-private';
         const lockTooltip = note.isPublic ? '모두가 검색할 수 있는 공개 노트 입니다' : '비공개 노트 입니다';
@@ -350,6 +384,7 @@ function renderCardView(currentNotes) {
                 <div class="note-author-date author-date">
                     ${note.author ? `
                         <span class="author-label">${escapeHtml(note.author)}</span>
+                        ${note.isShared ? `<span class="shared-badge">[공유]</span>` : ''}
                         <span class="author-separator">|</span>
                     ` : ''}
                     <span class="note-date date-label">${escapeHtml(note.date)}</span>
@@ -410,9 +445,19 @@ function renderTableView(currentNotes) {
 
     notesTableBody.innerHTML = currentNotes.map((note, index) => {
         const rowNumber = startIndex + index + 1;
-        const contentLines = note.content.split('\n');
-        const firstLine = contentLines[0] || '';
-        const contentPreview = firstLine.length > 100 ? firstLine.substring(0, 100) + '...' : firstLine;
+        
+        // 백엔드에서 제공하는 contentPreview 사용 (없으면 기존 방식 사용)
+        let contentPreview = note.contentPreview || '';
+        if (!contentPreview && note.content) {
+            const contentLines = note.content.split('\n');
+            const firstLine = contentLines[0] || '';
+            contentPreview = firstLine.length > 100 ? firstLine.substring(0, 100) + '...' : firstLine;
+        }
+        // 테이블 뷰에서는 100자로 제한
+        if (contentPreview.length > 100) {
+            contentPreview = contentPreview.substring(0, 100) + '...';
+        }
+        
         const lockIcon = note.isPublic ? 'fa-lock-open' : 'fa-lock';
         const lockStateClass = note.isPublic ? 'lock-public' : 'lock-private';
         const lockTooltip = note.isPublic ? '모두가 검색할 수 있는 공개 노트 입니다' : '비공개 노트 입니다';
@@ -424,7 +469,10 @@ function renderTableView(currentNotes) {
                 <h4>${escapeHtml(note.title)}</h4>
                 <p>${escapeHtml(contentPreview)}</p>
             </td>
-            <td class="table-cell-author">${escapeHtml(note.author || '-')}</td>
+            <td class="table-cell-author">
+                ${note.author ? escapeHtml(note.author) : '-'}
+                ${note.isShared ? `<span class="shared-badge">[공유]</span>` : ''}
+            </td>
             <td class="table-cell-date">${escapeHtml(note.date)}</td>
             <td class="table-cell-tags">
                 ${note.tags.map(tag => `<span class="meta-tag">${escapeHtml(tag)}</span>`).join('')}
@@ -455,20 +503,11 @@ function openNoteDetail(noteId) {
     window.location.href = `/notes/detail/?id=${noteId}`;
 }
 
-// Filter notes
+// Filter notes (클라이언트 사이드 필터링 - 날짜 필터만 적용, 검색과 내 노트만 필터는 서버에서 처리)
 function filterNotes() {
     let filtered = [...notes];
     
-    if (searchQuery) {
-        const query = searchQuery.toLowerCase();
-        filtered = filtered.filter(note => 
-            note.title.toLowerCase().includes(query) ||
-            note.content.toLowerCase().includes(query) ||
-            (note.author && note.author.toLowerCase().includes(query)) ||
-            note.tags.some(tag => tag.toLowerCase().includes(query))
-        );
-    }
-    
+    // 검색과 내 노트만 필터는 서버에서 처리되므로 여기서는 날짜 필터만 적용
     if (selectedDateRange?.from) {
         const fromDate = new Date(selectedDateRange.from);
         fromDate.setHours(0, 0, 0, 0);

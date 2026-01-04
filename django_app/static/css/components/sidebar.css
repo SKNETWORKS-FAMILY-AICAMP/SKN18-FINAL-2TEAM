@@ -1,6 +1,9 @@
 .sidebar-container {
     display: flex;
     height: 100%;
+    width: 4rem;
+    flex-shrink: 0;
+    position: relative;
 }
 
 /* Sidebar Rail - matching React: w-16 bg-white border-r border-gray-200 flex flex-col */
@@ -148,5 +151,4 @@
 .sidebar-item.disabled span {
     opacity: 0.5;
 }
-
 

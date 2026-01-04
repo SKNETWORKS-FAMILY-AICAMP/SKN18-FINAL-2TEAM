@@ -1,9 +1,10 @@
 """
 SFT Dataset Creation & Quality Audit Pipeline
 
-이 스크립트는 다음 두 단계를 순차적으로 실행합니다:
+이 스크립트는 다음 세 단계를 순차적으로 실행합니다:
 1. preprocess_to_sft_v3.py: CSV → annotation.json → SFT dataset JSONL
-2. dataset_auditor.py: SFT dataset JSONL → Quality audit → Filtered final dataset
+2. dataset_auditor.py: SFT dataset JSONL → Quality audit → Filtered final dataset JSONL
+3. convert_to_string_json.py: Final JSONL → Stringified JSON (LLaMA-Factory가 인식 가능한 json형식)
 """
 
 import sys
@@ -28,6 +29,7 @@ from dataset_auditor import (
     read_jsonl, evaluate_one, write_csv, write_json, write_final_jsonl, 
     FinalEvaluation, SLEEP_BETWEEN
 )
+from convert_to_string_json import convert_jsonl_to_string_json
 from pydantic import ValidationError
 
 
@@ -39,7 +41,16 @@ def run_preprocessing():
     
     try:
         annotations, annotation_output = create_annotation_json()
+        
+        # annotation 파일이 비어있는지 확인
+        if not annotations:
+            raise ValueError(f"Annotation file is empty: {annotation_output}")
+        
         sft_dataset, sft_output = create_sft_dataset(annotation_output)
+        
+        # SFT dataset이 비어있는지 확인
+        if not sft_dataset:
+            raise ValueError(f"SFT dataset is empty: {sft_output}")
         
         print(f"\n✅ Step 1 completed successfully!")
         print(f"   - Annotation JSON: {annotation_output}")
@@ -62,10 +73,10 @@ def run_audit_via_subprocess(sft_output: str):
     # 타임스탬프 생성 (yymmdd_hhmm)
     timestamp = datetime.now().strftime("%y%m%d_%H%M")
     
-    # 출력 파일 경로 설정
-    out_csv = f"sllm/datasets/audit_results_{timestamp}.csv"
-    out_json = f"sllm/datasets/audit_results_{timestamp}.json"
-    out_final_jsonl = f"sllm/datasets/final_sft_dataset_{timestamp}.jsonl"
+    # 출력 파일 경로 설정 (generated 폴더에 저장)
+    out_csv = f"sllm/datasets/generated/audit_results_{timestamp}.csv"
+    out_json = f"sllm/datasets/generated/audit_results_{timestamp}.json"
+    out_final_jsonl = f"sllm/datasets/generated/final_sft_dataset_{timestamp}.jsonl"
     
     # dataset_auditor.py 스크립트 경로 (절대 경로로 변환)
     auditor_script = script_dir / "dataset_auditor.py"
@@ -111,11 +122,11 @@ def run_audit_direct(sft_output: str):
     # 타임스탬프 생성 (yymmdd_hhmm)
     timestamp = datetime.now().strftime("%y%m%d_%H%M")
     
-    # 출력 파일 경로 설정 (절대 경로로 변환)
+    # 출력 파일 경로 설정 (generated 폴더에 저장, 절대 경로로 변환)
     sft_output_abs = Path(sft_output).resolve() if not Path(sft_output).is_absolute() else Path(sft_output)
-    out_csv = project_root / f"sllm/datasets/audit_results_{timestamp}.csv"
-    out_json = project_root / f"sllm/datasets/audit_results_{timestamp}.json"
-    out_final_jsonl = project_root / f"sllm/datasets/final_sft_dataset_{timestamp}.jsonl"
+    out_csv = project_root / f"sllm/datasets/generated/audit_results_{timestamp}.csv"
+    out_json = project_root / f"sllm/datasets/generated/audit_results_{timestamp}.json"
+    out_final_jsonl = project_root / f"sllm/datasets/generated/final_sft_dataset_{timestamp}.jsonl"
     
     print(f"📂 Loading SFT dataset from: {sft_output_abs}")
     raw_samples = read_jsonl(str(sft_output_abs))
@@ -152,6 +163,31 @@ def run_audit_direct(sft_output: str):
         raise RuntimeError("No valid evaluations produced")
 
 
+def run_string_conversion(final_jsonl_path: str):
+    """Step 3: final JSONL을 문자열화된 JSON으로 변환 (LLaMA-Factory 형식)"""
+    print("\n" + "=" * 80)
+    print("🔄 [Step 3/3] Converting to stringified JSON for LLaMA-Factory...")
+    print("=" * 80)
+    
+    try:
+        # 타임스탬프 생성
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_json = f"sllm/datasets/the_final_{timestamp}.json"
+        
+        converted_data, output_path = convert_jsonl_to_string_json(final_jsonl_path, output_json)
+        
+        print(f"\n✅ Step 3 completed successfully!")
+        print(f"   - Stringified JSON: {output_path}")
+        print(f"   - Total entries: {len(converted_data)}")
+        
+        return str(output_path)
+    except Exception as e:
+        print(f"\n❌ Step 3 failed: {e}")
+        import traceback
+        traceback.print_exc()
+        raise
+
+
 def main(use_subprocess: bool = True):
     """
     전체 파이프라인 실행
@@ -177,10 +213,14 @@ def main(use_subprocess: bool = True):
         else:
             final_output = run_audit_direct(sft_output)
         
+        # Step 3: 문자열화된 JSON으로 변환
+        string_json_output = run_string_conversion(final_output)
+        
         print("\n" + "=" * 80)
         print("🎉 Pipeline completed successfully!")
         print("=" * 80)
-        print(f"📁 Final output: {final_output}")
+        print(f"📁 Final JSONL: {final_output}")
+        print(f"📁 Final JSON (LLaMA-Factory): {string_json_output}")
         print("=" * 80)
         
     except KeyboardInterrupt:

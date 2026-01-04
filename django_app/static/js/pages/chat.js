@@ -403,7 +403,7 @@ async function handleSend() {
 
                 // 타이핑 애니메이션 시작 (비동기)
                 const messageIndex = messages.length - 1;
-                typeWriterEffect(aiContent, messageIndex, 40).then(() => {
+                typeWriterEffect(aiContent, messageIndex, 3).then(() => {
                     console.log('[DEBUG] Typing animation completed, updating references');
                     // 타이핑 완료 후 참고문헌 업데이트
                     updateVisibleReferences();
@@ -537,7 +537,7 @@ async function loadChat(chatId) {
  * @param {number} speed - 타이핑 속도 (밀리초, 기본값: 20ms)
  * @returns {Promise<void>}
  */
-async function typeWriterEffect(fullText, messageIndex, speed = 20) {
+async function typeWriterEffect(fullText, messageIndex, speed = 10) {
     return new Promise((resolve) => {
         let currentIndex = 0;
         const message = messages[messageIndex];

@@ -1,18 +1,19 @@
 /* Notes Container */
 .notes-container {
-    height: 100%;
+    flex: 1;
     display: flex;
     flex-direction: column;
+    min-height: 0;
     background: var(--color-bg-gray-50);
-    /* sidebar(4rem = 64px)를 고려하여 왼쪽 여백 설정 - subsidebar 없음 */
-    margin-left: 4rem;
+    /* padding: 1.5rem; */
 }
 
 /* Notes List View */
 .notes-list-view {
-    height: 100%;
+    flex: 1;
     display: flex;
     flex-direction: column;
+    min-height: 0;
 }
 
 .notes-header {
@@ -42,6 +43,44 @@
     display: flex;
     align-items: center;
     gap: 0.75rem;
+}
+
+/* My Notes Only Filter */
+.filter-checkbox-wrapper {
+    display: flex;
+    align-items: center;
+}
+
+.filter-checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    user-select: none;
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
+    padding: 0.375rem 0.75rem;
+    border: 1px solid var(--color-border-gray);
+    border-radius: 0.5rem;
+    background: var(--color-bg-white);
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.filter-checkbox-label:hover {
+    background: var(--color-bg-gray-50);
+    border-color: var(--color-border-gray-dark);
+}
+
+.filter-checkbox {
+    margin: 0;
+    cursor: pointer;
+    width: 1rem;
+    height: 1rem;
+    accent-color: var(--color-primary);
+}
+
+.filter-checkbox-label span {
+    white-space: nowrap;
 }
 
 .search-wrapper {
@@ -205,6 +244,7 @@
 
 .notes-content {
     flex: 1;
+    min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
     padding: 1.5rem 2rem;
@@ -320,6 +360,13 @@
 
 .author-date .date-label {
     color: #6b7280;
+}
+
+.shared-badge {
+    color: var(--color-primary, #3b82f6);
+    font-weight: 600;
+    font-size: 0.75rem;
+    margin-left: 0.25rem;
 }
 
 .note-stats {
@@ -594,10 +641,19 @@
 }
 
 .table-cell-author {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
     font-size: 0.875rem;
     color: #111827;
     font-weight: 500;
     white-space: nowrap;
+}
+
+.table-cell-author .shared-badge {
+    color: var(--color-primary, #3b82f6);
+    font-weight: 600;
+    font-size: 0.75rem;
 }
 
 .table-cell-title h4 {

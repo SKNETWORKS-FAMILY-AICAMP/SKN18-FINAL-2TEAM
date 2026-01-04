@@ -19,6 +19,7 @@ from django.contrib import admin
 from django.urls import include, path
 from django.views.decorators.csrf import csrf_exempt
 from apps.account.views import index as root_index
+from apps.schedule import views as schedule_views
 from drf_spectacular.views import (
     SpectacularAPIView,
     SpectacularRedocView,
@@ -44,6 +45,9 @@ urlpatterns = [
     path("api/notes/", include("apps.notes.api_urls")),
     path("api/bookmarks/", include("apps.bookmark.api_urls")),
     path("api/profile/", include("apps.account.api_urls")),
+    path("api/organization/", include("apps.organization.urls")),
+    path("api/calendars/", schedule_views.user_calendars_api, name="user_calendars_api"),
+    path("api/calendars/<int:calendar_id>/", schedule_views.user_calendar_detail, name="user_calendar_detail"),
     
     # Swagger/OpenAPI (인증 없이 접근 가능)
     path("api/schema/", csrf_exempt(SpectacularAPIView.as_view()), name="schema"),
