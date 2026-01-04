@@ -107,11 +107,13 @@ def _get_parameter_from_store(
         )
         return response["Parameter"]["Value"]
     except (ClientError, Exception) as e:
-        # 로컬 환경에서는 실패해도 무시 (환경 변수 fallback 사용)
+        # Parameter Store 접근 실패 (권한 없음, 파라미터 없음 등)
+        # 로컬 환경에서는 조용히 실패 (환경 변수 fallback 사용)
         if not is_aws:
             return None
-        # AWS 환경에서는 로그만 출력하고 None 반환
-        print(f"[WARNING] Failed to get parameter {parameter_path}: {e}")
+        # AWS 환경에서는 상세 로그 출력
+        error_type = type(e).__name__
+        print(f"[WARNING] Failed to get parameter {parameter_path}: {error_type}: {e}")
         return None
 
 
@@ -125,7 +127,7 @@ def _get_env_or_parameter(
     
     우선순위:
         1. 환경 변수
-        2. Parameter Store (AWS 환경에서만 시도)
+        2. Parameter Store (boto3가 있으면 시도, AWS 환경이 아니어도 시도)
         3. None
     
     Args:
@@ -141,8 +143,9 @@ def _get_env_or_parameter(
     if value:
         return value
     
-    # 2. AWS 환경에서 Parameter Store 시도
-    if is_aws and HAS_BOTO3:
+    # 2. Parameter Store 시도 (boto3가 있으면 항상 시도)
+    # AWS 환경 감지가 실패해도 boto3가 있으면 Parameter Store 접근 가능
+    if HAS_BOTO3:
         value = _get_parameter_from_store(parameter_path, with_decryption=with_decryption)
         if value:
             return value
