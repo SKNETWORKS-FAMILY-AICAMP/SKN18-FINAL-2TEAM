@@ -8,36 +8,38 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema
 
-from apps.chat.models.models import RunpodJob
 
-
-def get_runpod_base_url():
+def _get_runpod_base_url() -> str:
     """
-    Runpod URL 조회
-    우선순위:
-    1. DB 캐시 (로그인 시 로드됨)
-    2. 환경변수
-    3. 하드코딩된 기본값
+    RUNPOD_BASE_URL은 반드시 환경변수(.env)로 주입해야 함.
+    예) https://xxxx.proxy.runpod.net
     """
-    # 1. DB 캐시에서 조회 (가장 빠름, 로그인 시 이미 로드됨)
-    cached_url = RunpodJob.get_url()
-    if cached_url:
-        print(f"[RUNPOD URL SOURCE] Django 캐시에서 URL 조회: {cached_url}")
-        return cached_url
+    base = (os.environ.get("RUNPOD_BASE_URL") or "").strip()
 
-    # 2. 환경변수 fallback
-    env_url = os.environ.get("RUNPOD_BASE_URL")
-    if env_url:
-        print(f"[RUNPOD URL SOURCE] 환경변수에서 URL 조회: {env_url}")
-        return env_url
+    if not base:
+        # 운영에서 하드코딩으로 넘어가면 사고나기 쉬워서 "없으면 명확히 에러"로 처리
+        raise RuntimeError(
+            "RUNPOD_BASE_URL is not set. Put it in .env (RUNPOD_BASE_URL=https://...)"
+        )
 
-    # 3. 기본값
-    default_url = "https://cx3s6h26lsl1am-8000.proxy.runpod.net"
-    print(f"[RUNPOD URL SOURCE] 기본 URL 사용: {default_url}")
-    return default_url
+    if not (base.startswith("http://") or base.startswith("https://")):
+        raise RuntimeError(
+            f"RUNPOD_BASE_URL must start with http:// or https:// (got: {base})"
+        )
+
+    return base.rstrip("/")
 
 
-RUNPOD_API_KEY = os.environ.get("RUNPOD_API_KEY")
+def _headers() -> dict:
+    headers = {
+        "accept": "application/json",
+        "Content-Type": "application/json",
+    }
+    api_key = (os.environ.get("RUNPOD_API_KEY") or "").strip()
+    if api_key:
+        headers["X-API-KEY"] = api_key
+    return headers
+
 
 @extend_schema(
     summary="Run RFdiffusion on RunPod (dummy)",
@@ -60,8 +62,13 @@ def rfdiffusion_runpod_api(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def runpod_api_health(request):
-    runpod_url = get_runpod_base_url()
-    health_url = runpod_url.rstrip("/") + "/health"
+    try:
+        base = _get_runpod_base_url()
+    except RuntimeError as e:
+        return Response({"detail": str(e)}, status=500)
+
+    health_url = f"{base}/health"
+
     try:
         resp = requests.get(
             health_url,
@@ -103,14 +110,12 @@ def runpod_api_run(request):
     if not isinstance(request.data, dict):
         return Response({"detail": "JSON body is required."}, status=400)
 
-    runpod_url = get_runpod_base_url()
-    run_url = runpod_url.rstrip("/") + "/run"
-    headers = {
-        "Content-Type": "application/json",
-        "accept": "application/json",
-    }
-    if RUNPOD_API_KEY:
-        headers["X-API-KEY"] = RUNPOD_API_KEY
+    try:
+        base = _get_runpod_base_url()
+    except RuntimeError as e:
+        return Response({"detail": str(e)}, status=500)
+
+    run_url = f"{base}/run"
 
     try:
         resp = requests.post(
