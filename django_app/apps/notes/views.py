@@ -680,10 +680,8 @@ def note_detail_api(request, note_id):
                 else:
                     time_ago = '방금 전'
             
-            # 아바타 URL 생성
-            avatar_url = comment_author_avatar
-            if not avatar_url:
-                avatar_url = f'https://ui-avatars.com/api/?name={quote(comment_author_name)}&background=random'
+            # 아바타 URL (없으면 빈 문자열, 프론트엔드에서 플레이스홀더 표시)
+            avatar_url = comment_author_avatar if comment_author_avatar else ''
             
             comments_list.append({
                 'id': comment.comment_sid,
@@ -851,13 +849,20 @@ def comment_create_api(request, note_id):
     user_identifier = _get_user_identifier(request.user)
     
     try:
-        # 노트 조회 및 권한 확인
+        # 노트 조회 및 권한 확인 (소유자 또는 공유받은 사용자)
         try:
-            note = Note.objects.get(
+            note = Note.objects.filter(
                 note_sid=note_id,
-                status='E',
-                created_id=user_identifier
-            )
+                status='E'
+            ).filter(
+                Q(created_id=user_identifier) | Q(shares__user_id=user_identifier)
+            ).distinct().first()
+            
+            if not note:
+                return Response(
+                    {'status': 'error', 'error': '노트를 찾을 수 없습니다.'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
         except Note.DoesNotExist:
             return Response(
                 {'status': 'error', 'error': '노트를 찾을 수 없습니다.'},
@@ -914,10 +919,8 @@ def comment_create_api(request, note_id):
                     minutes = diff.seconds // 60
                     time_ago = f'{minutes}분 전'
             
-            # 아바타 URL 생성
-            avatar_url = comment_author_avatar
-            if not avatar_url:
-                avatar_url = f'https://ui-avatars.com/api/?name={quote(comment_author_name)}&background=random'
+            # 아바타 URL (없으면 빈 문자열, 프론트엔드에서 플레이스홀더 표시)
+            avatar_url = comment_author_avatar if comment_author_avatar else ''
             
             return Response({
                 'status': 'success',
@@ -978,13 +981,20 @@ def comment_update_api(request, note_id, comment_id):
     user_identifier = _get_user_identifier(request.user)
     
     try:
-        # 노트 조회 및 권한 확인
+        # 노트 조회 및 권한 확인 (소유자 또는 공유받은 사용자)
         try:
-            note = Note.objects.get(
+            note = Note.objects.filter(
                 note_sid=note_id,
-                status='E',
-                created_id=user_identifier
-            )
+                status='E'
+            ).filter(
+                Q(created_id=user_identifier) | Q(shares__user_id=user_identifier)
+            ).distinct().first()
+            
+            if not note:
+                return Response(
+                    {'status': 'error', 'error': '노트를 찾을 수 없습니다.'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
         except Note.DoesNotExist:
             return Response(
                 {'status': 'error', 'error': '노트를 찾을 수 없습니다.'},
@@ -1049,10 +1059,8 @@ def comment_update_api(request, note_id, comment_id):
                 else:
                     time_ago = '방금 전'
             
-            # 아바타 URL 생성
-            avatar_url = comment_author_avatar
-            if not avatar_url:
-                avatar_url = f'https://ui-avatars.com/api/?name={quote(comment_author_name)}&background=random'
+            # 아바타 URL (없으면 빈 문자열, 프론트엔드에서 플레이스홀더 표시)
+            avatar_url = comment_author_avatar if comment_author_avatar else ''
             
             return Response({
                 'status': 'success',
@@ -1098,13 +1106,20 @@ def comment_delete_api(request, note_id, comment_id):
     user_identifier = _get_user_identifier(request.user)
     
     try:
-        # 노트 조회 및 권한 확인
+        # 노트 조회 및 권한 확인 (소유자 또는 공유받은 사용자)
         try:
-            note = Note.objects.get(
+            note = Note.objects.filter(
                 note_sid=note_id,
-                status='E',
-                created_id=user_identifier
-            )
+                status='E'
+            ).filter(
+                Q(created_id=user_identifier) | Q(shares__user_id=user_identifier)
+            ).distinct().first()
+            
+            if not note:
+                return Response(
+                    {'status': 'error', 'error': '노트를 찾을 수 없습니다.'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
         except Note.DoesNotExist:
             return Response(
                 {'status': 'error', 'error': '노트를 찾을 수 없습니다.'},

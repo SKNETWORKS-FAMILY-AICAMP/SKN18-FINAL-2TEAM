@@ -593,18 +593,23 @@ function renderComments() {
         const highlightedText = comment.highlighted_text || comment.highlightedText || '';
         const commentText = comment.comment || comment.comment_text || '';
         const authorName = comment.author || '';
-        const avatarUrl = comment.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(authorName)}&background=random`;
+        const avatarUrl = comment.avatar || '';
         const timeAgo = comment.time || '';
         const commentId = comment.id || comment.comment_sid;
         const isMine = comment.is_mine === true;  // 본인이 작성한 댓글인지 확인
         const isEditing = editingCommentId === commentId;  // 수정 모드인지 확인
+        
+        // 프로필 이미지가 있으면 img 태그, 없으면 플레이스홀더
+        const avatarHtml = avatarUrl 
+            ? `<img src="${escapeHtml(avatarUrl)}" alt="${escapeHtml(authorName)}" class="comment-avatar" />`
+            : `<div class="comment-avatar comment-avatar-placeholder"><i class="fa-solid fa-user"></i></div>`;
         
         return `
         <div class="comment-item ${activeCommentId === commentId ? 'active' : ''}" 
              onclick="${!isEditing ? `window.NoteDetailPage.setActiveComment(${commentId})` : ''}">
             ${highlightedText ? `<div class="comment-highlighted-text">"${escapeHtml(highlightedText)}"</div>` : ''}
             <div class="comment-header">
-                <img src="${escapeHtml(avatarUrl)}" alt="${escapeHtml(authorName)}" class="comment-avatar" />
+                ${avatarHtml}
                 <div class="comment-author-info">
                     <p class="comment-author-name">${escapeHtml(authorName)}</p>
                     <p class="comment-time">${escapeHtml(timeAgo)}</p>
@@ -875,7 +880,7 @@ function handleDownloadAttachment(fileId, filePath) {
     window.open(downloadUrl, '_blank');
     
     if (window.notyf) {
-        window.notyf.info('파일 다운로드를 시작합니다.');
+        window.notyf.success('파일 다운로드를 시작합니다.');
     }
 }
 
