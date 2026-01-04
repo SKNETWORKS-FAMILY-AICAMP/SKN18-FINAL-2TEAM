@@ -1,5 +1,7 @@
 from django.apps import AppConfig
 import os
+import sys
+from pathlib import Path
 
 
 class ChatConfig(AppConfig):
@@ -13,6 +15,12 @@ class ChatConfig(AppConfig):
         """
         # 프로덕션 환경에서만 실행 (마이그레이션/테스트 중에는 실행하지 않음)
         if os.environ.get('RUN_MAIN') == 'true' or 'gunicorn' in os.environ.get('_', ''):
+            # 프로젝트 루트를 sys.path에 추가 (graph, messaging 모듈 import용)
+            # apps.py -> chat -> apps -> django_app -> PROJECT_ROOT (parents[3])
+            PROJECT_ROOT = Path(__file__).resolve().parents[3]
+            if str(PROJECT_ROOT) not in sys.path:
+                sys.path.insert(0, str(PROJECT_ROOT))
+            
             # Neo4j 드라이버 미리 초기화
             try:
                 from graph.nodes.rag_retriever_bridge import _get_neo4j_driver
