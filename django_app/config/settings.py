@@ -108,6 +108,22 @@ DATABASES = {
         'PASSWORD': env("POSTGRES_PASSWORD"),
         'HOST': env("POSTGRES_HOST"),
         'PORT': env("POSTGRES_PORT"),
+        # 연결 풀링 설정
+        # CONN_MAX_AGE: 연결을 재사용할 시간(초)
+        # 0 (기본값): 각 요청마다 새로운 연결을 만들고 닫음 (느림)
+        # None: 연결을 영구적으로 유지 (권장하지 않음 - 연결 누수 위험)
+        # 양수: 해당 시간 동안 연결을 재사용 (권장: 300-600초)
+        'CONN_MAX_AGE': env.int('DB_CONN_MAX_AGE', default=600),  # 10분
+        # 연결 옵션 (psycopg 연결 파라미터)
+        'OPTIONS': {
+            # 연결 타임아웃 (초)
+            'connect_timeout': env.int('DB_CONNECT_TIMEOUT', default=10),
+            # 연결 유지 옵션
+            'keepalives': 1,
+            'keepalives_idle': 600,  # 10분
+            'keepalives_interval': 30,  # 30초마다 확인
+            'keepalives_count': 3,  # 3회 실패 시 연결 종료
+        },
     }
 }
 
