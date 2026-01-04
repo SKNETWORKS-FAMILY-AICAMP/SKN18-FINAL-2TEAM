@@ -1382,6 +1382,13 @@ async function handleAddCategory() {
 // Show add bookmark form
 function showAddBookmarkForm(categoryId) {
     addingBookmarkToCategoryId = categoryId;
+    
+    // 해당 카테고리를 항상 열림 상태로 설정
+    const categoryIndex = bookmarkCategories.findIndex(cat => cat.id === categoryId);
+    if (categoryIndex !== -1) {
+        openBookmarkCategories[categoryIndex] = true;
+    }
+    
     renderBookmarks();
     // Focus on title input after render
     setTimeout(() => {
