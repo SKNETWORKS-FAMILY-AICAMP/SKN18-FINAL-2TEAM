@@ -105,6 +105,19 @@
     object-fit: cover;
 }
 
+.author-avatar-placeholder {
+    background: var(--color-bg-gray-200, #f3f4f6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-text-muted, #9ca3af);
+    flex-shrink: 0;
+}
+
+.author-avatar-placeholder i {
+    font-size: 0.875rem;
+}
+
 .meta-separator {
     color: #9ca3af;
 }

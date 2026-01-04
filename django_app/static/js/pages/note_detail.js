@@ -11,7 +11,7 @@ let editingCommentId = null;  // 수정 중인 댓글 ID
 
 // DOM Elements
 let noteDetailView, noteDetailWrapper;
-let btnBack, noteDetailTitle, noteDetailAuthor, noteDetailDate, noteDetailTags;
+let btnBack, noteDetailTitle, noteDetailAuthor, noteDetailAuthorAvatar, noteDetailAuthorAvatarPlaceholder, noteDetailDate, noteDetailTags;
 let btnShareDetail, btnCommentToggle, btnAttachmentsScroll, btnEditNote, btnDeleteNote;
 let noteContentBox, noteContentText, noteAttachmentsSection, attachmentsList;
 let commentSidebar, commentSidebarContent, btnCloseCommentSidebar;
@@ -31,6 +31,8 @@ function initNoteDetail() {
     btnBack = document.getElementById('btnBack');
     noteDetailTitle = document.getElementById('noteDetailTitle');
     noteDetailAuthor = document.getElementById('noteDetailAuthor');
+    noteDetailAuthorAvatar = document.getElementById('noteDetailAuthorAvatar');
+    noteDetailAuthorAvatarPlaceholder = document.getElementById('noteDetailAuthorAvatarPlaceholder');
     noteDetailDate = document.getElementById('noteDetailDate');
     noteDetailTags = document.getElementById('noteDetailTags');
     btnShareDetail = document.getElementById('btnShareDetail');
@@ -140,6 +142,21 @@ function renderNoteDetail(note) {
     if (noteDetailTitle) noteDetailTitle.textContent = note.title || '제목 없음';
     if (noteDetailDate) noteDetailDate.textContent = note.date || '';
     if (noteDetailAuthor) noteDetailAuthor.textContent = note.author || '';
+    
+    // 작성자 프로필 이미지 처리
+    if (noteDetailAuthorAvatar && noteDetailAuthorAvatarPlaceholder) {
+        if (note.author_avatar) {
+            // 프로필 이미지가 있는 경우
+            noteDetailAuthorAvatar.src = note.author_avatar;
+            noteDetailAuthorAvatar.alt = note.author || 'Author';
+            noteDetailAuthorAvatar.style.display = 'block';
+            noteDetailAuthorAvatarPlaceholder.style.display = 'none';
+        } else {
+            // 프로필 이미지가 없는 경우 플레이스홀더 표시
+            noteDetailAuthorAvatar.style.display = 'none';
+            noteDetailAuthorAvatarPlaceholder.style.display = 'flex';
+        }
+    }
     
     // Content는 HTML이므로 innerHTML 사용 (CKEditor에서 생성된 HTML)
     if (noteContentText) {

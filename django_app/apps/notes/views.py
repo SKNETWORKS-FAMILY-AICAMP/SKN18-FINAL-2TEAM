@@ -621,12 +621,18 @@ def note_detail_api(request, note_id):
         # 내가 만든 노트인지 공유받은 노트인지 확인
         is_shared = note.created_id != user_identifier
         
-        # 작성자 이름 조회
+        # 작성자 이름 및 프로필 이미지 조회
+        author_avatar = ''
         try:
             author_user = User.objects.get(user_id=note.created_id)
             author_name = author_user.full_name or author_user.email or note.created_id
+            author_avatar = author_user.img_url or ''
         except User.DoesNotExist:
             author_name = note.created_id
+            author_avatar = ''
+        
+        # 작성자 아바타 URL (없으면 빈 문자열, 프론트엔드에서 플레이스홀더 표시)
+        author_avatar_url = author_avatar if author_avatar else ''
         
         # 태그 목록
         tags = [tag.tag_name for tag in note.tags.all()]
@@ -733,6 +739,7 @@ def note_detail_api(request, note_id):
                 'content': note.content or '',
                 'date': note.created_at.strftime('%Y-%m-%d') if note.created_at else '',
                 'author': author_name,
+                'author_avatar': author_avatar_url,
                 'tags': tags,
                 'shared': shared_count,
                 'comments': comment_count,
