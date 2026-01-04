@@ -92,7 +92,7 @@ function initNotes() {
     });
 }
 
-// Load user settings and apply
+// Load user settings and apply view mode
 async function loadUserSettings() {
     const savedViewMode = await loadNotesViewMode();
     viewMode = savedViewMode;
@@ -118,6 +118,31 @@ async function loadUserSettings() {
             notesTableContainer.style.display = 'block';
         }
     }
+}
+
+// Load notes view mode from user settings
+async function loadNotesViewMode() {
+    try {
+        const response = await fetch('/api/settings/', {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+            },
+            credentials: 'same-origin'
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            if (data.settings && data.settings.notes_view_mode) {
+                return data.settings.notes_view_mode;
+            }
+        }
+    } catch (error) {
+        console.error('[Notes] Error loading view mode setting:', error);
+    }
+    
+    // 기본값: card
+    return 'card';
 }
 
 // Load notes via API
@@ -676,31 +701,6 @@ async function saveNotesViewMode(mode) {
     } catch (error) {
         console.error('[Notes] Error saving view mode setting:', error);
     }
-}
-
-// Load notes view mode from user settings
-async function loadNotesViewMode() {
-    try {
-        const response = await fetch('/api/settings/', {
-            method: 'GET',
-            headers: {
-                'Accept': 'application/json',
-            },
-            credentials: 'same-origin'
-        });
-        
-        if (response.ok) {
-            const data = await response.json();
-            if (data.settings && data.settings.notes_view_mode) {
-                return data.settings.notes_view_mode;
-            }
-        }
-    } catch (error) {
-        console.error('[Notes] Error loading view mode setting:', error);
-    }
-    
-    // 기본값: card
-    return 'card';
 }
 
 // Get CSRF token from cookie

@@ -11,7 +11,6 @@ from django.views.decorators.csrf import csrf_protect
 from django.utils import timezone
 from django.http import JsonResponse
 from django.conf import settings
-from django.views.decorators.http import require_http_methods
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -629,7 +628,7 @@ def settings_api(request):
                 'email_alerts': user_settings.email_alerts,
                 'dark_mode': user_settings.dark_mode,
                 'language': user_settings.language,
-                'notes_view_mode': user_settings.notes_view_mode,
+                'notes_view_mode': getattr(user_settings, 'notes_view_mode', 'card'),
             }
         }, status=status.HTTP_200_OK)
     
@@ -661,6 +660,6 @@ def settings_api(request):
                 'email_alerts': user_settings.email_alerts,
                 'dark_mode': user_settings.dark_mode,
                 'language': user_settings.language,
-                'notes_view_mode': user_settings.notes_view_mode,
+                'notes_view_mode': getattr(user_settings, 'notes_view_mode', 'card'),
             }
         }, status=status.HTTP_200_OK)

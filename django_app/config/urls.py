@@ -18,7 +18,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import include, path
 from django.views.decorators.csrf import csrf_exempt
-from apps.account.views import index as root_index, settings_api, settings_api
+from apps.account.views import index as root_index, settings_api
 from apps.schedule import views as schedule_views
 from drf_spectacular.views import (
     SpectacularAPIView,
