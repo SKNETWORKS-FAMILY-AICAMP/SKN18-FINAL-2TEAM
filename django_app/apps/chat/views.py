@@ -50,13 +50,19 @@ def recommended_questions(request):
     })
 
 
+@login_required
 @require_http_methods(["GET"])
 def chat_list(request):
-    """채팅 목록 API 엔드포인트"""
+    """채팅 목록 API 엔드포인트 - 로그인한 사용자의 채팅만 조회"""
+    user = request.user
+    user_id = user.user_id
     section = request.GET.get('section', None)
     
-    # 기본적으로 활성화된 채팅만 조회
-    queryset = Chat.objects.filter(status='E')
+    # 로그인한 사용자가 생성한 활성화된 채팅만 조회
+    queryset = Chat.objects.filter(
+        created_id=user_id,
+        status='E'
+    )
     
     # 섹션별 필터링
     if section == 'favorites':
@@ -87,10 +93,10 @@ def chat_list(request):
     # 즐겨찾기 채팅을 앞으로 이동
     items.sort(key=lambda x: (x['favorite'] != 'Y', x['created_at'] or ''), reverse=True)
 
-    # 카운트 정보 계산 (필터와 관계없이 전체 채팅 기준)
-    all_active_chats = Chat.objects.filter(status='E')
-    favorites_count = all_active_chats.filter(favorite='Y').count()
-    archived_count = all_active_chats.filter(archived='Y').count()
+    # 카운트 정보 계산 (로그인한 사용자의 채팅 기준)
+    user_active_chats = Chat.objects.filter(created_id=user_id, status='E')
+    favorites_count = user_active_chats.filter(favorite='Y').count()
+    archived_count = user_active_chats.filter(archived='Y').count()
 
     return JsonResponse({
         'items': items,
@@ -101,10 +107,14 @@ def chat_list(request):
     })
 
 
+@login_required
 @require_http_methods(["GET"])
 def chat_detail(request, chat_id):
-    """채팅 상세 정보 API 엔드포인트 (메시지 + 참고 문헌)"""
-    chat = get_object_or_404(Chat, chat_sid=chat_id, status='E')
+    """채팅 상세 정보 API 엔드포인트 (메시지 + 참고 문헌) - 로그인한 사용자의 채팅만 조회"""
+    user = request.user
+    user_id = user.user_id
+    # 로그인한 사용자가 생성한 채팅만 조회
+    chat = get_object_or_404(Chat, chat_sid=chat_id, created_id=user_id, status='E')
     
     # 메시지 조회
     messages = chat.messages.all().order_by('sort_order', 'created_at').values(
@@ -342,12 +352,16 @@ def chat_detail(request, chat_id):
     })
 
 
+@login_required
 @require_http_methods(["PATCH"])
 def update_chat_title(request, chat_id):
-    """채팅방 제목 수정 API"""
+    """채팅방 제목 수정 API - 로그인한 사용자의 채팅만 수정 가능"""
     from django.utils import timezone
+    user = request.user
+    user_id = user.user_id
 
-    chat = get_object_or_404(Chat, chat_sid=chat_id, status='E')
+    # 로그인한 사용자가 생성한 채팅만 수정 가능
+    chat = get_object_or_404(Chat, chat_sid=chat_id, created_id=user_id, status='E')
 
     try:
         data = json.loads(request.body)
@@ -636,16 +650,19 @@ def message_feedback(request, message_id):
         }, status=500)
 
 
+@login_required
 @csrf_exempt
 @require_http_methods(["POST"])
 def toggle_favorite(request, chat_id):
     """
     채팅 favorite 상태를 토글하는 API 엔드포인트
-    Y <-> N 전환
+    Y <-> N 전환 - 로그인한 사용자의 채팅만 토글 가능
     """
     try:
-        # 채팅 조회
-        chat = get_object_or_404(Chat, chat_sid=chat_id, status='E')
+        user = request.user
+        user_id = user.user_id
+        # 로그인한 사용자가 생성한 채팅만 토글 가능
+        chat = get_object_or_404(Chat, chat_sid=chat_id, created_id=user_id, status='E')
 
         # favorite 상태 토글
         if chat.favorite == 'Y':
@@ -658,7 +675,6 @@ def toggle_favorite(request, chat_id):
             message = '즐겨찾기에 추가되었습니다.'
 
         # 사용자 ID 설정
-        user_id = str(request.user.user_id) if request.user.is_authenticated else 'anonymous'
         chat.updated_id = user_id
         chat.save()
 
@@ -682,16 +698,19 @@ def toggle_favorite(request, chat_id):
         }, status=500)
 
 
+@login_required
 @csrf_exempt
 @require_http_methods(["POST"])
 def toggle_archive(request, chat_id):
     """
     채팅 archived 상태를 토글하는 API 엔드포인트
-    Y <-> N 전환
+    Y <-> N 전환 - 로그인한 사용자의 채팅만 토글 가능
     """
     try:
-        # 채팅 조회
-        chat = get_object_or_404(Chat, chat_sid=chat_id, status='E')
+        user = request.user
+        user_id = user.user_id
+        # 로그인한 사용자가 생성한 채팅만 토글 가능
+        chat = get_object_or_404(Chat, chat_sid=chat_id, created_id=user_id, status='E')
 
         # archived 상태 토글
         if chat.archived == 'Y':
@@ -704,7 +723,6 @@ def toggle_archive(request, chat_id):
             message = '채팅이 보관되었습니다.'
 
         # 사용자 ID 설정
-        user_id = str(request.user.user_id) if request.user.is_authenticated else 'anonymous'
         chat.updated_id = user_id
         chat.save()
 
@@ -728,16 +746,19 @@ def toggle_archive(request, chat_id):
         }, status=500)
 
 
+@login_required
 @csrf_exempt
 @require_http_methods(["POST", "DELETE"])
 def delete_chat(request, chat_id):
     """
     채팅을 삭제하는 API 엔드포인트
-    status를 'R' (Removed)로 변경하여 soft delete
+    status를 'R' (Removed)로 변경하여 soft delete - 로그인한 사용자의 채팅만 삭제 가능
     """
     try:
-        # 채팅 조회 (이미 삭제된 것도 조회 가능하도록 status 필터 제거)
-        chat = get_object_or_404(Chat, chat_sid=chat_id)
+        user = request.user
+        user_id = user.user_id
+        # 로그인한 사용자가 생성한 채팅만 삭제 가능 (이미 삭제된 것도 조회 가능하도록 status 필터 제거)
+        chat = get_object_or_404(Chat, chat_sid=chat_id, created_id=user_id)
 
         # 이미 삭제된 채팅인지 확인
         if chat.status == 'R':
@@ -751,7 +772,6 @@ def delete_chat(request, chat_id):
         chat.status = 'R'
 
         # 사용자 ID 설정
-        user_id = str(request.user.user_id) if request.user.is_authenticated else 'anonymous'
         chat.updated_id = user_id
         chat.save()
 
@@ -857,10 +877,11 @@ def chat_messages(request, chat_id=None):
 
     # 3. 채팅 조회 또는 생성
     if chat_id:
-        # 기존 채팅에 메시지 추가
+        # 기존 채팅에 메시지 추가 - 로그인한 사용자의 채팅만 조회
         chat = get_object_or_404(
             Chat,
             chat_sid=chat_id,
+            created_id=user_id,
             status='E',
             archived='N',
         )

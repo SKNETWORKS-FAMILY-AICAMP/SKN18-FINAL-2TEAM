@@ -95,17 +95,26 @@
                         <div class="form-group">
                             <label for="targetCalendarSelect">
                                 캘린더
-                                <i class="fa-solid fa-circle-question tooltip-icon" 
-                                   data-tooltip="Google 캘린더를 선택하면, 일정 저장 시 Google에도 같이 생성됩니다."
-                                   style="margin-left: 4px; color: #9ca3af; cursor: help; font-size: 14px;">
-                                </i>
+                                <i class="fa-solid fa-circle-question tooltip-icon"
+                                   data-tooltip="선택한 캘린더로 일정이 저장됩니다. Google 캘린더는 연동된 항목만 표시됩니다."
+                                   style="margin-left: 4px; color: #9ca3af; cursor: help; font-size: 14px;"></i>
                             </label>
-                            <div class="select-tooltip-wrapper" 
-                                 data-tooltip="Google 캘린더를 선택하면, 일정 저장 시 Google에도 같이 생성됩니다.">
-                                <select id="targetCalendarSelect" class="form-select" title="Google 캘린더를 선택하면, 일정 저장 시 Google에도 같이 생성됩니다.">
-                                    <option value="local" selected>내 일정(웹 캘린더)</option>
-                                    <!-- JS가 여기에 Google 캘린더 옵션을 자동으로 붙임 -->
+                            <div class="select-tooltip-wrapper calendar-select-with-actions"
+                                 data-tooltip="선택한 캘린더로 일정이 저장됩니다. Google 캘린더는 연동된 항목만 표시됩니다.">
+                                <select
+                                    id="targetCalendarSelect"
+                                    class="form-select"
+                                    title="일정을 저장할 캘린더를 선택하세요.">
+                                    <option value="" disabled selected>캘린더를 불러오는 중...</option>
                                 </select>
+                                <button
+                                    type="button"
+                                    class="btn-secondary calendar-add-inline-btn"
+                                    id="openCalendarAddInlineBtn"
+                                    title="새 캘린더 생성"
+                                >
+                                    <i class="fa-solid fa-plus"></i>
+                                </button>
                             </div>
                         </div>
 

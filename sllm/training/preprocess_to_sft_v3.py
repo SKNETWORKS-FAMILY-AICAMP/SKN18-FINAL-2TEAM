@@ -8,8 +8,9 @@ V2
 '''
 
 ################ config ################
-PROCESS_ROWS = 1500  # 처리할 데이터 row 개수
-CSV_PATH = r"c:\dev\ai_camp\SKN18-FINAL-2TEAM\sllm\datasets\section_category_result.csv"
+START_ROW = 5307  # 시작할 행 번호 (1-based, 즉 1이 첫 번째 행)
+PROCESS_ROWS = 200  # 처리할 데이터 row 개수 (None이면 START_ROW부터 끝까지 처리)
+CSV_PATH = r"c:\dev\ai_camp\SKN18-FINAL-2TEAM\sllm\datasets\generated\section_category_result_merged.csv"
 
 # 타임스탬프는 실행 시 동적으로 생성됨
 ANNOTATION_OUTPUT = None  # create_annotation_json()에서 설정
@@ -179,10 +180,37 @@ def create_annotation_json():
 
     print(f"📂 Loading CSV from: {CSV_PATH}")
     df = pd.read_csv(CSV_PATH)
+    
+    total_rows = len(df)
+    print(f"📊 Total rows in CSV: {total_rows}")
 
-    # PROCESS_ROWS만큼만 처리
-    df_subset = df.head(PROCESS_ROWS)
-    print(f"📊 Processing {len(df_subset)} rows...")
+    # START_ROW는 1-based이므로 0-based로 변환 (START_ROW - 1)
+    start_idx = START_ROW - 1 if START_ROW > 0 else 0
+    
+    # PROCESS_ROWS가 None이거나 0 이하면 끝까지 처리
+    if PROCESS_ROWS is None or PROCESS_ROWS <= 0:
+        end_idx = total_rows
+        print(f"📊 Processing from row {START_ROW} to end (all remaining rows)")
+    else:
+        end_idx = start_idx + PROCESS_ROWS
+        print(f"📊 Processing {PROCESS_ROWS} rows starting from row {START_ROW}")
+    
+    # 범위 체크
+    if start_idx >= total_rows:
+        print(f"⚠️  Warning: START_ROW ({START_ROW}) is beyond total rows ({total_rows})")
+        print(f"   No data to process.")
+        # 빈 파일이라도 생성
+        with open(annotation_output, 'w', encoding='utf-8') as f:
+            json.dump([], f, indent=2, ensure_ascii=False)
+        return [], annotation_output
+    
+    if end_idx > total_rows:
+        end_idx = total_rows
+        if PROCESS_ROWS is not None and PROCESS_ROWS > 0:
+            print(f"⚠️  Warning: Requested {PROCESS_ROWS} rows, but only {end_idx - start_idx} rows available from row {START_ROW}")
+    
+    df_subset = df.iloc[start_idx:end_idx]
+    print(f"📊 Processing rows {START_ROW} to {end_idx} ({len(df_subset)} rows)...")
 
     # 기존 파일이 있으면 로드, 없으면 빈 리스트
     if os.path.exists(annotation_output):
@@ -243,10 +271,19 @@ def create_sft_dataset(annotation_output):
     sft_output = rf"c:\dev\ai_camp\SKN18-FINAL-2TEAM\sllm\datasets\sft_dataset_v3_{timestamp}.jsonl"
 
     print(f"\n📂 Loading annotation.json from: {annotation_output}")
+    
+    # 파일 존재 여부 확인
+    if not os.path.exists(annotation_output):
+        raise FileNotFoundError(f"Annotation file not found: {annotation_output}")
 
     # annotation.json 로드
     with open(annotation_output, 'r', encoding='utf-8') as f:
         annotations = json.load(f)
+    
+    # 빈 리스트 체크
+    if not annotations:
+        print("⚠️  Warning: annotation.json is empty. No SFT dataset will be created.")
+        return [], sft_output
 
     print(f"📊 Processing {len(annotations)} annotations...")
 

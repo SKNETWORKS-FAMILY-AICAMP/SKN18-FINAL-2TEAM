@@ -18,14 +18,28 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import include, path
 from django.views.decorators.csrf import csrf_exempt
-from apps.account.views import index as root_index
+from django.http import JsonResponse
+from apps.account.views import index as root_index, settings_api
+from apps.schedule import views as schedule_views
 from drf_spectacular.views import (
     SpectacularAPIView,
     SpectacularRedocView,
     SpectacularSwaggerView,
 )
 
+
+def health_check(request):
+    """
+    ALB 헬스체크용 간단한 엔드포인트
+    DB 연결 없이 빠르게 응답하여 헬스체크 성능 최적화
+    """
+    return JsonResponse({"status": "healthy", "service": "django-app"})
+
+
 urlpatterns = [
+    # 헬스체크 엔드포인트 (ALB용, 인증 불필요)
+    path("health", health_check, name="health"),
+    
     # 루트 URL - 인증 상태에 따라 리디렉트
     path("", root_index, name="root"),
     
@@ -44,6 +58,10 @@ urlpatterns = [
     path("api/notes/", include("apps.notes.api_urls")),
     path("api/bookmarks/", include("apps.bookmark.api_urls")),
     path("api/profile/", include("apps.account.api_urls")),
+    path("api/settings/", settings_api, name="api_settings"),
+    path("api/organization/", include("apps.organization.urls")),
+    path("api/calendars/", schedule_views.user_calendars_api, name="user_calendars_api"),
+    path("api/calendars/<int:calendar_id>/", schedule_views.user_calendar_detail, name="user_calendar_detail"),
     
     # Swagger/OpenAPI (인증 없이 접근 가능)
     path("api/schema/", csrf_exempt(SpectacularAPIView.as_view()), name="schema"),

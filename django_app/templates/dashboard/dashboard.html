@@ -106,12 +106,12 @@
                             </thead>
                             <tbody id="experimentTableBody">
                                 {% for experiment in recent_experiments %}
-                                <tr data-experiment-id="{{ experiment.id }}">
+                                <tr data-experiment-id="{{ experiment.experiment_sid }}">
                                     <td>{{ experiment.pipeline_name }}</td>
                                     <td>
                                         <div class="tool-tags">
                                             {% for tool in experiment.tools.all %}
-                                            <span class="tool-tag">{{ tool.name }}</span>
+                                            <span class="tool-tag">{{ tool.tool_name }}</span>
                                             {% endfor %}
                                         </div>
                                     </td>
@@ -150,7 +150,7 @@
                 <div class="card-content">
                     <div id="notesList">
                         {% for note in recent_notes %}
-                        <div class="note-item" data-note-id="{{ note.id }}">
+                        <div class="note-item" data-note-id="{{ note.note_sid }}">
                             <div class="note-content">
                                 <div class="note-header">
                                     <i class="far fa-file-lines"></i>
@@ -158,7 +158,7 @@
                                         <p class="note-title">{{ note.title }}</p>
                                         <div class="note-tags">
                                             {% for tag in note.tags.all|slice:":5" %}
-                                            <span class="note-tag">#{{ tag.name }}</span>
+                                            <span class="note-tag">#{{ tag.tag_name }}</span>
                                             {% endfor %}
                                         </div>
                                     </div>
@@ -196,12 +196,12 @@
                 <div class="card-content">
                     <div id="chatsList">
                         {% for chat in recent_chats %}
-                        <div class="chat-item" data-chat-id="{{ chat.id }}">
+                        <div class="chat-item" data-chat-id="{{ chat.chat_sid }}">
                             <div class="chat-content">
                                 <div class="chat-header">
                                     <i class="far fa-comment-dots"></i>
                                     <div class="chat-title-section">
-                                        <p class="chat-question">{{ chat.question }}</p>
+                                        <p class="chat-question">{{ chat.question|truncatewords:20 }}</p>
                                     </div>
                                 </div>
                                 <div class="chat-meta">

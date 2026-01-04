@@ -17,11 +17,21 @@ from graph.llm_config import (
     generate_answer_info_llm,
     generate_answer_simulation_llm,
     generate_answer_protocol_llm,
-    generate_answer_protocol_fallback_llm,
     generate_answer_inference_llm,
-    generate_answer_inference_fallback_llm,
     get_model_name
 )
+
+# Fallback 모델들은 optional로 처리
+try:
+    from graph.llm_config import generate_answer_protocol_fallback_llm
+except ImportError:
+    generate_answer_protocol_fallback_llm = None
+
+try:
+    from graph.llm_config import generate_answer_inference_fallback_llm
+except ImportError:
+    generate_answer_inference_fallback_llm = None
+
 import json
 
 
@@ -162,9 +172,18 @@ def _generate_bio_answer(state: Dict[str, Any]) -> Dict[str, Any]:
     # 웹 검색 결과 추가
     web_selected_chunks = state.get("web_selected_chunks", [])
     if web_selected_chunks:
+        print(f"[GenerateAnswer BIO] web_selected_chunks 수신: {len(web_selected_chunks)}개")
+        print(f"[GenerateAnswer BIO] web_selected_chunks 타입: {type(web_selected_chunks)}")
+        for i, chunk in enumerate(web_selected_chunks[:3], 1):  # 최대 3개만 로깅
+            chunk_type = type(chunk)
+            chunk_preview = str(chunk)[:80] if chunk else "None"
+            print(f"[GenerateAnswer BIO]   [{i}] 타입: {chunk_type}, 값: {chunk_preview}...")
+        
         context_parts.append("\n=== 웹 검색 결과 ===")
         for i, chunk in enumerate(web_selected_chunks, 1):
-            context_parts.append(f"[웹자료 {i}] {chunk}")
+            # 문자열로 변환 (하위 호환성)
+            chunk_str = str(chunk) if not isinstance(chunk, str) else chunk
+            context_parts.append(f"[웹자료 {i}] {chunk_str}")
     
     # 출처 정보 수집
     answer_sources = state.get("answer_sources", [])
@@ -187,12 +206,40 @@ def _generate_bio_answer(state: Dict[str, Any]) -> Dict[str, Any]:
 {final_context}
 
 위 자료를 바탕으로 정확하고 상세한 답변을 작성해주세요. 
+
+📋 답변 작성 지침:
 - 이전 대화 맥락이 있다면 고려하여 답변해주세요
 - web search 노드를 거쳤음에도 불구하고 적절한 내용이 없었다면 해당 질문에 대한 답변은 제공하지 않아도 됩니다.
 - 과학적 근거를 바탕으로 설명해주세요
 - 가능한 한 구체적인 정보를 포함해주세요
 - 출처가 있는 정보는 해당 출처를 언급해주세요
 - 불확실한 정보는 그렇다고 명시해주세요
+
+📝 답변 형식 (반드시 마크다운 형식으로 작성):
+1. **구조화된 형식 사용**: 주요 내용은 제목(## 또는 ###)으로 구분해주세요
+2. **리스트 활용**: 여러 항목이 있을 경우 번호 있는 리스트(1., 2., 3.) 또는 불릿 포인트(-)를 사용해주세요
+3. **단락 구분**: 각 주제는 명확하게 단락으로 구분해주세요
+4. **가독성**: 간결하고 명확하게 작성하되, 구조화된 형식을 유지해주세요
+
+예시 형식:
+```markdown
+[주제에 대한 간단한 소개 문단]
+
+## 주요 특징
+- 특징 1: 설명
+- 특징 2: 설명
+- 특징 3: 설명
+
+## 기능 및 역할
+1. 기능 1: 상세 설명
+2. 기능 2: 상세 설명
+
+## 활용 분야
+- 활용 1: 설명
+- 활용 2: 설명
+
+[요약 문단]
+```
 
 답변:"""
 
@@ -319,9 +366,18 @@ def _generate_protocol_answer(state: Dict[str, Any]) -> Dict[str, Any]:
     # 웹 검색 결과 추가
     web_selected_chunks = state.get("web_selected_chunks", [])
     if web_selected_chunks:
+        print(f"[GenerateAnswer PROTOCOL] web_selected_chunks 수신: {len(web_selected_chunks)}개")
+        print(f"[GenerateAnswer PROTOCOL] web_selected_chunks 타입: {type(web_selected_chunks)}")
+        for i, chunk in enumerate(web_selected_chunks[:3], 1):  # 최대 3개만 로깅
+            chunk_type = type(chunk)
+            chunk_preview = str(chunk)[:80] if chunk else "None"
+            print(f"[GenerateAnswer PROTOCOL]   [{i}] 타입: {chunk_type}, 값: {chunk_preview}...")
+        
         context_parts.append("\n=== 웹 검색 결과 ===")
         for i, chunk in enumerate(web_selected_chunks, 1):
-            context_parts.append(f"[웹자료 {i}] {chunk}")
+            # 문자열로 변환 (하위 호환성)
+            chunk_str = str(chunk) if not isinstance(chunk, str) else chunk
+            context_parts.append(f"[웹자료 {i}] {chunk_str}")
     
     # 출처 정보 수집
     answer_sources = state.get("answer_sources", [])
@@ -343,12 +399,45 @@ def _generate_protocol_answer(state: Dict[str, Any]) -> Dict[str, Any]:
 {final_context}
 
 위 자료를 바탕으로 실험 프로토콜에 대한 상세한 답변을 작성해주세요.
+
+📋 답변 작성 지침:
 - 이전 대화 맥락이 있다면 고려하여 답변해주세요
 - 단계별 실험 절차를 명확히 설명해주세요
 - 필요한 시약, 장비, 조건을 구체적으로 제시해주세요
 - 주의사항이나 트러블슈팅 팁을 포함해주세요
 - 예상 결과나 해석 방법을 안내해주세요
 - 출처가 있는 정보는 해당 출처를 언급해주세요
+
+📝 답변 형식 (반드시 마크다운 형식으로 작성):
+1. **구조화된 형식 사용**: 주요 내용은 제목(## 또는 ###)으로 구분해주세요
+2. **리스트 활용**: 여러 항목이 있을 경우 번호 있는 리스트(1., 2., 3.) 또는 불릿 포인트(-)를 사용해주세요
+3. **단락 구분**: 각 주제는 명확하게 단락으로 구분해주세요
+4. **가독성**: 간결하고 명확하게 작성하되, 구조화된 형식을 유지해주세요
+5. **프로토콜 특화**: 실험 절차나 방법은 단계별로 번호 있는 리스트로 작성해주세요
+
+예시 형식:
+```markdown
+[프로토콜에 대한 간단한 소개 문단]
+
+## 개요
+[프로토콜의 목적과 배경 설명]
+
+## 준비 사항
+- 재료 1: 설명
+- 재료 2: 설명
+- 장비 1: 설명
+
+## 실험 절차
+1. 단계 1: 상세 설명
+2. 단계 2: 상세 설명
+3. 단계 3: 상세 설명
+
+## 주의사항
+- 주의 1: 설명
+- 주의 2: 설명
+
+[요약 문단]
+```
 
 답변:"""
 
@@ -364,13 +453,18 @@ def _generate_protocol_answer(state: Dict[str, Any]) -> Dict[str, Any]:
         state["answer_sources"] = answer_sources
         
     except Exception as e:
-        # 실패 시 fallback 모델 사용
-        fallback_model_name = get_model_name(generate_answer_protocol_fallback_llm)
-        print(f"[PROTOCOL_Q] Fallback 모델: {fallback_model_name}")
-        try:
-            answer = generate_answer_protocol_fallback_llm(prompt)
-            state["final_answer"] = answer
-        except:
+        # 실패 시 fallback 모델 사용 (있는 경우에만)
+        if generate_answer_protocol_fallback_llm is not None:
+            try:
+                fallback_model_name = get_model_name(generate_answer_protocol_fallback_llm)
+                print(f"[PROTOCOL_Q] Fallback 모델: {fallback_model_name}")
+                answer = generate_answer_protocol_fallback_llm(prompt)
+                state["final_answer"] = answer
+            except Exception as fallback_error:
+                print(f"[PROTOCOL_Q] Fallback 모델도 실패: {fallback_error}")
+                state["final_answer"] = f"프로토콜 답변 생성 중 오류가 발생했습니다: {str(e)}"
+        else:
+            print(f"[PROTOCOL_Q] Fallback 모델이 설정되지 않음")
             state["final_answer"] = f"프로토콜 답변 생성 중 오류가 발생했습니다: {str(e)}"
     
     return state
@@ -426,13 +520,18 @@ def _generate_inference_answer(state: Dict[str, Any]) -> Dict[str, Any]:
         state["final_context"] = f"질문: {question}"
         
     except Exception as e:
-        # 실패 시 fallback 모델 사용
-        fallback_model_name = get_model_name(generate_answer_inference_fallback_llm)
-        print(f"[INFERENCE_Q] Fallback 모델: {fallback_model_name}")
-        try:
-            answer = generate_answer_inference_fallback_llm(prompt)
-            state["final_answer"] = answer
-        except:
+        # 실패 시 fallback 모델 사용 (있는 경우에만)
+        if generate_answer_inference_fallback_llm is not None:
+            try:
+                fallback_model_name = get_model_name(generate_answer_inference_fallback_llm)
+                print(f"[INFERENCE_Q] Fallback 모델: {fallback_model_name}")
+                answer = generate_answer_inference_fallback_llm(prompt)
+                state["final_answer"] = answer
+            except Exception as fallback_error:
+                print(f"[INFERENCE_Q] Fallback 모델도 실패: {fallback_error}")
+                state["final_answer"] = f"실험 결과 해석 생성 중 오류가 발생했습니다: {str(e)}"
+        else:
+            print(f"[INFERENCE_Q] Fallback 모델이 설정되지 않음")
             state["final_answer"] = f"실험 결과 해석 생성 중 오류가 발생했습니다: {str(e)}"
     
     return state

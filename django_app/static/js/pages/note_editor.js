@@ -22,6 +22,7 @@ let openBookmarkCategoryMenuId = null;
 let editingCategoryId = null;
 let openBookmarkMenuId = null; // {categoryId_bookmarkId: true}
 let editingBookmarkId = null; // {categoryId_bookmarkId: true}
+let selectedShareMembers = []; // 공유할 사용자 정보 저장
 
 // CKEditor5 instance
 let editorInstance = null;
@@ -97,6 +98,7 @@ function initNoteEditor() {
     if (editingNoteId) {
         isEditMode = true;
         if (editorTitle) editorTitle.textContent = '노트 수정';
+        if (btnSaveNote) btnSaveNote.textContent = '수정';
     }
 
     // Initialize Tagify
@@ -531,29 +533,94 @@ function initCKEditor() {
 }
 
 // Load note for editing
-function loadNoteForEdit(noteId) {
-    // TODO: API 호출로 노트 데이터 가져오기
-    // 현재는 mock 데이터 사용
-    const mockNote = {
-        id: noteId,
-        title: 'CRISPR-Cas9 유전자 가위 기술',
-        content: '<h2>유전자 편집 실험 결과</h2><p>CRISPR-Cas9 시스템을 이용한 유전자 편집 실험을 진행하였습니다.</p><h3>실험 방법</h3><ul><li>가이드 RNA 설계</li><li>Cas9 단백질 발현</li><li>표적 유전자 편집</li></ul><h3>결과</h3><p>목표 유전자에서 <strong>95%의 편집 효율</strong>을 달성하였습니다.</p>',
-        tags: ['CRISPR', '유전자편집']
-    };
+async function loadNoteForEdit(noteId) {
+    if (!noteId) {
+        console.error('[NoteEditor] Note ID is required for editing');
+        if (window.notyf) {
+            window.notyf.error('노트 ID가 필요합니다.');
+        }
+        return;
+    }
 
-    if (noteTitleInput) noteTitleInput.value = mockNote.title;
-    
-    // Tagify에 태그 설정
+    try {
+        const response = await fetch(`/api/notes/${noteId}/`, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+            },
+            credentials: 'same-origin'
+        });
+
+        if (!response.ok) {
+            if (response.status === 404) {
+                throw new Error('노트를 찾을 수 없습니다.');
+            }
+            throw new Error(`Failed to load note: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (data.status === 'success' && data.note) {
+            const note = data.note;
+
+            // 제목 설정
+            if (noteTitleInput) {
+                noteTitleInput.value = note.title || '';
+            }
+
+            // 태그 설정
+            const tags = note.tags || [];
     if (tagifyInstance) {
         tagifyInstance.removeAllTags();
-        tagifyInstance.addTags(mockNote.tags);
+                if (tags.length > 0) {
+                    tagifyInstance.addTags(tags);
+                }
     } else if (noteTagsInput) {
-        noteTagsInput.value = mockNote.tags.join(', ');
+                noteTagsInput.value = tags.join(', ');
     }
     
     // CKEditor에 컨텐츠 설정
     if (editorInstance) {
-        editorInstance.setData(mockNote.content);
+                editorInstance.setData(note.content || '');
+            }
+
+            // 기존 첨부 파일 로드
+            if (note.attachments && Array.isArray(note.attachments)) {
+                attachedFiles = note.attachments.map((attachment) => ({
+                    id: fileIdCounter++,
+                    name: attachment.name || '',
+                    size: formatFileSize(attachment.size || 0), // 포맷팅된 크기
+                    sizeBytes: attachment.size || 0, // 원본 바이트 크기
+                    file: null, // 기존 파일은 서버에 있으므로 File 객체 없음
+                    attachmentId: attachment.id, // 기존 첨부 파일 ID 저장
+                    s3Key: attachment.path || '',
+                    isExisting: true // 기존 파일 표시
+                }));
+                renderAttachedFiles();
+            }
+
+            // 기존 공유 멤버 정보 로드 (API에서 제공하는 경우)
+            // Note: 현재 API 응답에 sharedMembers 정보가 없을 수 있으므로
+            // 별도 API 호출이 필요할 수 있습니다.
+            // 일단 빈 배열로 초기화 (추후 API 확장 시 구현)
+            selectedShareMembers = [];
+
+            if (window.notyf) {
+                window.notyf.success('노트를 불러왔습니다.');
+            }
+        } else {
+            throw new Error(data.error || '노트 데이터를 불러올 수 없습니다.');
+        }
+    } catch (error) {
+        console.error('[NoteEditor] Error loading note for edit:', error);
+        if (window.notyf) {
+            window.notyf.error(error.message || '노트를 불러오는 중 오류가 발생했습니다.');
+        }
+        
+        // 에러 발생 시 목록으로 돌아가기
+        setTimeout(() => {
+            window.location.href = '/notes/';
+        }, 2000);
     }
 }
 
@@ -565,6 +632,11 @@ function handleCancelNote() {
                        editorContent ||
                        hasTags ||
                        attachedFiles.length > 0;
+
+    // 편집 모드일 때는 상세 페이지로, 새로 작성할 때는 목록으로 이동
+    const redirectUrl = isEditMode && editingNoteId 
+        ? `/notes/detail/?id=${editingNoteId}`
+        : '/notes/';
 
     if (hasContent) {
         // Use SweetAlert2 for confirmation
@@ -581,23 +653,23 @@ function handleCancelNote() {
                 reverseButtons: true
             }).then((result) => {
                 if (result.isConfirmed) {
-                    window.location.href = '/notes/';
+                    window.location.href = redirectUrl;
                 }
             });
         } else {
             // Fallback to confirm if SweetAlert2 is not available
             if (confirm('작성 중인 내용이 저장되지 않습니다. 정말 취소하시겠습니까?')) {
-                window.location.href = '/notes/';
+                window.location.href = redirectUrl;
             }
         }
     } else {
         // No content, just navigate
-        window.location.href = '/notes/';
+        window.location.href = redirectUrl;
     }
 }
 
 // Handle save note
-function handleSaveNote() {
+async function handleSaveNote() {
     const title = noteTitleInput?.value.trim() || "";
     const content = editorInstance ? editorInstance.getData().trim() : "";
     
@@ -620,37 +692,121 @@ function handleSaveNote() {
         return;
     }
 
-    // TODO: API 호출로 저장
-    const noteData = {
-        id: editingNoteId || null,
-        title: title,
-        content: content,
-        tags: tags,
-        attachedFiles: attachedFiles,
-        charts: attachedCharts,
-    };
-    
-    console.log('Saving note:', noteData);
+    // 파일 크기 검증 (1GB = 1073741824 bytes)
+    const MAX_FILE_SIZE = 1024 * 1024 * 1024; // 1GB
+    const oversizedFiles = attachedFiles.filter(file => {
+        // 새로 첨부한 파일(file.file) 또는 기존 파일의 크기 확인
+        const fileSize = file.file ? file.file.size : (file.sizeBytes || 0);
+        if (fileSize > MAX_FILE_SIZE) {
+            return true;
+        }
+        return false;
+    });
 
+    if (oversizedFiles.length > 0) {
+        if (window.notyf) {
+            window.notyf.error(`파일 크기가 1GB를 초과합니다: ${oversizedFiles.map(f => f.name).join(', ')}`);
+        } else {
+            alert(`파일 크기가 1GB를 초과합니다: ${oversizedFiles.map(f => f.name).join(', ')}`);
+        }
+        return;
+    }
+
+    try {
+        // FormData 생성
+        const formData = new FormData();
+        formData.append('title', title);
+        formData.append('content', content);
+        formData.append('tags', JSON.stringify(tags));
+        formData.append('sharedMembers', JSON.stringify(selectedShareMembers));
+
+        // 첨부 파일 추가
+        attachedFiles.forEach((fileData, index) => {
+            if (fileData.file) {
+                formData.append(`file_${index}`, fileData.file);
+                formData.append(`file_${index}_name`, fileData.name);
+            }
+        });
+
+        // API 엔드포인트 결정
+            const apiUrl = isEditMode
+                ? `/api/notes/${editingNoteId}/update/`
+                : '/api/notes/create/';
+        
+        const method = isEditMode ? 'PUT' : 'POST';
+
+        // 저장 버튼 비활성화
+        if (btnSaveNote) {
+            btnSaveNote.disabled = true;
+            const originalText = btnSaveNote.textContent;
+            btnSaveNote.textContent = '저장 중...';
+        }
+
+        // API 호출
+        const response = await fetch(apiUrl, {
+            method: method,
+            body: formData,
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            credentials: 'same-origin'
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || '노트 저장에 실패했습니다.');
+        }
+
+        if (data.status === 'success') {
     if (window.notyf) {
         window.notyf.success(isEditMode ? '노트가 수정되었습니다.' : '노트가 저장되었습니다.');
     }
 
-    // Redirect to notes list
+            // 상태 초기화
+            selectedShareMembers = [];
+            attachedFiles = [];
+            attachedCharts = [];
+
+            // 편집 모드일 때는 상세 페이지로, 새로 작성할 때는 목록으로 이동
+            const redirectUrl = isEditMode && editingNoteId 
+                ? `/notes/detail/?id=${editingNoteId}`
+                : '/notes/';
+
     setTimeout(() => {
-        window.location.href = '/notes/';
+                window.location.href = redirectUrl;
     }, 1000);
+        } else {
+            throw new Error(data.error || '응답 데이터가 올바르지 않습니다.');
+        }
+    } catch (error) {
+        console.error('[NoteEditor] Failed to save note:', error);
+        if (window.notyf) {
+            window.notyf.error(error.message || '노트 저장에 실패했습니다.');
+        } else {
+            alert(error.message || '노트 저장에 실패했습니다.');
+        }
+    } finally {
+        // 저장 버튼 활성화
+        if (btnSaveNote) {
+            btnSaveNote.disabled = false;
+            btnSaveNote.textContent = isEditMode ? '수정' : '저장';
+        }
+    }
 }
 
 // Handle share note
 function handleShareNote() {
     if (window.ShareModal && typeof window.ShareModal.open === 'function') {
-        window.ShareModal.onShare = (selectedMembers) => {
+        window.ShareModal.onShare = (selectedMemberIds, selectedMemberDetails) => {
+            // 선택한 사용자 정보 저장 (노트 저장 시 사용)
+            selectedShareMembers = selectedMemberDetails || [];
+            
             if (window.notyf) {
-                window.notyf.success(`${selectedMembers.length}명과 공유되었습니다.`);
+                window.notyf.success(`${selectedShareMembers.length}명이 선택되었습니다. 노트 저장 시 공유됩니다.`);
             }
         };
-        window.ShareModal.open(editingNoteId);
+        window.ShareModal.open(editingNoteId, null, null, '노트 공유');
     } else {
         if (window.notyf) {
             window.notyf.info('공유 기능은 곧 제공될 예정입니다.');
@@ -689,15 +845,31 @@ function handleFileAttach() {
     fileInput.multiple = true;
     fileInput.addEventListener('change', (e) => {
         const files = Array.from(e.target.files);
+        if (files.length === 0) {
+            return; // 파일이 선택되지 않은 경우
+        }
+
         files.forEach(file => {
             const newFile = {
                 id: fileIdCounter++,
                 name: file.name,
-                size: formatFileSize(file.size)
+                size: formatFileSize(file.size),
+                sizeBytes: file.size, // 원본 바이트 크기 저장
+                file: file,  // 파일 객체 저장 (업로드용)
+                isExisting: false // 새 파일
             };
             attachedFiles.push(newFile);
         });
         renderAttachedFiles();
+
+        // 파일 첨부 완료 메시지
+        if (window.notyf) {
+            if (files.length === 1) {
+                window.notyf.success(`파일이 첨부되었습니다: ${files[0].name}`);
+            } else {
+                window.notyf.success(`${files.length}개의 파일이 첨부되었습니다.`);
+            }
+        }
     });
     fileInput.click();
 }
@@ -776,18 +948,25 @@ function renderAttachedFiles() {
         return;
     }
 
-    attachedFilesList.innerHTML = attachedFiles.map(file => `
+    attachedFilesList.innerHTML = attachedFiles.map(file => {
+        // 파일 크기 표시 (이미 포맷팅된 경우 그대로 사용, 아니면 포맷팅)
+        const displaySize = file.size || (file.sizeBytes ? formatFileSize(file.sizeBytes) : '0B');
+        // 기존 파일인지 새 파일인지 표시
+        const fileLabel = file.isExisting ? ' (기존)' : '';
+        
+        return `
         <div class="attached-file-item">
             <i class="fa-solid fa-file-alt"></i>
             <div class="attached-file-info">
-                <span class="attached-file-name">${escapeHtml(file.name)}</span>
-                <span class="attached-file-size">${file.size}</span>
+                <span class="attached-file-name">${escapeHtml(file.name)}${fileLabel}</span>
+                <span class="attached-file-size">${displaySize}</span>
             </div>
             <button class="btn-file-remove" onclick="window.NoteEditorPage.handleFileRemove(${file.id})">
                 <i class="fa-solid fa-times"></i>
             </button>
         </div>
-    `).join('');
+        `;
+    }).join('');
 }
 
 // Format file size
@@ -1203,6 +1382,13 @@ async function handleAddCategory() {
 // Show add bookmark form
 function showAddBookmarkForm(categoryId) {
     addingBookmarkToCategoryId = categoryId;
+    
+    // 해당 카테고리를 항상 열림 상태로 설정
+    const categoryIndex = bookmarkCategories.findIndex(cat => cat.id === categoryId);
+    if (categoryIndex !== -1) {
+        openBookmarkCategories[categoryIndex] = true;
+    }
+    
     renderBookmarks();
     // Focus on title input after render
     setTimeout(() => {

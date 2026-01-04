@@ -282,12 +282,28 @@
     flex-shrink: 0;
 }
 
-.share-member-item .member-avatar {
+.share-member-item .profile-avatar-placeholder {
     width: 2.5rem;
     height: 2.5rem;
     border-radius: 50%;
-    object-fit: cover;
+    background: #e5e7eb;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6b7280;
     flex-shrink: 0;
+}
+
+.share-member-item .profile-avatar-placeholder i {
+    font-size: 1.25rem;
+}
+
+/* 프로필 이미지가 있을 때 아이콘 숨기기 */
+.share-member-item .profile-avatar-placeholder[style*="background-image"] i {
+    display: none;
 }
 
 .share-member-item .member-info {
@@ -318,6 +334,9 @@
 .share-empty-state {
     text-align: center;
     padding: 3rem 1rem;
+    display: flex;
+    align-items: center;
+    flex-direction: column;
 }
 
 .share-empty-state i {

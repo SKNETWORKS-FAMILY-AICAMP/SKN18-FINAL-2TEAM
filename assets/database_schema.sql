@@ -410,11 +410,37 @@ CREATE TABLE t_schedule (
     location VARCHAR(255),
     color VARCHAR(50),
     linked_note_sid INT,
+    calendar_sid INT REFERENCES t_user_calendar(calendar_sid),
     repeat_type CHAR(50) NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_id VARCHAR(60) NOT NULL,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_id VARCHAR(60) NOT NULL
+);
+
+-- 반복 규칙 (iCalendar RRULE 기반 메타데이터)
+CREATE TABLE t_schedule_recurrence (
+    schedule_sid INT PRIMARY KEY REFERENCES t_schedule(schedule_sid) ON DELETE CASCADE,
+    freq VARCHAR(20) NOT NULL,               -- DAILY / WEEKLY / MONTHLY / YEARLY
+    interval INT NOT NULL DEFAULT 1,         -- 반복 간격
+    week_days JSONB DEFAULT '[]'::jsonb,     -- 반복 요일 목록 (예: ["MO","WE"])
+    month_days JSONB DEFAULT '[]'::jsonb,    -- 반복 일자 목록 (예: [1, 15])
+    count INT,
+    until TIMESTAMP,
+    timezone VARCHAR(64) NOT NULL DEFAULT 'Asia/Seoul',
+    metadata JSONB DEFAULT '{}'::jsonb,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 반복 예외(스킵/개별 수정 표시)
+CREATE TABLE t_schedule_exception (
+    recurrence_exception_sid SERIAL PRIMARY KEY,
+    recurrence_sid INT NOT NULL REFERENCES t_schedule_recurrence(schedule_sid) ON DELETE CASCADE,
+    exception_date DATE NOT NULL,
+    note VARCHAR(255),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_schedule_exception UNIQUE (recurrence_sid, exception_date)
 );
 
 -- 일정 공유
@@ -433,6 +459,8 @@ CREATE TABLE t_user_calendar (
     color VARCHAR(50),
     is_visible SMALLINT DEFAULT 1,
     sort_order INT DEFAULT 0,
+    source_type VARCHAR(20) NOT NULL DEFAULT 'local', -- local / google ...
+    external_id VARCHAR(255),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     created_id VARCHAR(60) NOT NULL,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,

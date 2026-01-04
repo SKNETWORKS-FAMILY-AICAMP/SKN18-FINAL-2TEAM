@@ -109,6 +109,9 @@
 .sidebar-rail .profile-section .profile-image-placeholder {
     width: 2rem;
     height: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .profile-avatar-placeholder i,

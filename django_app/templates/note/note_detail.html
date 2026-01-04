@@ -29,7 +29,10 @@
                     <div class="note-detail-meta-row">
                         <div class="note-detail-meta">
                             <div class="meta-author">
-                                <img src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop" alt="Author" class="author-avatar" />
+                                <img src="" alt="Author" class="author-avatar" id="noteDetailAuthorAvatar" style="display: none;" />
+                                <div class="author-avatar author-avatar-placeholder" id="noteDetailAuthorAvatarPlaceholder">
+                                    <i class="fa-solid fa-user"></i>
+                                </div>
                                 <span id="noteDetailAuthor">Dr. Sarah Kim</span>
                             </div>
                             <span class="meta-separator">•</span>
@@ -77,6 +80,13 @@
                         <div class="attachments-list" id="attachmentsList">
                             <!-- Attachments will be rendered here -->
                         </div>
+                    </div>
+
+                    <!-- Delete Button Section -->
+                    <div class="note-delete-section">
+                        <button class="btn-delete-note" id="btnDeleteNote">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -133,6 +143,6 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/pages/note_detail.js' %}"></script>
 <script src="{% static 'js/components/modals/share_modal.js' %}"></script>
+<script src="{% static 'js/pages/note_detail.js' %}"></script>
 {% endblock %}

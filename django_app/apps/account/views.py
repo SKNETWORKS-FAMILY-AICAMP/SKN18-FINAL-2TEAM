@@ -11,11 +11,28 @@ from django.views.decorators.csrf import csrf_protect
 from django.utils import timezone
 from django.http import JsonResponse
 from django.conf import settings
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework import status
 import requests
 
 from .forms import LoginForm, SignUpForm
 from .models import CustomUser, UserSettings, LinkedAccount
 from apps.core.utils.s3_utils import upload_file_to_s3, get_s3_url, generate_s3_key
+
+
+def _resolve_owner_id(user):
+    """
+    사용자 ID를 문자열로 반환
+    account 앱과 schedule 앱 간 일관성 유지
+    """
+    if not user or not getattr(user, "is_authenticated", False):
+        return "system"
+    raw = getattr(user, "user_id", None)
+    if raw:
+        return str(raw)
+    return getattr(user, "email", "system")
 
 
 def index(request):
@@ -81,6 +98,9 @@ def logout_view(request):
     """
     로그아웃 뷰
     """
+    if request.user.is_authenticated:
+        from apps.schedule.models import GoogleCredentials
+        GoogleCredentials.objects.filter(user=request.user).delete()
     logout(request)
     messages.info(request, '로그아웃되었습니다.')
     return redirect('accounts:login')
@@ -150,6 +170,15 @@ def profile_view(request):
         'linked_accounts': linked_accounts,
         'google_account': google_account,
     })
+
+
+@login_required
+def organization_view(request):
+    """
+    조직 관리 뷰 (organization 앱의 뷰로 리디렉션)
+    """
+    from apps.organization.views import organization_view as org_view
+    return org_view(request)
 
 
 @login_required
@@ -342,11 +371,66 @@ def linked_accounts_api(request):
         try:
             linked_account = LinkedAccount.objects.get(user=request.user, provider=provider)
             provider_display = linked_account.get_provider_display()
+            
+            if provider == LinkedAccount.Provider.GOOGLE:
+                from apps.schedule.models import GoogleCredentials, UserCalendar, Schedule, SyncedCalendar, GoogleSyncedEvent
+                from django.db import transaction
+                
+                with transaction.atomic():
+                    # 1. GoogleCredentials 삭제 (access_token, refresh_token 완전 제거)
+                    GoogleCredentials.objects.filter(user=request.user).delete()
+                    
+                    # 2. SyncedCalendar 비활성화 (selected=False로 설정)
+                    SyncedCalendar.objects.filter(user=request.user).update(selected=False)
+                    
+                    # 3. UserCalendar (GOOGLE) → LOCAL 변환 (캘린더는 보존)
+                    owner_id = _resolve_owner_id(request.user)
+                    google_calendars = UserCalendar.objects.filter(
+                        created_id=owner_id,
+                        source_type=UserCalendar.Source.GOOGLE
+                    )
+                    for calendar in google_calendars:
+                        calendar.source_type = UserCalendar.Source.LOCAL
+                        calendar.save(update_fields=['source_type'])
+                    
+                    # 4. Google 일정 숨김 처리 (use_yn='N')
+                    # GoogleSyncedEvent를 통해 Google 일정 찾기 (가장 정확한 방법)
+                    # Google 일정은 GoogleSyncedEvent를 통해 Schedule과 연결됨
+                    google_schedule_ids = list(
+                        GoogleSyncedEvent.objects.filter(
+                            user=request.user,
+                            schedule__isnull=False
+                        ).values_list('schedule__schedule_sid', flat=True)
+                    )
+                    
+                    # Google 일정 숨김 처리
+                    if google_schedule_ids:
+                        Schedule.objects.filter(
+                            schedule_sid__in=google_schedule_ids
+                        ).update(use_yn='N')
+                    
+                    # 추가: UserCalendar를 통해 연결된 Google 일정도 처리 (중복 방지)
+                    # GoogleSyncedEvent로 찾지 못한 일정이 있을 수 있으므로
+                    google_calendar_ids = list(google_calendars.values_list('calendar_sid', flat=True))
+                    if google_calendar_ids:
+                        # 이미 GoogleSyncedEvent로 처리된 일정은 제외하고 나머지 처리
+                        Schedule.objects.filter(
+                            calendar__calendar_sid__in=google_calendar_ids
+                        ).exclude(
+                            schedule_sid__in=google_schedule_ids if google_schedule_ids else []
+                        ).update(use_yn='N')
+            
+            # LinkedAccount 삭제
             linked_account.delete()
+            
+            if provider == LinkedAccount.Provider.GOOGLE:
+                message = f'{provider_display} 계정 연결이 해제되었습니다. 캘린더 연동도 함께 중단됩니다.'
+            else:
+                message = f'{provider_display} 계정 연동이 해제되었습니다.'
             
             return JsonResponse({
                 'success': True,
-                'message': f'{provider_display} 계정 연동이 해제되었습니다.'
+                'message': message
             })
         except LinkedAccount.DoesNotExist:
             return JsonResponse({
@@ -596,3 +680,57 @@ def google_profile_callback(request):
         else:
             messages.error(request, f'계정 연동 중 오류가 발생했습니다: {str(e)}')
             return redirect('accounts:profile')
+
+
+@api_view(['GET', 'PUT'])
+@permission_classes([IsAuthenticated])
+def settings_api(request):
+    """사용자 설정 조회 및 업데이트 API"""
+    user = request.user
+    
+    # UserSettings 가져오기 또는 생성
+    user_settings, created = UserSettings.objects.get_or_create(user=user)
+    
+    if request.method == 'GET':
+        return Response({
+            'status': 'success',
+            'settings': {
+                'notifications': user_settings.notifications,
+                'email_alerts': user_settings.email_alerts,
+                'dark_mode': user_settings.dark_mode,
+                'language': user_settings.language,
+                'notes_view_mode': getattr(user_settings, 'notes_view_mode', 'card'),
+            }
+        }, status=status.HTTP_200_OK)
+    
+    elif request.method == 'PUT':
+        data = request.data
+        
+        # 업데이트할 필드만 처리
+        if 'notes_view_mode' in data:
+            notes_view_mode = data.get('notes_view_mode', '').strip()
+            if notes_view_mode in ['card', 'table']:
+                user_settings.notes_view_mode = notes_view_mode
+        
+        if 'notifications' in data:
+            user_settings.notifications = data.get('notifications', user_settings.notifications)
+        if 'email_alerts' in data:
+            user_settings.email_alerts = data.get('email_alerts', user_settings.email_alerts)
+        if 'dark_mode' in data:
+            user_settings.dark_mode = data.get('dark_mode', user_settings.dark_mode)
+        if 'language' in data:
+            user_settings.language = data.get('language', user_settings.language)
+        
+        user_settings.save()
+        
+        return Response({
+            'status': 'success',
+            'message': '설정이 저장되었습니다.',
+            'settings': {
+                'notifications': user_settings.notifications,
+                'email_alerts': user_settings.email_alerts,
+                'dark_mode': user_settings.dark_mode,
+                'language': user_settings.language,
+                'notes_view_mode': getattr(user_settings, 'notes_view_mode', 'card'),
+            }
+        }, status=status.HTTP_200_OK)

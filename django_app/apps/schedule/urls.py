@@ -13,6 +13,11 @@ urlpatterns = [
     path("api/schedules/", views.schedule_list, name="schedule_list"),
     path("api/schedules/<int:schedule_id>/", views.schedule_detail, name="schedule_detail"),
     path("api/schedules/<int:schedule_id>/shared/", views.schedule_shared_users, name="schedule_shared_users"),
+    
+    # Invitation API
+    path("api/invitations/", views.invitation_list, name="invitation_list"),
+    path("api/invitations/<int:invitation_id>/accept/", views.accept_invitation, name="accept_invitation"),
+    path("api/invitations/<int:invitation_id>/reject/", views.reject_invitation, name="reject_invitation"),
 
     # Google OAuth
     path("google/login/", service.google_login, name="google_login"),
@@ -24,6 +29,7 @@ urlpatterns = [
 
     # FullCalendar/프론트가 읽는 구글 이벤트
     path("api/google-events/", service.google_events_api, name="google_events_api"),
+    path("api/google-events/sync/", service.google_events_sync, name="google_events_sync"),
 
     # 이벤트 CRUD
     path("api/google-events/create/", service.google_event_create, name="google_event_create"),
@@ -33,4 +39,8 @@ urlpatterns = [
     # ✅ 구글 상태/캘린더 API
     path("api/google-calendar/status/", service.google_calendar_status, name="google_calendar_status"),
     path("api/google-calendar/calendars/", service.google_calendar_calendars_api, name="google_calendar_calendars_api"),
+    
+    # User Calendar API
+    path("api/user-calendars/", views.user_calendars_api, name="user_calendars_api"),
+    path("api/user-calendars/<int:calendar_id>/", views.user_calendar_detail, name="user_calendar_detail"),
 ]
