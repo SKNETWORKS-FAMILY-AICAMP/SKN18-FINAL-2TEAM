@@ -2,8 +2,11 @@
 Account 관련 미들웨어
 """
 import time
+from datetime import datetime
 from django.db import connection
 from django.utils.deprecation import MiddlewareMixin
+from django.contrib.auth import logout
+from django.contrib import messages
 
 
 class DatabasePerformanceMiddleware(MiddlewareMixin):
@@ -54,3 +57,65 @@ class DatabasePerformanceMiddleware(MiddlewareMixin):
                 print(f"[DB Connection] Request {request.path[:50]} - Connection reused (PID: {pid})")
             except:
                 pass
+
+
+class UserActivityLoggingMiddleware(MiddlewareMixin):
+    """
+    사용자 활동 로깅 미들웨어
+    
+    인증된 사용자의 활동을 로깅합니다.
+    """
+    
+    def process_request(self, request):
+        """요청 시작 시 사용자 활동 기록"""
+        if request.user.is_authenticated:
+            # 세션에 마지막 활동 시간 업데이트
+            request.session['last_activity'] = datetime.now().isoformat()
+        
+        return None
+
+
+class SessionTimeoutMiddleware(MiddlewareMixin):
+    """
+    세션 타임아웃 미들웨어
+    
+    비활성 상태가 일정 시간 지속되면 세션을 만료시킵니다.
+    """
+    
+    # 세션 타임아웃 시간 (초 단위, 기본값: 2시간)
+    SESSION_TIMEOUT = 7200  # 2 hours
+    
+    def process_request(self, request):
+        """요청 처리 전 세션 타임아웃 확인"""
+        if not request.user.is_authenticated:
+            return None
+        
+        # 마지막 활동 시간 확인
+        last_activity_str = request.session.get('last_activity')
+        if not last_activity_str:
+            # 마지막 활동 시간이 없으면 현재 시간으로 설정
+            request.session['last_activity'] = datetime.now().isoformat()
+            return None
+        
+        try:
+            last_activity = datetime.fromisoformat(last_activity_str)
+            now = datetime.now()
+            inactive_time = (now - last_activity).total_seconds()
+            
+            # 타임아웃 시간 초과 시 세션 만료
+            if inactive_time > self.SESSION_TIMEOUT:
+                logout(request)
+                messages.warning(request, '세션이 만료되었습니다. 다시 로그인해주세요.')
+                # 마지막 활동 시간 삭제
+                if 'last_activity' in request.session:
+                    del request.session['last_activity']
+                return None
+            
+            # 마지막 활동 시간 업데이트
+            request.session['last_activity'] = datetime.now().isoformat()
+            
+        except (ValueError, TypeError):
+            # 날짜 파싱 실패 시 현재 시간으로 재설정
+            request.session['last_activity'] = datetime.now().isoformat()
+        
+        return None
