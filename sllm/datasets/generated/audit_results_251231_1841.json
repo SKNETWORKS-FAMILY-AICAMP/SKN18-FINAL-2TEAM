@@ -1,0 +1,3253 @@
+[
+  {
+    "idx": 1,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes suggested next steps, which introduces a new task.",
+      "Interpretation limits are not strictly adhered to as the output suggests follow-up studies."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 2,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 0,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes suggested next steps, which introduces a new task unrelated to the interpretation of the observations.",
+      "Output violates cannot_conclude constraints by suggesting further studies, which implies a causal or mechanistic claim."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 3,
+    "verdict": "FAIL",
+    "score": 55,
+    "breakdown_integrity": 20,
+    "breakdown_alignment": 10,
+    "breakdown_faithfulness": 15,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Observations are non-empty but the output includes interpretive statements that go beyond the data.",
+      "The question is not fully answerable from the observations due to the uncertainty indicated by the wide credible intervals.",
+      "The output suggests next steps which imply a causal interpretation not supported by the observations."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 4,
+    "verdict": "FAIL",
+    "score": 55,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes interpretive statements that go beyond the observations.",
+      "The interpretation limits suggest potential causal claims, violating cannot_conclude constraints.",
+      "Multiple unrelated tasks are mixed in the output, such as suggested next steps."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 5,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes multiple unrelated tasks (interpretation, cautions, suggested next steps).",
+      "Some output statements introduce new entities or implications not directly supported by observations."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 6,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 7,
+    "verdict": "FAIL",
+    "score": 49,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": true,
+    "hard_fail_reasons": [
+      "question_misaligned_with_observations"
+    ],
+    "key_issues": [
+      "Output includes statements that could imply causal mechanisms, violating the interpretation limits.",
+      "The output mixes observations with suggestions for next steps, which is unrelated to the task of interpreting results."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 8,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 15,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 9,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 0,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes suggested next steps, which introduces unrelated tasks.",
+      "Output contains cautions that imply generalizability issues, violating cannot_conclude constraints."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 10,
+    "verdict": "FAIL",
+    "score": 55,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 10,
+    "breakdown_faithfulness": 15,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes multiple unrelated tasks (interpretation, cautions, suggested next steps).",
+      "Some output statements introduce new entities or scope not present in observations."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 11,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes multiple unrelated tasks in the interpretation limits and suggested next steps."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 12,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 15,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 13,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 14,
+    "verdict": "FAIL",
+    "score": 49,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 10,
+    "hard_fail": true,
+    "hard_fail_reasons": [
+      "question_misaligned_with_observations"
+    ],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 15,
+    "verdict": "FAIL",
+    "score": 55,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 10,
+    "breakdown_faithfulness": 15,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes interpretive statements that go beyond the observations.",
+      "Multiple unrelated tasks are mixed in the output (interpretation, cautions, suggested next steps).",
+      "Some output statements are not directly supported by the observations."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 16,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes suggested next steps, which may imply future actions beyond the current observations."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 17,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes suggested next steps, which introduces a new task unrelated to the interpretation of the observations.",
+      "The interpretation does not directly answer the question of comparison between groups, leading to a lack of alignment."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 18,
+    "verdict": "FAIL",
+    "score": 55,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 10,
+    "breakdown_faithfulness": 15,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes interpretive statements that go beyond the observations.",
+      "Multiple unrelated tasks are mixed in the output, such as suggested next steps.",
+      "The question is not directly answerable from the observations alone."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 19,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes suggested next steps, which may imply future actions rather than strictly interpreting the provided observations."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 20,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes suggested next steps, which introduces a new task unrelated to the interpretation of the observations.",
+      "Cautions and interpretation limits introduce potential generalizability issues that are not strictly based on the observations."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 21,
+    "verdict": "FAIL",
+    "score": 55,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 10,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "The output includes suggested next steps, which introduces a forward-looking element that is not strictly based on the observations.",
+      "The interpretation includes statements that could be seen as causal or mechanistic, which violates the cannot_conclude constraints."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 22,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 15,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 23,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes suggested next steps, which introduces unrelated tasks.",
+      "Cautions about p value correction introduce uncertainty not supported by observations."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 24,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "The output includes suggested next steps, which introduces a new task unrelated to the interpretation of the observations.",
+      "The interpretation includes statements that could imply causal relationships, which may violate the cannot_conclude constraints."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 25,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 15,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 26,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 15,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 27,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes multiple unrelated tasks (interpretation, cautions, suggested next steps).",
+      "Some output statements are not fully supported by the observations."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 28,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 20,
+    "breakdown_alignment": 10,
+    "breakdown_faithfulness": 15,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 15,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "The observations are not sufficiently detailed to support a comprehensive answer to the question.",
+      "The output includes suggested next steps, which introduces a new task unrelated to the interpretation of the observations."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 29,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 15,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 30,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 31,
+    "verdict": "FAIL",
+    "score": 60,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 10,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Observations are non-empty but contain interpretive statements.",
+      "The question is not fully answerable from the observations alone due to the presence of interpretive elements.",
+      "Output includes new entities and statements not directly supported by the observations.",
+      "Output mixes multiple tasks, including interpretation and suggestions for next steps."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 32,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 15,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 33,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 15,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 34,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 35,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 15,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 36,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 0,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes multiple unrelated tasks (interpretation, cautions, suggested next steps).",
+      "Output violates cannot_conclude constraints by suggesting generalizability and broader clinical significance."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 37,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Observations are non-empty but contain interpretive statements.",
+      "The question is partially answerable but lacks clarity due to mixed interpretations.",
+      "Output includes new statements not directly supported by observations."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 38,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes multiple unrelated tasks (interpretation, cautions, suggested next steps).",
+      "Some output statements are not strictly supported by the observations."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 39,
+    "verdict": "FAIL",
+    "score": 49,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": true,
+    "hard_fail_reasons": [
+      "cannot_conclude_violation:\\bdue to\\b"
+    ],
+    "key_issues": [
+      "Output includes statements about TrkB-ICD levels increasing with AD progression, which is not explicitly supported by the observations.",
+      "The interpretation includes a caution about generalizability, which may imply conclusions beyond the provided data."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 40,
+    "verdict": "FAIL",
+    "score": 55,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 10,
+    "breakdown_faithfulness": 15,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes multiple interpretations that mix different aspects (dendritic spine density and gene expression changes), violating atomicity.",
+      "The question is not fully answerable from the observations provided, as it requires interpretation beyond the data.",
+      "Some output statements introduce new concepts (e.g., phosphorylation of tyrosine residues) that are not directly linked to the question asked."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 41,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "The output includes suggested next steps, which introduces a forward-looking element not supported by the observations.",
+      "The question is not fully answerable from the observations alone, as it implies a comparison to controls that are not provided."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 42,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes multiple unrelated tasks (suggested next steps) which violates atomicity.",
+      "Some output statements may imply causal relationships not explicitly supported by observations, affecting faithfulness."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 43,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes statements that imply causal relationships, which are not supported by the observations.",
+      "The interpretation includes new entities or claims not explicitly demonstrated in the observations.",
+      "The output mixes multiple tasks, such as interpretation and suggestions for next steps."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 44,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes interpretive statements that may go beyond the observations.",
+      "The interpretation limits do not sufficiently restrict conclusions drawn from the observations.",
+      "The output suggests next steps that imply a broader scope than the provided data."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 45,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 15,
+    "breakdown_boundary": 0,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes suggestions for next steps, which introduces new tasks unrelated to the interpretation of the observations.",
+      "Output violates cannot_conclude constraints by suggesting follow-up experiments."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 46,
+    "verdict": "FAIL",
+    "score": 55,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 15,
+    "breakdown_boundary": 0,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes cautions and suggested next steps, which are interpretive and not strictly based on observations.",
+      "Output violates cannot_conclude constraints by discussing reliability and generalizability, which are not supported by the observations."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 47,
+    "verdict": "FAIL",
+    "score": 55,
+    "breakdown_integrity": 20,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 0,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Observations contain unclear values (??) which affect integrity.",
+      "Output includes suggested next steps, which introduces unrelated tasks.",
+      "Output does not strictly adhere to interpretation limits as it implies broader conclusions."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 48,
+    "verdict": "FAIL",
+    "score": 49,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 10,
+    "breakdown_faithfulness": 15,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 0,
+    "hard_fail": true,
+    "hard_fail_reasons": [
+      "cannot_conclude_violation:\\bcaus(e|al|ality)\\b"
+    ],
+    "key_issues": [
+      "Output includes multiple unrelated tasks (interpretation, cautions, suggested next steps).",
+      "Interpretation includes statements that go beyond the provided observations (e.g., high risk of bias, insufficient information)."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 49,
+    "verdict": "FAIL",
+    "score": 55,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 15,
+    "breakdown_boundary": 0,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes statements that are not strictly supported by the observations, such as the mention of depression without a clear link to the question.",
+      "The output violates the cannot_conclude constraints by suggesting next steps and cautions that imply broader implications beyond the provided data.",
+      "The interpretation includes multiple aspects (serious adverse events and depression) that are not directly related to the specific question asked."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 50,
+    "verdict": "FAIL",
+    "score": 55,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes interpretive statements that go beyond the provided observations.",
+      "The interpretation limits mention risk of bias, which is not directly supported by the observations.",
+      "The output suggests next steps, which introduces new tasks unrelated to the original question."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 51,
+    "verdict": "FAIL",
+    "score": 55,
+    "breakdown_integrity": 20,
+    "breakdown_alignment": 10,
+    "breakdown_faithfulness": 15,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Observations contain incomplete statistical data (mean difference ?? and CI ??).",
+      "Output includes interpretive statements that go beyond the provided observations.",
+      "The question is not directly answerable from the observations due to incomplete data."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 52,
+    "verdict": "FAIL",
+    "score": 45,
+    "breakdown_integrity": 15,
+    "breakdown_alignment": 10,
+    "breakdown_faithfulness": 10,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Observations contain placeholders (??07 to ??08) which render them non-informative.",
+      "The question cannot be answered definitively due to the placeholders in the observations.",
+      "Output includes suggestions for next steps, which is beyond the interpretation of the data."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 53,
+    "verdict": "FAIL",
+    "score": 49,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 0,
+    "breakdown_atomicity": 0,
+    "hard_fail": true,
+    "hard_fail_reasons": [
+      "cannot_conclude_violation:\\bcaus(e|al|ality)\\b"
+    ],
+    "key_issues": [
+      "Output includes cautions and suggested next steps, which introduce new entities and violate the cannot_conclude constraints.",
+      "Multiple unrelated tasks are mixed, including interpretation and recommendations for future research."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 54,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes suggested next steps, which introduces a new task unrelated to the interpretation of the observations.",
+      "Cautions and interpretation limits introduce interpretive elements that go beyond the observations."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 55,
+    "verdict": "FAIL",
+    "score": 55,
+    "breakdown_integrity": 20,
+    "breakdown_alignment": 10,
+    "breakdown_faithfulness": 15,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Observations contain incomplete statistical data (mean differences with ??).",
+      "Output includes interpretive statements that go beyond the provided observations.",
+      "Multiple unrelated tasks are mixed in the output (interpretation, cautions, suggested next steps)."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 56,
+    "verdict": "FAIL",
+    "score": 55,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 10,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 0,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Observations are non-empty but include interpretive statements.",
+      "The question mixes multiple unrelated tasks (quality of life, level of functioning, executive functioning, non-serious adverse events).",
+      "Output includes new entities and statements not strictly supported by observations."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 57,
+    "verdict": "FAIL",
+    "score": 55,
+    "breakdown_integrity": 20,
+    "breakdown_alignment": 10,
+    "breakdown_faithfulness": 15,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Observations contain incomplete data (??85 mg/day).",
+      "Question cannot be fully answered from the provided observations.",
+      "Output includes suggestions for next steps, which mixes tasks."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 58,
+    "verdict": "FAIL",
+    "score": 49,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 15,
+    "breakdown_boundary": 0,
+    "breakdown_atomicity": 5,
+    "hard_fail": true,
+    "hard_fail_reasons": [
+      "cannot_conclude_violation:\\bcaus(e|al|ality)\\b"
+    ],
+    "key_issues": [
+      "Output includes interpretive statements and cautions that go beyond the provided observations.",
+      "Output suggests next steps, which introduces new tasks unrelated to the original question.",
+      "Output violates cannot_conclude constraints by discussing risk of bias and heterogeneity."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 59,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes interpretive statements and suggestions that go beyond the provided observations.",
+      "The output mixes interpretation with recommendations, violating atomicity."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 60,
+    "verdict": "FAIL",
+    "score": 60,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 0,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes cautions and suggested next steps, which introduce interpretive elements beyond the observations.",
+      "The interpretation suggests a conclusion that may not be fully supported by the observations due to the noted risk of bias."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 61,
+    "verdict": "FAIL",
+    "score": 55,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 10,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 0,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes multiple unrelated tasks (interpretation, cautions, suggested next steps).",
+      "Output violates cannot_conclude constraints by suggesting further studies and implications.",
+      "Interpretation includes statements that could imply causation, which is not supported by the observations."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 62,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes cautions and suggested next steps, which introduce interpretive elements beyond the observations.",
+      "The interpretation suggests a causal relationship without sufficient evidence from the observations."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 63,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 64,
+    "verdict": "FAIL",
+    "score": 49,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 10,
+    "breakdown_faithfulness": 15,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 0,
+    "hard_fail": true,
+    "hard_fail_reasons": [
+      "question_misaligned_with_observations"
+    ],
+    "key_issues": [
+      "Output includes new interpretations not strictly supported by observations.",
+      "Multiple unrelated tasks are mixed in the output (interpretation, cautions, suggested next steps).",
+      "The question is not fully answerable from the observations provided."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 65,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 15,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 66,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes suggested next steps, which may imply a future direction rather than strictly interpreting the provided observations."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 67,
+    "verdict": "FAIL",
+    "score": 55,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 10,
+    "breakdown_faithfulness": 15,
+    "breakdown_boundary": 0,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes a conclusion that violates cannot_conclude constraints.",
+      "The question cannot be answered solely from the observations provided.",
+      "Multiple unrelated tasks are mixed in the output, such as suggested next steps."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 68,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "The output includes suggested next steps, which introduces a new task unrelated to the interpretation of the observations.",
+      "The question is not fully answerable from the observations provided, as it requires a comparative analysis that is not explicitly supported by the data."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 69,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 10,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "The question about the relationship between microglia proximity to vasculature and plug formation cannot be answered solely from the observations provided.",
+      "The output includes suggested next steps, which introduces unrelated tasks and violates atomicity."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 70,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 20,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Observations include ambiguous data (??-fold more plugs) which affects integrity.",
+      "The question is not fully answerable due to the ambiguity in the observations.",
+      "Output includes suggestions for next steps, which mixes tasks and violates atomicity."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 71,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 72,
+    "verdict": "FAIL",
+    "score": 49,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 0,
+    "breakdown_atomicity": 5,
+    "hard_fail": true,
+    "hard_fail_reasons": [
+      "question_misaligned_with_observations"
+    ],
+    "key_issues": [
+      "Output includes suggested next steps, which introduces unrelated tasks.",
+      "Output does not strictly adhere to the interpretation limits as it provides additional cautions and next steps."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 73,
+    "verdict": "FAIL",
+    "score": 49,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 0,
+    "hard_fail": true,
+    "hard_fail_reasons": [
+      "cannot_conclude_violation:\\bcaus(e|al|ality)\\b"
+    ],
+    "key_issues": [
+      "Output includes suggested next steps, which may imply additional tasks beyond the interpretation of the observations."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 74,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 15,
+    "breakdown_boundary": 0,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes suggestions for next steps, which introduces new tasks unrelated to the interpretation of the observations.",
+      "Output violates cannot_conclude constraints by suggesting potential generalizations and next steps."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 75,
+    "verdict": "FAIL",
+    "score": 60,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 10,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "The question about baseline demographic and clinical characteristics cannot be answered from the provided observations.",
+      "The output includes suggested next steps, which introduces a new task unrelated to the interpretation of the observations."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 76,
+    "verdict": "FAIL",
+    "score": 55,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes multiple interpretations that are not strictly based on the observations.",
+      "The output contains statements that could imply causal relationships, violating the cannot_conclude constraints."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 77,
+    "verdict": "FAIL",
+    "score": 55,
+    "breakdown_integrity": 20,
+    "breakdown_alignment": 10,
+    "breakdown_faithfulness": 15,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Observations contain placeholders (e.g., '?') which undermine integrity.",
+      "Output includes statements that may imply conclusions beyond the provided observations.",
+      "The question is not fully answerable due to incomplete data in observations."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 78,
+    "verdict": "FAIL",
+    "score": 49,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 0,
+    "hard_fail": true,
+    "hard_fail_reasons": [
+      "question_misaligned_with_observations"
+    ],
+    "key_issues": [
+      "Output includes multiple unrelated tasks (interpretation, cautions, suggested next steps).",
+      "Some output statements are not strictly supported by the observations."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 79,
+    "verdict": "FAIL",
+    "score": 55,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 10,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 0,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes multiple unrelated tasks (interpretation, cautions, suggested next steps).",
+      "Output violates cannot_conclude constraints by suggesting next steps and generalizability.",
+      "Question cannot be fully answered from observations due to lack of direct comparison between Aβ positive and negative groups."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 80,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes suggested next steps, which introduces a new task.",
+      "Interpretation includes a statement that could imply a causal relationship, which is not supported by the observations."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 81,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes multiple unrelated tasks (interpretation, cautions, suggested next steps).",
+      "Some output statements are interpretive rather than strictly based on observations."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 82,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output contains multiple unrelated tasks (interpretation, limits, cautions, next steps)."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 83,
+    "verdict": "FAIL",
+    "score": 60,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 10,
+    "breakdown_faithfulness": 15,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Observations are somewhat relevant but include background information.",
+      "The question is not fully answerable from the observations provided.",
+      "Output includes new suggestions and cautions that are not strictly supported by the observations."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 84,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 15,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 85,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 0,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes multiple unrelated tasks (suggested next steps) which violates atomicity.",
+      "Output does not adhere to the cannot_conclude constraints, as it implies potential next steps and generalizability."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 86,
+    "verdict": "FAIL",
+    "score": 55,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 10,
+    "breakdown_faithfulness": 15,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes multiple unrelated tasks (interpretation, cautions, suggested next steps).",
+      "Some output statements introduce new entities or claims not directly supported by observations."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 87,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes suggested next steps, which may imply additional tasks beyond the interpretation of results."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 88,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 15,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 89,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 15,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 90,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 15,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 91,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 15,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes multiple unrelated tasks (interpretation, cautions, suggested next steps).",
+      "Some output statements may imply causal relationships not supported by observations."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 92,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 15,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 93,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 15,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 94,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 15,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 95,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 15,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 96,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 97,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 15,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 98,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes multiple unrelated tasks (suggested next steps) which violates atomicity.",
+      "Some output statements may imply causal relationships not supported by observations, violating faithfulness.",
+      "Interpretation does not strictly adhere to the interpretation limits set in the instruction."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 99,
+    "verdict": "FAIL",
+    "score": 49,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 0,
+    "hard_fail": true,
+    "hard_fail_reasons": [
+      "question_misaligned_with_observations"
+    ],
+    "key_issues": [
+      "Output includes multiple unrelated tasks in suggested_next_steps.",
+      "Some output statements may imply causal relationships not supported by observations."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 100,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 0,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes multiple unrelated tasks (suggested next steps) which violates atomicity.",
+      "Output includes cautions that imply conclusions beyond the observations, violating boundary."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 101,
+    "verdict": "FAIL",
+    "score": 49,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 0,
+    "breakdown_atomicity": 0,
+    "hard_fail": true,
+    "hard_fail_reasons": [
+      "question_misaligned_with_observations"
+    ],
+    "key_issues": [
+      "Output includes suggested next steps, which introduces unrelated tasks.",
+      "Output violates cannot_conclude constraints by implying causal relationships."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 102,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 103,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 15,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 104,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 15,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 105,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 106,
+    "verdict": "FAIL",
+    "score": 60,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 10,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes suggested next steps, which introduces unrelated tasks.",
+      "Interpretation includes statements that could imply mechanisms, violating the instruction to avoid conclusions beyond the data."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 107,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 15,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 108,
+    "verdict": "FAIL",
+    "score": 55,
+    "breakdown_integrity": 20,
+    "breakdown_alignment": 10,
+    "breakdown_faithfulness": 15,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Observations include background information and are not strictly result-like.",
+      "The question cannot be answered directly from the observations provided.",
+      "Output includes statements that imply associations not strictly supported by the observations."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 109,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 15,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 110,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 15,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 111,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 15,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 112,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 15,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 113,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes interpretive statements that go beyond the observations.",
+      "The output mixes results from different experimental contexts (in vivo and in vitro) without clear separation."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 114,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "The question asks for a comparison with the control group, but the observations do not include any data about the control group.",
+      "The output includes suggested next steps, which introduces unrelated tasks and violates atomicity."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 115,
+    "verdict": "FAIL",
+    "score": 49,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 15,
+    "breakdown_atomicity": 10,
+    "hard_fail": true,
+    "hard_fail_reasons": [
+      "question_misaligned_with_observations"
+    ],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 116,
+    "verdict": "FAIL",
+    "score": 49,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 10,
+    "hard_fail": true,
+    "hard_fail_reasons": [
+      "question_misaligned_with_observations"
+    ],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 117,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 15,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 118,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 15,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 119,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes multiple unrelated tasks (interpretation, cautions, suggested next steps).",
+      "Some output statements may imply conclusions beyond the observations."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 120,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Observations are somewhat relevant but include background information.",
+      "The question is not fully answerable from the observations provided.",
+      "Output includes new statements that are not directly supported by the observations."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 121,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 122,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Observations are somewhat relevant but include background information.",
+      "The question is not fully answerable from the observations alone due to the lack of direct comparison data.",
+      "Output includes cautions and suggested next steps that introduce new entities and scope beyond the observations."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 123,
+    "verdict": "FAIL",
+    "score": 49,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 10,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 0,
+    "hard_fail": true,
+    "hard_fail_reasons": [
+      "cannot_conclude_violation:\\bdue to\\b"
+    ],
+    "key_issues": [
+      "The question cannot be answered solely from the observations provided, as it requires a comparative analysis that is not directly supported.",
+      "The output includes multiple unrelated tasks, such as suggested next steps, which violate atomicity."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 124,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 125,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes interpretive statements that go beyond the observations.",
+      "The question is not fully answerable from the observations alone due to the lack of specific details on the effects of parental smoking.",
+      "Multiple unrelated tasks are mixed in the output, such as suggested next steps."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 126,
+    "verdict": "FAIL",
+    "score": 55,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 10,
+    "breakdown_faithfulness": 15,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "The question about differences in missing economic data percentages cannot be answered from the provided observations.",
+      "The output includes suggested next steps, which introduces unrelated tasks.",
+      "The interpretation does not clearly address the specific question asked."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 127,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes multiple unrelated tasks (interpretation, cautions, suggested next steps).",
+      "Some output statements are not strictly supported by the observations."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 128,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes multiple unrelated tasks (interpretation, cautions, suggested next steps).",
+      "Some output statements are not strictly supported by the observations."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 129,
+    "verdict": "FAIL",
+    "score": 55,
+    "breakdown_integrity": 20,
+    "breakdown_alignment": 10,
+    "breakdown_faithfulness": 15,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Observations contain placeholders (??) which compromise data integrity.",
+      "Output includes statements that may imply conclusions beyond the provided observations.",
+      "The question is not fully answerable due to incomplete data in observations."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 131,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes suggested next steps, which may imply a broader scope than the observations.",
+      "The interpretation limits mention specific characteristics but do not clarify the focus on demographics only."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 132,
+    "verdict": "FAIL",
+    "score": 55,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 10,
+    "breakdown_faithfulness": 15,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes multiple unrelated tasks (interpretation, cautions, suggested next steps).",
+      "Some output statements are not strictly supported by the observations (e.g., correlation claims).",
+      "Interpretation includes statements that could imply causation, violating cannot_conclude constraints."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 133,
+    "verdict": "FAIL",
+    "score": 55,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 10,
+    "breakdown_faithfulness": 15,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes multiple unrelated tasks (interpretation, cautions, suggested next steps).",
+      "Some output statements may imply conclusions beyond the observations."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 134,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 15,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 135,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 15,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 136,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes suggestions for next steps, which introduces a new task unrelated to the interpretation of the observations.",
+      "The question is not fully answerable from the observations provided, as it requires a comparative analysis that is not explicitly supported."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 137,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes suggested next steps, which may imply additional tasks beyond the interpretation of the provided observations."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 138,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes multiple unrelated tasks (interpretation, limits, cautions, next steps).",
+      "Some output statements are not strictly supported by the observations."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 139,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 0,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes multiple unrelated tasks (interpretation, cautions, suggested next steps).",
+      "Output violates cannot_conclude constraints by suggesting next steps and cautions that imply broader implications."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 140,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Observations are present but some output statements introduce new entities or implications not strictly supported by the observations.",
+      "The question is partially answerable but lacks clarity in how it relates to the observations.",
+      "The output includes suggested next steps which imply a future direction rather than strictly interpreting the provided data."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 141,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 15,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 142,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes suggested next steps, which introduces unrelated tasks.",
+      "Interpretation includes statements that could imply causal relationships, violating cannot_conclude constraints."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 143,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes multiple interpretations that mix different aspects of the results, violating atomicity.",
+      "Some output statements, while supported by observations, introduce new interpretations that could be seen as causal or mechanistic claims, violating boundary."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 144,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes suggested next steps, which may imply additional tasks beyond the provided observations."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 145,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes suggested next steps, which introduces a new task unrelated to the interpretation of the observations."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 146,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes multiple unrelated tasks (interpretation, limits, cautions, next steps).",
+      "Some output statements may imply conclusions beyond the provided observations."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 147,
+    "verdict": "FAIL",
+    "score": 60,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 10,
+    "breakdown_faithfulness": 15,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes multiple unrelated tasks (interpretation, cautions, suggested next steps).",
+      "Some output statements introduce new entities or implications not directly supported by observations."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 148,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes suggested next steps, which introduces a forward-looking element not supported by the observations.",
+      "Interpretation includes statements that could imply causation, which is not allowed per the interpretation boundary."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 149,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes multiple unrelated tasks (suggested next steps) which violates atomicity.",
+      "Interpretation includes statements that could imply causation or mechanisms, which may violate boundary constraints."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 150,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes multiple related tasks (interpretation, limits, cautions, next steps) which may affect atomicity."
+    ],
+    "recommended_action": "USE AFTER REVISION"
+  },
+  {
+    "idx": 151,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 15,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 152,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes statements that are not strictly supported by the observations.",
+      "The interpretation includes additional findings (e.g., active phospho-4E-BP1 and LC3II levels) that are not directly related to the question about APOE and phospho-mTOR.",
+      "The output does not sufficiently respect the interpretation limits set in the instruction."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 153,
+    "verdict": "FAIL",
+    "score": 60,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 10,
+    "breakdown_faithfulness": 15,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes interpretive statements that go beyond the observations.",
+      "The question is not fully answerable from the observations provided.",
+      "Multiple unrelated tasks are mixed in the output (interpretation, cautions, suggested next steps)."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 154,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes multiple unrelated tasks (interpretation, cautions, suggested next steps).",
+      "Some output statements are not strictly supported by the observations."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 155,
+    "verdict": "FAIL",
+    "score": 55,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes statements that imply causal relationships not supported by observations.",
+      "Multiple unrelated tasks are mixed in the output, such as suggested next steps."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 156,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes multiple unrelated tasks (interpretation of SNR and FCMs).",
+      "Some output statements introduce new entities (clinical tests and atrophy measures) not directly supported by the observations."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 157,
+    "verdict": "FAIL",
+    "score": 49,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 0,
+    "hard_fail": true,
+    "hard_fail_reasons": [
+      "question_misaligned_with_observations"
+    ],
+    "key_issues": [
+      "Output includes multiple unrelated tasks (interpretation, limitations, cautions, next steps).",
+      "Some output statements are not strictly supported by the observations."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 158,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes interpretive statements that go beyond the provided observations.",
+      "The output mixes multiple tasks, including interpretation and suggestions for next steps."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 159,
+    "verdict": "FAIL",
+    "score": 49,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": true,
+    "hard_fail_reasons": [
+      "question_misaligned_with_observations"
+    ],
+    "key_issues": [
+      "Output includes interpretive statements that go beyond the provided observations.",
+      "The interpretation suggests generalizability which is not supported by the observations.",
+      "Multiple tasks are mixed, including interpretation and suggestions for next steps."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 160,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes suggested next steps, which introduces a new task unrelated to the interpretation of the observations.",
+      "Cautions and interpretation limits suggest potential applicability beyond the provided data, which may violate cannot_conclude constraints."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 161,
+    "verdict": "FAIL",
+    "score": 60,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 0,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes multiple unrelated tasks (interpretation, cautions, suggested next steps).",
+      "Output violates cannot_conclude constraints by suggesting further studies and generalizability."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 162,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes interpretive statements that go beyond the observations.",
+      "The question is not fully answerable from the observations provided, particularly regarding female rats.",
+      "Multiple unrelated tasks are mixed in the output, such as suggested next steps."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 163,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 15,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 164,
+    "verdict": "FAIL",
+    "score": 55,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 10,
+    "breakdown_faithfulness": 15,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes suggested next steps, which introduces unrelated tasks.",
+      "Interpretation states a conclusion that is not fully supported by the observations.",
+      "Cautions and interpretation limits introduce potential for misinterpretation."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 165,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes suggested next steps, which introduces unrelated tasks.",
+      "Observations are mostly relevant but include some interpretive statements.",
+      "The question is partially answerable but lacks clarity due to the presence of unrelated tasks."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 166,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes multiple unrelated tasks (interpretation, cautions, suggested next steps).",
+      "Some observations are interpretive rather than strictly result-like."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 167,
+    "verdict": "FAIL",
+    "score": 55,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 10,
+    "breakdown_faithfulness": 15,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes multiple unrelated tasks (interpretation, cautions, suggested next steps).",
+      "Some output statements are not strictly supported by the observations.",
+      "The question is not fully answerable from the observations provided."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 168,
+    "verdict": "FAIL",
+    "score": 60,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 15,
+    "breakdown_boundary": 0,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes multiple unrelated tasks (interpretation, cautions, suggested next steps).",
+      "Output violates cannot_conclude constraints by suggesting further studies and generalizability."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 169,
+    "verdict": "FAIL",
+    "score": 55,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 15,
+    "breakdown_boundary": 0,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes statements not directly supported by observations (e.g., 'PD patients made more errors in authenticity recognition compared to HC').",
+      "Output violates cannot_conclude constraints by implying broader conclusions about recognition errors.",
+      "Multiple unrelated tasks are mixed in the output (interpretation, cautions, suggested next steps)."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 170,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 10,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "The question about the locations of bAVMs cannot be fully answered from the provided observations, as it does not differentiate between ruptured and unruptured cases.",
+      "The output includes suggested next steps, which introduces a new task unrelated to the interpretation of the observations."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 171,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 0,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes a conclusion about functional outcomes that is not strictly supported by the observations.",
+      "The interpretation suggests a causal relationship which violates the cannot_conclude constraints."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 172,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 15,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 173,
+    "verdict": "FAIL",
+    "score": 49,
+    "breakdown_integrity": 20,
+    "breakdown_alignment": 0,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 10,
+    "hard_fail": true,
+    "hard_fail_reasons": [
+      "question_misaligned_with_observations"
+    ],
+    "key_issues": [
+      "The question about BLEC permeability cannot be answered from the provided observations, which only mention BBB permeability.",
+      "The output includes suggested next steps that imply future experiments, which is beyond the provided observations."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 174,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes multiple unrelated tasks (interpretation, limits, cautions, next steps).",
+      "Some output statements introduce new entities or scope not present in observations."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 175,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes multiple unrelated tasks (suggested next steps) which violates atomicity.",
+      "Interpretation does not fully align with the question as it does not provide a direct comparison between ANI and GW2974."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 176,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 15,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 177,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 15,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 178,
+    "verdict": "FAIL",
+    "score": 55,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 10,
+    "breakdown_faithfulness": 15,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "The output includes suggested next steps, which introduces unrelated tasks.",
+      "The question cannot be fully answered from the provided observations as it references sham surgeries not mentioned in the observations."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 179,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 15,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 180,
+    "verdict": "FAIL",
+    "score": 60,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 10,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "The question asks for a comparison of protein rankings, but the observations do not provide comparative data.",
+      "The output includes suggestions for next steps, which introduces unrelated tasks.",
+      "The interpretation does not strictly adhere to the provided observations, as it implies a broader context."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 181,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 10,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "The question cannot be answered directly from the observations provided.",
+      "The output includes interpretive statements that go beyond the observations.",
+      "The output mixes multiple tasks, such as interpretation and suggested next steps."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 182,
+    "verdict": "FAIL",
+    "score": 55,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 10,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 0,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "The question cannot be answered from the observations provided.",
+      "Output includes multiple unrelated tasks (interpretation, cautions, suggested next steps).",
+      "Output violates cannot_conclude constraints by suggesting next steps."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 183,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 5,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes suggested next steps, which is interpretive and not strictly based on observations.",
+      "Interpretation includes statements about inhibition of NADPH-oxidase complex, which introduces a new entity not present in the observations."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 184,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 0,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes suggested next steps, which introduces a new task unrelated to the observations.",
+      "Output violates cannot_conclude constraints by suggesting future experiments."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 185,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 10,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "The question asks for a comparison to non-treated microglia, but the observations do not provide data on non-treated cells.",
+      "The output includes suggested next steps, which implies a future direction rather than strictly interpreting the provided observations.",
+      "The output mixes interpretation with cautions and suggested next steps, violating atomicity."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 186,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 15,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 187,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes interpretive statements and suggestions that go beyond the provided observations.",
+      "Multiple unrelated tasks are mixed, such as interpretation and suggested next steps."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 188,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 15,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 189,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 0,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes suggested next steps, which introduces unrelated tasks.",
+      "Output violates cannot_conclude constraints by suggesting mechanisms or further experiments."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 190,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 15,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 10,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes multiple unrelated tasks (interpretation, cautions, suggested next steps).",
+      "Some output statements may imply causal relationships not supported by observations."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 191,
+    "verdict": "FAIL",
+    "score": 55,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 10,
+    "breakdown_faithfulness": 15,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes unsupported claims about CD86 and CD206 expression changes.",
+      "Output mixes multiple tasks by suggesting next steps, which is unrelated to the interpretation of observations."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 192,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 15,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 193,
+    "verdict": "FAIL",
+    "score": 55,
+    "breakdown_integrity": 25,
+    "breakdown_alignment": 10,
+    "breakdown_faithfulness": 15,
+    "breakdown_boundary": 5,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes new entities and interpretations not strictly supported by observations.",
+      "Question cannot be fully answered based on the provided observations.",
+      "Output mixes multiple tasks, including interpretation and suggestions for next steps."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 194,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 15,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 195,
+    "verdict": "FAIL",
+    "score": 55,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 10,
+    "breakdown_faithfulness": 15,
+    "breakdown_boundary": 0,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output violates cannot_conclude constraints by making a comparative statement about AUC improvement.",
+      "Output mixes multiple unrelated tasks by suggesting next steps."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  },
+  {
+    "idx": 196,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 15,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 197,
+    "verdict": "PASS",
+    "score": 85,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 25,
+    "breakdown_boundary": 15,
+    "breakdown_atomicity": 10,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [],
+    "recommended_action": "KEEP AS-IS"
+  },
+  {
+    "idx": 198,
+    "verdict": "FAIL",
+    "score": 70,
+    "breakdown_integrity": 30,
+    "breakdown_alignment": 20,
+    "breakdown_faithfulness": 20,
+    "breakdown_boundary": 0,
+    "breakdown_atomicity": 0,
+    "hard_fail": false,
+    "hard_fail_reasons": [],
+    "key_issues": [
+      "Output includes suggested next steps, which introduces unrelated tasks.",
+      "Output does not strictly adhere to the interpretation limits set by the instruction."
+    ],
+    "recommended_action": "REMOVE FROM TRAINING SET"
+  }
+]

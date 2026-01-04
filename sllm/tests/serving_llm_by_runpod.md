@@ -64,6 +64,37 @@ bash -c 'pip install vllm==0.13.0 --break-system-packages && huggingface-cli log
 bash -c 'pip install vllm==0.13.0 --break-system-packages && huggingface-cli login --token $HF_TOKEN && python -m vllm.entrypoints.openai.api_server --model google/gemma-3-4b-it --host 0.0.0.0 --port 7804 --dtype auto --max-model-len 8192 --trust-remote-code'
 ```
 
+#### qlora 어답터와 함께 서빙하기
+```bash
+bash -lc '
+set -e
+
+pip install vllm==0.13.0 huggingface_hub --break-system-packages
+huggingface-cli login --token "$HF_TOKEN"
+
+python - << "PY"
+from huggingface_hub import snapshot_download
+repo_id = "enapeace/gemma3-4b-it-qlora"
+path = snapshot_download(repo_id=repo_id)
+with open("/tmp/lora_path.txt","w") as f:
+    f.write(path)
+print("LoRA downloaded to:", path)
+PY
+
+LORA_PATH="$(cat /tmp/lora_path.txt)"
+
+python -m vllm.entrypoints.openai.api_server \
+  --model google/gemma-3-4b-it \
+  --host 0.0.0.0 --port 7804 \
+  --dtype auto --max-model-len 4096 --trust-remote-code \
+  --enable-lora \
+  --lora-modules enapeace_qlora="${LORA_PATH}"
+'
+```
+- 호출할때  "enapeace_qlora" 이용해서 호출하기기
+
+
+
 ### Gemma 3 12B (양자화 FB8 실패. awq로 양자화 시도도딩문제)
 (양자화 없이하면 성공 예상_-> 단, 비용이슈 있음음)
 

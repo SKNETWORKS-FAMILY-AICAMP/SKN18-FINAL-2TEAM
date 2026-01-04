@@ -20,6 +20,17 @@ PORT="${PORT:-8000}"
 UVICORN_LOG="${UVICORN_LOG:-${APP_DIR}/uvicorn_${PORT}.log}"
 UVICORN_PID="${UVICORN_PID:-${APP_DIR}/uvicorn_${PORT}.pid}"
 
+# -----------------------------
+# (옵션) S3 업로드 관련 env
+# -----------------------------
+S3_BUCKET="${S3_BUCKET:-}"
+S3_PREFIX="${S3_PREFIX:-rfdiffusion}"
+AWS_REGION="${AWS_REGION:-${AWS_DEFAULT_REGION:-}}"
+
+# ✅ AWS_S3_*도 지원 (RunPod Secret에서 AWS_S3_*만 넣어도 동작)
+AWS_S3_BUCKET="${AWS_S3_BUCKET:-}"
+AWS_S3_BASE_PATH="${AWS_S3_BASE_PATH:-}"
+
 ########################################
 # Utils
 ########################################
@@ -35,11 +46,66 @@ need_root() {
 ensure_dir() { mkdir -p "$1"; }
 venv_python() { echo "${TORCH_VENV}/bin/python"; }
 
+# ✅ 1번 방식: "비어있으면 env로 넘기지 않기" 헬퍼
+add_env_if_nonempty() {
+  local -n _arr="$1"
+  local k="$2"
+  local v="${3:-}"
+  if [[ -n "${v}" ]]; then
+    _arr+=("${k}=${v}")
+  fi
+}
+
+# ✅ RunPod에서 /proc/1(environ)에만 AWS/S3가 있고 현재 쉘에는 없을 때가 있음
+#    -> 그 경우 PID1의 AWS_/S3_만 안전하게 가져와서 export
+load_aws_env_from_pid1_if_missing() {
+  # 현재 쉘에 AWS_/S3_가 하나라도 있으면 아무것도 안 함
+  if env | egrep -q '^(AWS_|S3_)'; then
+    return 0
+  fi
+
+  # /proc/1/environ 에서 AWS_/S3_만 골라 export
+  if [[ -r /proc/1/environ ]]; then
+    while IFS= read -r kv; do
+      [[ "$kv" == *=* ]] || continue
+      export "$kv"
+    done < <(tr '\0' '\n' </proc/1/environ | egrep '^(AWS_|S3_)')
+  fi
+}
+
+# ✅ env 로드 후, AWS_S3_* -> S3_* 매핑 + prefix 정리 + region 보정
+refresh_s3_mapping() {
+  # region 동기화
+  AWS_REGION="${AWS_REGION:-${AWS_DEFAULT_REGION:-}}"
+  if [[ -n "${AWS_REGION:-}" && -z "${AWS_DEFAULT_REGION:-}" ]]; then
+    AWS_DEFAULT_REGION="$AWS_REGION"
+  fi
+
+  # AWS_S3_* 값 확보
+  AWS_S3_BUCKET="${AWS_S3_BUCKET:-}"
+  AWS_S3_BASE_PATH="${AWS_S3_BASE_PATH:-}"
+
+  # AWS_S3_* -> S3_* 자동 매핑
+  if [[ -z "${S3_BUCKET:-}" && -n "${AWS_S3_BUCKET:-}" ]]; then
+    S3_BUCKET="${AWS_S3_BUCKET}"
+  fi
+
+  # S3_PREFIX가 비었거나 기본값(rfdiffusion)일 때만 AWS_S3_BASE_PATH로 덮어씀
+  if { [[ -z "${S3_PREFIX:-}" ]] || [[ "${S3_PREFIX}" == "rfdiffusion" ]]; } && [[ -n "${AWS_S3_BASE_PATH:-}" ]]; then
+    S3_PREFIX="${AWS_S3_BASE_PATH}"
+  fi
+
+  # prefix 정리 (양끝 슬래시 제거) + 기본값 보장
+  S3_PREFIX="$(echo "${S3_PREFIX:-rfdiffusion}" | sed 's#^/*##; s#/*$##')"
+}
+
 ########################################
 # 0) Up (ALL-IN-ONE)
-# - 딱 한 번 실행으로: install + download-params + serve
 ########################################
 cmd_up() {
+  load_aws_env_from_pid1_if_missing
+  refresh_s3_mapping
+
   log "========================================"
   log "ALL-IN-ONE UP: install -> download-params -> serve"
   log "APP_DIR=$APP_DIR"
@@ -48,15 +114,15 @@ cmd_up() {
   log "MODELS_DIR=$MODELS_DIR"
   log "RFDIFFUSION_DIR=$RFDIFFUSION_DIR"
   log "PORT=$PORT"
+  log "S3_BUCKET=${S3_BUCKET:-<empty>}"
+  log "S3_PREFIX=$S3_PREFIX"
+  log "AWS_REGION=${AWS_REGION:-<empty>}"
+  log "AWS_S3_BUCKET=${AWS_S3_BUCKET:-<empty>}"
+  log "AWS_S3_BASE_PATH=${AWS_S3_BASE_PATH:-<empty>}"
   log "========================================"
 
-  # 1) install (root 필요)
   cmd_install
-
-  # 2) download params (필수)
   cmd_download_params
-
-  # 3) serve (API 백그라운드)
   cmd_serve
 
   log "========================================"
@@ -67,7 +133,7 @@ cmd_up() {
 }
 
 ########################################
-# 1) Install (install.sh 통합)
+# 1) Install
 ########################################
 cmd_install() {
   need_root
@@ -105,6 +171,9 @@ cmd_install() {
   # API 서버용 패키지 포함
   "$(venv_python)" -m pip install -U fastapi uvicorn
 
+  # ✅ S3 업로드용
+  "$(venv_python)" -m pip install -U boto3 botocore
+
   if [[ ! -d "$RFDIFFUSION_DIR" ]]; then
     log "Cloning RFdiffusion into $RFDIFFUSION_DIR"
     git clone https://github.com/RosettaCommons/RFdiffusion.git "$RFDIFFUSION_DIR"
@@ -133,22 +202,16 @@ cmd_install() {
     fi
   fi
 
-  # ------------------------------------------------------------
-  # ✅ RFdiffusion runtime deps (Hydra/OmegaConf 등) 설치
-  # - pip install -e . 만으로는 deps가 안깔리는 경우가 있어 requirements를 같이 설치
-  # - 그래도 누락될 수 있어 핵심 패키지는 안전장치로 강제 설치
-  # ------------------------------------------------------------
+  # RFdiffusion deps
   log "installing RFdiffusion requirements (if present)"
-
   if [[ -f "$RFDIFFUSION_DIR/requirements.txt" ]]; then
     "$(venv_python)" -m pip install -r "$RFDIFFUSION_DIR/requirements.txt"
   fi
-
   if [[ -f "$RFDIFFUSION_DIR/env/requirements.txt" ]]; then
     "$(venv_python)" -m pip install -r "$RFDIFFUSION_DIR/env/requirements.txt"
   fi
 
-  # 안전장치: run_inference.py에서 바로 필요한 핵심 deps
+  # 안전장치
   "$(venv_python)" -m pip install -U omegaconf hydra-core
 
   log "installing RFdiffusion (editable)"
@@ -160,6 +223,7 @@ cmd_install() {
   "$(venv_python)" - <<'PY'
 import sys, numpy as np, torch, dgl, e3nn, pyrsistent, se3_transformer
 import omegaconf, hydra
+import boto3
 print("python:", sys.version.split()[0])
 print("numpy :", np.__version__)
 print("torch :", torch.__version__, "cuda:", torch.version.cuda, "avail:", torch.cuda.is_available())
@@ -169,13 +233,14 @@ print("pyrsistent import: OK")
 print("se3_transformer import: OK")
 print("omegaconf:", getattr(omegaconf, "__version__", "unknown"))
 print("hydra:", getattr(hydra, "__version__", "unknown"))
+print("boto3:", getattr(boto3, "__version__", "unknown"))
 PY
 
   log "install done"
 }
 
 ########################################
-# 2) Download params (download_params.sh 통합) - 필수
+# 2) Download params
 ########################################
 download_http() {
   local url="$1"
@@ -202,15 +267,12 @@ cmd_download_params() {
   log "download_params start"
   ensure_dir "$MODELS_DIR"
 
-  # AlphaFold params는 "디렉토리만 생성" (다운로드 로직은 기존 방식 유지)
   AF_DIR="${AF_DIR:-$MODELS_DIR/alphafold}"
   ensure_dir "$AF_DIR"
 
-  # RFdiffusion ckpt target
   RFD_MODELS_DIR="${RFD_MODELS_DIR:-$RFDIFFUSION_DIR/models}"
   ensure_dir "$RFD_MODELS_DIR"
 
-  # cache dir
   RFD_SOURCE_DIR="${RFD_SOURCE_DIR:-$MODELS_DIR/rfdiffusion}"
   ensure_dir "$RFD_SOURCE_DIR"
 
@@ -289,9 +351,12 @@ cmd_download_params() {
 }
 
 ########################################
-# 3) Run (run.sh 통합)
+# 3) Run
 ########################################
 cmd_run() {
+  load_aws_env_from_pid1_if_missing
+  refresh_s3_mapping
+
   log "run start"
   export MODELS_DIR OUTPUTS_DIR RFDIFFUSION_DIR TORCH_VENV
 
@@ -311,29 +376,42 @@ cmd_run() {
   export LD_LIBRARY_PATH="$TORCH_VENV/lib/python3.10/site-packages/nvidia/nvtx/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/nvjitlink/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/nccl/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/curand/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cufft/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cuda_runtime/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cuda_nvrtc/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cuda_cupti/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cublas/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cusparse/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cudnn/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cusolver/lib:${LD_LIBRARY_PATH:-}"
   log "LD_LIBRARY_PATH set"
 
+  # ✅ 1번 방식: 비어있으면 export 자체를 하지 않음 (빈 값으로 덮어쓰기 방지)
+  if [[ -n "${AWS_REGION:-}" ]]; then
+    export AWS_REGION
+    export AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION:-$AWS_REGION}"
+  fi
+  [[ -n "${AWS_S3_BUCKET:-}" ]] && export AWS_S3_BUCKET
+  [[ -n "${AWS_S3_BASE_PATH:-}" ]] && export AWS_S3_BASE_PATH
+
+  [[ -n "${S3_BUCKET:-}" ]] && export S3_BUCKET
+  [[ -n "${S3_PREFIX:-}" ]] && export S3_PREFIX
+
+  log "S3_BUCKET=${S3_BUCKET:-<empty>}"
+  log "S3_PREFIX=${S3_PREFIX:-<empty>}"
+  log "AWS_REGION=${AWS_REGION:-<empty>}"
+
   ensure_dir "$MODELS_DIR"
   ensure_dir "$OUTPUTS_DIR"
 
-  # ckpt 다운로드/스테이징 (필수)
   cmd_download_params
-
-  # 실행
   "$(venv_python)" "$SCRIPT_DIR/src/main.py" "$@"
 }
 
 ########################################
-# 4) Serve (uvicorn nohup) (통합 + 절대 안깨지게 env 주입)
+# 4) Serve
 ########################################
 cmd_serve() {
+  load_aws_env_from_pid1_if_missing
+  refresh_s3_mapping
+
   log "serve start"
   ensure_dir "$APP_DIR"
   ensure_dir "$OUTPUTS_DIR"
 
-  # uvicorn/fastapi 없으면 설치
   "$(venv_python)" -c "import uvicorn, fastapi" >/dev/null 2>&1 || \
     "$(venv_python)" -m pip install -U uvicorn fastapi
 
-  # 이미 떠있으면 종료(중복 실행 방지)
   if [[ -f "$UVICORN_PID" ]] && ps -p "$(cat "$UVICORN_PID")" >/dev/null 2>&1; then
     log "Already running: PID=$(cat "$UVICORN_PID")"
     exit 0
@@ -341,13 +419,36 @@ cmd_serve() {
 
   cd "$APP_DIR"
 
-  # ✅ 핵심: API가 참조하는 env들을 강제 주입(환경/재시작/사용자 차이에도 절대 안깨짐)
-  nohup env \
-    SCRIPT_DIR="$SCRIPT_DIR" \
-    OPS_SH="$SCRIPT_DIR/unified_shell_script.sh" \
-    OUTPUTS_DIR="$OUTPUTS_DIR" \
-    TORCH_VENV="$TORCH_VENV" \
-    PYTHONPATH="$RFDIFFUSION_DIR" \
+  # ✅ 1번 방법 핵심:
+  #   env ... AWS_REGION="" 같은 "빈 값"을 넘기면 자식 프로세스에서 빈 값으로 덮어써짐.
+  #   따라서 "값이 있을 때만" env로 넘기도록 구성.
+  local env_kv=()
+  env_kv+=("SCRIPT_DIR=$SCRIPT_DIR")
+  env_kv+=("OPS_SH=$SCRIPT_DIR/unified_shell_script.sh")
+  env_kv+=("OUTPUTS_DIR=$OUTPUTS_DIR")
+  env_kv+=("TORCH_VENV=$TORCH_VENV")
+  env_kv+=("PYTHONPATH=$RFDIFFUSION_DIR")
+
+  # S3/AWS는 값이 있을 때만 넘김 (빈 값 전달 금지)
+  add_env_if_nonempty env_kv "S3_BUCKET" "${S3_BUCKET:-}"
+  add_env_if_nonempty env_kv "S3_PREFIX" "${S3_PREFIX:-}"
+
+  add_env_if_nonempty env_kv "AWS_REGION" "${AWS_REGION:-}"
+  if [[ -n "${AWS_REGION:-}" ]]; then
+    add_env_if_nonempty env_kv "AWS_DEFAULT_REGION" "${AWS_DEFAULT_REGION:-$AWS_REGION}"
+  else
+    add_env_if_nonempty env_kv "AWS_DEFAULT_REGION" "${AWS_DEFAULT_REGION:-}"
+  fi
+
+  add_env_if_nonempty env_kv "AWS_S3_BUCKET" "${AWS_S3_BUCKET:-}"
+  add_env_if_nonempty env_kv "AWS_S3_BASE_PATH" "${AWS_S3_BASE_PATH:-}"
+
+  # (옵션) creds도 같이 넘기고 싶으면 여기도 nonempty로 추가 가능
+  add_env_if_nonempty env_kv "AWS_ACCESS_KEY_ID" "${AWS_ACCESS_KEY_ID:-}"
+  add_env_if_nonempty env_kv "AWS_SECRET_ACCESS_KEY" "${AWS_SECRET_ACCESS_KEY:-}"
+  add_env_if_nonempty env_kv "AWS_SESSION_TOKEN" "${AWS_SESSION_TOKEN:-}"
+
+  nohup env "${env_kv[@]}" \
     "$(venv_python)" -m uvicorn api_server:app --host 0.0.0.0 --port "$PORT" \
     > "$UVICORN_LOG" 2>&1 &
 
@@ -361,10 +462,22 @@ cmd_stop() {
     pid="$(cat "$UVICORN_PID" || true)"
     if [[ -n "$pid" ]] && ps -p "$pid" >/dev/null 2>&1; then
       log "Stopping uvicorn PID=$pid"
-      kill "$pid"
+      kill "$pid" || true
+      sleep 0.2 || true
+      ps -p "$pid" >/dev/null 2>&1 && kill -9 "$pid" || true
     fi
     rm -f "$UVICORN_PID"
   fi
+
+  if command -v pgrep >/dev/null 2>&1; then
+    local pids
+    pids="$(pgrep -f "uvicorn api_server:app" || true)"
+    if [[ -n "$pids" ]]; then
+      log "Stopping uvicorn (pgrep): $pids"
+      kill $pids || true
+    fi
+  fi
+
   log "stop done"
 }
 
@@ -385,15 +498,15 @@ cmd_logs_job() {
 usage() {
   cat <<EOF
 Usage:
-  ./unified_shell_script.sh                      # ✅ ALL-IN-ONE (up): install + download-params + serve
-  ./unified_shell_script.sh up                   # same as above
-  ./unified_shell_script.sh install              # (root) OS deps + venv + RFdiffusion deps + uvicorn/fastapi
-  ./unified_shell_script.sh download-params      # download/stage RFdiffusion checkpoints (필수지만 단독 실행도 가능)
-  ./unified_shell_script.sh run [args...]        # run RFdiffusion via src/main.py (also downloads params)
-  ./unified_shell_script.sh serve                # start uvicorn on :8000 in background (nohup)
-  ./unified_shell_script.sh stop                 # stop uvicorn (by pid file)
-  ./unified_shell_script.sh logs:api             # tail -f uvicorn log
-  ./unified_shell_script.sh logs:job <job_name>  # tail -f job log
+  ./unified_shell_script.sh
+  ./unified_shell_script.sh up
+  ./unified_shell_script.sh install
+  ./unified_shell_script.sh download-params
+  ./unified_shell_script.sh run [args...]
+  ./unified_shell_script.sh serve
+  ./unified_shell_script.sh stop
+  ./unified_shell_script.sh logs:api
+  ./unified_shell_script.sh logs:job <job_name>
 
 Env overrides:
   TORCH_VENV=/opt/venv_torch
@@ -402,11 +515,23 @@ Env overrides:
   OUTPUTS_DIR=/workspace/unified/outputs
   MODELS_DIR=/models
   PORT=8000
+
+S3 upload env (optional):
+  # Preferred (existing)
+  S3_BUCKET=my-bucket
+  S3_PREFIX=rfdiffusion
+  AWS_REGION=ap-northeast-2
+
+  # Also supported (AWS-style)
+  AWS_S3_BUCKET=my-bucket
+  AWS_S3_BASE_PATH=simulations/sim_result
+  AWS_ACCESS_KEY_ID=...
+  AWS_SECRET_ACCESS_KEY=...
 EOF
 }
 
 main() {
-  local cmd="${1:-up}"   # ✅ 기본 실행을 up으로 변경
+  local cmd="${1:-up}"
   shift || true
 
   case "$cmd" in
