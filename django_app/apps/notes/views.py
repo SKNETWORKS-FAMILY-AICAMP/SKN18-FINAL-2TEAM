@@ -1,21 +1,25 @@
 import json
 import re
+import logging
 from html import unescape
 from urllib.parse import quote
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET
-from django.db import transaction
+from django.db import transaction, connection
 from django.db.models import Count, OuterRef, Subquery, Value, CharField, Q
 from django.db.models.functions import Coalesce
 from django.contrib.auth import get_user_model
 from django.utils import timezone
+from django.utils.dateparse import parse_date
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 from drf_spectacular.utils import extend_schema
+
+logger = logging.getLogger(__name__)
 
 from .models import Note, NoteTag, NoteAttachment, NoteShare, NoteComment
 from apps.core.utils.s3_utils import (
@@ -130,6 +134,12 @@ def notes_list_api(request):
     # Query parameters
     my_notes_only = request.GET.get('my_notes_only', 'false').lower() == 'true'
     search_query = request.GET.get('search', '').strip()
+    date_from = request.GET.get('date_from', '').strip()
+    date_to = request.GET.get('date_to', '').strip()
+    
+    # 쿼리 파라미터 로그
+    logger.info(f'[NotesListAPI] Request - user_id: {user_identifier}, my_notes_only: {my_notes_only}, search_query: "{search_query}", date_from: "{date_from}", date_to: "{date_to}"')
+    logger.info(f'[NotesListAPI] Query parameters: {dict(request.GET)}')
 
     # zs_user.user_name(=CustomUser.full_name)을 created_id와 연결해 작성자 이름을 조회하되
     # 이름이 없으면 이메일/아이디를 순차적으로 사용
@@ -191,7 +201,33 @@ def notes_list_api(request):
         )
         notes_qs = notes_qs.filter(search_filter).distinct()
     
+    # 날짜 필터 적용
+    if date_from:
+        try:
+            from_date = parse_date(date_from)
+            if from_date:
+                notes_qs = notes_qs.filter(created_at__gte=from_date)
+        except (ValueError, TypeError):
+            pass  # 잘못된 날짜 형식은 무시
+    
+    if date_to:
+        try:
+            to_date = parse_date(date_to)
+            if to_date:
+                # 날짜 범위의 끝까지 포함하기 위해 다음 날 00:00:00 미만
+                from datetime import datetime, timedelta
+                to_datetime = timezone.make_aware(
+                    datetime.combine(to_date + timedelta(days=1), datetime.min.time())
+                )
+                notes_qs = notes_qs.filter(created_at__lt=to_datetime)
+        except (ValueError, TypeError):
+            pass  # 잘못된 날짜 형식은 무시
+    
     notes_qs = notes_qs.order_by('-created_at')
+    
+    # SQL 쿼리 로그 출력
+    logger.info(f'[NotesListAPI] SQL Query: {str(notes_qs.query)}')
+    logger.info(f'[NotesListAPI] Query count before execution: {notes_qs.count()}')
     
     results = []
     for note in notes_qs:
@@ -221,7 +257,10 @@ def notes_list_api(request):
             'is_shared': is_shared,  # 공유받은 노트인지 여부
             'tags': tags,
         })
-
+    
+    # 결과 로그
+    logger.info(f'[NotesListAPI] Response - Total results: {len(results)}')
+    
     return Response({
         'status': 'success',
         'results': results,
