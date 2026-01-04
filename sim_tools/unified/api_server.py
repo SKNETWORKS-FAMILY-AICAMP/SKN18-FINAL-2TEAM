@@ -29,6 +29,9 @@ class RunRequest(BaseModel):
     contigs: str = Field(default="100")
     iterations: int = Field(default=1, ge=1, le=1000)
 
+    # ✅ (선택) API 요청에서 로그 업로드까지 하고 싶으면 true
+    s3_upload_logs: bool = Field(default=False)
+
 
 class RunResponse(BaseModel):
     ok: bool
@@ -69,7 +72,7 @@ def _job_paths(name: str):
 
 def _status_from_files(name: str) -> str:
     pdb0 = Path(OUTPUTS_DIR) / f"{name}_0.pdb"
-    log_path, pid_path = _job_paths(name)
+    _log_path, pid_path = _job_paths(name)
 
     if pdb0.exists():
         return "done"
@@ -97,6 +100,15 @@ def health():
         "outputs_dir": OUTPUTS_DIR,
         "torch_venv": TORCH_VENV,
         "pythonpath": PYTHONPATH,
+
+        # 기존(최종적으로 쓰이는 값)
+        "s3_bucket": os.environ.get("S3_BUCKET", ""),
+        "s3_prefix": os.environ.get("S3_PREFIX", "rfdiffusion"),
+        "aws_region": os.environ.get("AWS_REGION", os.environ.get("AWS_DEFAULT_REGION", "")),
+
+        # ✅ 추가: RunPod에 AWS_S3_*로 넣었을 때 디버깅 편하게 같이 노출
+        "aws_s3_bucket": os.environ.get("AWS_S3_BUCKET", ""),
+        "aws_s3_base_path": os.environ.get("AWS_S3_BASE_PATH", ""),
     }
 
 
@@ -110,6 +122,7 @@ def run(req: RunRequest, x_api_key: Optional[str] = None):
 
     log_path, pid_path = _job_paths(name)
 
+    # ✅ 여기서 main.py에 s3_upload_logs 옵션을 넘겨줄지 결정
     args = [
         "run",
         "--mode", req.mode,
@@ -117,12 +130,24 @@ def run(req: RunRequest, x_api_key: Optional[str] = None):
         "--contigs", req.contigs,
         "--iterations", str(req.iterations),
     ]
+    if req.s3_upload_logs:
+        args.append("--s3_upload_logs")
 
     env = os.environ.copy()
     env["TORCH_VENV"] = TORCH_VENV
     env["PYTHONPATH"] = PYTHONPATH
     env["OUTPUTS_DIR"] = OUTPUTS_DIR
     env["SCRIPT_DIR"] = SCRIPT_DIR
+
+    # ✅ 중요: S3 관련 env를 자식 프로세스(run)에도 확실히 전달
+    env["S3_BUCKET"] = os.environ.get("S3_BUCKET", "")
+    env["S3_PREFIX"] = os.environ.get("S3_PREFIX", "rfdiffusion")
+    env["AWS_REGION"] = os.environ.get("AWS_REGION", os.environ.get("AWS_DEFAULT_REGION", ""))
+    env["AWS_DEFAULT_REGION"] = os.environ.get("AWS_DEFAULT_REGION", env["AWS_REGION"])
+
+    # ✅ (디버깅/호환) AWS_S3_*도 그대로 전달해두면 run 쪽에서 확인하기 쉬움
+    env["AWS_S3_BUCKET"] = os.environ.get("AWS_S3_BUCKET", "")
+    env["AWS_S3_BASE_PATH"] = os.environ.get("AWS_S3_BASE_PATH", "")
 
     with open(log_path, "ab") as f:
         p = subprocess.Popen(
