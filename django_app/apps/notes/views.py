@@ -1,21 +1,25 @@
 import json
 import re
+import logging
 from html import unescape
 from urllib.parse import quote
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET
-from django.db import transaction
+from django.db import transaction, connection
 from django.db.models import Count, OuterRef, Subquery, Value, CharField, Q
 from django.db.models.functions import Coalesce
 from django.contrib.auth import get_user_model
 from django.utils import timezone
+from django.utils.dateparse import parse_date
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 from drf_spectacular.utils import extend_schema
+
+logger = logging.getLogger(__name__)
 
 from .models import Note, NoteTag, NoteAttachment, NoteShare, NoteComment
 from apps.core.utils.s3_utils import (
@@ -130,6 +134,12 @@ def notes_list_api(request):
     # Query parameters
     my_notes_only = request.GET.get('my_notes_only', 'false').lower() == 'true'
     search_query = request.GET.get('search', '').strip()
+    date_from = request.GET.get('date_from', '').strip()
+    date_to = request.GET.get('date_to', '').strip()
+    
+    # 쿼리 파라미터 로그
+    logger.info(f'[NotesListAPI] Request - user_id: {user_identifier}, my_notes_only: {my_notes_only}, search_query: "{search_query}", date_from: "{date_from}", date_to: "{date_to}"')
+    logger.info(f'[NotesListAPI] Query parameters: {dict(request.GET)}')
 
     # zs_user.user_name(=CustomUser.full_name)을 created_id와 연결해 작성자 이름을 조회하되
     # 이름이 없으면 이메일/아이디를 순차적으로 사용
@@ -191,7 +201,33 @@ def notes_list_api(request):
         )
         notes_qs = notes_qs.filter(search_filter).distinct()
     
+    # 날짜 필터 적용
+    if date_from:
+        try:
+            from_date = parse_date(date_from)
+            if from_date:
+                notes_qs = notes_qs.filter(created_at__gte=from_date)
+        except (ValueError, TypeError):
+            pass  # 잘못된 날짜 형식은 무시
+    
+    if date_to:
+        try:
+            to_date = parse_date(date_to)
+            if to_date:
+                # 날짜 범위의 끝까지 포함하기 위해 다음 날 00:00:00 미만
+                from datetime import datetime, timedelta
+                to_datetime = timezone.make_aware(
+                    datetime.combine(to_date + timedelta(days=1), datetime.min.time())
+                )
+                notes_qs = notes_qs.filter(created_at__lt=to_datetime)
+        except (ValueError, TypeError):
+            pass  # 잘못된 날짜 형식은 무시
+    
     notes_qs = notes_qs.order_by('-created_at')
+    
+    # SQL 쿼리 로그 출력
+    logger.info(f'[NotesListAPI] SQL Query: {str(notes_qs.query)}')
+    logger.info(f'[NotesListAPI] Query count before execution: {notes_qs.count()}')
     
     results = []
     for note in notes_qs:
@@ -221,7 +257,10 @@ def notes_list_api(request):
             'is_shared': is_shared,  # 공유받은 노트인지 여부
             'tags': tags,
         })
-
+    
+    # 결과 로그
+    logger.info(f'[NotesListAPI] Response - Total results: {len(results)}')
+    
     return Response({
         'status': 'success',
         'results': results,
@@ -621,12 +660,18 @@ def note_detail_api(request, note_id):
         # 내가 만든 노트인지 공유받은 노트인지 확인
         is_shared = note.created_id != user_identifier
         
-        # 작성자 이름 조회
+        # 작성자 이름 및 프로필 이미지 조회
+        author_avatar = ''
         try:
             author_user = User.objects.get(user_id=note.created_id)
             author_name = author_user.full_name or author_user.email or note.created_id
+            author_avatar = author_user.img_url or ''
         except User.DoesNotExist:
             author_name = note.created_id
+            author_avatar = ''
+        
+        # 작성자 아바타 URL (없으면 빈 문자열, 프론트엔드에서 플레이스홀더 표시)
+        author_avatar_url = author_avatar if author_avatar else ''
         
         # 태그 목록
         tags = [tag.tag_name for tag in note.tags.all()]
@@ -674,10 +719,8 @@ def note_detail_api(request, note_id):
                 else:
                     time_ago = '방금 전'
             
-            # 아바타 URL 생성
-            avatar_url = comment_author_avatar
-            if not avatar_url:
-                avatar_url = f'https://ui-avatars.com/api/?name={quote(comment_author_name)}&background=random'
+            # 아바타 URL (없으면 빈 문자열, 프론트엔드에서 플레이스홀더 표시)
+            avatar_url = comment_author_avatar if comment_author_avatar else ''
             
             comments_list.append({
                 'id': comment.comment_sid,
@@ -733,6 +776,7 @@ def note_detail_api(request, note_id):
                 'content': note.content or '',
                 'date': note.created_at.strftime('%Y-%m-%d') if note.created_at else '',
                 'author': author_name,
+                'author_avatar': author_avatar_url,
                 'tags': tags,
                 'shared': shared_count,
                 'comments': comment_count,
@@ -844,13 +888,20 @@ def comment_create_api(request, note_id):
     user_identifier = _get_user_identifier(request.user)
     
     try:
-        # 노트 조회 및 권한 확인
+        # 노트 조회 및 권한 확인 (소유자 또는 공유받은 사용자)
         try:
-            note = Note.objects.get(
+            note = Note.objects.filter(
                 note_sid=note_id,
-                status='E',
-                created_id=user_identifier
-            )
+                status='E'
+            ).filter(
+                Q(created_id=user_identifier) | Q(shares__user_id=user_identifier)
+            ).distinct().first()
+            
+            if not note:
+                return Response(
+                    {'status': 'error', 'error': '노트를 찾을 수 없습니다.'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
         except Note.DoesNotExist:
             return Response(
                 {'status': 'error', 'error': '노트를 찾을 수 없습니다.'},
@@ -907,10 +958,8 @@ def comment_create_api(request, note_id):
                     minutes = diff.seconds // 60
                     time_ago = f'{minutes}분 전'
             
-            # 아바타 URL 생성
-            avatar_url = comment_author_avatar
-            if not avatar_url:
-                avatar_url = f'https://ui-avatars.com/api/?name={quote(comment_author_name)}&background=random'
+            # 아바타 URL (없으면 빈 문자열, 프론트엔드에서 플레이스홀더 표시)
+            avatar_url = comment_author_avatar if comment_author_avatar else ''
             
             return Response({
                 'status': 'success',
@@ -971,13 +1020,20 @@ def comment_update_api(request, note_id, comment_id):
     user_identifier = _get_user_identifier(request.user)
     
     try:
-        # 노트 조회 및 권한 확인
+        # 노트 조회 및 권한 확인 (소유자 또는 공유받은 사용자)
         try:
-            note = Note.objects.get(
+            note = Note.objects.filter(
                 note_sid=note_id,
-                status='E',
-                created_id=user_identifier
-            )
+                status='E'
+            ).filter(
+                Q(created_id=user_identifier) | Q(shares__user_id=user_identifier)
+            ).distinct().first()
+            
+            if not note:
+                return Response(
+                    {'status': 'error', 'error': '노트를 찾을 수 없습니다.'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
         except Note.DoesNotExist:
             return Response(
                 {'status': 'error', 'error': '노트를 찾을 수 없습니다.'},
@@ -1042,10 +1098,8 @@ def comment_update_api(request, note_id, comment_id):
                 else:
                     time_ago = '방금 전'
             
-            # 아바타 URL 생성
-            avatar_url = comment_author_avatar
-            if not avatar_url:
-                avatar_url = f'https://ui-avatars.com/api/?name={quote(comment_author_name)}&background=random'
+            # 아바타 URL (없으면 빈 문자열, 프론트엔드에서 플레이스홀더 표시)
+            avatar_url = comment_author_avatar if comment_author_avatar else ''
             
             return Response({
                 'status': 'success',
@@ -1091,13 +1145,20 @@ def comment_delete_api(request, note_id, comment_id):
     user_identifier = _get_user_identifier(request.user)
     
     try:
-        # 노트 조회 및 권한 확인
+        # 노트 조회 및 권한 확인 (소유자 또는 공유받은 사용자)
         try:
-            note = Note.objects.get(
+            note = Note.objects.filter(
                 note_sid=note_id,
-                status='E',
-                created_id=user_identifier
-            )
+                status='E'
+            ).filter(
+                Q(created_id=user_identifier) | Q(shares__user_id=user_identifier)
+            ).distinct().first()
+            
+            if not note:
+                return Response(
+                    {'status': 'error', 'error': '노트를 찾을 수 없습니다.'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
         except Note.DoesNotExist:
             return Response(
                 {'status': 'error', 'error': '노트를 찾을 수 없습니다.'},

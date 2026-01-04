@@ -302,10 +302,22 @@ def _upsert_schedule_from_google_payload(
     start_dt = _parse_google_datetime_payload(start_info)
     end_dt = _parse_google_datetime_payload(end_info) if end_info else start_dt + timedelta(hours=1)
 
-    # Google all-day end는 exclusive라 일정이 0초가 되지 않도록 보정
-    if is_all_day and end_dt <= start_dt:
-        end_dt = start_dt + timedelta(days=1)
+    # Google all-day end는 exclusive (다음 날 00:00:00)이므로 실제 종료일로 변환
+    # 예: start: 2026-01-13, end: 2026-01-14 (exclusive) → 실제로는 2026-01-13 종일
+    # 따라서 end_dt를 하루 빼서 같은 날로 맞춤
+    if is_all_day:
+        # 종일 일정의 경우 end date를 하루 빼서 저장 (같은 날짜로)
+        # Google API의 exclusive end를 inclusive end로 변환
+        if end_dt > start_dt:
+            # end_dt가 start_dt보다 크면 (보통 하루 차이) 하루 빼기
+            end_dt = end_dt - timedelta(days=1)
+            # 종일 일정이므로 시간을 23:59:59로 설정
+            end_dt = end_dt.replace(hour=23, minute=59, second=59)
+        elif end_dt <= start_dt:
+            # end_dt가 start_dt보다 작거나 같으면 같은 날로 설정
+            end_dt = start_dt.replace(hour=23, minute=59, second=59)
     elif end_dt <= start_dt:
+        # 일반 일정의 경우
         end_dt = start_dt + timedelta(hours=1)
 
     title = event_payload.get("summary") or "(제목 없음)"

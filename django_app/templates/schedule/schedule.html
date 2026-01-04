@@ -11,6 +11,7 @@
 <link rel="stylesheet" href="{% static 'css/components/modals/google_calendar_modal.css' %}">
 <link rel="stylesheet" href="{% static 'css/components/modals/share_modal.css' %}">
 <link rel="stylesheet" href="{% static 'css/components/modals/calendar_add_modal.css' %}">
+<link rel="stylesheet" href="{% static 'css/components/modals/calendar_manage_modal.css' %}">
 
 <!-- ✅ (옵션) 여기서만 쓸 거면 인라인로 추가해도 됨 -->
 <style>
@@ -65,6 +66,12 @@
             <div class="schedule-sidebar-content">
                 <!-- Google Calendar Connect Button -->
                 <div class="google-calendar-section">
+                    {% if show_google_account_hint %}
+                    <div class="google-calendar-hint">
+                        <i class="fa-solid fa-circle-info"></i>
+                        Google 계정이 연결되어 있습니다. 아래 버튼에서 캘린더를 연동하면 내 캘린더에서 확인할 수 있어요.
+                    </div>
+                    {% endif %}
                     <!-- ✅ Google 버튼 + 최신일정 버튼을 같은 줄로 -->
                     <div class="google-calendar-row">
                         <button
@@ -94,9 +101,14 @@
                 <div class="my-calendars-section">
                     <div class="my-calendars-header">
                         <h3>내 캘린더</h3>
-                        <button class="add-calendar-btn" id="addCalendarBtn" title="캘린더 추가">
-                            <i class="fa-solid fa-plus"></i>
-                        </button>
+                        <div class="my-calendars-actions">
+                            <button class="edit-calendar-btn" id="manageCalendarBtn" title="캘린더 관리">
+                                <i class="fa-solid fa-pencil"></i>
+                            </button>
+                            <button class="add-calendar-btn" id="addCalendarBtn" title="캘린더 추가">
+                                <i class="fa-solid fa-plus"></i>
+                            </button>
+                        </div>
                     </div>
                     <div class="calendar-list" id="calendarList">
                         {% for calendar in user_calendars %}
@@ -213,11 +225,18 @@
                 </div>
             </div>
 
-            <!-- View Mode Segmented Control -->
-            <div class="view-mode-control">
-                <button class="view-mode-btn" data-view="day">일</button>
-                <button class="view-mode-btn" data-view="week">주</button>
-                <button class="view-mode-btn active" data-view="month">월</button>
+            <!-- View Mode Segmented Control and Invitation Button -->
+            <div class="calendar-header-right">
+                <div class="view-mode-control">
+                    <button class="view-mode-btn" data-view="day">일</button>
+                    <button class="view-mode-btn" data-view="week">주</button>
+                    <button class="view-mode-btn active" data-view="month">월</button>
+                </div>
+                <button class="invitation-list-btn" id="invitationListBtn" title="초대 목록">
+                    <i class="fa-solid fa-envelope"></i>
+                    <span>초대 목록</span>
+                    <span class="invitation-badge" id="invitationBadge" style="display: none;">0</span>
+                </button>
             </div>
         </div>
 
@@ -226,6 +245,21 @@
             <div id="fullcalendar" class="fullcalendar-container"></div>
         </div>
     </div>
+    
+    <!-- Invitation Drawer (Shoelace) -->
+    <sl-drawer label="받은 초대" placement="end" id="invitationDrawer" class="invitation-drawer">
+        <div class="invitation-drawer-header">
+            <h3>받은 초대</h3>
+            <span class="invitation-drawer-count" id="invitationDrawerCount">0</span>
+        </div>
+        <div class="invitation-drawer-content" id="invitationDrawerContent">
+            <!-- Invitation items will be loaded here -->
+        </div>
+        <div class="invitation-drawer-empty" id="invitationDrawerEmpty" style="display: none;">
+            <i class="fa-solid fa-inbox"></i>
+            <p>받은 초대가 없습니다</p>
+        </div>
+    </sl-drawer>
 </div>
 
 <!-- Schedule Modals -->
@@ -234,13 +268,20 @@
 {% include 'components/modals/google_calendar_modal.html' %}
 {% include 'components/modals/share_modal.html' %}
 {% include 'components/modals/calendar_add_modal.html' %}
+{% include 'components/modals/calendar_manage_modal.html' %}
+{% include 'components/modals/invitation_accept_modal.html' %}
 {% endblock %}
 
 {% block extra_js %}
+<!-- SortableJS CDN -->
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
 <script src="{% static 'js/pages/schedule.js' %}"></script>
 <script src="{% static 'js/components/modals/schedule_detail_modal.js' %}"></script>
 <script src="{% static 'js/components/modals/schedule_add_modal.js' %}"></script>
 <script src="{% static 'js/components/modals/google_calendar_modal.js' %}"></script>
 <script src="{% static 'js/components/modals/share_modal.js' %}"></script>
 <script src="{% static 'js/components/modals/calendar_add_modal.js' %}"></script>
+<script src="{% static 'js/components/modals/calendar_manage_modal.js' %}"></script>
+<script src="{% static 'js/components/invitations_list.js' %}"></script>
+<script src="{% static 'js/components/modals/invitation_accept_modal.js' %}"></script>
 {% endblock %}
