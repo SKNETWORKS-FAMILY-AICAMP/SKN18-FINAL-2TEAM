@@ -23,44 +23,11 @@ from openai import OpenAI
 
 
 # -----------------------------------------
-# 1) 환경변수 및 Django 캐시 로드
+# 1) 환경변수 로드
 # -----------------------------------------
-# Django가 설정되어 있으면 캐시에서 URL 조회, 아니면 환경변수 사용
-def _get_sllm_base_url():
-    """
-    SLLM Base URL 조회
-    우선순위:
-    1. Django 캐시 (로그인 시 로드된 RunpodJob URL)
-    2. 환경변수 SLLM_BASE_URL
-    3. None (환경변수도 없는 경우)
-    """
-    try:
-        # Django가 설정되어 있는지 확인
-        import django
-        from django.conf import settings
-        if settings.configured:
-            # Django 캐시에서 URL 조회
-            from apps.chat.models.models import RunpodJob
-            cached_url = RunpodJob.get_url()
-            if cached_url:
-                print(f"[URL SOURCE] Django 캐시에서 URL 조회: {cached_url}")
-                return cached_url
-    except (ImportError, Exception):
-        # Django가 없거나 설정되지 않은 환경 (standalone 스크립트 등)
-        # 에러를 출력하지 않고 조용히 fallback
-        pass
-
-    # Fallback: 환경변수 (없어도 None 반환, 에러 발생 안 함)
-    env_url = os.getenv("SLLM_BASE_URL")
-    if env_url:
-        print(f"[URL SOURCE] 환경변수에서 URL 조회: {env_url}")
-    else:
-        print(f"[URL SOURCE] ⚠️ URL을 찾을 수 없음 (Django 캐시 및 환경변수 모두 없음)")
-    return env_url  # None일 수 있음
-
-
 # 환경변수 로드 (없어도 에러 발생하지 않음 - 실제 사용 시점에 검증)
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+SLLM_BASE_URL = os.getenv("SLLM_BASE_URL")
 RUNPOD_API_KEY = os.getenv("RUNPOD_API_KEY")
 MODEL_NAME = os.getenv("MODEL_NAME")
 
@@ -148,12 +115,9 @@ def sllm(prompt: str, temperature: float = 0.7, max_tokens: int = 1024):
     from openai import OpenAI
     import time
 
-    # Django 캐시 또는 환경변수에서 URL 조회
-    sllm_base_url = _get_sllm_base_url()
-
     # 사용 시점에 환경변수 검증
-    if not sllm_base_url:
-        raise ValueError("❌ SLLM_BASE_URL not found in Django cache or .env")
+    if not SLLM_BASE_URL:
+        raise ValueError("❌ SLLM_BASE_URL not found in .env")
     if not RUNPOD_API_KEY:
         raise ValueError("❌ RUNPOD_API_KEY not found in .env")
     if not MODEL_NAME:
@@ -162,7 +126,7 @@ def sllm(prompt: str, temperature: float = 0.7, max_tokens: int = 1024):
     print(f"\n{'='*60}")
     print(f"[SLLM] 호출 시작")
     print(f"  Model: {MODEL_NAME}")
-    print(f"  Base URL: {sllm_base_url}")
+    print(f"  Base URL: {SLLM_BASE_URL}")
     print(f"  Temperature: {temperature}")
     print(f"  Max Tokens: {max_tokens}")
     print(f"  Prompt Length: {len(prompt)} chars")
@@ -170,7 +134,7 @@ def sllm(prompt: str, temperature: float = 0.7, max_tokens: int = 1024):
     print(f"{'='*60}\n")
 
     sllm_client = OpenAI(
-        base_url=sllm_base_url,
+        base_url=SLLM_BASE_URL,
         api_key=RUNPOD_API_KEY,
         timeout=60.0  # 60초 타임아웃
     )
@@ -220,6 +184,5 @@ def sllm(prompt: str, temperature: float = 0.7, max_tokens: int = 1024):
 #         return resp.json().get("text")
 #     except Exception as e:
 #         return f"[LOCAL LLM ERROR] {e}"
-
 
 

@@ -1,5 +1,4 @@
 from django.db import models
-from django.core.cache import cache
 
 
 class RecommendedQuestion(models.Model):
@@ -322,69 +321,3 @@ class ConversationMemory(models.Model):
     
     def __str__(self):
         return f"ConversationMemory(chat_sid={self.chat_sid}, chat_room_id={self.chat_room_id}, user_id={self.user_id})"
-
-class RunpodJob(models.Model):
-    """
-    Runpod 작업 모델
-    단일 row만 사용하는 설정 테이블
-    url을 primary key로 사용 (단일 컬럼)
-    """
-    url = models.URLField(max_length=500, primary_key=True, db_column='url')
-
-    CACHE_KEY = 'runpod_url'
-    CACHE_TIMEOUT = None  # 무제한 (서버 재시작 전까지 유지)
-
-    class Meta:
-        db_table = 'zs_runpod'
-
-    @classmethod
-    def get_url(cls):
-        """
-        캐시된 URL 반환 (DB 조회는 최초 1회만)
-        로그인 시 이 메서드를 호출하면 이후로는 DB 조회 없이 캐시에서 반환
-        """
-        import logging
-        logger = logging.getLogger(__name__)
-
-        cached_url = cache.get(cls.CACHE_KEY)
-        if cached_url is not None:
-            msg = f"[RUNPOD CACHE] 캐시에서 URL 조회 (DB 조회 없음): {cached_url}"
-            print(msg)
-            logger.info(msg)
-            return cached_url
-
-        # 캐시 미스: DB에서 조회 후 캐시에 저장
-        msg = f"[RUNPOD CACHE] 캐시 미스 - DB에서 URL 조회 중..."
-        print(msg)
-        logger.info(msg)
-
-        obj = cls.objects.first()
-        url = obj.url if obj else None
-
-        if url:
-            cache.set(cls.CACHE_KEY, url, cls.CACHE_TIMEOUT)
-            msg = f"[RUNPOD CACHE] DB에서 조회 완료 및 캐시 저장: {url}"
-            print(msg)
-            logger.info(msg)
-        else:
-            msg = f"[RUNPOD CACHE] DB에 URL이 없음"
-            print(msg)
-            logger.warning(msg)
-
-        return url
-
-    @classmethod
-    def set_url(cls, new_url):
-        """URL 업데이트 (단일 row 유지) + 캐시 갱신"""
-        cls.objects.all().delete()
-        new_obj = cls.objects.create(url=new_url)
-
-        # 캐시도 함께 업데이트
-        cache.set(cls.CACHE_KEY, new_url, cls.CACHE_TIMEOUT)
-
-        return new_obj
-
-    @classmethod
-    def clear_cache(cls):
-        """캐시 초기화 (필요시 사용)"""
-        cache.delete(cls.CACHE_KEY)
