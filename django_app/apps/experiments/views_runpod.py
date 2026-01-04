@@ -1,3 +1,5 @@
+# django_app/apps/experiments/views_runpod.py (FULL)
+
 import os
 import requests
 
@@ -38,33 +40,16 @@ def get_runpod_base_url():
 RUNPOD_API_KEY = os.environ.get("RUNPOD_API_KEY")
 
 @extend_schema(
-    summary="Run RFdiffusion on RunPod",
-    description="Forward RFdiffusion parameters to RunPod /run endpoint.",
+    summary="Run RFdiffusion on RunPod (dummy)",
+    description="API가 동작하는지만 테스트하는 더미 API",
     tags=["Experiments"],
-    request={
-        "application/json": {
-            "type": "object",
-            "properties": {
-                "mode": {"type": "string", "example": "backbone"},
-                "name": {"type": "string", "example": "job_001"},
-                "contigs": {"type": "string", "example": "100"},
-                "iterations": {"type": "integer", "example": 1},
-            },
-            "required": ["contigs"],
-        }
-    },
     responses={200: {"type": "object"}},
 )
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def rfdiffusion_runpod_api(request):
-    '''
-    API가 동작하는지만 테스트하는 더미 API
-    '''
-    
-    print("출력이야..")
-    
     return Response({"detail": "REST API가 동작하는지 확인만 하자!"}, status=200)
+
 
 @extend_schema(
     summary="Check RunPod health",
@@ -96,7 +81,7 @@ def runpod_api_health(request):
 
 @extend_schema(
     summary="Trigger RunPod run",
-    description="Forward POST payload to the RunPod /run endpoint deployed via sim_tools/unified/api_server.py.",
+    description="Forward POST payload to the RunPod /run endpoint deployed via unified/api_server.py.",
     tags=["Experiments"],
     request={
         "application/json": {
@@ -131,7 +116,7 @@ def runpod_api_run(request):
         resp = requests.post(
             run_url,
             json=request.data,
-            headers=headers,
+            headers=_headers(),
             timeout=60,
         )
     except requests.RequestException as exc:
@@ -143,6 +128,3 @@ def runpod_api_run(request):
         data = {"detail": resp.text}
 
     return Response(data, status=resp.status_code)
-
-
-

@@ -1,8 +1,9 @@
 /* Chat AI Page Styles */
 
 .chat-container {
-    height: calc(100vh - 4rem); /* header height */
+    flex: 1;
     display: flex;
+    min-height: 0;
     overflow: hidden;
     background: var(--color-bg-white);
 }
@@ -14,8 +15,8 @@
     flex-direction: column;
     background: var(--color-bg-white);
     overflow: hidden;
-    /* sidebar(4rem) + subsidebar(260px) = 324px를 고려하여 중앙 정렬 */
-    margin-left: 324px;
+    /* subsidebar(260px)를 고려하여 중앙 정렬 */
+    margin-left: 260px;
     margin-right: 0;
 }
 
@@ -1418,4 +1419,3 @@
         opacity: 0;
     }
 }
-

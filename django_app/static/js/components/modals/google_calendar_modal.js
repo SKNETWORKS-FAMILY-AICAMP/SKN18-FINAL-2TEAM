@@ -11,6 +11,16 @@
   let calendarColors = {};
   let myCalendars = [];
 
+  function getGoogleMetaById(calId) {
+    return googleCalendars.find((calendar) => String(calendar.id) === String(calId));
+  }
+
+  function findMyCalendarByExternalId(externalId) {
+    return myCalendars.find(
+      (calendar) => String(calendar.external_id || '') === String(externalId)
+    );
+  }
+
   // DOM
   const modalId = "googleCalendarModal";
   const connectionStatusIndicator = document.getElementById("connectionStatusIndicator");
@@ -178,7 +188,10 @@
 
       if (res.ok) {
         const data = await res.json();
-        myCalendars = data.results || data;
+        const rows = Array.isArray(data?.results) ? data.results : (Array.isArray(data) ? data : []);
+        myCalendars = rows.filter(
+          (calendar) => (calendar.source_type || calendar.source) === 'google'
+        );
         renderMyCalendars();
       }
     } catch (error) {
@@ -301,12 +314,28 @@
 
   function bindCalendarRowEvents() {
     document.querySelectorAll('input.google-calendar-checkbox[data-calendar-id]').forEach((cb) => {
-      cb.addEventListener("change", (e) => {
+      cb.addEventListener("change", async (e) => {
         const calId = e.target.getAttribute("data-calendar-id");
         if (!calId) return;
 
-        if (e.target.checked) selectedGoogleCalendars.add(calId);
+        const selected = e.target.checked;
+        const previous = !selected;
+
+        if (selected) selectedGoogleCalendars.add(calId);
         else selectedGoogleCalendars.delete(calId);
+
+        try {
+          await syncGoogleCalendarSelection(calId, selected);
+          renderMyCalendars();
+        } catch (err) {
+          console.error("Failed to sync calendar selection:", err);
+          if (selected) selectedGoogleCalendars.delete(calId);
+          else selectedGoogleCalendars.add(calId);
+          e.target.checked = previous;
+          if (window.notyf) {
+            window.notyf.error(err.message || "캘린더를 동기화하지 못했습니다.");
+          }
+        }
       });
     });
 
@@ -325,6 +354,60 @@
         }
       });
     });
+  }
+
+  async function syncGoogleCalendarSelection(googleCalendarId, selected) {
+    const normalizedId = String(googleCalendarId);
+    const existing = findMyCalendarByExternalId(normalizedId);
+
+    if (!selected) {
+      if (!existing) return;
+      const res = await fetch(`/api/calendars/${existing.id}/`, {
+        method: 'DELETE',
+        headers: {
+          'X-CSRFToken': getCsrfToken(),
+          'Content-Type': 'application/json',
+        },
+      });
+      if (!res.ok) {
+        throw new Error('내 캘린더에서 삭제하지 못했습니다.');
+      }
+      myCalendars = myCalendars.filter((calendar) => calendar.id !== existing.id);
+      return;
+    }
+
+    if (existing) {
+      return;
+    }
+
+    const googleMeta = getGoogleMetaById(normalizedId);
+    if (!googleMeta) {
+      throw new Error('Google 캘린더 정보를 찾을 수 없습니다.');
+    }
+
+    const payload = {
+      name: googleMeta.name || 'Google Calendar',
+      color: calendarColors[normalizedId] || normalizeHex(googleMeta.color, '#3b82f6'),
+      visible: true,
+      source_type: 'google',
+      external_id: normalizedId,
+    };
+
+    const res = await fetch('/api/calendars/', {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': getCsrfToken(),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.error || '내 캘린더에 추가하지 못했습니다.');
+    }
+
+    myCalendars.push(data);
   }
 
   // Render My Calendars
@@ -434,6 +517,7 @@
       if (window.SchedulePage) {
         if (window.SchedulePage.loadSchedules) window.SchedulePage.loadSchedules();
         if (window.SchedulePage.refreshCalendar) window.SchedulePage.refreshCalendar();
+        if (window.SchedulePage.reloadCalendars) window.SchedulePage.reloadCalendars();
       }
     } catch (err) {
       console.error("save failed:", err);

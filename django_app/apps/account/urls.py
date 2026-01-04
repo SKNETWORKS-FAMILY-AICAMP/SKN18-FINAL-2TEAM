@@ -14,6 +14,7 @@ urlpatterns = [
     
     # 프로필
     path('profile/', views.profile_view, name='profile'),
+    path('organization/', views.organization_view, name='organization'),
     
     # Google OAuth (로그인 및 연동)
     path('google/login/', views.google_login_start, name='google_login_start'),

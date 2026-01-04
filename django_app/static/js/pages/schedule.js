@@ -12,12 +12,16 @@ let scheduleSearchQuery = "";
 // Calendar data (will be loaded from API)
 let schedules = [];
 let userCalendars = [];
+let activeCalendarIds = new Set();
+let calendarsLoaded = false;
+let currentFetchRange = null;
 
 // FullCalendar instance
 let calendar = null;
 
 // DOM elements
 const scheduleSidebar = document.getElementById('scheduleSidebar');
+const scheduleRoot = document.querySelector('.schedule-container');
 const scheduleSearchInput = document.getElementById('scheduleSearchInput');
 const addScheduleBtn = document.getElementById('addScheduleBtn');
 const googleCalendarBtn = document.getElementById('googleCalendarBtn');
@@ -34,17 +38,13 @@ const nextBtn = document.getElementById('nextBtn');
 const refreshLatestBtn = document.getElementById('refreshLatestBtn');
 
 const viewModeBtns = document.querySelectorAll('.view-mode-btn[data-view]');
+let isGoogleConnected = scheduleRoot?.dataset.googleConnected === 'true';
 
 // Initialize schedule page
 function initSchedule() {
-    // Initialize FullCalendar
     initFullCalendar();
-
-    // Load initial data
-    loadSchedules();
     loadUserCalendars();
 
-    // Event listeners
     if (scheduleSearchInput) {
         scheduleSearchInput.addEventListener('input', handleScheduleSearch);
     }
@@ -82,9 +82,6 @@ function initSchedule() {
         });
     });
 
-    // Calendar visibility toggles
-    attachCalendarToggleHandlers();
-
     // Schedule item handlers
     attachScheduleItemHandlers();
 
@@ -95,6 +92,10 @@ function initSchedule() {
     const addCalendarBtn = document.getElementById('addCalendarBtn');
     if (addCalendarBtn) {
         addCalendarBtn.addEventListener('click', handleAddCalendar);
+    }
+
+    if (isGoogleConnected) {
+        syncGoogleEvents({ rangeFromCalendar: true }).catch(() => {});
     }
 }
 
@@ -152,40 +153,11 @@ function initFullCalendar() {
         },
 
         datesSet: function(info) {
-            // ✅ FullCalendar가 화면 바꿀 때마다 여기 들어옴
-            currentDate = calendar.getDate();   // ✅ 핵심: activeStart 말고 "현재 보고있는 기준 날짜"
-            updateCalendarTitle();              // ✅ 제목 업데이트
+            currentDate = calendar.getDate();
+            updateCalendarTitle();
         },
 
-        // ✅ 핵심: eventSources 2개(내 일정 + 구글 이벤트)
-        eventSources: [
-            // (1) 내 일정(DB schedules)
-            {
-                id: 'local-schedules',
-                events: function(fetchInfo, successCallback, failureCallback) {
-                    try {
-                        const events = convertSchedulesToEvents(schedules);
-                        successCallback(events);
-                    } catch (e) {
-                        console.error('Error building local schedule events:', e);
-                        failureCallback(e);
-                    }
-                }
-            },
-
-            // (2) 구글 캘린더 이벤트
-            {
-                id: 'google-events',
-                url: `${API_BASE}/api/google-events/`,
-                method: 'GET',
-                extraParams: function() {
-                    return {};
-                },
-                failure: function(err) {
-                    console.warn('Google events load failed:', err);
-                }
-            }
-        ]
+        events: fetchEvents
     });
 
     calendar.render();
@@ -204,19 +176,73 @@ function initFullCalendar() {
     }, 100);
 }
 
+function getDefaultRange() {
+    const now = new Date();
+    const start = new Date(now);
+    start.setMonth(start.getMonth() - 1);
+    const end = new Date(now);
+    end.setMonth(end.getMonth() + 2);
+    return { start, end };
+}
+
+async function requestSchedules(range) {
+    const effectiveRange = range || getDefaultRange();
+    const params = new URLSearchParams();
+    if (effectiveRange.start) {
+        params.set('timeMin', effectiveRange.start.toISOString());
+    }
+    if (effectiveRange.end) {
+        params.set('timeMax', effectiveRange.end.toISOString());
+    }
+
+    const response = await fetch(`${API_BASE}/api/schedules/?${params.toString()}`, {
+        method: 'GET',
+        headers: {
+            'X-CSRFToken': getCsrfToken(),
+            'Content-Type': 'application/json',
+        },
+    });
+
+    if (!response.ok) {
+        throw new Error('failed_to_fetch_schedules');
+    }
+
+    const data = await response.json();
+    schedules = data.results || data || [];
+    renderScheduleList();
+    return schedules;
+}
+
+async function fetchEvents(fetchInfo, successCallback, failureCallback) {
+    try {
+        currentFetchRange = {
+            start: fetchInfo.start,
+            end: fetchInfo.end,
+        };
+
+        await requestSchedules(currentFetchRange);
+        const events = convertSchedulesToEvents(schedules);
+        successCallback(events);
+    } catch (error) {
+        console.error('Error fetching events:', error);
+        failureCallback(error);
+    }
+}
+
 // Convert schedules to FullCalendar events
 function convertSchedulesToEvents(schedules) {
-    return schedules.map(schedule => {
-        const startDate = new Date(schedule.start_datetime);
+    return schedules
+        .filter(shouldShowSchedule)
+        .map(schedule => {
+        const startDate = schedule.start_datetime ? new Date(schedule.start_datetime) : new Date();
         const endDate = schedule.end_datetime
             ? new Date(schedule.end_datetime)
             : new Date(startDate.getTime() + 60 * 60 * 1000);
+        const isAllDay = schedule.is_all_day === true || schedule.is_all_day === 'Y';
 
-        return {
+        const event = {
             id: String(schedule.id),
             title: schedule.title,
-            start: startDate.toISOString(),
-            end: endDate.toISOString(),
             color: schedule.color || getScheduleColor(schedule.type || schedule.get_type_display),
             backgroundColor: schedule.color || getScheduleColor(schedule.type || schedule.get_type_display),
             borderColor: schedule.color || getScheduleColor(schedule.type || schedule.get_type_display),
@@ -226,10 +252,33 @@ function convertSchedulesToEvents(schedules) {
                 description: schedule.description || '',
                 location: schedule.location || '',
                 hasNote: schedule.linked_note ? true : false,
-                noteId: schedule.linked_note ? (schedule.linked_note.id || schedule.linked_note) : null
+                noteId: schedule.linked_note ? (schedule.linked_note.id || schedule.linked_note) : null,
+                source: schedule.source || 'local',
+                calendarName: schedule.calendar_name || null,
             },
             display: 'block'
         };
+
+        if (isAllDay) {
+            event.allDay = true;
+            event.display = 'auto';
+            const startString = schedule.start_datetime
+                ? schedule.start_datetime.split('T')[0]
+                : formatDate(startDate);
+            const endString = schedule.end_datetime
+                ? schedule.end_datetime.split('T')[0]
+                : startString;
+            event.start = startString;
+            // FullCalendar treats all-day end as exclusive, so +1 day
+            const exclusiveEnd = new Date(endString);
+            exclusiveEnd.setDate(exclusiveEnd.getDate() + 1);
+            event.end = exclusiveEnd.toISOString().split('T')[0];
+        } else {
+            event.start = startDate.toISOString();
+            event.end = endDate.toISOString();
+        }
+
+        return event;
     });
 }
 
@@ -245,23 +294,23 @@ function getScheduleColor(type) {
     return colorMap[type] || '#3b82f6';
 }
 
-// Load schedules from API
-async function loadSchedules() {
-    try {
-        const response = await fetch(`${API_BASE}/api/schedules/`, {
-            method: 'GET',
-            headers: {
-                'X-CSRFToken': getCsrfToken(),
-                'Content-Type': 'application/json',
-            },
-        });
+function normalizeHexColor(color, fallback = '#3b82f6') {
+    if (!color || typeof color !== 'string') return fallback;
+    const trimmed = color.trim();
+    if (/^#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})$/.test(trimmed)) {
+        return trimmed;
+    }
+    return fallback;
+}
 
-        if (response.ok) {
-            const data = await response.json();
-            schedules = data.results || data;
-            renderScheduleList();
-            refreshCalendar(); // ✅ local + google 둘 다 refetch
-        }
+async function loadSchedules() {
+    if (calendar) {
+        calendar.refetchEvents();
+        return;
+    }
+
+    try {
+        await requestSchedules();
     } catch (error) {
         console.error('Error loading schedules:', error);
     }
@@ -280,24 +329,149 @@ async function loadUserCalendars() {
 
         if (response.ok) {
             const data = await response.json();
-            userCalendars = data.results || data;
+            userCalendars = Array.isArray(data?.results) ? data.results : (Array.isArray(data) ? data : []);
+        } else {
+            userCalendars = [];
         }
     } catch (error) {
         console.error('Error loading calendars:', error);
+        userCalendars = [];
+    }
+
+    calendarsLoaded = true;
+    activeCalendarIds = new Set(
+        userCalendars
+            .filter(calendar => calendar.visible !== false)
+            .map(calendar => String(calendar.id))
+    );
+
+    renderCalendarList();
+    renderScheduleList();
+    refreshCalendar();
+}
+
+function renderCalendarList() {
+    if (!calendarList) return;
+
+    if (!Array.isArray(userCalendars) || userCalendars.length === 0) {
+        calendarList.innerHTML = `
+            <div class="empty-state">
+                <p>캘린더가 없습니다.</p>
+            </div>
+        `;
+        return;
+    }
+
+    calendarList.innerHTML = userCalendars.map((calendar) => {
+        const source = calendar.source_type || calendar.source || 'local';
+        const color = normalizeHexColor(calendar.color);
+        const isVisible = activeCalendarIds.has(String(calendar.id));
+        return `
+            <label
+                class="calendar-item"
+                data-calendar-id="${calendar.id}"
+                data-calendar-source="${source}"
+            >
+                <input
+                    type="checkbox"
+                    data-calendar-id="${calendar.id}"
+                    ${isVisible ? 'checked' : ''}
+                />
+                <div class="calendar-color" style="background-color: ${color};"></div>
+                <span>${escapeHtml(calendar.name || '')}</span>
+                ${source === 'google' ? '<i class="fa-brands fa-google calendar-source-icon" title="Google Calendar"></i>' : ''}
+            </label>
+        `;
+    }).join('');
+
+    attachCalendarToggleHandlers();
+}
+
+function isCalendarFilterActive() {
+    return calendarsLoaded && userCalendars.length > 0;
+}
+
+function shouldShowSchedule(schedule) {
+    if (!isCalendarFilterActive()) {
+        return true;
+    }
+
+    if (activeCalendarIds.size === 0) {
+        return false;
+    }
+
+    const userCalendarId = schedule.user_calendar_id || schedule.calendar_id;
+    if (!userCalendarId) {
+        return true;
+    }
+    return activeCalendarIds.has(String(userCalendarId));
+}
+
+async function syncGoogleEvents(options = {}) {
+    if (!isGoogleConnected) return null;
+
+    const { rangeFromCalendar = false } = options;
+    const payload = {};
+
+    if (rangeFromCalendar && calendar && calendar.view) {
+        const view = calendar.view;
+        if (view.currentStart) {
+            payload.timeMin = view.currentStart.toISOString();
+        }
+        if (view.currentEnd) {
+            payload.timeMax = view.currentEnd.toISOString();
+        }
+    }
+
+    try {
+        const response = await fetch(`${API_BASE}/api/google-events/sync/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCsrfToken(),
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+        });
+
+        const data = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            throw new Error(data?.status || 'sync_failed');
+        }
+
+        if (data?.status === 'no_credentials') {
+            isGoogleConnected = false;
+        }
+
+        return data;
+    } catch (error) {
+        console.error('Google sync failed:', error);
+        throw error;
     }
 }
 
 // ✅ 추가: 최신일정 가져오기
 async function handleRefreshLatest() {
     try {
-        // 1) 캘린더를 진짜 "오늘"로 이동
-        if (calendar) calendar.today();
+        if (isGoogleConnected) {
+            try {
+                const result = await syncGoogleEvents({ rangeFromCalendar: true });
+                if (result?.status === 'ok' && window.notyf) {
+                    const syncedCount = result.synced ?? 0;
+                    window.notyf.success(`Google 일정 ${syncedCount}건을 동기화했습니다.`);
+                } else if (result?.status === 'no_calendars' && window.notyf) {
+                    window.notyf.info('동기화할 Google 캘린더가 없습니다.');
+                } else if (result?.status === 'no_credentials' && window.notyf) {
+                    window.notyf.error('Google 계정 연동이 필요합니다.');
+                }
+            } catch (syncError) {
+                if (window.notyf) {
+                    window.notyf.error('Google 일정 동기화에 실패했습니다.');
+                }
+            }
+        }
 
-        // 2) 내 일정 API 다시 가져오고(왼쪽 목록도 갱신됨)
         await loadSchedules();
-
-        // 3) 혹시 모달이나 다른 소스에서 구글 캘린더 선택이 바뀌었을 수도 있으니 한 번 더 refetch
-        refreshCalendar();
 
         if (window.notyf) window.notyf.success('최신 일정을 불러왔습니다.');
     } catch (e) {
@@ -479,28 +653,41 @@ function renderScheduleList() {
         );
     }
 
+    filteredSchedules = filteredSchedules.filter(shouldShowSchedule);
+
     if (filteredSchedules.length === 0) {
-        scheduleList.innerHTML = '<div class="empty-state"><p>일정이 없습니다.</p></div>';
+        scheduleList.innerHTML = '<div class="empty-state"><p>표시할 일정이 없습니다.</p></div>';
         return;
     }
 
     filteredSchedules.sort((a, b) => new Date(a.start_datetime) - new Date(b.start_datetime));
 
     scheduleList.innerHTML = filteredSchedules.map(schedule => {
-        const startDate = new Date(schedule.start_datetime);
-        const dateStr = startDate.toLocaleDateString('ko-KR', {
+        const startDate = schedule.start_datetime ? new Date(schedule.start_datetime) : new Date();
+        const validStart = !Number.isNaN(startDate.getTime());
+        const dateStr = validStart ? startDate.toLocaleDateString('ko-KR', {
             year: 'numeric',
             month: '2-digit',
             day: '2-digit'
-        });
-        const timeStr = startDate.toLocaleTimeString('ko-KR', {
+        }) : '-';
+        const timeStr = validStart ? startDate.toLocaleTimeString('ko-KR', {
             hour: '2-digit',
             minute: '2-digit',
             hour12: false
-        });
+        }) : '';
+        const isGoogle = schedule.source === 'google';
+        const sourceBadge = isGoogle
+            ? `<span class="schedule-source-badge"><i class="fa-brands fa-google"></i>Google</span>`
+            : '';
+        const calendarMeta = schedule.calendar_name
+            ? `<div class="schedule-list-meta calendar-name-meta">
+                    <i class="fa-regular fa-calendar"></i>
+                    <span>${escapeHtml(schedule.calendar_name)}</span>
+               </div>`
+            : '';
 
         return `
-            <div class="schedule-list-item" data-schedule-id="${schedule.id}">
+            <div class="schedule-list-item" data-schedule-id="${schedule.id}" data-source="${schedule.source || 'local'}">
                 <div class="schedule-list-header">
                     <div class="schedule-list-title" data-schedule-id="${schedule.id}">
                         <p>${escapeHtml(schedule.title)}</p>
@@ -508,11 +695,15 @@ function renderScheduleList() {
                             <i class="fas fa-clock"></i>
                             <span>${dateStr} ${timeStr}</span>
                         </div>
+                        ${calendarMeta}
                     </div>
                     ${schedule.linked_note ? `<i class="fas fa-file-lines" data-note-id="${schedule.linked_note}"></i>` : ''}
                 </div>
                 <div class="schedule-list-footer">
-                    <span class="schedule-type">${schedule.get_type_display || schedule.type || '일정'}</span>
+                    <div class="schedule-badges">
+                        <span class="schedule-type">${schedule.get_type_display || schedule.type || '일정'}</span>
+                        ${sourceBadge}
+                    </div>
                     <select class="status-select status-${schedule.status}" data-schedule-id="${schedule.id}">
                         <option value="scheduled" ${schedule.status === 'scheduled' ? 'selected' : ''}>예정</option>
                         <option value="in_progress" ${schedule.status === 'in_progress' ? 'selected' : ''}>진행중</option>
@@ -545,9 +736,26 @@ function attachCalendarToggleHandlers() {
                     body: JSON.stringify({ visible }),
                 });
 
+                if (visible) {
+                    activeCalendarIds.add(String(calendarId));
+                } else {
+                    activeCalendarIds.delete(String(calendarId));
+                }
+
+                userCalendars = userCalendars.map(calendar =>
+                    String(calendar.id) === String(calendarId)
+                        ? { ...calendar, visible }
+                        : calendar
+                );
+
                 refreshCalendar();
+                renderScheduleList();
             } catch (error) {
                 console.error('Error updating calendar visibility:', error);
+                e.target.checked = !visible;
+                if (window.notyf) {
+                    window.notyf.error('캘린더 표시 상태를 변경할 수 없습니다.');
+                }
             }
         });
     });
@@ -665,6 +873,43 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
+document.addEventListener('calendar:add', async (event) => {
+    const detail = event?.detail || {};
+    const payload = {
+        name: detail.name || '새 캘린더',
+        color: detail.color || '#3b82f6',
+        visible: detail.visible !== false,
+        source_type: detail.source_type || 'local',
+        external_id: detail.external_id || null,
+    };
+
+    try {
+        const response = await fetch('/api/calendars/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCsrfToken(),
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+            const errorPayload = await response.json().catch(() => ({}));
+            throw new Error(errorPayload.error || 'failed_to_create_calendar');
+        }
+
+        await loadUserCalendars();
+        if (window.notyf) {
+            window.notyf.success('캘린더가 생성되었습니다.');
+        }
+    } catch (error) {
+        console.error('Error creating calendar:', error);
+        if (window.notyf) {
+            window.notyf.error('캘린더 생성에 실패했습니다.');
+        }
+    }
+});
+
 // Initialize when DOM is ready
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initSchedule);
@@ -678,6 +923,7 @@ if (typeof window !== 'undefined') {
         initSchedule,
         loadSchedules,
         refreshCalendar,
+        reloadCalendars: loadUserCalendars,
         setViewMode,
         handleToday,
         handlePrevious,

@@ -1,0 +1,22 @@
+<div id="orgModalBackdrop" class="org-modal-backdrop" style="display:none;">
+  <div class="org-modal">
+    <div class="org-modal-header">
+      <h2>새 조직 만들기</h2>
+      <button id="closeOrgModal" class="org-modal-close-btn"><i class="fa fa-times"></i></button>
+    </div>
+    <div class="org-modal-body">
+      <label>조직 이름 *</label>
+      <input type="text" id="orgNameInput" class="org-input" placeholder="조직 이름을 입력하세요">
+      <div class="org-invite-label-row">
+        <label style="margin-bottom: 0;">멤버 초대 (선택)</label>
+        <button id="addInviteFieldBtn" class="org-invite-add-btn"><i class="fa fa-plus"></i>추가</button>
+      </div>
+      <div id="inviteEmailsWrapper"></div>
+      <p class="org-modal-info">초대된 멤버들은 이메일로 초대 링크를 받게 됩니다.</p>
+    </div>
+    <div class="org-modal-footer">
+      <button id="cancelOrgModalBtn" class="org-modal-cancel-btn">취소</button>
+      <button id="submitOrgModalBtn" class="org-modal-submit-btn">조직 만들기</button>
+    </div>
+  </div>
+</div>
