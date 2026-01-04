@@ -11,6 +11,11 @@ from django.views.decorators.csrf import csrf_protect
 from django.utils import timezone
 from django.http import JsonResponse
 from django.conf import settings
+from django.views.decorators.http import require_http_methods
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework import status
 import requests
 
 from .forms import LoginForm, SignUpForm
@@ -605,3 +610,57 @@ def google_profile_callback(request):
         else:
             messages.error(request, f'계정 연동 중 오류가 발생했습니다: {str(e)}')
             return redirect('accounts:profile')
+
+
+@api_view(['GET', 'PUT'])
+@permission_classes([IsAuthenticated])
+def settings_api(request):
+    """사용자 설정 조회 및 업데이트 API"""
+    user = request.user
+    
+    # UserSettings 가져오기 또는 생성
+    user_settings, created = UserSettings.objects.get_or_create(user=user)
+    
+    if request.method == 'GET':
+        return Response({
+            'status': 'success',
+            'settings': {
+                'notifications': user_settings.notifications,
+                'email_alerts': user_settings.email_alerts,
+                'dark_mode': user_settings.dark_mode,
+                'language': user_settings.language,
+                'notes_view_mode': user_settings.notes_view_mode,
+            }
+        }, status=status.HTTP_200_OK)
+    
+    elif request.method == 'PUT':
+        data = request.data
+        
+        # 업데이트할 필드만 처리
+        if 'notes_view_mode' in data:
+            notes_view_mode = data.get('notes_view_mode', '').strip()
+            if notes_view_mode in ['card', 'table']:
+                user_settings.notes_view_mode = notes_view_mode
+        
+        if 'notifications' in data:
+            user_settings.notifications = data.get('notifications', user_settings.notifications)
+        if 'email_alerts' in data:
+            user_settings.email_alerts = data.get('email_alerts', user_settings.email_alerts)
+        if 'dark_mode' in data:
+            user_settings.dark_mode = data.get('dark_mode', user_settings.dark_mode)
+        if 'language' in data:
+            user_settings.language = data.get('language', user_settings.language)
+        
+        user_settings.save()
+        
+        return Response({
+            'status': 'success',
+            'message': '설정이 저장되었습니다.',
+            'settings': {
+                'notifications': user_settings.notifications,
+                'email_alerts': user_settings.email_alerts,
+                'dark_mode': user_settings.dark_mode,
+                'language': user_settings.language,
+                'notes_view_mode': user_settings.notes_view_mode,
+            }
+        }, status=status.HTTP_200_OK)

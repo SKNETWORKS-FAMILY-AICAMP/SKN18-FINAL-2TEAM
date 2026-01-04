@@ -162,6 +162,10 @@ class UserSettings(models.Model):
         JAPANESE = 'ja', '日本語'
         CHINESE = 'zh', '中文'
     
+    class NotesViewMode(models.TextChoices):
+        CARD = 'card', '카드 보기'
+        TABLE = 'table', '테이블 보기'
+    
     settings_sid = models.AutoField(
         primary_key=True,
         verbose_name='설정 ID'
@@ -201,6 +205,12 @@ class UserSettings(models.Model):
         choices=Language.choices,
         default=Language.KOREAN,
         verbose_name='언어'
+    )
+    notes_view_mode = models.CharField(
+        max_length=10,
+        choices=NotesViewMode.choices,
+        default=NotesViewMode.CARD,
+        verbose_name='노트 보기 모드'
     )
     
     # 타임스탬프

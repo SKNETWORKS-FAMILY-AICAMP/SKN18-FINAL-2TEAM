@@ -81,12 +81,43 @@ function initNotes() {
     // Initialize AirDatepicker
     initDateFilter();
 
-    // Render initial state
-    renderNotesList();
-    renderPagination();
+    // Load user settings and apply view mode
+    loadUserSettings().then(() => {
+        // Render initial state
+        renderNotesList();
+        renderPagination();
 
-    // Load notes from API
-    loadNotesFromApi();
+        // Load notes from API
+        loadNotesFromApi();
+    });
+}
+
+// Load user settings and apply
+async function loadUserSettings() {
+    const savedViewMode = await loadNotesViewMode();
+    viewMode = savedViewMode;
+    
+    // Apply view mode to UI
+    if (btnCardView && btnTableView) {
+        if (viewMode === 'card') {
+            btnCardView.classList.add('active');
+            btnTableView.classList.remove('active');
+        } else {
+            btnCardView.classList.remove('active');
+            btnTableView.classList.add('active');
+        }
+    }
+    
+    // Apply view mode display
+    if (notesGrid && notesTableContainer) {
+        if (viewMode === 'card') {
+            notesGrid.style.display = 'grid';
+            notesTableContainer.style.display = 'none';
+        } else {
+            notesGrid.style.display = 'none';
+            notesTableContainer.style.display = 'block';
+        }
+    }
 }
 
 // Load notes via API
@@ -605,7 +636,7 @@ function handleNotesPerPageChange(e) {
 }
 
 // Handle view mode change
-function handleViewModeChange(mode) {
+async function handleViewModeChange(mode) {
     viewMode = mode;
     
     if (btnCardView && btnTableView) {
@@ -618,7 +649,74 @@ function handleViewModeChange(mode) {
         }
     }
     
+    // 설정 저장
+    await saveNotesViewMode(mode);
+    
     renderNotesList();
+}
+
+// Save notes view mode to user settings
+async function saveNotesViewMode(mode) {
+    try {
+        const response = await fetch('/api/settings/', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({
+                notes_view_mode: mode
+            })
+        });
+        
+        if (!response.ok) {
+            console.error('[Notes] Failed to save view mode setting');
+        }
+    } catch (error) {
+        console.error('[Notes] Error saving view mode setting:', error);
+    }
+}
+
+// Load notes view mode from user settings
+async function loadNotesViewMode() {
+    try {
+        const response = await fetch('/api/settings/', {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+            },
+            credentials: 'same-origin'
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            if (data.settings && data.settings.notes_view_mode) {
+                return data.settings.notes_view_mode;
+            }
+        }
+    } catch (error) {
+        console.error('[Notes] Error loading view mode setting:', error);
+    }
+    
+    // 기본값: card
+    return 'card';
+}
+
+// Get CSRF token from cookie
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
 }
 
 // Escape HTML
