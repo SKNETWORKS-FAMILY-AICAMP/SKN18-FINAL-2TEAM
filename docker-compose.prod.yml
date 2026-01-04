@@ -49,7 +49,7 @@ services:
       --error-logfile -
       --log-level info
       --preload
-      --keepalive 5
+      --keep-alive 5
     # Docker 헬스체크: 컨테이너가 준비되었는지 빠르게 확인
     # Python을 사용하여 헬스체크 (curl 없이도 동작)
     healthcheck:
