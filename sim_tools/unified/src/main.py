@@ -63,27 +63,30 @@ def _get_s3_base_default() -> str:
 
 
 def _kst_today() -> str:
-    # KST 기준 dt=YYYY-MM-DD
     kst = timezone(timedelta(hours=9))
     return datetime.now(tz=kst).strftime("%Y-%m-%d")
 
 
-def build_s3_prefix(base: str, dt: str, experiment_id: str, step: str, name: str) -> str:
-    # simulations/dt=YYYY-MM-DD/pipeline=EXPERIMENT_ID/step=STEP/name=NAME
+def build_s3_prefix(base: str, dt: str, experiment_id: str, step: str) -> str:
+    """
+    ✅ 팀장님 구조 (name 제거)
+    simulations/dt=YYYY-MM-DD/pipeline=EXPERIMENT_ID/step=STEP
+    """
     base = (base or "simulations").strip().strip("/")
     dt = dt.strip()
     experiment_id = experiment_id.strip()
     step = step.strip()
-    name = name.strip()
-
-    return f"{base}/dt={dt}/pipeline={experiment_id}/step={step}/name={name}"
+    return f"{base}/dt={dt}/pipeline={experiment_id}/step={step}"
 
 
 def parse_args():
     p = argparse.ArgumentParser()
 
     p.add_argument("--mode", default="backbone", choices=["backbone", "binder", "other"])
+
+    # ⚠️ 여전히 받을 수는 있지만 실제로는 experiment_id로 덮어씀 (호환용)
     p.add_argument("--name", default="test_rfd")
+
     p.add_argument("--contigs", default="100")
     p.add_argument("--iterations", type=int, default=50)
     p.add_argument("--cautious", action="store_true")
@@ -113,6 +116,9 @@ def run_cmd(cmd, env=None):
 
 def main():
     args = parse_args()
+
+    # ✅ 팀장님 지시: job name = experiment_id (pipeline 하나가 job 하나)
+    args.name = args.experiment_id.strip()
 
     outputs_dir = Path(args.outputs_dir)
     outputs_dir.mkdir(parents=True, exist_ok=True)
@@ -160,12 +166,12 @@ def main():
         print("[s3][ERROR] experiment_id missing")
         raise SystemExit(2)
 
+    # ✅ name 레벨 제거된 prefix
     prefix = build_s3_prefix(
         base=args.s3_base,
         dt=args.dt,
         experiment_id=args.experiment_id,
         step=args.step,
-        name=args.name,
     )
 
     print(f"[s3] bucket={bucket}")
@@ -182,7 +188,7 @@ def main():
     try:
         uploaded = upload_job_outputs(
             outputs_dir=str(outputs_dir),
-            job_name=args.name,
+            job_name=args.name,  # ✅ EXP_0001
             bucket=bucket,
             prefix=prefix,
             upload_logs=args.s3_upload_logs,

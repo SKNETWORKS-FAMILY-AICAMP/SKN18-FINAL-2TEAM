@@ -34,7 +34,7 @@ def upload_job_outputs(
       s3://{bucket}/{prefix}/(files...)
 
     prefix 예:
-      simulations/dt=YYYY-MM-DD/pipeline=EXPERIMENT_ID/step=rfdiffusion/name=JOB_NAME
+      simulations/dt=YYYY-MM-DD/pipeline=EXPERIMENT_ID/step=rfdiffusion
     """
     out = Path(outputs_dir)
 

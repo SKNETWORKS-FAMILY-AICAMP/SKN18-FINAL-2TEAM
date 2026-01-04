@@ -24,7 +24,10 @@ app = FastAPI(title="Unified Runner API")
 # ---------------- Models ----------------
 class RunRequest(BaseModel):
     mode: Literal["backbone", "binder", "other"] = "backbone"
+
+    # ⚠️ 기존 호환을 위해 남겨두되, 실제 실행에서는 무시함
     name: Optional[str] = None
+
     contigs: str = Field(default="100")
     iterations: int = Field(default=1, ge=1, le=1000)
 
@@ -108,7 +111,7 @@ def health():
         "pythonpath": PYTHONPATH,
 
         "s3_bucket": os.environ.get("S3_BUCKET", ""),
-        "s3_base": os.environ.get("S3_BASE", "simulations"),  # ✅ base root
+        "s3_base": os.environ.get("S3_BASE", "simulations"),
         "aws_region": os.environ.get("AWS_REGION", os.environ.get("AWS_DEFAULT_REGION", "")),
 
         "aws_s3_bucket": os.environ.get("AWS_S3_BUCKET", ""),
@@ -121,23 +124,27 @@ def run(req: RunRequest, x_api_key: Optional[str] = None):
     _auth_or_throw(x_api_key)
     _ensure_paths()
 
-    if not req.experiment_id.strip():
+    experiment_id = req.experiment_id.strip()
+    if not experiment_id:
         raise HTTPException(status_code=400, detail="experiment_id is required")
 
+    # ✅ 팀장님 지시: pipeline(=experiment_id) 하나가 job 하나
+    name = experiment_id
+
+    # job_id는 추적/응답용으로만 유지 (파일/폴더에는 사용 안 함)
     job_id = uuid.uuid4().hex[:12]
-    name = req.name or f"job_{job_id}"
 
     log_path, pid_path = _job_paths(name)
 
-    # ✅ main.py에 experiment_id / step을 전달하도록 args 확장
+    # ✅ main.py에 experiment_id / step 전달
     args = [
         "run",
         "--mode", req.mode,
-        "--name", name,
+        "--name", name,                 # ✅ EXP_0001
         "--contigs", req.contigs,
         "--iterations", str(req.iterations),
 
-        "--experiment_id", req.experiment_id,
+        "--experiment_id", experiment_id,
         "--step", req.step,
     ]
     if req.s3_upload_logs:
@@ -151,7 +158,7 @@ def run(req: RunRequest, x_api_key: Optional[str] = None):
 
     # S3/AWS env 전달
     env["S3_BUCKET"] = os.environ.get("S3_BUCKET", "")
-    env["S3_BASE"] = os.environ.get("S3_BASE", "simulations")  # ✅ base root
+    env["S3_BASE"] = os.environ.get("S3_BASE", "simulations")
     env["AWS_REGION"] = os.environ.get("AWS_REGION", os.environ.get("AWS_DEFAULT_REGION", ""))
     env["AWS_DEFAULT_REGION"] = os.environ.get("AWS_DEFAULT_REGION", env["AWS_REGION"])
 
@@ -172,7 +179,7 @@ def run(req: RunRequest, x_api_key: Optional[str] = None):
     return RunResponse(
         ok=True,
         job_id=job_id,
-        name=name,
+        name=name,  # ✅ EXP_0001
         outputs_dir=OUTPUTS_DIR,
         cmd=["bash", OPS_SH, *args],
     )
