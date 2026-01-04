@@ -17,11 +17,21 @@ from graph.llm_config import (
     generate_answer_info_llm,
     generate_answer_simulation_llm,
     generate_answer_protocol_llm,
-    generate_answer_protocol_fallback_llm,
     generate_answer_inference_llm,
-    generate_answer_inference_fallback_llm,
     get_model_name
 )
+
+# Fallback 모델들은 optional로 처리
+try:
+    from graph.llm_config import generate_answer_protocol_fallback_llm
+except ImportError:
+    generate_answer_protocol_fallback_llm = None
+
+try:
+    from graph.llm_config import generate_answer_inference_fallback_llm
+except ImportError:
+    generate_answer_inference_fallback_llm = None
+
 import json
 
 
@@ -364,13 +374,18 @@ def _generate_protocol_answer(state: Dict[str, Any]) -> Dict[str, Any]:
         state["answer_sources"] = answer_sources
         
     except Exception as e:
-        # 실패 시 fallback 모델 사용
-        fallback_model_name = get_model_name(generate_answer_protocol_fallback_llm)
-        print(f"[PROTOCOL_Q] Fallback 모델: {fallback_model_name}")
-        try:
-            answer = generate_answer_protocol_fallback_llm(prompt)
-            state["final_answer"] = answer
-        except:
+        # 실패 시 fallback 모델 사용 (있는 경우에만)
+        if generate_answer_protocol_fallback_llm is not None:
+            try:
+                fallback_model_name = get_model_name(generate_answer_protocol_fallback_llm)
+                print(f"[PROTOCOL_Q] Fallback 모델: {fallback_model_name}")
+                answer = generate_answer_protocol_fallback_llm(prompt)
+                state["final_answer"] = answer
+            except Exception as fallback_error:
+                print(f"[PROTOCOL_Q] Fallback 모델도 실패: {fallback_error}")
+                state["final_answer"] = f"프로토콜 답변 생성 중 오류가 발생했습니다: {str(e)}"
+        else:
+            print(f"[PROTOCOL_Q] Fallback 모델이 설정되지 않음")
             state["final_answer"] = f"프로토콜 답변 생성 중 오류가 발생했습니다: {str(e)}"
     
     return state
@@ -426,13 +441,18 @@ def _generate_inference_answer(state: Dict[str, Any]) -> Dict[str, Any]:
         state["final_context"] = f"질문: {question}"
         
     except Exception as e:
-        # 실패 시 fallback 모델 사용
-        fallback_model_name = get_model_name(generate_answer_inference_fallback_llm)
-        print(f"[INFERENCE_Q] Fallback 모델: {fallback_model_name}")
-        try:
-            answer = generate_answer_inference_fallback_llm(prompt)
-            state["final_answer"] = answer
-        except:
+        # 실패 시 fallback 모델 사용 (있는 경우에만)
+        if generate_answer_inference_fallback_llm is not None:
+            try:
+                fallback_model_name = get_model_name(generate_answer_inference_fallback_llm)
+                print(f"[INFERENCE_Q] Fallback 모델: {fallback_model_name}")
+                answer = generate_answer_inference_fallback_llm(prompt)
+                state["final_answer"] = answer
+            except Exception as fallback_error:
+                print(f"[INFERENCE_Q] Fallback 모델도 실패: {fallback_error}")
+                state["final_answer"] = f"실험 결과 해석 생성 중 오류가 발생했습니다: {str(e)}"
+        else:
+            print(f"[INFERENCE_Q] Fallback 모델이 설정되지 않음")
             state["final_answer"] = f"실험 결과 해석 생성 중 오류가 발생했습니다: {str(e)}"
     
     return state

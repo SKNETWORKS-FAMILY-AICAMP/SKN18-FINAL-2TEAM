@@ -20,7 +20,7 @@ load_dotenv()
 
 API_BASE = os.getenv("LLM_API_BASE", "https://api.openai.com/v1").rstrip("/")
 API_KEY = os.getenv("OPENAI_API_KEY", "")
-MODEL = os.getenv("LLM_MODEL", "gpt-4o")
+MODEL = os.getenv("LLM_MODEL", "gpt-4o-mini")
 
 TIMEOUT_SEC = int(os.getenv("LLM_TIMEOUT_SEC", "60"))
 RETRY = int(os.getenv("LLM_RETRY", "2"))
@@ -321,6 +321,41 @@ def write_final_jsonl(path: str, raw_samples: List[Dict[str, Any]],
         for sample in passed_samples:
             f.write(json.dumps(sample, ensure_ascii=False) + "\n")
 
+def append_pass_sample(path: str, sample: Dict[str, Any]) -> None:
+    """
+    PASS된 샘플을 즉시 파일에 추가 (스트리밍 방식, 메모리 효율적)
+    """
+    with open(path, "a", encoding="utf-8") as f:
+        f.write(json.dumps(sample, ensure_ascii=False) + "\n")
+
+def init_csv_file(path: str, fieldnames: List[str]) -> None:
+    """
+    CSV 파일 초기화 (헤더만 작성)
+    """
+    with open(path, "w", encoding="utf-8", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=fieldnames)
+        w.writeheader()
+
+def append_csv_row(path: str, evaluation: FinalEvaluation, fieldnames: List[str]) -> None:
+    """
+    CSV 파일에 평가 결과를 즉시 추가 (스트리밍 방식)
+    """
+    with open(path, "a", encoding="utf-8", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=fieldnames)
+        d = asdict(evaluation)
+        d["hard_fail_reasons"] = "|".join(d["hard_fail_reasons"])
+        d["key_issues"] = "|".join(d["key_issues"])
+        w.writerow(d)
+
+def append_json_line(path: str, evaluation: FinalEvaluation) -> None:
+    """
+    JSON Lines 형식으로 평가 결과를 즉시 추가 (스트리밍 방식)
+    각 줄은 하나의 JSON 객체
+    """
+    with open(path, "a", encoding="utf-8") as f:
+        json.dump(asdict(evaluation), f, ensure_ascii=False)
+        f.write("\n")
+
 def main():
     import argparse
     from datetime import datetime
@@ -334,15 +369,60 @@ def main():
     p.add_argument("--out_json", default=f"sllm/datasets/audit_results_{timestamp}.json")
     p.add_argument("--out_final_jsonl", default=f"sllm/datasets/final_sft_dataset_{timestamp}.jsonl",
                    help="Final filtered JSONL with only PASS samples")
+    # 기본값: 스트리밍 모드 활성화 (메모리 효율적)
+    # --no_stream_save 플래그로 비활성화 가능
+    p.add_argument("--no_stream_save", dest="stream_save", action="store_false", default=True,
+                   help="Disable streaming save (save all at once at the end). Default: streaming enabled")
     args = p.parse_args()
 
+    # 출력 디렉토리 생성
+    from pathlib import Path
+    for out_path in [args.out_csv, args.out_json, args.out_final_jsonl]:
+        Path(out_path).parent.mkdir(parents=True, exist_ok=True)
+    
+    # raw_samples는 여전히 메모리에 로드 (인덱싱을 위해 필요)
+    # 하지만 PASS 샘플은 즉시 저장하므로 메모리 부담 감소
     raw_samples = read_jsonl(args.in_jsonl)
     evals: List[FinalEvaluation] = []
+    pass_count = 0
+    csv_fieldnames = None
+    csv_initialized = False
+
+    # 스트리밍 모드인 경우 파일 초기화
+    if args.stream_save:
+        # final_jsonl 파일 초기화
+        with open(args.out_final_jsonl, "w", encoding="utf-8") as f:
+            pass  # 빈 파일 생성
+        # JSON Lines 파일 초기화 (기존 JSON 파일을 JSONL 형식으로 사용)
+        jsonl_path = args.out_json.replace(".json", ".jsonl")
+        with open(jsonl_path, "w", encoding="utf-8") as f:
+            pass  # 빈 파일 생성
 
     for i, raw in enumerate(raw_samples, start=1):
         try:
             ev = evaluate_one(i, raw)
             evals.append(ev)
+            
+            # 스트리밍 모드: 모든 파일에 즉시 저장
+            if args.stream_save:
+                # CSV: 첫 번째 평가에서 헤더 작성
+                if not csv_initialized:
+                    csv_fieldnames = list(asdict(ev).keys())
+                    init_csv_file(args.out_csv, csv_fieldnames)
+                    csv_initialized = True
+                
+                # CSV에 즉시 추가
+                append_csv_row(args.out_csv, ev, csv_fieldnames)
+                
+                # JSON Lines에 즉시 추가
+                jsonl_path = args.out_json.replace(".json", ".jsonl")
+                append_json_line(jsonl_path, ev)
+                
+                # PASS된 샘플을 final_jsonl에 즉시 저장
+                if ev.verdict == "PASS":
+                    append_pass_sample(args.out_final_jsonl, raw)
+                    pass_count += 1
+            
             print(f"[{i}/{len(raw_samples)}] {ev.verdict} score={ev.score} hard_fail={ev.hard_fail}")
             time.sleep(SLEEP_BETWEEN)
         except ValidationError as ve:
@@ -351,13 +431,32 @@ def main():
             print(f"[{i}] Error: {e}")
 
     if evals:
-        write_csv(args.out_csv, evals)
-        write_json(args.out_json, evals)
-        write_final_jsonl(args.out_final_jsonl, raw_samples, evals)
-
+        # 스트리밍 모드가 아닌 경우에만 한 번에 저장
+        if not args.stream_save:
+            write_csv(args.out_csv, evals)
+            write_json(args.out_json, evals)
+            write_final_jsonl(args.out_final_jsonl, raw_samples, evals)
+            pass_count = sum(1 for e in evals if e.verdict == "PASS")
+        else:
+            # 스트리밍 모드: JSON Lines를 JSON 배열로 변환 (선택적)
+            # JSON Lines 파일이 이미 생성되었으므로, 필요시 변환 가능
+            jsonl_path = args.out_json.replace(".json", ".jsonl")
+            if Path(jsonl_path).exists():
+                # JSON Lines를 읽어서 JSON 배열로 변환
+                jsonl_data = []
+                with open(jsonl_path, "r", encoding="utf-8") as f:
+                    for line in f:
+                        if line.strip():
+                            jsonl_data.append(json.loads(line))
+                with open(args.out_json, "w", encoding="utf-8") as f:
+                    json.dump(jsonl_data, f, ensure_ascii=False, indent=2)
+        
         # Summary 출력에 통과 샘플 수 추가
-        pass_count = sum(1 for e in evals if e.verdict == "PASS")
-        print(f"\n✅ Saved {pass_count} PASS samples to {args.out_final_jsonl}")
+        if args.stream_save:
+            print(f"\n✅ Saved {pass_count} PASS samples to {args.out_final_jsonl} (streaming mode)")
+            print(f"✅ All evaluation results saved incrementally")
+        else:
+            print(f"\n✅ Saved {pass_count} PASS samples to {args.out_final_jsonl}")
 
         df = pd.DataFrame([asdict(e) for e in evals])
         # quick summary

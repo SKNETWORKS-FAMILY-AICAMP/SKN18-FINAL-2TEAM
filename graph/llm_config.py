@@ -20,12 +20,12 @@ def get_model_name(llm_func):
 
 
 # ===== guardrail.py =====
-guardrail_check_safety_llm = gpt4_1_nano
+guardrail_check_safety_llm = sllm
 
 
 # ===== classifier.py =====
-classifier_is_bio_related_simple_check_llm = gpt4_1_nano
-classifier_classify_question_node_llm = gpt4_1_nano
+classifier_is_bio_related_simple_check_llm = sllm
+classifier_classify_question_node_llm = sllm
 
 
 # ===== memory.py =====
@@ -60,7 +60,7 @@ evaluate_chunk_protocol_node_llm = gpt4o_mini
 generate_answer_bio_llm = gpt4_1_nano
 generate_answer_simulation_llm = gpt4_1_nano
 generate_answer_protocol_llm = sllm
-generate_answer_protocol_fallback_llm = gpt4_1_nano
+#generate_answer_protocol_fallback_llm = gpt4_1_nano
 generate_answer_inference_llm = sllm
-generate_answer_inference_fallback_llm = gpt4_1_nano
+#generate_answer_inference_fallback_llm = gpt4_1_nano
 generate_answer_info_llm = gpt4_1_nano
