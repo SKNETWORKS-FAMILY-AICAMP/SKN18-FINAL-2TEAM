@@ -4,6 +4,7 @@ import sys
 import argparse
 import subprocess
 from pathlib import Path
+from datetime import datetime, timezone, timedelta
 
 
 def resolve_rfdiffusion_entry() -> str:
@@ -48,24 +49,34 @@ def pick_python() -> str:
 
 
 def _get_s3_bucket_default() -> str:
-    """
-    Priority:
-      1) S3_BUCKET
-      2) AWS_S3_BUCKET
-    """
     return (os.environ.get("S3_BUCKET") or os.environ.get("AWS_S3_BUCKET") or "").strip()
 
 
-def _get_s3_prefix_default() -> str:
+def _get_s3_base_default() -> str:
     """
+    S3 base root folder (fixed): simulations
     Priority:
-      1) S3_PREFIX
-      2) AWS_S3_BASE_PATH
-      3) rfdiffusion
-    Normalize: strip leading/trailing slashes.
+      1) S3_BASE
+      2) "simulations"
     """
-    raw = os.environ.get("S3_PREFIX") or os.environ.get("AWS_S3_BASE_PATH") or "rfdiffusion"
-    return str(raw).strip().strip("/")
+    return (os.environ.get("S3_BASE") or "simulations").strip().strip("/")
+
+
+def _kst_today() -> str:
+    # KST 기준 dt=YYYY-MM-DD
+    kst = timezone(timedelta(hours=9))
+    return datetime.now(tz=kst).strftime("%Y-%m-%d")
+
+
+def build_s3_prefix(base: str, dt: str, experiment_id: str, step: str, name: str) -> str:
+    # simulations/dt=YYYY-MM-DD/pipeline=EXPERIMENT_ID/step=STEP/name=NAME
+    base = (base or "simulations").strip().strip("/")
+    dt = dt.strip()
+    experiment_id = experiment_id.strip()
+    step = step.strip()
+    name = name.strip()
+
+    return f"{base}/dt={dt}/pipeline={experiment_id}/step={step}/name={name}"
 
 
 def parse_args():
@@ -73,31 +84,24 @@ def parse_args():
 
     p.add_argument("--mode", default="backbone", choices=["backbone", "binder", "other"])
     p.add_argument("--name", default="test_rfd")
-    p.add_argument(
-        "--contigs",
-        default="100",
-        help="RFdiffusion contig string, e.g. 100 or 'A1-100' or 'A1-50 0 A51-100'",
-    )
-    p.add_argument("--iterations", type=int, default=50, help="num designs")
-    p.add_argument("--cautious", action="store_true", help="Set inference.cautious=True (skip existing outputs)")
+    p.add_argument("--contigs", default="100")
+    p.add_argument("--iterations", type=int, default=50)
+    p.add_argument("--cautious", action="store_true")
 
     p.add_argument("--rfdiffusion_entry", default=resolve_rfdiffusion_entry())
     p.add_argument("--outputs_dir", default=os.environ.get("OUTPUTS_DIR", "/outputs"))
     p.add_argument("--models_dir", default=os.environ.get("MODELS_DIR", "/models"))
 
-    # ✅ S3 업로드 옵션 (S3_*가 없으면 AWS_S3_* fallback 지원)
-    p.add_argument(
-        "--s3_bucket",
-        default=_get_s3_bucket_default(),
-        help="If set, upload outputs to S3",
-    )
-    p.add_argument(
-        "--s3_prefix",
-        default=_get_s3_prefix_default(),
-        help="S3 key prefix (folder path). Default uses S3_PREFIX or AWS_S3_BASE_PATH or 'rfdiffusion'",
-    )
-    p.add_argument("--s3_upload_logs", action="store_true", help="Also upload job log if exists")
-    p.add_argument("--fail_on_s3_error", action="store_true", help="If upload fails, exit non-zero")
+    # ✅ 새 구조에 필요한 필드
+    p.add_argument("--experiment_id", required=True, help="pipeline=EXPERIMENT_ID (queue에서 받은 값)")
+    p.add_argument("--step", default="rfdiffusion", choices=["rfdiffusion", "alphafold", "proteinMPNN"])
+    p.add_argument("--dt", default=_kst_today(), help="dt=YYYY-MM-DD (default: KST today)")
+
+    # ✅ S3 업로드 옵션
+    p.add_argument("--s3_bucket", default=_get_s3_bucket_default())
+    p.add_argument("--s3_base", default=_get_s3_base_default(), help="S3 base root folder (default: simulations)")
+    p.add_argument("--s3_upload_logs", action="store_true")
+    p.add_argument("--fail_on_s3_error", action="store_true")
 
     return p.parse_args()
 
@@ -121,7 +125,6 @@ def main():
     contig_override = f"contigmap.contigs=[{contig_str!r}]"
 
     py = pick_python()
-
     cmd = [
         py,
         args.rfdiffusion_entry,
@@ -129,7 +132,6 @@ def main():
         f"inference.num_designs={args.iterations}",
         contig_override,
     ]
-
     if args.cautious:
         cmd.append("inference.cautious=True")
 
@@ -141,22 +143,33 @@ def main():
         outputs_dir / f"{args.name}_0.pdb",
         outputs_dir / f"{args.name}_0.trb",
     ]
-
     print("[main.py] produced:")
-    for p in produced:
-        if p.exists():
-            print(" -", p, f"({p.stat().st_size} bytes)")
+    for pth in produced:
+        if pth.exists():
+            print(" -", pth, f"({pth.stat().st_size} bytes)")
         else:
-            print(" -", p, "(missing)")
+            print(" -", pth, "(missing)")
 
-    # 3) (옵션) S3 업로드
+    # 3) S3 업로드 (옵션)
     bucket = (args.s3_bucket or "").strip()
     if not bucket:
         print("[s3] S3_BUCKET/AWS_S3_BUCKET not set; skip upload")
         return
 
-    prefix = (args.s3_prefix or "rfdiffusion").strip().strip("/")
-    print(f"[s3] bucket={bucket} prefix={prefix}")
+    if not args.experiment_id.strip():
+        print("[s3][ERROR] experiment_id missing")
+        raise SystemExit(2)
+
+    prefix = build_s3_prefix(
+        base=args.s3_base,
+        dt=args.dt,
+        experiment_id=args.experiment_id,
+        step=args.step,
+        name=args.name,
+    )
+
+    print(f"[s3] bucket={bucket}")
+    print(f"[s3] prefix={prefix}")
 
     try:
         from s3_uploader import upload_job_outputs

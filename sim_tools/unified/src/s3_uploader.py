@@ -8,10 +8,6 @@ def _region() -> str | None:
 
 
 def upload_file_to_s3(local_path: str, bucket: str, key: str, content_type: str | None = None) -> str:
-    """
-    Upload a single file to S3 and return s3:// URL.
-    Requires AWS creds in env or shared config.
-    """
     s3 = boto3.client("s3", region_name=_region())
 
     extra_args = {}
@@ -30,18 +26,18 @@ def upload_job_outputs(
     outputs_dir: str,
     job_name: str,
     bucket: str,
-    prefix: str = "rfdiffusion",
+    prefix: str,
     upload_logs: bool = False
 ) -> list[str]:
     """
-    Upload:
-      - {job_name}_0.pdb
-      - {job_name}_0.trb
-      - (optional) _logs/{job_name}.log
-    to:
-      s3://{bucket}/{prefix}/{job_name}/...
+    Upload to:
+      s3://{bucket}/{prefix}/(files...)
+
+    prefix 예:
+      simulations/dt=YYYY-MM-DD/pipeline=EXPERIMENT_ID/step=rfdiffusion/name=JOB_NAME
     """
     out = Path(outputs_dir)
+
     candidates = [
         out / f"{job_name}_0.pdb",
         out / f"{job_name}_0.trb",
@@ -50,15 +46,16 @@ def upload_job_outputs(
     if upload_logs:
         candidates.append(out / "_logs" / f"{job_name}.log")
 
-    # ✅ prefix 정규화: 앞/뒤 '/' 제거해서 key 깨짐 방지
-    prefix = (prefix or "rfdiffusion").strip().strip("/")
+    prefix = (prefix or "").strip().strip("/")
+    if not prefix:
+        raise ValueError("prefix is required")
 
     uploaded: list[str] = []
     for p in candidates:
         if not p.exists() or p.stat().st_size <= 0:
             continue
 
-        key = f"{prefix}/{job_name}/{p.name}"
+        key = f"{prefix}/{p.name}"
         content_type = "chemical/x-pdb" if p.suffix == ".pdb" else "application/octet-stream"
         uploaded.append(upload_file_to_s3(str(p), bucket, key, content_type=content_type))
 

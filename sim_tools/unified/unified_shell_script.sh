@@ -24,12 +24,12 @@ UVICORN_PID="${UVICORN_PID:-${APP_DIR}/uvicorn_${PORT}.pid}"
 # (옵션) S3 업로드 관련 env
 # -----------------------------
 S3_BUCKET="${S3_BUCKET:-}"
-S3_PREFIX="${S3_PREFIX:-rfdiffusion}"
+S3_BASE="${S3_BASE:-simulations}"           # ✅ NEW: base root (default: simulations)
 AWS_REGION="${AWS_REGION:-${AWS_DEFAULT_REGION:-}}"
 
 # ✅ AWS_S3_*도 지원 (RunPod Secret에서 AWS_S3_*만 넣어도 동작)
 AWS_S3_BUCKET="${AWS_S3_BUCKET:-}"
-AWS_S3_BASE_PATH="${AWS_S3_BASE_PATH:-}"
+AWS_S3_BASE_PATH="${AWS_S3_BASE_PATH:-}"   # ex) simulations  (or legacy values)
 
 ########################################
 # Utils
@@ -46,7 +46,7 @@ need_root() {
 ensure_dir() { mkdir -p "$1"; }
 venv_python() { echo "${TORCH_VENV}/bin/python"; }
 
-# ✅ 1번 방식: "비어있으면 env로 넘기지 않기" 헬퍼
+# ✅ "비어있으면 env로 넘기지 않기" 헬퍼
 add_env_if_nonempty() {
   local -n _arr="$1"
   local k="$2"
@@ -59,12 +59,10 @@ add_env_if_nonempty() {
 # ✅ RunPod에서 /proc/1(environ)에만 AWS/S3가 있고 현재 쉘에는 없을 때가 있음
 #    -> 그 경우 PID1의 AWS_/S3_만 안전하게 가져와서 export
 load_aws_env_from_pid1_if_missing() {
-  # 현재 쉘에 AWS_/S3_가 하나라도 있으면 아무것도 안 함
   if env | egrep -q '^(AWS_|S3_)'; then
     return 0
   fi
 
-  # /proc/1/environ 에서 AWS_/S3_만 골라 export
   if [[ -r /proc/1/environ ]]; then
     while IFS= read -r kv; do
       [[ "$kv" == *=* ]] || continue
@@ -73,7 +71,7 @@ load_aws_env_from_pid1_if_missing() {
   fi
 }
 
-# ✅ env 로드 후, AWS_S3_* -> S3_* 매핑 + prefix 정리 + region 보정
+# ✅ env 로드 후, AWS_S3_* -> S3_* 매핑 + base 정리 + region 보정
 refresh_s3_mapping() {
   # region 동기화
   AWS_REGION="${AWS_REGION:-${AWS_DEFAULT_REGION:-}}"
@@ -81,7 +79,6 @@ refresh_s3_mapping() {
     AWS_DEFAULT_REGION="$AWS_REGION"
   fi
 
-  # AWS_S3_* 값 확보
   AWS_S3_BUCKET="${AWS_S3_BUCKET:-}"
   AWS_S3_BASE_PATH="${AWS_S3_BASE_PATH:-}"
 
@@ -90,13 +87,17 @@ refresh_s3_mapping() {
     S3_BUCKET="${AWS_S3_BUCKET}"
   fi
 
-  # S3_PREFIX가 비었거나 기본값(rfdiffusion)일 때만 AWS_S3_BASE_PATH로 덮어씀
-  if { [[ -z "${S3_PREFIX:-}" ]] || [[ "${S3_PREFIX}" == "rfdiffusion" ]]; } && [[ -n "${AWS_S3_BASE_PATH:-}" ]]; then
-    S3_PREFIX="${AWS_S3_BASE_PATH}"
+  # ✅ NEW: base root 매핑
+  # - S3_BASE가 비어있을 때만 AWS_S3_BASE_PATH로 채움
+  # - (주의) AWS_S3_BASE_PATH에 "simulations/sim_result" 같은 legacy 값이 들어오면
+  #         최신 구조에서는 base root로는 "simulations"만 쓰는 걸 권장.
+  if [[ -z "${S3_BASE:-}" && -n "${AWS_S3_BASE_PATH:-}" ]]; then
+    S3_BASE="${AWS_S3_BASE_PATH}"
   fi
 
-  # prefix 정리 (양끝 슬래시 제거) + 기본값 보장
-  S3_PREFIX="$(echo "${S3_PREFIX:-rfdiffusion}" | sed 's#^/*##; s#/*$##')"
+  # base 정리 (양끝 슬래시 제거) + 기본값 보장
+  S3_BASE="$(echo "${S3_BASE:-simulations}" | sed 's#^/*##; s#/*$##')"
+  [[ -n "${S3_BASE:-}" ]] || S3_BASE="simulations"
 }
 
 ########################################
@@ -115,7 +116,7 @@ cmd_up() {
   log "RFDIFFUSION_DIR=$RFDIFFUSION_DIR"
   log "PORT=$PORT"
   log "S3_BUCKET=${S3_BUCKET:-<empty>}"
-  log "S3_PREFIX=$S3_PREFIX"
+  log "S3_BASE=${S3_BASE:-simulations}"
   log "AWS_REGION=${AWS_REGION:-<empty>}"
   log "AWS_S3_BUCKET=${AWS_S3_BUCKET:-<empty>}"
   log "AWS_S3_BASE_PATH=${AWS_S3_BASE_PATH:-<empty>}"
@@ -376,7 +377,7 @@ cmd_run() {
   export LD_LIBRARY_PATH="$TORCH_VENV/lib/python3.10/site-packages/nvidia/nvtx/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/nvjitlink/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/nccl/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/curand/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cufft/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cuda_runtime/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cuda_nvrtc/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cuda_cupti/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cublas/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cusparse/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cudnn/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cusolver/lib:${LD_LIBRARY_PATH:-}"
   log "LD_LIBRARY_PATH set"
 
-  # ✅ 1번 방식: 비어있으면 export 자체를 하지 않음 (빈 값으로 덮어쓰기 방지)
+  # ✅ 비어있으면 export 자체를 하지 않음 (빈 값으로 덮어쓰기 방지)
   if [[ -n "${AWS_REGION:-}" ]]; then
     export AWS_REGION
     export AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION:-$AWS_REGION}"
@@ -385,10 +386,10 @@ cmd_run() {
   [[ -n "${AWS_S3_BASE_PATH:-}" ]] && export AWS_S3_BASE_PATH
 
   [[ -n "${S3_BUCKET:-}" ]] && export S3_BUCKET
-  [[ -n "${S3_PREFIX:-}" ]] && export S3_PREFIX
+  [[ -n "${S3_BASE:-}" ]] && export S3_BASE
 
   log "S3_BUCKET=${S3_BUCKET:-<empty>}"
-  log "S3_PREFIX=${S3_PREFIX:-<empty>}"
+  log "S3_BASE=${S3_BASE:-<empty>}"
   log "AWS_REGION=${AWS_REGION:-<empty>}"
 
   ensure_dir "$MODELS_DIR"
@@ -419,9 +420,7 @@ cmd_serve() {
 
   cd "$APP_DIR"
 
-  # ✅ 1번 방법 핵심:
-  #   env ... AWS_REGION="" 같은 "빈 값"을 넘기면 자식 프로세스에서 빈 값으로 덮어써짐.
-  #   따라서 "값이 있을 때만" env로 넘기도록 구성.
+  # ✅ "값이 있을 때만" env로 넘기기
   local env_kv=()
   env_kv+=("SCRIPT_DIR=$SCRIPT_DIR")
   env_kv+=("OPS_SH=$SCRIPT_DIR/unified_shell_script.sh")
@@ -431,7 +430,7 @@ cmd_serve() {
 
   # S3/AWS는 값이 있을 때만 넘김 (빈 값 전달 금지)
   add_env_if_nonempty env_kv "S3_BUCKET" "${S3_BUCKET:-}"
-  add_env_if_nonempty env_kv "S3_PREFIX" "${S3_PREFIX:-}"
+  add_env_if_nonempty env_kv "S3_BASE" "${S3_BASE:-}"
 
   add_env_if_nonempty env_kv "AWS_REGION" "${AWS_REGION:-}"
   if [[ -n "${AWS_REGION:-}" ]]; then
@@ -517,14 +516,14 @@ Env overrides:
   PORT=8000
 
 S3 upload env (optional):
-  # Preferred (existing)
+  # Preferred
   S3_BUCKET=my-bucket
-  S3_PREFIX=rfdiffusion
+  S3_BASE=simulations
   AWS_REGION=ap-northeast-2
 
   # Also supported (AWS-style)
   AWS_S3_BUCKET=my-bucket
-  AWS_S3_BASE_PATH=simulations/sim_result
+  AWS_S3_BASE_PATH=simulations
   AWS_ACCESS_KEY_ID=...
   AWS_SECRET_ACCESS_KEY=...
 EOF
