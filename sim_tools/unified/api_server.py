@@ -13,7 +13,11 @@ SCRIPT_DIR = os.environ.get("SCRIPT_DIR", "/workspace/unified")
 OPS_SH = os.environ.get("OPS_SH", f"{SCRIPT_DIR}/unified_shell_script.sh")
 
 OUTPUTS_DIR = os.environ.get("OUTPUTS_DIR", f"{SCRIPT_DIR}/outputs")
+
+# ✅ torch/jax venv 둘 다 전달
 TORCH_VENV = os.environ.get("TORCH_VENV", "/opt/venv_torch")
+JAX_VENV = os.environ.get("JAX_VENV", "/opt/venv_jax")
+
 PYTHONPATH = os.environ.get("PYTHONPATH", "/app/RFdiffusion")
 
 API_KEY = os.environ.get("API_KEY")  # 설정 안 하면 인증 없이 동작
@@ -108,6 +112,7 @@ def health():
         "ops_sh": OPS_SH,
         "outputs_dir": OUTPUTS_DIR,
         "torch_venv": TORCH_VENV,
+        "jax_venv": JAX_VENV,
         "pythonpath": PYTHONPATH,
 
         "s3_bucket": os.environ.get("S3_BUCKET", ""),
@@ -140,7 +145,7 @@ def run(req: RunRequest, x_api_key: Optional[str] = None):
     args = [
         "run",
         "--mode", req.mode,
-        "--name", name,                 # ✅ EXP_0001
+        "--name", name,
         "--contigs", req.contigs,
         "--iterations", str(req.iterations),
 
@@ -152,6 +157,7 @@ def run(req: RunRequest, x_api_key: Optional[str] = None):
 
     env = os.environ.copy()
     env["TORCH_VENV"] = TORCH_VENV
+    env["JAX_VENV"] = JAX_VENV
     env["PYTHONPATH"] = PYTHONPATH
     env["OUTPUTS_DIR"] = OUTPUTS_DIR
     env["SCRIPT_DIR"] = SCRIPT_DIR
@@ -179,7 +185,7 @@ def run(req: RunRequest, x_api_key: Optional[str] = None):
     return RunResponse(
         ok=True,
         job_id=job_id,
-        name=name,  # ✅ EXP_0001
+        name=name,
         outputs_dir=OUTPUTS_DIR,
         cmd=["bash", OPS_SH, *args],
     )
