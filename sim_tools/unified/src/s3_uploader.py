@@ -90,28 +90,26 @@ def upload_job_outputs(
     if upload_logs:
         candidates.append(out / "_logs" / f"{job_name}.log")
 
-    # ✅ prefix 정규화: 앞/뒤 '/' 제거해서 key 깨짐 방지
-    # job_name 형식: "<pipeline(실험ID)>__<step(툴이름)>"
+
+    # job_name = experiment_id
     pipeline = job_name
-    step = "unknown"
+    step_folder = step  # rfdiffusion / proteinMPNN / alphafold
+
     if "__" in job_name:
         pipeline, step = job_name.split("__", 1)
+
     KST = timezone(timedelta(hours=9))
-    # dt=YYYY-MM-DD
     dt = datetime.now(KST).date().strftime("%Y-%m-%d")
 
     # 최종 prefix: simulations/dt=2026-01-03/pipeline=26/step=rfdiffusion
-    base_prefix = f"{prefix}/dt={dt}/pipeline={pipeline}/step={step}".strip("/")
-
+    base_prefix = f"{prefix}/dt={dt}/pipeline={pipeline}/step={step_folder}".strip("/")
     uploaded: list[str] = []
     for p in candidates:
         if not p.exists() or p.stat().st_size <= 0:
             continue
 
         key = f"{base_prefix}/{p.name}"
-        content_type = "chemical/x-pdb" if p.suffix == ".pdb" else "application/octet-stream"
-        key = f"{prefix}/{p.name}"
-
+        
         if p.suffix == ".pdb":
             content_type = "chemical/x-pdb"
         elif p.suffix in [".fasta", ".fa"]:
