@@ -115,25 +115,48 @@ def _format_citations(raw_result: Dict[str, Any]) -> tuple[List[Dict[str, Any]],
 
     # answer_sources (웹 검색 URL)도 추가 - web_selected_chunks가 있을 때만
     if web_selected_chunks and web_results:
-        print(f"[DEBUG _format_citations] web_selected_chunks 처리 중: {len(web_selected_chunks)}개")
-
+        # operator.add로 인한 중복 제거 (안전장치)
+        unique_chunks = []
+        seen_chunks = set()
+        for chunk in web_selected_chunks:
+            chunk_str = str(chunk) if not isinstance(chunk, str) else chunk
+            if chunk_str and chunk_str not in seen_chunks:
+                seen_chunks.add(chunk_str)
+                unique_chunks.append(chunk_str)
+        
+        if len(web_selected_chunks) != len(unique_chunks):
+            print(f"[DEBUG _format_citations] ⚠️ web_selected_chunks 중복 제거: {len(web_selected_chunks)}개 → {len(unique_chunks)}개")
+        
+        print(f"[DEBUG _format_citations] web_selected_chunks 처리 중: {len(unique_chunks)}개 (원본: {len(web_selected_chunks)}개)")
+        print(f"[DEBUG _format_citations] web_selected_chunks 타입: {type(unique_chunks)}")
+        print(f"[DEBUG _format_citations] web_selected_chunks 내용:")
+        for i, chunk in enumerate(unique_chunks[:5], 1):  # 최대 5개만 로깅
+            print(f"  [{i}] 타입: {type(chunk)}, 값: {str(chunk)[:100]}...")
+        
         # "웹자료 N:" 형식에서 인덱스 추출 (중복 제거)
         selected_indices = []
         seen_indices = set()  # 중복 방지용
-        for chunk in web_selected_chunks:
+        for chunk in unique_chunks:
             try:
-                if chunk.startswith('웹자료') and ':' in chunk:
-                    idx_str = chunk.split(':')[0].replace('웹자료', '').strip()
+                # 문자열 형식 체크
+                chunk_str = str(chunk) if not isinstance(chunk, str) else chunk
+                
+                if chunk_str.startswith('웹자료') and ':' in chunk_str:
+                    idx_str = chunk_str.split(':')[0].replace('웹자료', '').strip()
                     idx = int(idx_str) - 1  # 0-based index
                     # 중복 인덱스 제거
                     if idx not in seen_indices:
                         selected_indices.append(idx)
                         seen_indices.add(idx)
-                        print(f"[DEBUG] 웹자료 인덱스 추출: '{chunk[:30]}...' → idx: {idx}")
+                        print(f"[DEBUG] 웹자료 인덱스 추출: '{chunk_str[:30]}...' → idx: {idx}")
                     else:
                         print(f"[DEBUG] 중복 인덱스 제거: idx={idx}")
+                else:
+                    print(f"[DEBUG] 웹자료 형식 아님: '{chunk_str[:30]}...' (startswith 체크 실패 또는 ':' 없음)")
             except Exception as e:
-                print(f"[DEBUG] 웹자료 인덱스 추출 실패: {chunk[:30]}, error: {e}")
+                print(f"[DEBUG] 웹자료 인덱스 추출 실패: chunk={chunk[:30] if isinstance(chunk, str) else str(chunk)[:30]}, error: {e}")
+                import traceback
+                traceback.print_exc()
                 pass
 
         print(f"[DEBUG] selected_indices (중복 제거 후): {selected_indices}")

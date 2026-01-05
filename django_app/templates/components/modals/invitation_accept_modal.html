@@ -1,0 +1,28 @@
+{% load static %}
+<div class="modal-overlay" id="invitationAcceptModal" role="dialog" aria-labelledby="invitationAcceptModalTitle" aria-modal="true">
+    <div class="modal-container modal-small">
+        <div class="modal-header">
+            <h2 class="modal-title" id="invitationAcceptModalTitle">초대 수락</h2>
+            <button class="modal-close-btn" aria-label="닫기">
+                <i class="fa-solid fa-times"></i>
+            </button>
+        </div>
+        
+        <div class="modal-body">
+            <p class="modal-description">일정을 추가할 캘린더를 선택하세요.</p>
+            
+            <div class="form-group">
+                <label for="calendarSelect" class="form-label">캘린더</label>
+                <select id="calendarSelect" class="form-select">
+                    <option value="">캘린더를 선택하세요</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="modal-footer">
+            <button class="modal-btn modal-btn-secondary" data-action="close">취소</button>
+            <button class="modal-btn modal-btn-primary" id="acceptInvitationBtn">수락</button>
+        </div>
+    </div>
+</div>
+

@@ -1,0 +1,26 @@
+{% load static %}
+<div class="modal-overlay" id="calendarManageModal" role="dialog" aria-labelledby="calendarManageModalTitle" aria-modal="true">
+    <div class="modal-container modal-medium">
+        <div class="modal-header">
+            <h2 class="modal-title" id="calendarManageModalTitle">내 캘린더 관리</h2>
+            <button class="modal-close-btn" aria-label="닫기">
+                <i class="fa-solid fa-times"></i>
+            </button>
+        </div>
+        
+        <div class="modal-body calendar-manage-modal-body">
+            <div class="calendar-manage-list" id="calendarManageList">
+                <!-- Calendar items will be dynamically loaded here -->
+                <div class="empty-state">
+                    <p>등록된 캘린더가 없습니다</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="modal-footer">
+            <button class="modal-btn modal-btn-primary" data-action="close">완료</button>
+        </div>
+    </div>
+</div>
+
+
