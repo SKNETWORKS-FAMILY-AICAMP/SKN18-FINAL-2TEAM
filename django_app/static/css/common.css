@@ -404,6 +404,10 @@ body {
 }
 
 /* Modal sizes */
+.modal-small {
+    max-width: 24rem;
+}
+
 .modal-medium {
     max-width: 32rem;
 }

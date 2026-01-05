@@ -29,13 +29,27 @@ import json
 # Lambda 환경에서는 .env 파일을 로드하지 않음 (환경 변수에서 직접 읽음)
 # 로컬 환경에서만 .env 파일 로드
 is_lambda = os.environ.get('AWS_LAMBDA_FUNCTION_NAME') is not None
-# EC2 환경 감지: EC2 인스턴스 메타데이터 서비스 접근 가능 여부로 판단
-try:
-    import urllib.request
-    urllib.request.urlopen('http://169.254.169.254/latest/meta-data/', timeout=1)
-    is_ec2 = True
-except (urllib.error.URLError, OSError, Exception):
-    is_ec2 = False
+
+# EC2 환경 감지: 여러 방법으로 감지
+is_ec2 = False
+if not is_lambda:
+    # 방법 1: 환경 변수 확인 (가장 빠름)
+    if os.environ.get('AWS_EXECUTION_ENV') or os.environ.get('ECS_CONTAINER_METADATA_URI'):
+        is_ec2 = True
+    # 방법 2: EC2 인스턴스 메타데이터 서비스 접근 가능 여부로 판단
+    elif os.path.exists('/sys/class/dmi/id/product_uuid'):
+        try:
+            import urllib.request
+            import socket
+            # 타임아웃을 짧게 설정하여 빠르게 실패
+            socket.setdefaulttimeout(0.5)
+            urllib.request.urlopen('http://169.254.169.254/latest/meta-data/', timeout=0.5)
+            is_ec2 = True
+        except (urllib.error.URLError, OSError, socket.timeout, Exception):
+            is_ec2 = False
+        finally:
+            socket.setdefaulttimeout(None)  # 타임아웃 복원
+
 is_aws = is_lambda or is_ec2
 
 if not is_aws:
@@ -93,11 +107,13 @@ def _get_parameter_from_store(
         )
         return response["Parameter"]["Value"]
     except (ClientError, Exception) as e:
-        # 로컬 환경에서는 실패해도 무시 (환경 변수 fallback 사용)
+        # Parameter Store 접근 실패 (권한 없음, 파라미터 없음 등)
+        # 로컬 환경에서는 조용히 실패 (환경 변수 fallback 사용)
         if not is_aws:
             return None
-        # AWS 환경에서는 로그만 출력하고 None 반환
-        print(f"[WARNING] Failed to get parameter {parameter_path}: {e}")
+        # AWS 환경에서는 상세 로그 출력
+        error_type = type(e).__name__
+        print(f"[WARNING] Failed to get parameter {parameter_path}: {error_type}: {e}")
         return None
 
 
@@ -111,7 +127,7 @@ def _get_env_or_parameter(
     
     우선순위:
         1. 환경 변수
-        2. Parameter Store (AWS 환경에서만 시도)
+        2. Parameter Store (boto3가 있으면 시도, AWS 환경이 아니어도 시도)
         3. None
     
     Args:
@@ -127,8 +143,9 @@ def _get_env_or_parameter(
     if value:
         return value
     
-    # 2. AWS 환경에서 Parameter Store 시도
-    if is_aws and HAS_BOTO3:
+    # 2. Parameter Store 시도 (boto3가 있으면 항상 시도)
+    # AWS 환경 감지가 실패해도 boto3가 있으면 Parameter Store 접근 가능
+    if HAS_BOTO3:
         value = _get_parameter_from_store(parameter_path, with_decryption=with_decryption)
         if value:
             return value
@@ -137,10 +154,51 @@ def _get_env_or_parameter(
 
 
 # -----------------------------------------
-# 2) 환경변수 로드
+# 2) 환경변수 로드 (지연 로딩 지원)
 # -----------------------------------------
 # 환경변수 또는 Parameter Store에서 값 로드
+# 모듈 로드 시점에 한 번 가져오고, 필요시 재로드 가능
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
+# SLLM 관련 변수는 지연 로딩 함수로 처리 (함수 호출 시점에 가져옴)
+_SLLM_BASE_URL = None
+_RUNPOD_API_KEY = None
+_MODEL_NAME = None
+
+def _get_sllm_config():
+    """SLLM 설정값을 지연 로딩 (모듈 로드 시점이 아닌 실제 호출 시점에 가져옴)"""
+    global _SLLM_BASE_URL, _RUNPOD_API_KEY, _MODEL_NAME
+    
+    # 이미 값이 있으면 재사용 (캐싱)
+    if _SLLM_BASE_URL and _RUNPOD_API_KEY and _MODEL_NAME:
+        return _SLLM_BASE_URL, _RUNPOD_API_KEY, _MODEL_NAME
+    
+    # 환경 변수 또는 Parameter Store에서 값 가져오기
+    print(f"[SLLM Config] 환경 감지 - is_lambda: {is_lambda}, is_ec2: {is_ec2}, is_aws: {is_aws}, HAS_BOTO3: {HAS_BOTO3}")
+    
+    _SLLM_BASE_URL = _get_env_or_parameter(
+        "SLLM_BASE_URL",
+        "/skn18/sllm-base-url",
+        with_decryption=False
+    )
+    _RUNPOD_API_KEY = _get_env_or_parameter(
+        "RUNPOD_API_KEY",
+        "/skn18/sllm-runpod-api-key",
+        with_decryption=True  # API 키는 SecureString 가능
+    )
+    _MODEL_NAME = _get_env_or_parameter(
+        "MODEL_NAME",
+        "/skn18/sllm-model-name",
+        with_decryption=False
+    )
+    
+    print(f"[SLLM Config] 로드 결과 - BASE_URL: {'✓' if _SLLM_BASE_URL else '✗'}, "
+          f"API_KEY: {'✓' if _RUNPOD_API_KEY else '✗'}, "
+          f"MODEL: {'✓' if _MODEL_NAME else '✗'}")
+    
+    return _SLLM_BASE_URL, _RUNPOD_API_KEY, _MODEL_NAME
+
+# 하위 호환성을 위해 모듈 레벨 변수도 설정 (초기 로드 시도)
 SLLM_BASE_URL = _get_env_or_parameter(
     "SLLM_BASE_URL",
     "/skn18/sllm-base-url",
@@ -149,7 +207,7 @@ SLLM_BASE_URL = _get_env_or_parameter(
 RUNPOD_API_KEY = _get_env_or_parameter(
     "RUNPOD_API_KEY",
     "/skn18/sllm-runpod-api-key",
-    with_decryption=True  # API 키는 SecureString 가능
+    with_decryption=True
 )
 MODEL_NAME = _get_env_or_parameter(
     "MODEL_NAME",
@@ -241,18 +299,21 @@ def sllm(prompt: str, temperature: float = 0.7, max_tokens: int = 1024):
     from openai import OpenAI
     import time
 
+    # 함수 호출 시점에 설정값 가져오기 (지연 로딩)
+    sllm_base_url, runpod_api_key, model_name = _get_sllm_config()
+    
     # 사용 시점에 환경변수 또는 Parameter Store 값 검증
-    if not SLLM_BASE_URL:
+    if not sllm_base_url:
         if is_aws:
             raise ValueError("❌ SLLM_BASE_URL not found in environment variables or Parameter Store (/skn18/sllm-base-url)")
         else:
             raise ValueError("❌ SLLM_BASE_URL not found in .env or environment variables")
-    if not RUNPOD_API_KEY:
+    if not runpod_api_key:
         if is_aws:
             raise ValueError("❌ RUNPOD_API_KEY not found in environment variables or Parameter Store (/skn18/sllm-runpod-api-key)")
         else:
             raise ValueError("❌ RUNPOD_API_KEY not found in .env or environment variables")
-    if not MODEL_NAME:
+    if not model_name:
         if is_aws:
             raise ValueError("❌ MODEL_NAME not found in environment variables or Parameter Store (/skn18/sllm-model-name)")
         else:
@@ -260,8 +321,8 @@ def sllm(prompt: str, temperature: float = 0.7, max_tokens: int = 1024):
 
     print(f"\n{'='*60}")
     print(f"[SLLM] 호출 시작")
-    print(f"  Model: {MODEL_NAME}")
-    print(f"  Base URL: {SLLM_BASE_URL}")
+    print(f"  Model: {model_name}")
+    print(f"  Base URL: {sllm_base_url}")
     print(f"  Temperature: {temperature}")
     print(f"  Max Tokens: {max_tokens}")
     print(f"  Prompt Length: {len(prompt)} chars")
@@ -269,8 +330,8 @@ def sllm(prompt: str, temperature: float = 0.7, max_tokens: int = 1024):
     print(f"{'='*60}\n")
 
     sllm_client = OpenAI(
-        base_url=SLLM_BASE_URL,
-        api_key=RUNPOD_API_KEY,
+        base_url=sllm_base_url,
+        api_key=runpod_api_key,
         timeout=60.0  # 60초 타임아웃
     )
 
@@ -278,7 +339,7 @@ def sllm(prompt: str, temperature: float = 0.7, max_tokens: int = 1024):
         start_time = time.time()
 
         resp = sllm_client.chat.completions.create(
-            model=MODEL_NAME,
+            model=model_name,
             messages=[{"role": "user", "content": prompt}],
             temperature=temperature,
             max_tokens=max_tokens

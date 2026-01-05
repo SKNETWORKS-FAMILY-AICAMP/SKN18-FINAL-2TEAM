@@ -16,8 +16,11 @@ from .models import (
     SyncedCalendar,
     GoogleCredentials,
     GoogleSyncedEvent,
+    ScheduleInvitation,
+    ScheduleShare,
 )
 from .recurrence import create_recurrence, expand_recurrences
+from apps.account.models import LinkedAccount, CustomUser
 
 
 TYPE_COLOR_MAP = {
@@ -36,10 +39,23 @@ def _schedule_queryset_for_user(user):
         return Schedule.objects.none()
 
     owner_id = _resolve_owner_id(user)
-    # 본인이 생성한 일정 또는 본인에게 공유된 일정
-    from .models import ScheduleShare
-    shared_schedule_ids = ScheduleShare.objects.filter(user_id=owner_id).values_list('schedule_id', flat=True)
-    filters = Q(created_id=owner_id) | Q(schedule_sid__in=shared_schedule_ids)
+    # 본인이 생성한 일정 또는 본인에게 공유된 일정 (수락된 invitation의 shared_schedule 포함)
+    # ACCEPTED invitation의 원본 일정만 포함 (PENDING은 제외 - 아직 수락하지 않은 일정은 표시하지 않음)
+    accepted_invitation_schedule_ids = ScheduleInvitation.objects.filter(
+        user_id=owner_id,
+        status=ScheduleInvitation.Status.ACCEPTED
+    ).values_list('schedule_id', flat=True)
+    # Accepted invitation으로 생성된 복사본 일정
+    accepted_shared_schedule_ids = ScheduleInvitation.objects.filter(
+        user_id=owner_id,
+        status=ScheduleInvitation.Status.ACCEPTED,
+        shared_schedule__isnull=False
+    ).values_list('shared_schedule_id', flat=True)
+    # 수락된 공유 일정 (ScheduleShare)
+    shared_schedule_ids = ScheduleShare.objects.filter(
+        user_id=owner_id
+    ).values_list('schedule_id', flat=True)
+    filters = Q(created_id=owner_id) | Q(schedule_sid__in=accepted_invitation_schedule_ids) | Q(schedule_sid__in=accepted_shared_schedule_ids) | Q(schedule_sid__in=shared_schedule_ids)
     queryset = (
         Schedule.objects.filter(use_yn="Y")
         .filter(filters)
@@ -121,11 +137,14 @@ def _resolve_owner_id(user):
     return getattr(user, "email", "system")
 
 
-def _user_calendar_queryset(user):
+def _user_calendar_queryset(user, *, include_google=True):
     owner_id = _resolve_owner_id(user)
     if not owner_id:
         return UserCalendar.objects.none()
-    return UserCalendar.objects.filter(created_id=owner_id)
+    qs = UserCalendar.objects.filter(created_id=owner_id)
+    if not include_google:
+        qs = qs.exclude(source_type=UserCalendar.Source.GOOGLE)
+    return qs
 
 
 def _serialize_user_calendar(calendar: UserCalendar) -> dict:
@@ -195,16 +214,22 @@ def index(request):
     # Load schedules for initial page render
     schedules = _schedule_queryset_for_user(request.user)[:10]
 
-    owner_calendars = _user_calendar_queryset(request.user).order_by('sort_order', 'created_at')
-
     # ✅ Google Calendar connection (토큰 존재 여부로 판단)
     is_google_connected = GoogleCredentials.objects.filter(user=request.user).exists()
+    owner_calendars = _user_calendar_queryset(
+        request.user, include_google=is_google_connected
+    ).order_by('sort_order', 'created_at')
+    has_linked_google_account = LinkedAccount.objects.filter(
+        user=request.user, provider=LinkedAccount.Provider.GOOGLE
+    ).exists()
 
     context = {
         'is_google_connected': is_google_connected,
+        'show_google_account_hint': has_linked_google_account and not is_google_connected,
         'user_calendars': [_serialize_user_calendar(cal) for cal in owner_calendars],
         'schedules': [_serialize_schedule_for_template(s, request.user) for s in schedules],
         'current_date': datetime.now(),
+        'schedule_count': schedules.count(),
     }
     return render(request, 'schedule/schedule.html', context)
 
@@ -215,7 +240,10 @@ def user_calendars_api(request: HttpRequest) -> JsonResponse:
     owner_id = _resolve_owner_id(request.user)
 
     if request.method == "GET":
-        calendars = _user_calendar_queryset(request.user).order_by('sort_order', 'created_at')
+        google_connected = GoogleCredentials.objects.filter(user=request.user).exists()
+        calendars = _user_calendar_queryset(
+            request.user, include_google=google_connected
+        ).order_by('sort_order', 'created_at')
         results = [_serialize_user_calendar(cal) for cal in calendars]
         return JsonResponse({"results": results})
 
@@ -267,8 +295,27 @@ def user_calendar_detail(request: HttpRequest, calendar_id: int) -> JsonResponse
     if request.method == "DELETE":
         if calendar.source_type == UserCalendar.Source.GOOGLE:
             return JsonResponse({"error": "google_calendar_readonly"}, status=400)
-        calendar.delete()
-        return JsonResponse({"ok": True})
+        
+        # 캘린더 삭제 전에 해당 캘린더에 속한 일정들도 모두 삭제
+        from django.db import transaction
+        
+        with transaction.atomic():
+            # 해당 캘린더에 속한 모든 일정 삭제
+            schedules_count = Schedule.objects.filter(
+                calendar=calendar
+            ).count()
+            
+            Schedule.objects.filter(
+                calendar=calendar
+            ).delete()
+            
+            # 캘린더 삭제
+            calendar.delete()
+        
+        return JsonResponse({
+            "ok": True,
+            "deleted_schedules": schedules_count
+        })
 
     try:
         data = json.loads(request.body.decode("utf-8"))
@@ -296,6 +343,13 @@ def user_calendar_detail(request: HttpRequest, calendar_id: int) -> JsonResponse
         if calendar.is_visible != new_value:
             calendar.is_visible = new_value
             update_fields.append("is_visible")
+
+    if "sort_order" in data:
+        sort_order = data.get("sort_order")
+        if isinstance(sort_order, int) and sort_order >= 0:
+            if calendar.sort_order != sort_order:
+                calendar.sort_order = sort_order
+                update_fields.append("sort_order")
 
     if not update_fields:
         return JsonResponse(_serialize_user_calendar(calendar))
@@ -480,7 +534,7 @@ def schedule_list(request):
 
 
 @login_required
-@require_http_methods(["GET", "PATCH"])
+@require_http_methods(["GET", "PATCH", "DELETE"])
 def schedule_detail(request, schedule_id):
     """일정 상세 조회/수정 API 엔드포인트"""
     print(f"[DEBUG] schedule_detail() called - schedule_id: {schedule_id}, method: {request.method}")
@@ -523,17 +577,29 @@ def schedule_detail(request, schedule_id):
 
         payload['color'] = color
         payload['shared_with'] = shared_users
+        payload['is_shared_copy'] = schedule.is_shared_copy
+        payload['original_schedule_id'] = schedule.original_schedule.schedule_sid if schedule.original_schedule else None
         return JsonResponse(payload)
 
     elif request.method == 'PATCH':
-        # 공유된 일정은 수정 불가 (본인이 생성한 일정만 수정 가능)
+        # 권한 체크: 공유된 일정(is_shared_copy=True)은 수정 불가
         owner_id = _resolve_owner_id(request.user)
+        if schedule.is_shared_copy:
+            return JsonResponse({'error': '공유받은 일정은 수정할 수 없습니다.'}, status=403)
+        
+        # 원본 일정 소유자만 수정 가능
         if schedule.created_id != owner_id:
-            return JsonResponse({'error': '공유된 일정은 수정할 수 없습니다.'}, status=403)
+            return JsonResponse({'error': '본인이 생성한 일정만 수정할 수 있습니다.'}, status=403)
 
         import json
+        from django.db import transaction
+        
         data = json.loads(request.body)
-
+        
+        # 수정할 필드 추적
+        update_fields = []
+        sync_fields = []  # 동기화할 필드
+        
         # Update status if provided
         if 'status' in data:
             status_map = {
@@ -541,39 +607,84 @@ def schedule_detail(request, schedule_id):
                 'in_progress': 'R',
                 'completed': 'C',
             }
-            schedule.schedule_status = status_map.get(data['status'], 'E')
+            new_status = status_map.get(data['status'], 'E')
+            if schedule.schedule_status != new_status:
+                schedule.schedule_status = new_status
+                update_fields.append('schedule_status')
+                sync_fields.append('schedule_status')
 
         # Update other fields if provided
         if 'title' in data:
-            schedule.title = data['title']
+            new_title = data['title']
+            if schedule.title != new_title:
+                schedule.title = new_title
+                update_fields.append('title')
+                sync_fields.append('title')
+                
         if 'description' in data:
-            schedule.description = data.get('description', '')
+            new_description = data.get('description', '')
+            if schedule.description != new_description:
+                schedule.description = new_description
+                update_fields.append('description')
+                sync_fields.append('description')
+                
         if 'type' in data:
-            schedule.schedule_type = data['type']
+            new_type = data['type']
+            if schedule.schedule_type != new_type:
+                schedule.schedule_type = new_type
+                update_fields.append('schedule_type')
+                sync_fields.append('schedule_type')
+                
         if 'location' in data:
-            schedule.location = data.get('location', '')
+            new_location = data.get('location', '')
+            if schedule.location != new_location:
+                schedule.location = new_location
+                update_fields.append('location')
+                sync_fields.append('location')
+                
         if 'color' in data:
-            schedule.color = data.get('color', '')
+            new_color = data.get('color', '')
+            if schedule.color != new_color:
+                schedule.color = new_color
+                update_fields.append('color')
+                sync_fields.append('color')
 
         if 'start_datetime' in data:
             from django.utils.dateparse import parse_datetime
             start_date = parse_datetime(data['start_datetime'])
-            if start_date:
+            if start_date and schedule.start_date != start_date:
                 schedule.start_date = start_date
+                update_fields.append('start_date')
+                sync_fields.append('start_date')
 
         if 'end_datetime' in data:
             from django.utils.dateparse import parse_datetime
             end_date = parse_datetime(data['end_datetime'])
-            if end_date:
+            if end_date and schedule.end_date != end_date:
                 schedule.end_date = end_date
+                update_fields.append('end_date')
+                sync_fields.append('end_date')
 
-        schedule.updated_id = owner_id
-        schedule.save()
+        with transaction.atomic():
+            # 원본 일정 저장
+            if update_fields:
+                schedule.updated_id = owner_id
+                update_fields.append('updated_id')
+                schedule.save(update_fields=update_fields)
+            
+            # 원본 일정인 경우 공유된 모든 복사본 동기화
+            if sync_fields and schedule.original_schedule is None:
+                for copy in schedule.shared_copies.all():
+                    for field in sync_fields:
+                        if hasattr(schedule, field):
+                            setattr(copy, field, getattr(schedule, field))
+                    copy.updated_id = owner_id
+                    copy.save(update_fields=sync_fields + ['updated_id'])
 
         return JsonResponse({
             'id': schedule.schedule_sid,
             'title': schedule.title,
-            'status': schedule.status,
+            'status': schedule.schedule_status,
             'message': '일정이 수정되었습니다.'
         })
 
@@ -587,11 +698,11 @@ def schedule_shared_users(request, schedule_id):
     except Schedule.DoesNotExist:
         return JsonResponse({'error': '일정을 찾을 수 없습니다.'}, status=404)
 
-    from .models import ScheduleShare
-    
     if request.method == 'GET':
         try:
             schedule_shares = ScheduleShare.objects.filter(schedule=schedule)
+            owner_id = _resolve_owner_id(request.user)
+            is_owner = schedule.created_id == owner_id
 
             shared_users = [
                 {
@@ -603,7 +714,12 @@ def schedule_shared_users(request, schedule_id):
                 for share in schedule_shares
             ]
 
-            return JsonResponse({'results': shared_users})
+            return JsonResponse({
+                'results': shared_users,
+                'is_owner': is_owner,
+                'current_user_id': owner_id,
+                'schedule_owner_id': schedule.created_id
+            })
         except Exception as e:
             print(f"[ERROR] Error loading shared users: {e}")
             return JsonResponse({'results': []})
@@ -627,11 +743,50 @@ def schedule_shared_users(request, schedule_id):
         created_shares = []
         
         for member in shared_members:
-            user_id = member.get('user_id') or member.get('email') or member.get('id')
-            if not user_id:
+            # user_id, id, email 순서로 확인
+            user_identifier = member.get('user_id') or member.get('id') or member.get('email')
+            if not user_identifier:
                 continue
             
-            # 이미 공유된 사용자인지 확인
+            # 이메일이면 실제 user_id로 변환
+            user_id = None
+            if '@' in str(user_identifier):
+                # 이메일인 경우 실제 user_id 찾기
+                try:
+                    user = CustomUser.objects.get(email=user_identifier)
+                    user_id = user.user_id
+                except CustomUser.DoesNotExist:
+                    print(f"[WARNING] User with email {user_identifier} not found, skipping")
+                    continue
+            else:
+                # user_id 또는 id인 경우, 실제 user_id인지 확인
+                try:
+                    # 먼저 user_id로 직접 조회
+                    user = CustomUser.objects.get(user_id=user_identifier)
+                    user_id = user.user_id
+                except CustomUser.DoesNotExist:
+                    # user_id가 아니면 id로 조회 시도 (만약 id가 다른 필드라면)
+                    try:
+                        user = CustomUser.objects.get(pk=user_identifier)
+                        user_id = user.user_id
+                    except (CustomUser.DoesNotExist, ValueError):
+                        # 둘 다 실패하면 그냥 user_identifier를 user_id로 사용 (UUID 형식일 수 있음)
+                        user_id = str(user_identifier)
+            
+            if not user_id:
+                print(f"[WARNING] Could not resolve user_id for {user_identifier}, skipping")
+                continue
+            
+            # 이미 초대된 사용자인지 확인 (pending invitation)
+            existing_invitation = ScheduleInvitation.objects.filter(
+                schedule=schedule, 
+                user_id=user_id,
+                status=ScheduleInvitation.Status.PENDING
+            ).first()
+            if existing_invitation:
+                continue
+            
+            # 이미 수락된 공유인지 확인
             existing_share = ScheduleShare.objects.filter(schedule=schedule, user_id=user_id).first()
             if existing_share:
                 continue
@@ -640,15 +795,17 @@ def schedule_shared_users(request, schedule_id):
             if user_id == owner_id:
                 continue
             
-            share = ScheduleShare.objects.create(
+            # ScheduleInvitation 생성 (pending 상태)
+            invitation = ScheduleInvitation.objects.create(
                 schedule=schedule,
                 user_id=user_id,
                 created_id=owner_id,
+                status=ScheduleInvitation.Status.PENDING,
             )
             created_shares.append({
-                'user_id': share.user_id,
-                'email': share.user_id,
-                'name': share.user_id,
+                'user_id': invitation.user_id,
+                'email': invitation.user_id,
+                'name': invitation.user_id,
             })
         
         return JsonResponse({
@@ -656,3 +813,199 @@ def schedule_shared_users(request, schedule_id):
             'message': f'{len(created_shares)}명과 공유되었습니다.',
             'shared_users': created_shares
         }, status=201)
+    
+    elif request.method == 'DELETE':
+        # 공유 제거 또는 일정 나가기
+        owner_id = _resolve_owner_id(request.user)
+        is_owner = schedule.created_id == owner_id
+        
+        # user_id 파라미터가 있으면 특정 사용자 공유 제거 (소유자만 가능)
+        user_id_to_remove = request.GET.get('user_id')
+        if user_id_to_remove:
+            if not is_owner:
+                return JsonResponse({'error': '본인이 생성한 일정만 공유를 제거할 수 있습니다.'}, status=403)
+            
+            try:
+                share = ScheduleShare.objects.get(schedule=schedule, user_id=user_id_to_remove)
+                share.delete()
+                return JsonResponse({
+                    'status': 'success',
+                    'message': '공유가 제거되었습니다.'
+                })
+            except ScheduleShare.DoesNotExist:
+                return JsonResponse({'error': '공유 정보를 찾을 수 없습니다.'}, status=404)
+        
+        # user_id가 없으면 일정 나가기 (공유된 사용자만 가능)
+        if is_owner:
+            return JsonResponse({'error': '일정 소유자는 일정에서 나갈 수 없습니다.'}, status=403)
+        
+        try:
+            share = ScheduleShare.objects.get(schedule=schedule, user_id=owner_id)
+            share.delete()
+            return JsonResponse({
+                'status': 'success',
+                'message': '일정에서 나갔습니다.'
+            })
+        except ScheduleShare.DoesNotExist:
+            return JsonResponse({'error': '공유 정보를 찾을 수 없습니다.'}, status=404)
+
+
+@login_required
+@require_http_methods(["GET"])
+def invitation_list(request: HttpRequest) -> JsonResponse:
+    """받은 invitation 목록 조회"""
+    owner_id = _resolve_owner_id(request.user)
+    
+    try:
+        invitations = ScheduleInvitation.objects.filter(
+            user_id=owner_id,
+            status=ScheduleInvitation.Status.PENDING
+        ).select_related('schedule', 'schedule__calendar').order_by('-created_at')
+        
+        invitation_list = []
+        for invitation in invitations:
+            schedule = invitation.schedule
+            # 공유한 사용자 정보 (created_id로 찾기)
+            sharer_id = invitation.created_id
+            sharer_name = None
+            sharer_email = None
+            
+            # CustomUser에서 사용자 정보 조회
+            try:
+                sharer_user = CustomUser.objects.get(user_id=sharer_id)
+                sharer_name = sharer_user.full_name or sharer_user.email.split('@')[0] if sharer_user.email else None
+                sharer_email = sharer_user.email
+            except CustomUser.DoesNotExist:
+                # 사용자를 찾을 수 없으면 sharer_id를 그대로 사용
+                sharer_name = sharer_id
+                sharer_email = None
+            
+            invitation_list.append({
+                'id': invitation.invitation_sid,
+                'schedule_id': schedule.schedule_sid,
+                'schedule_title': schedule.title,
+                'schedule_description': schedule.description or '',
+                'schedule_start_date': schedule.start_date.isoformat() if schedule.start_date else None,
+                'schedule_end_date': schedule.end_date.isoformat() if schedule.end_date else None,
+                'schedule_type': schedule.schedule_type,
+                'schedule_location': schedule.location or '',
+                'sharer_id': sharer_id,
+                'sharer_name': sharer_name,
+                'sharer_email': sharer_email,
+                'created_at': invitation.created_at.isoformat() if invitation.created_at else None,
+            })
+        
+        return JsonResponse({
+            'results': invitation_list,
+            'count': len(invitation_list)
+        })
+    except Exception as e:
+        print(f"[ERROR] Error loading invitations: {e}")
+        return JsonResponse({'results': [], 'count': 0})
+
+
+@login_required
+@require_http_methods(["POST"])
+def accept_invitation(request: HttpRequest, invitation_id: int) -> JsonResponse:
+    """Invitation 수락 - 선택한 캘린더에 일정 복사"""
+    from django.db import transaction
+    
+    owner_id = _resolve_owner_id(request.user)
+    
+    try:
+        invitation = ScheduleInvitation.objects.get(
+            invitation_sid=invitation_id,
+            user_id=owner_id,
+            status=ScheduleInvitation.Status.PENDING
+        )
+    except ScheduleInvitation.DoesNotExist:
+        return JsonResponse({'error': '초대를 찾을 수 없습니다.'}, status=404)
+    
+    try:
+        data = json.loads(request.body.decode("utf-8"))
+    except Exception:
+        return JsonResponse({"error": "invalid_json"}, status=400)
+    
+    calendar_id = data.get("calendar_id")
+    if not calendar_id:
+        return JsonResponse({"error": "calendar_id_required"}, status=400)
+    
+    # 공유자의 캘린더 확인
+    try:
+        calendar = UserCalendar.objects.get(
+            calendar_sid=calendar_id,
+            created_id=owner_id
+        )
+    except UserCalendar.DoesNotExist:
+        return JsonResponse({'error': '캘린더를 찾을 수 없습니다.'}, status=404)
+    
+    original_schedule = invitation.schedule
+    
+    with transaction.atomic():
+        # 일정 복사
+        copied_schedule = Schedule.objects.create(
+            title=original_schedule.title,
+            description=original_schedule.description,
+            schedule_type=original_schedule.schedule_type,
+            schedule_status=original_schedule.schedule_status,
+            start_date=original_schedule.start_date,
+            end_date=original_schedule.end_date,
+            is_all_day=original_schedule.is_all_day,
+            location=original_schedule.location,
+            color=original_schedule.color,
+            calendar=calendar,
+            repeat_type=original_schedule.repeat_type,
+            linked_note_sid=original_schedule.linked_note_sid,
+            original_schedule=original_schedule,
+            is_shared_copy=True,
+            created_id=owner_id,
+            updated_id=owner_id,
+            use_yn='Y',
+        )
+        
+        # ScheduleInvitation 업데이트
+        invitation.status = ScheduleInvitation.Status.ACCEPTED
+        invitation.shared_schedule = copied_schedule
+        invitation.accepted_calendar = calendar
+        invitation.accepted_at = timezone.now()
+        invitation.save()
+        
+        # ScheduleShare 생성 (수락된 공유 기록)
+        ScheduleShare.objects.create(
+            schedule=original_schedule,
+            user_id=owner_id,
+            shared_schedule=copied_schedule,
+            created_id=invitation.created_id,
+        )
+    
+    return JsonResponse({
+        'status': 'success',
+        'message': '초대를 수락했습니다.',
+        'schedule_id': copied_schedule.schedule_sid,
+        'calendar_id': calendar.calendar_sid
+    })
+
+
+@login_required
+@require_http_methods(["POST"])
+def reject_invitation(request: HttpRequest, invitation_id: int) -> JsonResponse:
+    """Invitation 거절"""
+    owner_id = _resolve_owner_id(request.user)
+    
+    try:
+        invitation = ScheduleInvitation.objects.get(
+            invitation_sid=invitation_id,
+            user_id=owner_id,
+            status=ScheduleInvitation.Status.PENDING
+        )
+    except ScheduleInvitation.DoesNotExist:
+        return JsonResponse({'error': '초대를 찾을 수 없습니다.'}, status=404)
+    
+    invitation.status = ScheduleInvitation.Status.REJECTED
+    invitation.rejected_at = timezone.now()
+    invitation.save()
+    
+    return JsonResponse({
+        'status': 'success',
+        'message': '초대를 거절했습니다.'
+    })

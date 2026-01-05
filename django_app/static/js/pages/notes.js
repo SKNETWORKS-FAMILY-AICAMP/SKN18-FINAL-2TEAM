@@ -81,12 +81,68 @@ function initNotes() {
     // Initialize AirDatepicker
     initDateFilter();
 
-    // Render initial state
-    renderNotesList();
-    renderPagination();
+    // Load user settings and apply view mode
+    loadUserSettings().then(() => {
+        // Render initial state
+        renderNotesList();
+        renderPagination();
 
-    // Load notes from API
-    loadNotesFromApi();
+        // Load notes from API
+        loadNotesFromApi();
+    });
+}
+
+// Load user settings and apply view mode
+async function loadUserSettings() {
+    const savedViewMode = await loadNotesViewMode();
+    viewMode = savedViewMode;
+    
+    // Apply view mode to UI
+    if (btnCardView && btnTableView) {
+        if (viewMode === 'card') {
+            btnCardView.classList.add('active');
+            btnTableView.classList.remove('active');
+        } else {
+            btnCardView.classList.remove('active');
+            btnTableView.classList.add('active');
+        }
+    }
+    
+    // Apply view mode display
+    if (notesGrid && notesTableContainer) {
+        if (viewMode === 'card') {
+            notesGrid.style.display = 'grid';
+            notesTableContainer.style.display = 'none';
+        } else {
+            notesGrid.style.display = 'none';
+            notesTableContainer.style.display = 'block';
+        }
+    }
+}
+
+// Load notes view mode from user settings
+async function loadNotesViewMode() {
+    try {
+        const response = await fetch('/api/settings/', {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+            },
+            credentials: 'same-origin'
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            if (data.settings && data.settings.notes_view_mode) {
+                return data.settings.notes_view_mode;
+            }
+        }
+    } catch (error) {
+        console.error('[Notes] Error loading view mode setting:', error);
+    }
+    
+    // 기본값: card
+    return 'card';
 }
 
 // Load notes via API
@@ -100,11 +156,23 @@ async function loadNotesFromApi() {
         if (myNotesOnly) {
             params.append('my_notes_only', 'true');
         }
-        if (searchQuery) {
-            params.append('search', searchQuery);
+        if (searchQuery && searchQuery.trim()) {
+            params.append('search', searchQuery.trim());
+        }
+        // 날짜 필터 파라미터 추가
+        if (selectedDateRange?.from) {
+            const fromDate = selectedDateRange.from;
+            const fromStr = `${fromDate.getFullYear()}-${String(fromDate.getMonth() + 1).padStart(2, '0')}-${String(fromDate.getDate()).padStart(2, '0')}`;
+            params.append('date_from', fromStr);
+        }
+        if (selectedDateRange?.to) {
+            const toDate = selectedDateRange.to;
+            const toStr = `${toDate.getFullYear()}-${String(toDate.getMonth() + 1).padStart(2, '0')}-${String(toDate.getDate()).padStart(2, '0')}`;
+            params.append('date_to', toStr);
         }
         
         const url = '/api/notes/' + (params.toString() ? '?' + params.toString() : '');
+        console.log('[Notes] Loading notes from API:', url);
         
         const response = await fetch(url, {
             method: 'GET',
@@ -119,6 +187,7 @@ async function loadNotesFromApi() {
         
         const data = await response.json();
         const apiNotes = Array.isArray(data?.results) ? data.results : (Array.isArray(data) ? data : []);
+        console.log('[Notes] Loaded notes count:', apiNotes.length);
         notes = apiNotes.map(normalizeApiNote);
     } catch (error) {
         console.error('Error loading notes:', error);
@@ -209,6 +278,11 @@ function initDateFilter() {
                 updateDateFilterText();
                 if (dateFilterActions) dateFilterActions.style.display = 'none';
             }
+            
+            // 날짜 선택/초기화 시 페이지 초기화 및 리렌더링
+            currentPage = 1;
+            renderNotesList();
+            renderPagination();
         }
     });
 
@@ -262,6 +336,10 @@ function handleResetDateFilter() {
     selectedDateRange = undefined;
     updateDateFilterText();
     if (dateFilterActions) dateFilterActions.style.display = 'none';
+    
+    // 페이지 초기화 및 API 호출 (날짜 필터 초기화 후 전체 데이터 조회)
+    currentPage = 1;
+    loadNotesFromApi();
 }
 
 // Handle reset all filters (날짜 + 검색어 모두 초기화)
@@ -293,7 +371,14 @@ function handleResetAllFilters() {
 
 // Handle search submit (검색 버튼 클릭 시)
 function handleSearchSubmit() {
-    searchQuery = searchInput?.value || "";
+    if (!searchInput) {
+        console.error('[Notes] searchInput element not found');
+        return;
+    }
+    
+    searchQuery = searchInput.value.trim();
+    console.log('[Notes] Search submitted:', searchQuery);
+    
     currentPage = 1;
     loadNotesFromApi();
     
@@ -503,26 +588,10 @@ function openNoteDetail(noteId) {
     window.location.href = `/notes/detail/?id=${noteId}`;
 }
 
-// Filter notes (클라이언트 사이드 필터링 - 날짜 필터만 적용, 검색과 내 노트만 필터는 서버에서 처리)
+// Filter notes (서버에서 필터링 처리되므로 클라이언트 사이드 필터링 불필요)
 function filterNotes() {
-    let filtered = [...notes];
-    
-    // 검색과 내 노트만 필터는 서버에서 처리되므로 여기서는 날짜 필터만 적용
-    if (selectedDateRange?.from) {
-        const fromDate = new Date(selectedDateRange.from);
-        fromDate.setHours(0, 0, 0, 0);
-        
-        const toDate = selectedDateRange.to ? new Date(selectedDateRange.to) : new Date(selectedDateRange.from);
-        toDate.setHours(23, 59, 59, 999);
-        
-        filtered = filtered.filter(note => {
-            const noteDate = new Date(note.date);
-            noteDate.setHours(0, 0, 0, 0);
-            return noteDate >= fromDate && noteDate <= toDate;
-        });
-    }
-    
-    return filtered;
+    // 모든 필터링은 서버에서 처리되므로 notes를 그대로 반환
+    return [...notes];
 }
 
 // Get current notes for pagination
@@ -592,7 +661,7 @@ function handleNotesPerPageChange(e) {
 }
 
 // Handle view mode change
-function handleViewModeChange(mode) {
+async function handleViewModeChange(mode) {
     viewMode = mode;
     
     if (btnCardView && btnTableView) {
@@ -605,7 +674,49 @@ function handleViewModeChange(mode) {
         }
     }
     
+    // 설정 저장
+    await saveNotesViewMode(mode);
+    
     renderNotesList();
+}
+
+// Save notes view mode to user settings
+async function saveNotesViewMode(mode) {
+    try {
+        const response = await fetch('/api/settings/', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({
+                notes_view_mode: mode
+            })
+        });
+        
+        if (!response.ok) {
+            console.error('[Notes] Failed to save view mode setting');
+        }
+    } catch (error) {
+        console.error('[Notes] Error saving view mode setting:', error);
+    }
+}
+
+// Get CSRF token from cookie
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
 }
 
 // Escape HTML

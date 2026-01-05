@@ -36,6 +36,7 @@
     "micromodal": "^0.6.1",
     "notyf": "^3.10.0",
     "sigma": "^3.0.2",
+    "sortablejs": "^1.15.6",
     "sweetalert2": "^11.26.10",
     "tippy.js": "^6.3.7"
   }
