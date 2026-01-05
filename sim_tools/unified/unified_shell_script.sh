@@ -5,7 +5,10 @@ set -euo pipefail
 # Config (환경변수로 오버라이드 가능)
 ########################################
 PY_BIN="${PY_BIN:-python3}"
+
+# ✅ Split venvs
 TORCH_VENV="${TORCH_VENV:-/opt/venv_torch}"
+JAX_VENV="${JAX_VENV:-/opt/venv_jax}"
 
 APP_DIR="${APP_DIR:-/workspace/unified}"
 SCRIPT_DIR="${SCRIPT_DIR:-$APP_DIR}"
@@ -37,7 +40,7 @@ AF_PARAMS_TAR_URL="${AF_PARAMS_TAR_URL:-https://storage.googleapis.com/alphafold
 AF_PARAMS_TAR_NAME="${AF_PARAMS_TAR_NAME:-alphafold_params_2022-12-06.tar}"
 
 # -----------------------------
-# (옵션) JAX GPU 사용 시도 토글
+# (옵션) JAX GPU indicates attempt
 #  - 0: CPU jaxlib 유지 (안전)
 #  - 1: CUDA jaxlib 설치 "시도" (실패해도 계속 진행)
 # -----------------------------
@@ -56,7 +59,9 @@ need_root() {
 }
 
 ensure_dir() { mkdir -p "$1"; }
-venv_python() { echo "${TORCH_VENV}/bin/python"; }
+
+venv_python_torch() { echo "${TORCH_VENV}/bin/python"; }
+venv_python_jax()   { echo "${JAX_VENV}/bin/python"; }
 
 add_env_if_nonempty() {
   local -n _arr="$1"
@@ -116,7 +121,7 @@ ensure_unified_params_link() {
 }
 
 ########################################
-# Helper: parse --step from args (NEW)
+# Helper: parse --step from args
 ########################################
 extract_step_arg() {
   local step=""
@@ -148,6 +153,8 @@ cmd_up() {
   log "AF_DIR=$AF_DIR"
   log "COLABDESIGN_DIR=$COLABDESIGN_DIR"
   log "ENABLE_JAX_CUDA=$ENABLE_JAX_CUDA"
+  log "TORCH_VENV=$TORCH_VENV"
+  log "JAX_VENV=$JAX_VENV"
   log "S3_BUCKET=${S3_BUCKET:-<empty>}"
   log "S3_BASE=${S3_BASE:-simulations}"
   log "AWS_REGION=${AWS_REGION:-<empty>}"
@@ -172,6 +179,7 @@ cmd_install() {
   log "install start"
   log "PY_BIN=$PY_BIN"
   log "TORCH_VENV=$TORCH_VENV"
+  log "JAX_VENV=$JAX_VENV"
   log "RFDIFFUSION_DIR=$RFDIFFUSION_DIR"
   log "COLABDESIGN_DIR=$COLABDESIGN_DIR"
   log "ENABLE_JAX_CUDA=$ENABLE_JAX_CUDA"
@@ -184,30 +192,31 @@ cmd_install() {
     build-essential pkg-config ca-certificates curl git unzip wget \
     python3-venv python3-dev
 
-  if [[ ! -x "$(venv_python)" ]]; then
-    log "creating venv at $TORCH_VENV"
+  # ---------- torch venv ----------
+  if [[ ! -x "$(venv_python_torch)" ]]; then
+    log "creating TORCH venv at $TORCH_VENV"
     $PY_BIN -m venv "$TORCH_VENV"
   fi
 
-  "$(venv_python)" -m pip install -U pip setuptools wheel
-  "$(venv_python)" -m pip install "numpy<2"
+  "$(venv_python_torch)" -m pip install -U pip setuptools wheel
+  "$(venv_python_torch)" -m pip install "numpy<2"
 
   # PyTorch CUDA (RFdiffusion)
-  "$(venv_python)" -m pip install \
+  "$(venv_python_torch)" -m pip install \
     --index-url https://download.pytorch.org/whl/cu121 \
     torch==2.2.0 torchvision==0.17.0 torchaudio==2.2.0
 
-  "$(venv_python)" -m pip install \
+  "$(venv_python_torch)" -m pip install \
     -f https://data.dgl.ai/wheels/torch-2.2/cu121/repo.html \
     dgl
 
-  "$(venv_python)" -m pip install -U opt_einsum pyrsistent e3nn
+  "$(venv_python_torch)" -m pip install -U opt_einsum pyrsistent e3nn
 
-  # API 서버용 패키지 포함
-  "$(venv_python)" -m pip install -U fastapi uvicorn
+  # API 서버용 패키지 포함 (torch venv에서 띄움)
+  "$(venv_python_torch)" -m pip install -U fastapi uvicorn
 
   # S3 업로드용
-  "$(venv_python)" -m pip install -U boto3 botocore
+  "$(venv_python_torch)" -m pip install -U boto3 botocore
 
   # RFdiffusion clone + install
   if [[ ! -d "$RFDIFFUSION_DIR" ]]; then
@@ -215,22 +224,22 @@ cmd_install() {
     git clone https://github.com/RosettaCommons/RFdiffusion.git "$RFDIFFUSION_DIR"
   fi
 
-  log "installing se3-transformer"
-  if "$(venv_python)" -c "import se3_transformer" >/dev/null 2>&1; then
+  log "installing se3-transformer (TORCH_VENV)"
+  if "$(venv_python_torch)" -c "import se3_transformer" >/dev/null 2>&1; then
     log "se3_transformer already importable. Skipping."
   else
-    "$(venv_python)" -m pip install -U opt_einsum
+    "$(venv_python_torch)" -m pip install -U opt_einsum
 
-    "$(venv_python)" -m pip install -U \
+    "$(venv_python_torch)" -m pip install -U \
       "git+https://github.com/NVIDIA/DeepLearningExamples.git#subdirectory=DGLPyTorch/DrugDiscovery/SE3Transformer" \
     || true
 
-    if ! "$(venv_python)" -c "import se3_transformer" >/dev/null 2>&1; then
+    if ! "$(venv_python_torch)" -c "import se3_transformer" >/dev/null 2>&1; then
       if [[ -d "$RFDIFFUSION_DIR/env/SE3Transformer" ]]; then
         log "fallback: installing SE3Transformer from $RFDIFFUSION_DIR/env/SE3Transformer"
         pushd "$RFDIFFUSION_DIR/env/SE3Transformer" >/dev/null
-        [[ -f requirements.txt ]] && "$(venv_python)" -m pip install -r requirements.txt
-        "$(venv_python)" -m pip install .
+        [[ -f requirements.txt ]] && "$(venv_python_torch)" -m pip install -r requirements.txt
+        "$(venv_python_torch)" -m pip install .
         popd >/dev/null
       else
         die "cannot install se3-transformer (no fallback dir found)"
@@ -238,16 +247,25 @@ cmd_install() {
     fi
   fi
 
-  log "installing RFdiffusion requirements (if present)"
-  [[ -f "$RFDIFFUSION_DIR/requirements.txt" ]] && "$(venv_python)" -m pip install -r "$RFDIFFUSION_DIR/requirements.txt" || true
-  [[ -f "$RFDIFFUSION_DIR/env/requirements.txt" ]] && "$(venv_python)" -m pip install -r "$RFDIFFUSION_DIR/env/requirements.txt" || true
+  log "installing RFdiffusion requirements (if present) (TORCH_VENV)"
+  [[ -f "$RFDIFFUSION_DIR/requirements.txt" ]] && "$(venv_python_torch)" -m pip install -r "$RFDIFFUSION_DIR/requirements.txt" || true
+  [[ -f "$RFDIFFUSION_DIR/env/requirements.txt" ]] && "$(venv_python_torch)" -m pip install -r "$RFDIFFUSION_DIR/env/requirements.txt" || true
 
-  "$(venv_python)" -m pip install -U omegaconf hydra-core
+  "$(venv_python_torch)" -m pip install -U omegaconf hydra-core
 
-  log "installing RFdiffusion (editable)"
+  log "installing RFdiffusion (editable) (TORCH_VENV)"
   pushd "$RFDIFFUSION_DIR" >/dev/null
-  "$(venv_python)" -m pip install -e .
+  "$(venv_python_torch)" -m pip install -e .
   popd >/dev/null
+
+  # ---------- jax venv ----------
+  if [[ ! -x "$(venv_python_jax)" ]]; then
+    log "creating JAX venv at $JAX_VENV"
+    $PY_BIN -m venv "$JAX_VENV"
+  fi
+
+  "$(venv_python_jax)" -m pip install -U pip setuptools wheel
+  "$(venv_python_jax)" -m pip install "numpy<2"
 
   ########################################
   # ✅ ColabDesign install (ProteinMPNN / AlphaFold)
@@ -256,17 +274,22 @@ cmd_install() {
     log "Cloning ColabDesign into $COLABDESIGN_DIR"
     git clone https://github.com/sokrypton/ColabDesign.git "$COLABDESIGN_DIR"
   fi
-  log "installing ColabDesign (editable)"
-  "$(venv_python)" -m pip install -e "$COLABDESIGN_DIR"
+
+  # ColabDesign는 JAX/Tensor 관련 deps를 건드릴 수 있어서 JAX venv에 설치
+  log "installing ColabDesign (editable) (JAX_VENV)"
+  "$(venv_python_jax)" -m pip install -e "$COLABDESIGN_DIR"
 
   # (옵션) JAX CUDA 설치 시도 (best-effort)
   if [[ "$ENABLE_JAX_CUDA" == "1" ]]; then
-    log "trying to install CUDA-enabled jaxlib (best-effort; may fail depending on CUDA/driver)"
-    "$(venv_python)" -m pip install -U "jax[cuda12]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html || true
+    log "trying to install CUDA-enabled jaxlib (best-effort; may fail depending on CUDA/driver) (JAX_VENV)"
+    "$(venv_python_jax)" -m pip install -U "jax[cuda12]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html || true
+  else
+    # CPU jax 기본 확보
+    "$(venv_python_jax)" -m pip install -U "jax" || true
   fi
 
-  log "sanity check"
-  "$(venv_python)" - <<'PY'
+  log "sanity check (TORCH_VENV)"
+  "$(venv_python_torch)" - <<'PY'
 import sys
 print("python:", sys.version.split()[0])
 try:
@@ -274,7 +297,12 @@ try:
   print("torch:", torch.__version__, "cuda:", torch.version.cuda, "avail:", torch.cuda.is_available())
 except Exception as e:
   print("torch import failed:", e)
+PY
 
+  log "sanity check (JAX_VENV)"
+  "$(venv_python_jax)" - <<'PY'
+import sys
+print("python:", sys.version.split()[0])
 try:
   import colabdesign
   print("colabdesign import: OK")
@@ -332,10 +360,8 @@ cmd_download_params() {
     download_http "$AF_PARAMS_TAR_URL" "$tar_path"
 
     log "Extracting AlphaFold params (tar --no-same-owner --no-same-permissions)"
-    # ✅ FIX: tar 실패를 성공 처리하지 않도록 || true 제거
     tar --no-same-owner --no-same-permissions -xf "$tar_path" -C "$AF_DIR"
 
-    # 최소 파일 존재 검사
     if [[ ! -s "${AF_DIR}/params_model_1_ptm.npz" ]]; then
       die "AlphaFold params extraction failed: ${AF_DIR}/params_model_1_ptm.npz not found"
     fi
@@ -435,7 +461,8 @@ cmd_run() {
   refresh_s3_mapping
 
   log "run start"
-  export MODELS_DIR OUTPUTS_DIR RFDIFFUSION_DIR TORCH_VENV
+  export MODELS_DIR OUTPUTS_DIR RFDIFFUSION_DIR
+  export TORCH_VENV JAX_VENV
   export AF_DIR COLABDESIGN_DIR
 
   log "MODELS_DIR=$MODELS_DIR"
@@ -443,25 +470,44 @@ cmd_run() {
   log "OUTPUTS_DIR=$OUTPUTS_DIR"
   log "SCRIPT_DIR=$SCRIPT_DIR"
   log "RFDIFFUSION_DIR=$RFDIFFUSION_DIR"
+  log "TORCH_VENV=$TORCH_VENV"
+  log "JAX_VENV=$JAX_VENV"
 
   export DGLBACKEND="${DGLBACKEND:-pytorch}"
   export DGL_DISABLE_GRAPHBOLT="${DGL_DISABLE_GRAPHBOLT:-1}"
   log "DGLBACKEND=$DGLBACKEND"
   log "DGL_DISABLE_GRAPHBOLT=$DGL_DISABLE_GRAPHBOLT"
 
+  # ✅ unified/src 를 항상 잡고, RFdiffusion은 torch step에서만 직접 필요하지만 harmless
   export PYTHONPATH="$SCRIPT_DIR/src:$RFDIFFUSION_DIR:${PYTHONPATH:-}"
   log "PYTHONPATH=$PYTHONPATH"
 
-  # ✅ NEW: step별로 LD_LIBRARY_PATH 분기 (JAX가 꼬이는 케이스 방지)
+  # step 파싱
   local step
   step="$(extract_step_arg "$@")"
   log "detected step=${step:-<empty>}"
 
+  # params 준비는 공통
+  ensure_dir "$MODELS_DIR"
+  ensure_dir "$OUTPUTS_DIR"
+  cmd_download_params
+  ensure_unified_params_link
+
+  # ✅ 핵심: step별 python 선택 + LD_LIBRARY_PATH 처리
+  local py
   if [[ "$step" == "alphafold" || "$step" == "proteinMPNN" ]]; then
+    py="$(venv_python_jax)"
+
+    # jax/af step은 torch nvidia libs로 꼬이는 케이스가 있어서 방어
     unset LD_LIBRARY_PATH || true
+    log "Using JAX_VENV python: $py"
     log "LD_LIBRARY_PATH unset for step=$step (jax/af safety)"
   else
+    py="$(venv_python_torch)"
+
+    # torch step은 nvidia libs path 세팅
     export LD_LIBRARY_PATH="$TORCH_VENV/lib/python3.10/site-packages/nvidia/nvtx/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/nvjitlink/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/nccl/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/curand/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cufft/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cuda_runtime/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cuda_nvrtc/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cuda_cupti/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cublas/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cusparse/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cudnn/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cusolver/lib:${LD_LIBRARY_PATH:-}"
+    log "Using TORCH_VENV python: $py"
     log "LD_LIBRARY_PATH set (torch/rfdiffusion)"
   fi
 
@@ -479,14 +525,8 @@ cmd_run() {
   log "S3_BASE=${S3_BASE:-<empty>}"
   log "AWS_REGION=${AWS_REGION:-<empty>}"
 
-  ensure_dir "$MODELS_DIR"
-  ensure_dir "$OUTPUTS_DIR"
-
-  cmd_download_params
-  ensure_unified_params_link
-
   cd "$APP_DIR"
-  "$(venv_python)" "$SCRIPT_DIR/src/main.py" "$@"
+  "$py" "$SCRIPT_DIR/src/main.py" "$@"
 }
 
 ########################################
@@ -500,8 +540,9 @@ cmd_serve() {
   ensure_dir "$APP_DIR"
   ensure_dir "$OUTPUTS_DIR"
 
-  "$(venv_python)" -c "import uvicorn, fastapi" >/dev/null 2>&1 || \
-    "$(venv_python)" -m pip install -U uvicorn fastapi
+  # API 서버는 torch venv 기반
+  "$(venv_python_torch)" -c "import uvicorn, fastapi" >/dev/null 2>&1 || \
+    "$(venv_python_torch)" -m pip install -U uvicorn fastapi
 
   if [[ -f "$UVICORN_PID" ]] && ps -p "$(cat "$UVICORN_PID")" >/dev/null 2>&1; then
     log "Already running: PID=$(cat "$UVICORN_PID")"
@@ -516,6 +557,7 @@ cmd_serve() {
   env_kv+=("OPS_SH=$SCRIPT_DIR/unified_shell_script.sh")
   env_kv+=("OUTPUTS_DIR=$OUTPUTS_DIR")
   env_kv+=("TORCH_VENV=$TORCH_VENV")
+  env_kv+=("JAX_VENV=$JAX_VENV")
   env_kv+=("PYTHONPATH=$RFDIFFUSION_DIR")
   env_kv+=("MODELS_DIR=$MODELS_DIR")
   env_kv+=("AF_DIR=$AF_DIR")
@@ -539,7 +581,7 @@ cmd_serve() {
   add_env_if_nonempty env_kv "AWS_SESSION_TOKEN" "${AWS_SESSION_TOKEN:-}"
 
   nohup env "${env_kv[@]}" \
-    "$(venv_python)" -m uvicorn api_server:app --host 0.0.0.0 --port "$PORT" \
+    "$(venv_python_torch)" -m uvicorn api_server:app --host 0.0.0.0 --port "$PORT" \
     > "$UVICORN_LOG" 2>&1 &
 
   echo $! > "$UVICORN_PID"
@@ -583,6 +625,7 @@ Usage:
 
 Env overrides:
   TORCH_VENV=/opt/venv_torch
+  JAX_VENV=/opt/venv_jax
   APP_DIR=/workspace/unified
   SCRIPT_DIR=/workspace/unified
   OUTPUTS_DIR=/workspace/unified/outputs
