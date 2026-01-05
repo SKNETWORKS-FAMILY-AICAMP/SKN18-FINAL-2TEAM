@@ -17,6 +17,7 @@ class AlphaFoldStepConfig:
     num_recycles: int = 1
     use_multimer: bool = False
     initial_guess: bool = False
+    max_seqs: int | None = None  
 
 
 def _read_fasta_seqs(fasta_path: Path) -> List[str]:
@@ -93,11 +94,10 @@ def run_alphafold_only(cfg: AlphaFoldStepConfig) -> dict:
         )
 
     fasta_path = out_dir / f"{exp}_mpnn.fasta"
-    seqs = _read_fasta_seqs(fasta_path)
-    if not seqs:
+    entries = _read_mpnn_fasta_with_meta(fasta_path)
+    if not entries:
         raise RuntimeError(f"[alphafold] no sequences in fasta: {fasta_path}")
 
-    # ✅ 핵심: ColabDesign이 params를 찾을 수 있게 ./params 보장
     _ensure_colabdesign_params_visible()
 
     all_pdb_dir = out_dir / f"{exp}_af_all_pdb"
@@ -116,12 +116,13 @@ def run_alphafold_only(cfg: AlphaFoldStepConfig) -> dict:
     af_model = mk_af_model(protocol="fixbb", **flags)
 
     af_model.prep_inputs(str(input_pdb), chain="A")
-
+    top_k = 5  # 사용자가 파라미터로 전달한 값이라고 가정
     rows = []
     best = {"idx": -1, "plddt": -1.0, "rmsd": 1e9, "path": None}
 
-    for i, seq in enumerate(seqs):
-        af_model.predict(seq=seq, num_recycles=int(cfg.num_recycles), verbose=False)
+    for design_idx, seq_idx, seq in entries:
+        for k in range(top_k):
+            af_model.predict(seq=seq, num_recycles=int(cfg.num_recycles), verbose=False)
 
         aux = af_model.aux.get("log", {})
         plddt = float(aux.get("plddt", 0.0))
@@ -129,11 +130,20 @@ def run_alphafold_only(cfg: AlphaFoldStepConfig) -> dict:
         pae = float(aux.get("pae", 0.0)) if "pae" in aux else None
         rmsd = float(aux.get("rmsd", 0.0)) if "rmsd" in aux else None
 
-        pdb_path = all_pdb_dir / f"af_n{i}.pdb"
+        pdb_path = all_pdb_dir / f"af_d{design_idx}_s{seq_idx}_k{k}.pdb"
         af_model.save_current_pdb(str(pdb_path))
-
         rows.append(
-            {"n": i, "plddt": plddt, "ptm": ptm, "pae": pae, "rmsd": rmsd, "pdb": str(pdb_path), "seq": seq}
+            {
+                "design": design_idx,
+                "seq_idx": seq_idx,
+                "k": k,
+                "plddt": plddt,
+                "ptm": ptm,
+                "pae": pae,
+                "rmsd": rmsd,
+                "pdb": str(pdb_path),
+                "seq": seq,
+            }
         )
 
         if (plddt > best["plddt"]) or (plddt == best["plddt"] and (rmsd or 1e9) < best["rmsd"]):
