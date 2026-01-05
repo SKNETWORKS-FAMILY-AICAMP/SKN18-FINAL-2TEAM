@@ -258,6 +258,10 @@ def table_to_json(
     header = [c for c in header_cols if c]
     header_len = len(header)
 
+    # header 없는 numeric table 방어
+    if header and header[0].isdigit():
+        return {}
+
     rows = []
 
     # --- 3. row 파싱 ---
@@ -278,6 +282,10 @@ def table_to_json(
         if raw_cols[0].isdigit():
             row_number = raw_cols[0]
             values = raw_cols[1:]
+
+        # (A) trailing empty cell 보존
+        if len(values) < header_len:
+            values = values + [""] * (header_len - len(values))
 
         # ✅ header 길이 맞추기
         row_len = len(values)
