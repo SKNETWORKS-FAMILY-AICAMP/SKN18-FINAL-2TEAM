@@ -5,6 +5,10 @@ import argparse
 import subprocess
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
+from steps.rfdiffusion_step import run_rfdiffusion_step
+from steps.proteinmpnn_step import MPNNStepConfig, run_mpnn_only
+from steps.alphafold_step import AlphaFoldStepConfig, run_alphafold_only, run_alphafold_from_sequence
+from datetime import datetime, timezone, timedelta
 
 
 def resolve_rfdiffusion_entry() -> str:
@@ -83,6 +87,9 @@ def parse_args():
 
     p.add_argument("--rfdiffusion_entry", default=resolve_rfdiffusion_entry())
     p.add_argument("--outputs_dir", default=os.environ.get("OUTPUTS_DIR", "/outputs"))
+    p.add_argument("--protein_sequence", default="")
+    p.add_argument("--af_sequence_only", action="store_true")
+
 
     # ✅ S3 업로드 옵션 (S3_*가 없으면 AWS_S3_* fallback 지원)
     p.add_argument(
@@ -112,89 +119,88 @@ def run_cmd(cmd, env=None):
     print("[main.py] exec:", " ".join(cmd))
     subprocess.run(cmd, check=True, env=env)
 
+def _kst_today() -> str:
+    kst = timezone(timedelta(hours=9))
+    return datetime.now(tz=kst).strftime("%Y-%m-%d")
 
 def main():
     args = parse_args()
 
-    # ✅ 팀장님 지시: job name = experiment_id
-    args.name = args.experiment_id.strip()
+    # experiment_id / name 공통 처리
+    exp_id = args.experiment_id.strip()
+    args.name = exp_id
 
-    outputs_dir = Path(args.outputs_dir)
-    outputs_dir.mkdir(parents=True, exist_ok=True)
+    root = Path(args.outputs_dir) / "simulations" / f"dt={_kst_today()}"
+    pipeline_dir = root / f"pipeline={exp_id}"
+    pipeline_dir.mkdir(parents=True, exist_ok=True)
 
-    # 공통 env
     env = os.environ.copy()
     env.setdefault("DGLBACKEND", "pytorch")
     env.setdefault("DGL_DISABLE_GRAPHBOLT", "1")
 
-    # -----------------------
-    # 1) step 분기 실행
-    # -----------------------
     step = args.step
 
+
     if step == "rfdiffusion":
-        contig_str = str(args.contigs).strip()
-        contig_override = f"contigmap.contigs=[{contig_str!r}]"
-
-        py = pick_python()
-        cmd = [
-            py,
-            args.rfdiffusion_entry,
-            f"inference.output_prefix={outputs_dir / args.name}",
-            f"inference.num_designs={int(args.iterations)}",
-            contig_override,
-        ]
-        if args.cautious:
-            cmd.append("inference.cautious=True")
-
-        run_cmd(cmd, env=env)
-
-        produced = [
-            outputs_dir / f"{args.name}_0.pdb",
-            outputs_dir / f"{args.name}_0.trb",
-        ]
+            step_dir = pipeline_dir / "step=rfdiffusion"
+            step_dir.mkdir(parents=True, exist_ok=True)
+            result = run_rfdiffusion_step(
+                experiment_id=exp_id,
+                outputs_dir=_dir,
+                contigs=args.contigs,
+                iterations=args.iterations,
+                cautious=args.cautious,
+                env=env,
+            )
+            produced = result["produced"]
 
     elif step == "protein_mpnn":
-        # iterations를 num_seqs로 매핑 (테스트하기 가장 편함)
-        from steps.proteinmpnn_step import MPNNStepConfig, run_mpnn_only
+        step_dir = pipeline_dir / "step=proteinMPNN"
+        step_dir.mkdir(parents=True, exist_ok=True)
 
         cfg = MPNNStepConfig(
-            experiment_id=args.experiment_id.strip(),
-            outputs_dir=outputs_dir,
+            experiment_id=exp_id,
+            outputs_dir=step_dir,
             contigs=str(args.contigs).strip(),
             num_seqs=int(args.iterations),
+            num_designs=int(args.num_designs),
             mpnn_sampling_temp=0.1,
             rm_aa="C",
         )
         result = run_mpnn_only(cfg)
-        print("[proteinMPNN] result:", result)
-
         produced = [
-            outputs_dir / f"{args.name}_mpnn.fasta",
-            outputs_dir / f"{args.name}_mpnn_results.csv",
+            step_dir / f"{args.name}_mpnn.fasta",
+            step_dir / f"{args.name}_mpnn_results.csv",
         ]
 
     elif step == "alphafold3":
-        # iterations를 num_recycles로 매핑 (1이면 빠름)
-        from steps.alphafold_step import AlphaFoldStepConfig, run_alphafold_only
+        step_dir = pipeline_dir / "step=alphafold"
+        step_dir.mkdir(parents=True, exist_ok=True)
+        max_seqs = int(os.environ.get("AF_MAX_SEQS", "0")) or None
 
         cfg = AlphaFoldStepConfig(
-            experiment_id=args.experiment_id.strip(),
-            outputs_dir=outputs_dir,
+            experiment_id=exp_id,
+            outputs_dir=step_dir,
             num_recycles=int(args.iterations),
             use_multimer=False,
             initial_guess=False,
+            max_seqs=max_seqs,
+            top_k=int(os.environ.get("AF_TOP_K", "3")),
         )
-        result = run_alphafold_only(cfg)
-        print("[alphafold] result:", result)
+        seq = (args.protein_sequence or "").strip()
+        if args.af_sequence_only and seq:
+            result = run_alphafold_from_sequence(cfg, seq)
+        else:
+            result = run_alphafold_only(cfg)
 
         produced = [
-            outputs_dir / f"{args.name}_af_best.pdb",
-            outputs_dir / f"{args.name}_af_results.csv",
+            step_dir / f"{args.name}_af_best.pdb",
+            step_dir / f"{args.name}_af_results.csv",
         ]
 
     else:
         raise SystemExit(f"Unknown step: {step}")
+
 
     # -----------------------
     # 2) 생성물 확인
@@ -235,10 +241,10 @@ def main():
     try:
         uploaded = upload_job_outputs(
             outputs_dir=str(outputs_dir),
-            job_name=args.name,
-            step=args.step,
+            job_name=exp_id,
+            step=step,
             bucket=bucket,
-            prefix=prefix,
+            prefix="simulations",
             upload_logs=args.s3_upload_logs,
         )
         if uploaded:
