@@ -127,17 +127,40 @@ const statusCodeMap = {
 
 // Status 코드를 한글로 변환
 function getStatusDisplay(statusCode) {
-    return statusCodeMap[statusCode] || statusCode;
+    const statusMap = {
+        // Schedule 모델의 상태 코드
+        'E': '예정',
+        'R': '진행중',
+        'C': '완료',
+        // Schedule 모델의 status 프로퍼티 (영어)
+        'scheduled': '예정',
+        'in_progress': '진행중',
+        'completed': '완료',
+        // Legacy support
+        'P': '예정',
+        'F': '완료'
+    };
+    return statusMap[statusCode] || statusCode;
 }
 
 // Status 코드를 CSS 클래스로 변환
 function getStatusClass(statusCode) {
     const classMap = {
-        'P': 'p',  // 예정
-        'E': 'e',  // 진행중
-        'F': 'f'   // 완료
+        // Schedule 모델의 상태 코드
+        'E': 'p',  // 예정
+        'R': 'e',  // 진행중
+        'C': 'f',  // 완료
+        // Schedule 모델의 status 프로퍼티 (영어)
+        'scheduled': 'p',  // 예정
+        'in_progress': 'e',  // 진행중
+        'completed': 'f',  // 완료
+        // Legacy support
+        'P': 'p',
+        'F': 'f'
     };
-    return classMap[statusCode] || statusCode.toLowerCase();
+    // 영어 값이 오면 하이픈을 언더스코어로 처리
+    const normalizedCode = statusCode ? statusCode.toString().replace(/-/g, '_') : statusCode;
+    return classMap[normalizedCode] || (statusCode ? statusCode.toLowerCase().replace(/_/g, '-') : 'p');
 }
 
 const dummyTodaySchedule = [
@@ -314,16 +337,21 @@ function handleClickOutside(event) {
 }
 
 // Render dummy data
-function renderDummyData() {
+async function renderDummyData() {
     // Check if data containers are empty and render dummy data
     const scheduleList = document.getElementById('scheduleList');
     const experimentTableBody = document.getElementById('experimentTableBody');
     const notesList = document.getElementById('notesList');
     const chatsList = document.getElementById('chatsList');
 
-    // Render schedules if empty
-    if (scheduleList && scheduleList.querySelector('.empty-state')) {
-        renderSchedules(scheduleList);
+    // Load and render schedules from API
+    if (scheduleList) {
+        const schedules = await loadRecentSchedules();
+        if (schedules.length > 0) {
+            renderSchedules(scheduleList, schedules);
+        } else if (scheduleList.querySelector('.empty-state')) {
+            renderSchedules(scheduleList);
+        }
     }
 
     // Render experiments if empty
@@ -343,23 +371,50 @@ function renderDummyData() {
 }
 
 // Render schedules
-function renderSchedules(container) {
+function renderSchedules(container, schedules = null) {
     if (!container) return;
     
-    container.innerHTML = dummyTodaySchedule.map(schedule => {
-        const linkedNoteIcon = schedule.linkedNote 
+    // If no schedules provided, use dummy data
+    const scheduleData = schedules || dummyTodaySchedule;
+    
+    if (scheduleData.length === 0) {
+        container.innerHTML = '<div class="empty-state">일정이 없습니다.</div>';
+        return;
+    }
+    
+    container.innerHTML = scheduleData.map(schedule => {
+        // API 응답 형식 또는 더미 데이터 형식 모두 지원
+        const scheduleId = schedule.id || schedule.schedule_sid;
+        const title = schedule.title || '';
+        const linkedNote = schedule.linked_note || schedule.linkedNote;
+        const status = schedule.status || schedule.schedule_status || 'E';
+        const startDate = schedule.start_datetime ? new Date(schedule.start_datetime) : null;
+        const endDate = schedule.end_datetime ? new Date(schedule.end_datetime) : null;
+        
+        const linkedNoteIcon = linkedNote 
             ? '<i class="far fa-file-lines"></i>' 
             : '';
         
-        const statusDisplay = getStatusDisplay(schedule.status);
-        const statusClass = getStatusClass(schedule.status);
+        const statusDisplay = getStatusDisplay(status);
+        const statusClass = getStatusClass(status);
+        
+        // 날짜 포맷팅
+        let dateDisplay = '';
+        if (startDate && endDate) {
+            const startStr = `${startDate.getFullYear()}/${String(startDate.getMonth() + 1).padStart(2, '0')}/${String(startDate.getDate()).padStart(2, '0')}`;
+            const endStr = `${endDate.getFullYear()}/${String(endDate.getMonth() + 1).padStart(2, '0')}/${String(endDate.getDate()).padStart(2, '0')}`;
+            dateDisplay = `${startStr} ~ ${endStr}`;
+        } else if (schedule.startDate && schedule.endDate) {
+            // Legacy format
+            dateDisplay = `${schedule.startDate} ~ ${schedule.endDate}`;
+        }
         
         return `
-            <div class="schedule-item" data-schedule-id="${schedule.id}">
+            <div class="schedule-item" data-schedule-id="${scheduleId}">
                 <div class="schedule-item-header">
                     <i class="far fa-calendar"></i>
                     <div class="schedule-item-title">
-                        <p>${escapeHtml(schedule.title)}</p>
+                        <p>${escapeHtml(title)}</p>
                     </div>
                     ${linkedNoteIcon}
                 </div>
@@ -368,7 +423,7 @@ function renderSchedules(container) {
                         ${escapeHtml(statusDisplay)}
                     </span>
                     <span class="schedule-date">
-                        ${escapeHtml(schedule.startDate)} ~ ${escapeHtml(schedule.endDate)}
+                        ${escapeHtml(dateDisplay)}
                     </span>
                 </div>
             </div>
@@ -478,10 +533,8 @@ function attachItemClickHandlers() {
     const scheduleItems = document.querySelectorAll('.schedule-item');
     scheduleItems.forEach(item => {
         item.addEventListener('click', (e) => {
-            const scheduleId = e.currentTarget.getAttribute('data-schedule-id');
-            if (scheduleId) {
-                window.location.href = `/schedule/${scheduleId}/`;
-            }
+            // 캘린더 페이지로 이동
+            window.location.href = '/schedule/';
         });
     });
 
@@ -489,10 +542,7 @@ function attachItemClickHandlers() {
     const experimentRows = document.querySelectorAll('.experiment-table tbody tr[data-experiment-id]');
     experimentRows.forEach(row => {
         row.addEventListener('click', (e) => {
-            const experimentId = e.currentTarget.getAttribute('data-experiment-id');
-            if (experimentId) {
-                window.location.href = `/experiments/${experimentId}/`;
-            }
+            window.location.href = '/experiments/';
         });
     });
 
@@ -502,7 +552,7 @@ function attachItemClickHandlers() {
         item.addEventListener('click', (e) => {
             const noteId = e.currentTarget.getAttribute('data-note-id');
             if (noteId) {
-                window.location.href = `/notes/${noteId}/`;
+                window.location.href = `/notes/detail/?id=${noteId}`;
             }
         });
     });
@@ -513,7 +563,9 @@ function attachItemClickHandlers() {
         item.addEventListener('click', (e) => {
             const chatId = e.currentTarget.getAttribute('data-chat-id');
             if (chatId) {
-                window.location.href = `/chat/${chatId}/`;
+                window.location.href = `/chat/?id=${chatId}`;
+            } else {
+                window.location.href = '/chat/';
             }
         });
     });
@@ -538,6 +590,46 @@ async function loadDashboardData() {
         }
     } catch (error) {
         console.error('Error loading dashboard data:', error);
+    }
+}
+
+// Load recent schedules from API
+async function loadRecentSchedules() {
+    try {
+        const now = new Date();
+        const thirtyDaysAgo = new Date(now);
+        thirtyDaysAgo.setDate(now.getDate() - 30);
+        const ninetyDaysLater = new Date(now);
+        ninetyDaysLater.setDate(now.getDate() + 90);
+
+        const timeMin = thirtyDaysAgo.toISOString();
+        const timeMax = ninetyDaysLater.toISOString();
+
+        const response = await fetch(`/schedule/api/schedules/?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}`, {
+            method: 'GET',
+            headers: {
+                'X-CSRFToken': getCsrfToken(),
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            const schedules = data.results || [];
+            
+            // 최근 일정 10개만 선택 (start_datetime 기준으로 정렬)
+            const recentSchedules = schedules
+                .sort((a, b) => new Date(a.start_datetime) - new Date(b.start_datetime))
+                .slice(0, 10);
+            
+            return recentSchedules;
+        } else {
+            console.error('Error loading schedules:', response.statusText);
+            return [];
+        }
+    } catch (error) {
+        console.error('Error loading schedules:', error);
+        return [];
     }
 }
 
