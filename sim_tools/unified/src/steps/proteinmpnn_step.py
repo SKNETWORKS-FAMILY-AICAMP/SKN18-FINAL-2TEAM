@@ -55,22 +55,47 @@ def _parse_contigs(contigs_raw: str) -> List[str]:
 
 def _get_info(contig: str) -> Tuple[List[int], List[bool]]:
     """
-    designability_test.py의 get_info 이식
-    fixed/free를 판단해서 protocol 결정에 사용
+    designability_test.py의 get_info 이식 + 보강
+    - "10" 처럼 하이픈 없는 숫자 세그먼트도 허용
+    - "A1-50/30" 같이 섞인 케이스도 허용
     """
-    F = []
+    F: List[int] = []
     free_chain = False
     fixed_chain = False
-    sub_contigs = [x.split("-") for x in contig.split("/")]
-    for (a, b) in sub_contigs:
-        if a[0].isalpha():
-            L = int(b) - int(a[1:]) + 1
-            F += [1] * L
-            fixed_chain = True
+
+    # contig 예시:
+    #  - "10"
+    #  - "1-10"
+    #  - "A1-50/30"
+    #  - "30/10"
+    for token in contig.split("/"):
+        token = token.strip()
+        if not token:
+            continue
+
+        if "-" in token:
+            a, b = token.split("-", 1)
+
+            # fixed segment: "A1-50"
+            if a and a[0].isalpha():
+                L = int(b) - int(a[1:]) + 1
+                F += [1] * L
+                fixed_chain = True
+            else:
+                # free segment: "1-10" 같은 케이스를 길이로 해석(10)
+                # (designability_test.py는 이런 형태를 거의 안 쓰지만 안전장치)
+                L = int(b)
+                F += [0] * L
+                free_chain = True
         else:
-            L = int(b)
+            # hyphen 없는 숫자: "10" -> free length 10
+            if token[0].isalpha():
+                # 혹시 "A10" 같은 이상 케이스 방어 (사실상 안 씀)
+                raise ValueError(f"invalid contig token without '-': {token}")
+            L = int(token)
             F += [0] * L
             free_chain = True
+
     return F, [fixed_chain, free_chain]
 
 
