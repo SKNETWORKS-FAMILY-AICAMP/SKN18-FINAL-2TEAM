@@ -1,221 +1,138 @@
-#!/usr/bin/env python3
+# django_app/apps/experiments/views_runpod.py (FULL)
+
 import os
-import uuid
-import subprocess
-from pathlib import Path
-from typing import Optional, Literal
+import requests
 
-from fastapi import FastAPI, HTTPException, Header
-from pydantic import BaseModel, Field
-
-# ---- Config ----
-SCRIPT_DIR = os.environ.get("SCRIPT_DIR", "/workspace/unified")
-OPS_SH = os.environ.get("OPS_SH", f"{SCRIPT_DIR}/unified_shell_script.sh")
-
-OUTPUTS_DIR = os.environ.get("OUTPUTS_DIR", f"{SCRIPT_DIR}/outputs")
-
-# ✅ torch/jax venv 둘 다 전달
-TORCH_VENV = os.environ.get("TORCH_VENV", "/opt/venv_torch")
-JAX_VENV = os.environ.get("JAX_VENV", "/opt/venv_jax")
-
-PYTHONPATH = os.environ.get("PYTHONPATH", "/app/RFdiffusion")
-
-API_KEY = os.environ.get("API_KEY")  # 설정 안 하면 인증 없이 동작
-
-app = FastAPI(title="Unified Runner API")
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from drf_spectacular.utils import extend_schema
 
 
-# ---------------- Models ----------------
-class RunRequest(BaseModel):
-    mode: Literal["backbone", "binder", "other"] = "backbone"
+def _get_runpod_sims_base_url() -> str:
+    """
+    RUNPOD_SIMS_BASE_URL은 반드시 환경변수(.env)로 주입해야 함.
+    예) https://xxxx.proxy.runpod.net
+    """
+    base = (os.environ.get("RUNPOD_SIMS_BASE_URL") or "").strip()
 
-    # ⚠️ 기존 호환을 위해 남겨두되, 실제 실행에서는 무시함
-    name: Optional[str] = None
-
-    contigs: str = Field(default="100")
-    iterations: int = Field(default=1, ge=1, le=1000)
-
-    # ✅ S3 경로 규칙에 필요한 값
-    experiment_id: str = Field(..., description="pipeline=EXPERIMENT_ID (queue에서 받은 값)")
-    step: Literal["rfdiffusion", "alphafold", "proteinMPNN"] = Field(
-        default="rfdiffusion",
-        description="step=TOOL_NAME"
-    )
-
-    # ✅ (선택) 로그 업로드
-    s3_upload_logs: bool = Field(default=False)
-
-
-class RunResponse(BaseModel):
-    ok: bool
-    job_id: str
-    name: str
-    outputs_dir: str
-    cmd: list[str]
-
-
-class StatusResponse(BaseModel):
-    ok: bool
-    job_id: str
-    name: str
-    status: str
-    log_path: str
-    expected_pdb: str
-
-
-# ---------------- Utils ----------------
-def _ensure_paths():
-    if not Path(OPS_SH).is_file():
-        raise RuntimeError(f"unified_shell_script.sh not found: {OPS_SH}")
-    Path(OUTPUTS_DIR).mkdir(parents=True, exist_ok=True)
-
-
-def _auth_or_throw(x_api_key: Optional[str]):
-    if API_KEY and x_api_key != API_KEY:
-        raise HTTPException(status_code=401, detail="Invalid API key")
-
-
-def _job_paths(name: str):
-    logs_dir = Path(OUTPUTS_DIR) / "_logs"
-    logs_dir.mkdir(parents=True, exist_ok=True)
-    log_path = logs_dir / f"{name}.log"
-    pid_path = logs_dir / f"{name}.pid"
-    return log_path, pid_path
-
-
-def _status_from_files(name: str) -> str:
-    pdb0 = Path(OUTPUTS_DIR) / f"{name}_0.pdb"
-    _log_path, pid_path = _job_paths(name)
-
-    if pdb0.exists():
-        return "done"
-
-    if pid_path.exists():
-        try:
-            pid = int(pid_path.read_text().strip())
-            if Path(f"/proc/{pid}").exists():
-                return "running"
-            else:
-                return "failed"
-        except Exception:
-            return "unknown"
-
-    return "unknown"
-
-
-# ---------------- Routes ----------------
-@app.get("/health")
-def health():
-    _ensure_paths()
-    return {
-        "ok": True,
-        "ops_sh": OPS_SH,
-        "outputs_dir": OUTPUTS_DIR,
-        "torch_venv": TORCH_VENV,
-        "jax_venv": JAX_VENV,
-        "pythonpath": PYTHONPATH,
-
-        "enable_jax_cuda": os.environ.get("ENABLE_JAX_CUDA", ""),
-        "ld_library_path": os.environ.get("LD_LIBRARY_PATH", ""),
-
-        "s3_bucket": os.environ.get("S3_BUCKET", ""),
-        "s3_base": os.environ.get("S3_BASE", "simulations"),
-        "aws_region": os.environ.get("AWS_REGION", os.environ.get("AWS_DEFAULT_REGION", "")),
-
-        "aws_s3_bucket": os.environ.get("AWS_S3_BUCKET", ""),
-        "aws_s3_base_path": os.environ.get("AWS_S3_BASE_PATH", ""),
-    }
-
-
-@app.post("/run", response_model=RunResponse)
-def run(req: RunRequest, x_api_key: Optional[str] = Header(default=None, convert_underscores=False)):
-    _auth_or_throw(x_api_key)
-    _ensure_paths()
-
-    experiment_id = req.experiment_id.strip()
-    if not experiment_id:
-        raise HTTPException(status_code=400, detail="experiment_id is required")
-
-    # ✅ 팀장님 지시: pipeline(=experiment_id) 하나가 job 하나
-    name = experiment_id
-
-    # job_id는 추적/응답용으로만 유지 (파일/폴더에는 사용 안 함)
-    job_id = uuid.uuid4().hex[:12]
-
-    log_path, pid_path = _job_paths(name)
-
-    # ✅ main.py에 experiment_id / step 전달
-    args = [
-        "run",
-        "--mode", req.mode,
-        "--name", name,
-        "--contigs", req.contigs,
-        "--iterations", str(req.iterations),
-
-        "--experiment_id", experiment_id,
-        "--step", req.step,
-    ]
-    if req.s3_upload_logs:
-        args.append("--s3_upload_logs")
-
-    env = os.environ.copy()
-
-    # ✅ venv / pythonpath / outputs / script 전달
-    env["TORCH_VENV"] = TORCH_VENV
-    env["JAX_VENV"] = JAX_VENV
-    env["PYTHONPATH"] = PYTHONPATH
-    env["OUTPUTS_DIR"] = OUTPUTS_DIR
-    env["SCRIPT_DIR"] = SCRIPT_DIR
-
-    # ✅ JAX GPU 강제 활성화 (API 서버 경유로도 반드시 적용)
-    env["ENABLE_JAX_CUDA"] = "1"
-
-    # ✅ LD_LIBRARY_PATH 오염 방지: 빈 값으로 시작
-    # (실제 CUDA/NVIDIA libs 경로는 unified_shell_script.sh가 step별로 다시 세팅)
-    env["LD_LIBRARY_PATH"] = ""
-
-    # ✅ S3/AWS env 전달
-    env["S3_BUCKET"] = os.environ.get("S3_BUCKET", "")
-    env["S3_BASE"] = os.environ.get("S3_BASE", "simulations")
-    env["AWS_REGION"] = os.environ.get("AWS_REGION", os.environ.get("AWS_DEFAULT_REGION", ""))
-    env["AWS_DEFAULT_REGION"] = os.environ.get("AWS_DEFAULT_REGION", env["AWS_REGION"])
-
-    env["AWS_S3_BUCKET"] = os.environ.get("AWS_S3_BUCKET", "")
-    env["AWS_S3_BASE_PATH"] = os.environ.get("AWS_S3_BASE_PATH", "")
-
-    with open(log_path, "ab") as f:
-        p = subprocess.Popen(
-            ["bash", OPS_SH, *args],
-            env=env,
-            stdout=f,
-            stderr=subprocess.STDOUT,
-            cwd=SCRIPT_DIR,
+    if not base:
+        # 운영에서 하드코딩으로 넘어가면 사고나기 쉬워서 "없으면 명확히 에러"로 처리
+        raise RuntimeError(
+            "RUNPOD_SIMS_BASE_URL is not set. Put it in .env (RUNPOD_SIMS_BASE_URL=https://...)"
         )
 
-    pid_path.write_text(str(p.pid))
+    if not (base.startswith("http://") or base.startswith("https://")):
+        raise RuntimeError(
+            f"RUNPOD_SIMS_BASE_URL must start with http:// or https:// (got: {base})"
+        )
 
-    return RunResponse(
-        ok=True,
-        job_id=job_id,
-        name=name,
-        outputs_dir=OUTPUTS_DIR,
-        cmd=["bash", OPS_SH, *args],
-    )
+    return base.rstrip("/")
 
 
-@app.get("/status/{name}", response_model=StatusResponse)
-def status(name: str, x_api_key: Optional[str] = Header(default=None, convert_underscores=False)):
-    _auth_or_throw(x_api_key)
-    _ensure_paths()
+def _headers() -> dict:
+    headers = {
+        "accept": "application/json",
+        "Content-Type": "application/json",
+    }
+    api_key = (os.environ.get("RUNPOD_SIMS_API_KEY") or "").strip()
+    if api_key:
+        headers["X-API-KEY"] = api_key
+    return headers
 
-    log_path, _ = _job_paths(name)
-    st = _status_from_files(name)
 
-    return StatusResponse(
-        ok=True,
-        job_id="(use name)",
-        name=name,
-        status=st,
-        log_path=str(log_path),
-        expected_pdb=str(Path(OUTPUTS_DIR) / f"{name}_0.pdb"),
-    )
+@extend_schema(
+    summary="Run RFdiffusion on RunPod (dummy)",
+    description="API가 동작하는지만 테스트하는 더미 API",
+    tags=["Experiments"],
+    responses={200: {"type": "object"}},
+)
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def rfdiffusion_runpod_api(request):
+    return Response({"detail": "REST API가 동작하는지 확인만 하자!"}, status=200)
+
+
+@extend_schema(
+    summary="Check RunPod health",
+    description="Proxy a health check request to the configured RunPod endpoint.",
+    tags=["Experiments"],
+    responses={200: {"type": "object"}},
+)
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def runpod_api_health(request):
+    try:
+        base = _get_runpod_sims_base_url()
+    except RuntimeError as e:
+        return Response({"detail": str(e)}, status=500)
+
+    health_url = f"{base}/health"
+
+    try:
+        resp = requests.get(
+            health_url,
+            headers={"accept": "application/json"},
+            timeout=15,
+        )
+    except requests.RequestException as exc:
+        return Response({"detail": f"RunPod health request failed: {exc}"}, status=502)
+
+    try:
+        data = resp.json()
+    except ValueError:
+        data = {"detail": resp.text}
+
+    return Response(data, status=resp.status_code)
+
+
+@extend_schema(
+    summary="Trigger RunPod run",
+    description="Forward POST payload to the RunPod /run endpoint deployed via unified/api_server.py.",
+    tags=["Experiments"],
+    request={
+        "application/json": {
+            "type": "object",
+            "properties": {
+                "mode": {"type": "string", "example": "backbone"},
+                "name": {"type": "string", "example": "job_001"},
+                "contigs": {"type": "string", "example": "100"},
+                "iterations": {"type": "integer", "example": 1},
+                "experiment_id": {"type": "string", "example": "t_rfd_001"},
+                "step": {"type": "string", "example": "rfdiffusion"},
+                "s3_upload_logs": {"type": "boolean", "example": True},
+            },
+            "required": ["experiment_id", "step", "contigs"],
+        }
+    },
+    responses={200: {"type": "object"}},
+)
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def runpod_api_run(request):
+    if not isinstance(request.data, dict):
+        return Response({"detail": "JSON body is required."}, status=400)
+
+    try:
+        base = _get_runpod_sims_base_url()
+    except RuntimeError as e:
+        return Response({"detail": str(e)}, status=500)
+
+    run_url = f"{base}/run"
+
+    try:
+        resp = requests.post(
+            run_url,
+            json=request.data,
+            headers=_headers(),
+            timeout=60,
+        )
+    except requests.RequestException as exc:
+        return Response({"detail": f"RunPod run request failed: {exc}"}, status=502)
+
+    try:
+        data = resp.json()
+    except ValueError:
+        data = {"detail": resp.text}
+
+    return Response(data, status=resp.status_code)
