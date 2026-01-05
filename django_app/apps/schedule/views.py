@@ -1,5 +1,8 @@
 import json
 from datetime import datetime, timedelta
+from urllib.parse import quote
+
+import requests
 
 from django.contrib.auth.decorators import login_required
 from django.http import HttpRequest, JsonResponse
@@ -18,8 +21,14 @@ from .models import (
     GoogleSyncedEvent,
     ScheduleInvitation,
     ScheduleShare,
+    ScheduleRecurrence,
 )
 from .recurrence import create_recurrence, expand_recurrences
+from .service import (
+    _build_event_datetime_payload,
+    _build_rrule_from_payload,
+    _get_valid_creds,
+)
 from apps.account.models import LinkedAccount, CustomUser
 
 
@@ -31,6 +40,241 @@ TYPE_COLOR_MAP = {
 }
 
 DEFAULT_CALENDAR_NAME = "내 캘린더"
+
+
+NOTIFICATION_MINUTES_MAP = {
+    'on_time': 0,
+    '5min': 5,
+    '10min': 10,
+    '15min': 15,
+    '30min': 30,
+    '1hour': 60,
+    '2hours': 120,
+    '1day': 60 * 24,
+    '2days': 60 * 24 * 2,
+    '1week': 60 * 24 * 7,
+}
+
+
+def _coerce_bool(value, default=False):
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        lowered = value.strip().lower()
+        if lowered in ('true', '1', 'y', 'yes'):
+            return True
+        if lowered in ('false', '0', 'n', 'no'):
+            return False
+    if isinstance(value, (int, float)):
+        return bool(value)
+    return default
+
+
+def _parse_datetime_with_timezone(value: str | None):
+    if not value:
+        return None
+    dt = parse_datetime(value)
+    if not dt:
+        return None
+    if timezone.is_naive(dt):
+        try:
+            dt = timezone.make_aware(dt, timezone.get_current_timezone())
+        except Exception:
+            dt = timezone.make_aware(dt, timezone.utc)
+    return dt
+
+
+def _extract_repeat_meta_from_data(data: dict, schedule: Schedule):
+    repeat_type = None
+    repeat_until = None
+    recurrence_payload = data.get('recurrence')
+    freq_map = {
+        'DAILY': 'daily',
+        'WEEKLY': 'weekly',
+        'MONTHLY': 'monthly',
+        'YEARLY': 'yearly',
+    }
+
+    if recurrence_payload is not None:
+        if recurrence_payload:
+            freq_value = (recurrence_payload.get('freq') or recurrence_payload.get('frequency') or '').upper()
+            repeat_type = freq_map.get(freq_value)
+            until_raw = recurrence_payload.get('until')
+            if until_raw:
+                repeat_until = until_raw.split('T')[0]
+        else:
+            repeat_type = 'none'
+    elif hasattr(schedule, 'recurrence') and schedule.recurrence:
+        freq_value = schedule.recurrence.freq
+        repeat_type = freq_map.get((freq_value or '').upper())
+
+    if not repeat_type or repeat_type == 'none':
+        return None, None
+    return repeat_type, repeat_until
+
+
+def _get_google_sync_metadata(schedule: Schedule):
+    try:
+        google_link = schedule.google_sync
+    except GoogleSyncedEvent.DoesNotExist:
+        return None
+    if not google_link or not google_link.event_id or not google_link.calendar:
+        return None
+    return {
+        'event_id': google_link.event_id,
+        'calendar_id': google_link.calendar.calendar_id,
+    }
+
+
+def _build_google_event_payload(schedule: Schedule, data: dict):
+    start_dt = _parse_datetime_with_timezone(data.get('start_datetime')) or schedule.start_date
+    end_dt = _parse_datetime_with_timezone(data.get('end_datetime')) or schedule.end_date or schedule.start_date
+    if not start_dt:
+        return None
+    if not end_dt:
+        end_dt = start_dt + timedelta(hours=1)
+
+    is_all_day = _coerce_bool(data.get('is_all_day'), schedule.is_all_day == 'Y')
+    title = data.get('title') if 'title' in data else schedule.title
+    description = data.get('description') if 'description' in data else (schedule.description or '')
+    location = data.get('location') if 'location' in data else (schedule.location or '')
+
+    start_date_str = start_dt.date().isoformat()
+    end_date_str = end_dt.date().isoformat()
+    start_time_str = None if is_all_day else start_dt.strftime('%H:%M')
+    end_time_str = None if is_all_day else end_dt.strftime('%H:%M')
+
+    payload = _build_event_datetime_payload(
+        title=title or '(제목 없음)',
+        all_day=is_all_day,
+        start_date=start_date_str,
+        end_date=end_date_str,
+        start_time=start_time_str,
+        end_time=end_time_str,
+        for_update=True,
+    )
+    payload['description'] = description or ''
+    payload['location'] = location or ''
+
+    repeat_type, repeat_until = _extract_repeat_meta_from_data(data, schedule)
+    if repeat_type:
+        rrule = _build_rrule_from_payload(repeat_type, repeat_until)
+        payload['recurrence'] = [rrule] if rrule else []
+    elif 'recurrence' in data:
+        payload['recurrence'] = []
+
+    if 'notification' in data:
+        notification_value = data.get('notification')
+        reminder_minutes = NOTIFICATION_MINUTES_MAP.get(notification_value)
+        if notification_value == 'none' or reminder_minutes is None:
+            payload['reminders'] = {"useDefault": False, "overrides": []}
+        else:
+            payload['reminders'] = {
+                "useDefault": False,
+                "overrides": [{"method": "popup", "minutes": reminder_minutes}],
+            }
+
+    return payload
+
+
+def _sync_google_event(schedule: Schedule, data: dict, user) -> tuple[bool, str | None]:
+    metadata = _get_google_sync_metadata(schedule)
+    if not metadata:
+        return True, None
+
+    payload = _build_google_event_payload(schedule, data)
+    if not payload:
+        return False, 'Google 이벤트 정보를 구성할 수 없습니다.'
+
+    try:
+        creds = _get_valid_creds(user)
+    except GoogleCredentials.DoesNotExist:
+        return False, 'Google 계정 연동 정보를 찾을 수 없습니다.'
+
+    headers = {"Authorization": f"Bearer {creds.access_token}"}
+    encoded_calendar_id = quote(metadata['calendar_id'], safe="")
+    url = f"https://www.googleapis.com/calendar/v3/calendars/{encoded_calendar_id}/events/{metadata['event_id']}"
+
+    response = requests.patch(url, headers=headers, json=payload)
+    if response.status_code not in (200, 201):
+        detail = response.text[:200]
+        return False, f'구글 캘린더 업데이트 실패: {detail}'
+
+    return True, None
+
+
+def _delete_google_event(schedule: Schedule, user) -> tuple[bool, str | None]:
+    metadata = _get_google_sync_metadata(schedule)
+    if not metadata:
+        return True, None
+
+    try:
+        creds = _get_valid_creds(user)
+    except GoogleCredentials.DoesNotExist:
+        return False, 'Google 계정 연동 정보를 찾을 수 없습니다.'
+
+    headers = {"Authorization": f"Bearer {creds.access_token}"}
+    encoded_calendar_id = quote(metadata['calendar_id'], safe="")
+    url = f"https://www.googleapis.com/calendar/v3/calendars/{encoded_calendar_id}/events/{metadata['event_id']}"
+
+    response = requests.delete(url, headers=headers)
+    if response.status_code in (200, 204):
+        return True, None
+    if response.status_code == 404:
+        return True, None
+
+    detail = response.text[:200]
+    return False, f'구글 캘린더 삭제 실패: {detail}'
+
+
+def _invite_schedule_shared_users(schedule: Schedule, emails, owner_id: str):
+    if not emails:
+        return []
+    results = []
+    seen_user_ids = set()
+    normalized_emails = []
+    if isinstance(emails, str):
+        normalized_emails = [emails]
+    else:
+        normalized_emails = emails
+
+    for raw_email in normalized_emails:
+        email = (raw_email or '').strip()
+        if not email:
+            continue
+        try:
+            user = CustomUser.objects.get(email__iexact=email)
+        except CustomUser.DoesNotExist:
+            continue
+        user_id = str(user.user_id)
+        if user_id == owner_id:
+            continue
+        if user_id in seen_user_ids:
+            continue
+        if ScheduleShare.objects.filter(schedule=schedule, user_id=user_id).exists():
+            continue
+        if ScheduleInvitation.objects.filter(
+            schedule=schedule,
+            user_id=user_id,
+            status=ScheduleInvitation.Status.PENDING
+        ).exists():
+            continue
+
+        ScheduleInvitation.objects.create(
+            schedule=schedule,
+            user_id=user_id,
+            created_id=owner_id,
+            status=ScheduleInvitation.Status.PENDING,
+        )
+        seen_user_ids.add(user_id)
+        results.append({
+            'user_id': user_id,
+            'email': user.email,
+            'name': user.full_name or user.email,
+        })
+    return results
 
 
 def _schedule_queryset_for_user(user):
@@ -529,7 +773,14 @@ def schedule_list(request):
         }
         create_recurrence(schedule, recurrence_data)
 
+    shared_invites = []
+    shared_emails = data.get("shared_emails") or []
+    if shared_emails:
+        shared_invites = _invite_schedule_shared_users(schedule, shared_emails, owner_id)
+
     payload = _serialize_schedule(schedule, request.user)
+    if shared_invites:
+        payload['shared_invites'] = shared_invites
     return JsonResponse(payload, status=201)
 
 
@@ -562,23 +813,57 @@ def schedule_detail(request, schedule_id):
         # Load shared users
         shared_users = []
         try:
-            from .models import ScheduleShare
             schedule_shares = ScheduleShare.objects.filter(schedule=schedule).select_related()
-            shared_users = [
-                {
+            user_ids = [share.user_id for share in schedule_shares]
+            users = {str(u.user_id): u for u in CustomUser.objects.filter(user_id__in=user_ids)}
+            for share in schedule_shares:
+                user = users.get(str(share.user_id))
+                shared_users.append({
                     'user_id': share.user_id,
-                    'email': share.user_id,  # 임시
-                    'name': share.user_id,   # 임시
-                }
-                for share in schedule_shares
-            ]
+                    'email': user.email if user else share.user_id,
+                    'name': user.full_name or user.email if user else share.user_id,
+                    'status': 'accepted',
+                    'sharedDate': share.created_at.isoformat() if share.created_at else None,
+                })
         except Exception as e:
             print(f"[WARNING] Error loading shared users: {e}")
+
+        try:
+            pending_invitations = ScheduleInvitation.objects.filter(
+                schedule=schedule,
+                status=ScheduleInvitation.Status.PENDING
+            )
+            pending_user_ids = [invite.user_id for invite in pending_invitations]
+            pending_users = {str(u.user_id): u for u in CustomUser.objects.filter(user_id__in=pending_user_ids)}
+            for invite in pending_invitations:
+                user = pending_users.get(str(invite.user_id))
+                shared_users.append({
+                    'user_id': invite.user_id,
+                    'email': user.email if user else invite.user_id,
+                    'name': user.full_name or user.email if user else invite.user_id,
+                    'status': 'pending',
+                    'sharedDate': invite.created_at.isoformat() if invite.created_at else None,
+                })
+        except Exception as e:
+            print(f"[WARNING] Error loading pending invitations: {e}")
 
         payload['color'] = color
         payload['shared_with'] = shared_users
         payload['is_shared_copy'] = schedule.is_shared_copy
         payload['original_schedule_id'] = schedule.original_schedule.schedule_sid if schedule.original_schedule else None
+        try:
+            recurrence = schedule.recurrence
+            payload['recurrence'] = {
+                'freq': recurrence.freq,
+                'interval': recurrence.interval,
+                'week_days': recurrence.week_days,
+                'month_days': recurrence.month_days,
+                'count': recurrence.count,
+                'until': recurrence.until.isoformat() if recurrence.until else None,
+                'timezone': recurrence.timezone,
+            }
+        except ScheduleRecurrence.DoesNotExist:
+            payload['recurrence'] = None
         return JsonResponse(payload)
 
     elif request.method == 'PATCH':
@@ -595,6 +880,22 @@ def schedule_detail(request, schedule_id):
         from django.db import transaction
         
         data = json.loads(request.body)
+        google_metadata = _get_google_sync_metadata(schedule)
+
+        if google_metadata:
+            requested_calendar_id = data.get('calendar_id') or data.get('calendar')
+            if requested_calendar_id is not None and schedule.calendar is not None:
+                try:
+                    requested_calendar_id = int(requested_calendar_id)
+                except (TypeError, ValueError):
+                    requested_calendar_id = str(requested_calendar_id)
+                current_calendar_id = schedule.calendar.calendar_sid
+                if str(current_calendar_id) != str(requested_calendar_id):
+                    return JsonResponse({'error': 'Google에서 동기화된 일정은 다른 캘린더로 이동할 수 없습니다.'}, status=400)
+
+            sync_ok, sync_error = _sync_google_event(schedule, data, request.user)
+            if not sync_ok:
+                return JsonResponse({'error': sync_error or '구글 캘린더 동기화에 실패했습니다.'}, status=400)
         
         # 수정할 필드 추적
         update_fields = []
@@ -629,7 +930,18 @@ def schedule_detail(request, schedule_id):
                 sync_fields.append('description')
                 
         if 'type' in data:
-            new_type = data['type']
+            type_map = {
+                'experiment': 'E',
+                'meeting': 'M',
+                'analysis': 'A',
+                'seminar': 'S',
+                'E': 'E',
+                'M': 'M',
+                'A': 'A',
+                'S': 'S',
+            }
+            new_type_raw = data['type']
+            new_type = type_map.get(new_type_raw, schedule.schedule_type)
             if schedule.schedule_type != new_type:
                 schedule.schedule_type = new_type
                 update_fields.append('schedule_type')
@@ -649,6 +961,40 @@ def schedule_detail(request, schedule_id):
                 update_fields.append('color')
                 sync_fields.append('color')
 
+        if 'is_all_day' in data:
+            is_all_day = data.get('is_all_day')
+            if isinstance(is_all_day, str):
+                is_all_day = is_all_day.lower() in ('true', '1', 'y', 'yes')
+            new_is_all_day = 'Y' if is_all_day else 'N'
+            if schedule.is_all_day != new_is_all_day:
+                schedule.is_all_day = new_is_all_day
+                update_fields.append('is_all_day')
+                sync_fields.append('is_all_day')
+
+        if 'linked_note_id' in data or 'linked_note' in data:
+            raw_note = data.get('linked_note_id', data.get('linked_note'))
+            try:
+                new_note_id = int(raw_note) if raw_note not in (None, '') else None
+            except (TypeError, ValueError):
+                new_note_id = None
+            if schedule.linked_note_sid != new_note_id:
+                schedule.linked_note_sid = new_note_id
+                update_fields.append('linked_note_sid')
+                sync_fields.append('linked_note_sid')
+
+        if 'calendar_id' in data or 'calendar' in data:
+            requested_calendar = data.get('calendar_id', data.get('calendar'))
+            try:
+                requested_calendar = int(requested_calendar)
+            except (TypeError, ValueError):
+                requested_calendar = None
+            if requested_calendar:
+                calendar_obj = _get_user_calendar_by_id(request.user, requested_calendar)
+                if calendar_obj and schedule.calendar != calendar_obj:
+                    schedule.calendar = calendar_obj
+                    update_fields.append('calendar')
+                    sync_fields.append('calendar')
+
         if 'start_datetime' in data:
             from django.utils.dateparse import parse_datetime
             start_date = parse_datetime(data['start_datetime'])
@@ -664,6 +1010,61 @@ def schedule_detail(request, schedule_id):
                 schedule.end_date = end_date
                 update_fields.append('end_date')
                 sync_fields.append('end_date')
+
+        recurrence_provided = 'recurrence' in data
+        repeat_provided = 'repeat' in data
+
+        if recurrence_provided:
+            recurrence_payload = data.get('recurrence') or {}
+            freq_map = {
+                'daily': 'DAILY',
+                'weekly': 'WEEKLY',
+                'monthly': 'MONTHLY',
+                'yearly': 'YEARLY',
+            }
+            normalized_freq = freq_map.get(recurrence_payload.get('freq'), recurrence_payload.get('freq'))
+            if normalized_freq:
+                freq_to_repeat_map = {
+                    'DAILY': 'D',
+                    'WEEKLY': 'W',
+                    'MONTHLY': 'M',
+                    'YEARLY': 'Y',
+                }
+                new_repeat_type = freq_to_repeat_map.get(normalized_freq, 'N')
+                if schedule.repeat_type != new_repeat_type:
+                    schedule.repeat_type = new_repeat_type
+                    update_fields.append('repeat_type')
+                    sync_fields.append('repeat_type')
+                create_recurrence(schedule, {
+                    'freq': normalized_freq,
+                    'interval': recurrence_payload.get('interval', 1),
+                    'week_days': recurrence_payload.get('week_days') or recurrence_payload.get('weekDays') or [],
+                    'month_days': recurrence_payload.get('month_days') or recurrence_payload.get('monthDays') or [],
+                    'count': recurrence_payload.get('count'),
+                    'until': recurrence_payload.get('until'),
+                    'timezone': recurrence_payload.get('timezone') or 'Asia/Seoul',
+                })
+            else:
+                if schedule.repeat_type != 'N':
+                    schedule.repeat_type = 'N'
+                    update_fields.append('repeat_type')
+                    sync_fields.append('repeat_type')
+                    create_recurrence(schedule, None)
+        elif repeat_provided:
+            repeat_map = {
+                'none': 'N',
+                'daily': 'D',
+                'weekly': 'W',
+                'monthly': 'M',
+                'yearly': 'Y',
+            }
+            new_repeat_type = repeat_map.get(data.get('repeat'), schedule.repeat_type)
+            if schedule.repeat_type != new_repeat_type:
+                schedule.repeat_type = new_repeat_type
+                update_fields.append('repeat_type')
+                sync_fields.append('repeat_type')
+            if new_repeat_type == 'N':
+                create_recurrence(schedule, None)
 
         with transaction.atomic():
             # 원본 일정 저장
@@ -688,9 +1089,33 @@ def schedule_detail(request, schedule_id):
             'message': '일정이 수정되었습니다.'
         })
 
+    elif request.method == 'DELETE':
+        owner_id = _resolve_owner_id(request.user)
+        if schedule.is_shared_copy:
+            return JsonResponse({'error': '공유받은 일정은 삭제할 수 없습니다.'}, status=403)
+        if schedule.created_id != owner_id:
+            return JsonResponse({'error': '본인이 생성한 일정만 삭제할 수 있습니다.'}, status=403)
+
+        if ScheduleShare.objects.filter(schedule=schedule).exists():
+            return JsonResponse({'error': '공유 중인 일정은 삭제할 수 없습니다. 공유를 모두 제거해주세요.'}, status=400)
+
+        if schedule.shared_copies.exists():
+            for copy in schedule.shared_copies.all():
+                copy.delete()
+
+        sync_ok, sync_error = _delete_google_event(schedule, request.user)
+        if not sync_ok:
+            return JsonResponse({'error': sync_error or '구글 캘린더 동기화에 실패했습니다.'}, status=400)
+
+        schedule.delete()
+        return JsonResponse({
+            'status': 'success',
+            'message': '일정이 삭제되었습니다.'
+        })
+
 
 @login_required
-@require_http_methods(["GET", "POST"])
+@require_http_methods(["GET", "POST", "DELETE"])
 def schedule_shared_users(request, schedule_id):
     """일정 공유 사용자 목록 조회/공유 API 엔드포인트"""
     try:
@@ -700,19 +1125,39 @@ def schedule_shared_users(request, schedule_id):
 
     if request.method == 'GET':
         try:
-            schedule_shares = ScheduleShare.objects.filter(schedule=schedule)
             owner_id = _resolve_owner_id(request.user)
             is_owner = schedule.created_id == owner_id
 
-            shared_users = [
-                {
+            schedule_shares = ScheduleShare.objects.filter(schedule=schedule)
+            pending_invitations = ScheduleInvitation.objects.filter(
+                schedule=schedule,
+                status=ScheduleInvitation.Status.PENDING
+            )
+            user_ids = [share.user_id for share in schedule_shares]
+            invitation_user_ids = [invite.user_id for invite in pending_invitations]
+            combined_ids = list(set(user_ids + invitation_user_ids))
+            users = {str(u.user_id): u for u in CustomUser.objects.filter(user_id__in=combined_ids)}
+
+            shared_users = []
+            for share in schedule_shares:
+                user = users.get(str(share.user_id))
+                shared_users.append({
                     'user_id': share.user_id,
-                    'email': share.user_id,  # 임시
-                    'name': share.user_id,   # 임시
+                    'email': user.email if user else share.user_id,
+                    'name': user.full_name or user.email if user else share.user_id,
                     'created_at': share.created_at.isoformat() if share.created_at else None,
-                }
-                for share in schedule_shares
-            ]
+                    'status': 'accepted',
+                })
+
+            for invite in pending_invitations:
+                user = users.get(str(invite.user_id))
+                shared_users.append({
+                    'user_id': invite.user_id,
+                    'email': user.email if user else invite.user_id,
+                    'name': user.full_name or user.email if user else invite.user_id,
+                    'created_at': invite.created_at.isoformat() if invite.created_at else None,
+                    'status': 'pending',
+                })
 
             return JsonResponse({
                 'results': shared_users,
@@ -813,6 +1258,25 @@ def schedule_shared_users(request, schedule_id):
             'message': f'{len(created_shares)}명과 공유되었습니다.',
             'shared_users': created_shares
         }, status=201)
+    
+    elif request.method == 'DELETE':
+        owner_id = _resolve_owner_id(request.user)
+        if schedule.created_id != owner_id:
+            return JsonResponse({'error': '본인이 생성한 일정만 공유를 제거할 수 있습니다.'}, status=403)
+        
+        user_id_to_remove = request.GET.get('user_id')
+        if not user_id_to_remove:
+            return JsonResponse({'error': 'user_id parameter is required.'}, status=400)
+        
+        try:
+            share = ScheduleShare.objects.get(schedule=schedule, user_id=user_id_to_remove)
+            share.delete()
+            return JsonResponse({
+                'status': 'success',
+                'message': '공유가 제거되었습니다.'
+            })
+        except ScheduleShare.DoesNotExist:
+            return JsonResponse({'error': '공유 정보를 찾을 수 없습니다.'}, status=404)
     
     elif request.method == 'DELETE':
         # 공유 제거 또는 일정 나가기

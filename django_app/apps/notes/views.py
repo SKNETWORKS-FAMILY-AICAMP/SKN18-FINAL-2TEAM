@@ -21,7 +21,16 @@ from drf_spectacular.utils import extend_schema
 
 logger = logging.getLogger(__name__)
 
+# 마크다운 → HTML 변환을 위한 라이브러리
+try:
+    import markdown
+    MARKDOWN_AVAILABLE = True
+except ImportError:
+    MARKDOWN_AVAILABLE = False
+    logger.warning('[Notes] markdown 라이브러리가 설치되지 않았습니다. 마크다운 → HTML 변환이 비활성화됩니다.')
+
 from .models import Note, NoteTag, NoteAttachment, NoteShare, NoteComment
+from apps.chat.models import ChatMessage
 from apps.core.utils.s3_utils import (
     upload_file_to_s3,
     generate_note_attachment_s3_key
@@ -74,6 +83,51 @@ def generate_content_preview(content, max_length=200):
     if len(text) > max_length:
         return text[:max_length]
     return text
+
+
+def markdown_to_html(markdown_text: str) -> str:
+    """
+    마크다운 텍스트를 HTML로 변환
+    
+    Args:
+        markdown_text: 마크다운 형식의 텍스트
+    
+    Returns:
+        HTML 형식의 텍스트
+    """
+    if not markdown_text:
+        return ''
+    
+    if not MARKDOWN_AVAILABLE:
+        # 마크다운 라이브러리가 없으면 기본 처리
+        logger.warning('[Notes] markdown 라이브러리 없이 마크다운 변환 시도')
+        return markdown_text
+    
+    try:
+        # 마크다운 확장 기능 설정
+        extensions = [
+            'nl2br',  # 줄바꿈을 <br>로 변환
+            'fenced_code',  # 코드 블록 지원
+            'tables',  # 테이블 지원
+            'codehilite',  # 코드 하이라이팅 (선택사항)
+        ]
+        
+        # 마크다운 → HTML 변환
+        html = markdown.markdown(
+            markdown_text,
+            extensions=extensions,
+            extension_configs={
+                'codehilite': {
+                    'use_pygments': False,  # Pygments 의존성 제거
+                }
+            }
+        )
+        
+        return html
+    except Exception as e:
+        logger.error(f'[Notes] 마크다운 변환 실패: {e}', exc_info=True)
+        # 변환 실패 시 원본 반환
+        return markdown_text
 
 
 @login_required
@@ -158,11 +212,13 @@ def notes_list_api(request):
     
     # 내가 만든 노트 또는 나에게 공유된 노트 조회
     if my_notes_only:
-        # 내 노트만 조회
+        # 내 노트만 조회 (공유된 노트 제외)
         base_filter = Q(created_id=user_identifier)
+        logger.info(f'[NotesListAPI] 내 노트만 조회 모드: created_id={user_identifier}')
     else:
         # 내가 만든 노트 또는 나에게 공유된 노트 조회
         base_filter = Q(created_id=user_identifier) | Q(shares__user_id=user_identifier)
+        logger.info(f'[NotesListAPI] 전체 노트 조회 모드: 내 노트 + 공유된 노트')
     
     notes_qs = (
         Note.objects.filter(
@@ -181,6 +237,9 @@ def notes_list_api(request):
         )
         .prefetch_related('tags')
     )
+    
+    # 디버깅: 필터링 전 노트 개수 확인
+    logger.info(f'[NotesListAPI] 필터링된 노트 쿼리 조건: {base_filter}')
     
     # 검색 쿼리 적용 (제목, 내용, 작성자 이름, 태그)
     if search_query:
@@ -244,6 +303,12 @@ def notes_list_api(request):
         # 내가 만든 노트인지 공유받은 노트인지 구분
         is_shared = note.created_id != user_identifier
         
+        # my_notes_only 모드에서는 공유받은 노트가 포함되지 않아야 함
+        if my_notes_only and is_shared:
+            # 이 경우는 발생하지 않아야 하지만, 안전장치로 로그 출력
+            logger.warning(f'[NotesListAPI] ⚠️ my_notes_only=True인데 공유받은 노트 발견: note_id={note.note_sid}, created_id={note.created_id}, user_id={user_identifier}')
+            continue  # 공유받은 노트는 건너뜀
+        
         results.append({
             'id': note.note_sid,
             'title': note.title,
@@ -254,7 +319,7 @@ def notes_list_api(request):
             'shared': note.shared_count or 0,
             'comments': note.comment_count or 0,
             'is_public': note.is_public,
-            'is_shared': is_shared,  # 공유받은 노트인지 여부
+            'is_shared': is_shared,  # 공유받은 노트인지 여부 (my_notes_only 모드에서는 항상 False)
             'tags': tags,
         })
     
@@ -1298,5 +1363,180 @@ def note_share_api(request, note_id):
         logger.error(f'[NoteShareAPI] Error occurred: {str(e)}', exc_info=True)
         return Response(
             {'status': 'error', 'error': f'노트 공유 중 오류가 발생했습니다: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@extend_schema(
+    summary="채팅 메시지를 노트에 저장",
+    description="채팅 메시지를 기존 노트에 추가하거나 새 노트로 저장합니다.",
+    tags=["Notes"],
+    request={
+        'application/json': {
+            'type': 'object',
+            'properties': {
+                'message_id': {'type': 'integer', 'description': '채팅 메시지 ID'},
+                'option': {'type': 'string', 'enum': ['existing', 'new'], 'description': '저장 옵션: existing(기존 노트에 추가) 또는 new(신규 노트)'},
+                'note_id': {'type': 'integer', 'description': '기존 노트 ID (option이 existing인 경우 필수)'},
+                'note_name': {'type': 'string', 'description': '새 노트 제목 (option이 new인 경우 필수)'},
+            },
+            'required': ['message_id', 'option']
+        }
+    },
+    responses={
+        200: {
+            'type': 'object',
+            'properties': {
+                'status': {'type': 'string', 'example': 'success'},
+                'message': {'type': 'string'},
+                'note': {
+                    'type': 'object',
+                    'properties': {
+                        'id': {'type': 'integer'},
+                        'title': {'type': 'string'},
+                    }
+                }
+            }
+        }
+    }
+)
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def note_save_message_api(request):
+    """채팅 메시지를 노트에 저장하는 API"""
+    user_identifier = _get_user_identifier(request.user)
+    
+    try:
+        # 요청 데이터 파싱
+        if request.content_type == 'application/json':
+            data = request.data
+        else:
+            data = request.POST
+        
+        message_id = data.get('message_id')
+        option = data.get('option')  # 'existing' or 'new'
+        note_id = data.get('note_id')
+        note_name = data.get('note_name', '').strip()
+        
+        # 필수 파라미터 검증
+        if not message_id:
+            return Response(
+                {'status': 'error', 'error': '메시지 ID를 입력해주세요.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if option not in ['existing', 'new']:
+            return Response(
+                {'status': 'error', 'error': '올바른 저장 옵션을 선택해주세요.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # 채팅 메시지 조회
+        try:
+            chat_message = ChatMessage.objects.get(message_sid=message_id)
+        except ChatMessage.DoesNotExist:
+            return Response(
+                {'status': 'error', 'error': '채팅 메시지를 찾을 수 없습니다.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # 메시지 내용 가져오기 (마크다운 형식)
+        message_content_md = chat_message.content or ''
+        
+        # 마크다운을 HTML로 변환
+        message_content_html = markdown_to_html(message_content_md)
+        logger.info(f'[NoteSaveMessageAPI] 마크다운 → HTML 변환: {len(message_content_md)}자 → {len(message_content_html)}자')
+        
+        with transaction.atomic():
+            if option == 'existing':
+                # 기존 노트에 추가
+                if not note_id:
+                    return Response(
+                        {'status': 'error', 'error': '노트 ID를 입력해주세요.'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                
+                # 노트 조회 및 권한 확인
+                try:
+                    note = Note.objects.get(
+                        note_sid=note_id,
+                        status='E',
+                        created_id=user_identifier  # 본인이 만든 노트만 수정 가능
+                    )
+                except Note.DoesNotExist:
+                    return Response(
+                        {'status': 'error', 'error': '노트를 찾을 수 없거나 수정 권한이 없습니다.'},
+                        status=status.HTTP_404_NOT_FOUND
+                    )
+                
+                # 기존 내용 하단에 새 내용 추가 (HTML 형식)
+                separator_html = '<hr style="margin: 20px 0; border: none; border-top: 1px solid #e0e0e0;"/>'
+                existing_content = note.content or ''
+                
+                # 구분자와 함께 메시지 내용 추가
+                timestamp_html = f'<p><strong>[채팅 메시지 저장 - {timezone.now().strftime("%Y-%m-%d %H:%M")}]</strong></p>'
+                
+                if existing_content:
+                    # 기존 내용이 있으면 구분자 추가
+                    new_content = existing_content + separator_html + timestamp_html + message_content_html
+                else:
+                    # 기존 내용이 없으면 타임스탬프와 내용만 추가
+                    new_content = timestamp_html + message_content_html
+                
+                # 노트 업데이트
+                note.content = new_content
+                note.content_preview = generate_content_preview(new_content)
+                note.updated_id = user_identifier
+                note.save()
+                
+                return Response({
+                    'status': 'success',
+                    'message': f'"{note.title}" 노트에 저장했습니다.',
+                    'note': {
+                        'id': note.note_sid,
+                        'title': note.title
+                    }
+                }, status=status.HTTP_200_OK)
+                
+            else:  # option == 'new'
+                # 신규 노트 생성
+                if not note_name:
+                    return Response(
+                        {'status': 'error', 'error': '노트 제목을 입력해주세요.'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                
+                logger.info(f'[NoteSaveMessageAPI] 신규 노트 생성 요청: title="{note_name}", message_id={message_id}, user_id={user_identifier}')
+                
+                # 새 노트 생성 (HTML 형식)
+                timestamp_html = f'<p><strong>[채팅 메시지 저장 - {timezone.now().strftime("%Y-%m-%d %H:%M")}]</strong></p>'
+                note_content = timestamp_html + message_content_html
+                
+                logger.info(f'[NoteSaveMessageAPI] 노트 내용 생성 완료: HTML 길이={len(note_content)}자')
+                
+                note = Note.objects.create(
+                    title=note_name,
+                    content=note_content,
+                    content_preview=generate_content_preview(note_content),
+                    created_id=user_identifier,
+                    updated_id=user_identifier,
+                    status='E'
+                )
+                
+                logger.info(f'[NoteSaveMessageAPI] 신규 노트 생성 완료: note_id={note.note_sid}, title="{note.title}"')
+                
+                return Response({
+                    'status': 'success',
+                    'message': f'"{note.title}" 노트를 생성하고 저장했습니다.',
+                    'note': {
+                        'id': note.note_sid,
+                        'title': note.title
+                    }
+                }, status=status.HTTP_201_CREATED)
+        
+    except Exception as e:
+        logger.error(f'[NoteSaveMessageAPI] Error: {str(e)}', exc_info=True)
+        return Response(
+            {'status': 'error', 'error': f'노트 저장 중 오류가 발생했습니다: {str(e)}'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )

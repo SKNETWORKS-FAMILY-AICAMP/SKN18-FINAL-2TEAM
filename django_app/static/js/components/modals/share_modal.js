@@ -38,6 +38,7 @@
     let shareFooterInfo = null;
     let shareModalShareBtn = null;
     let shareModalCancelBtn = null;
+    let isScheduleOwner = false;
 
     // API URL
     const organizationApiUrl = '/api/organization/';
@@ -314,6 +315,12 @@
             const data = await response.json();
             console.log('[ShareModal] Loaded schedule shared users data:', data);
 
+            if (typeof data.is_owner !== 'undefined') {
+                isScheduleOwner = Boolean(data.is_owner);
+            } else {
+                isScheduleOwner = false;
+            }
+
             if (data.results) {
                 alreadySharedUsers = data.results;
                 console.log('[ShareModal] Loaded shared schedule users:', alreadySharedUsers);
@@ -324,6 +331,7 @@
         } catch (error) {
             console.error('[ShareModal] Error loading shared schedule users:', error);
             alreadySharedUsers = [];
+            isScheduleOwner = false;
         }
     }
 
@@ -590,29 +598,54 @@
             return;
         }
 
-        shareSharedList.innerHTML = alreadySharedUsers.map(user => `
-            <div class="share-shared-item">
-                <img src="${escapeHtml(user.avatar)}" alt="${escapeHtml(user.name)}" class="shared-avatar" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=random';" />
+        shareSharedList.innerHTML = alreadySharedUsers.map(user => {
+            const displayName = escapeHtml(user.name || user.full_name || user.email || user.user_id || '사용자');
+            const displayEmail = escapeHtml(user.email || user.user_id || '');
+            const displayRole = escapeHtml(user.role || (user.is_owner ? '소유자' : '공유자'));
+            const sharedDate = formatSharedDate(user.sharedDate || user.created_at);
+            const userIdValue = user.user_id || user.id || user.email;
+            const avatarSrc = escapeHtml(
+                user.avatar ||
+                `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=random`
+            );
+
+            const isPending = user.status === 'pending';
+            const statusBadge = isPending
+                ? '<span class="shared-status pending">대기중</span>'
+                : '<span class="shared-status accepted">공유됨</span>';
+
+            const removeButton = (
+                shareContext === 'schedule' &&
+                isScheduleOwner &&
+                userIdValue &&
+                !isPending
+            ) ? `<button class="btn-remove-share" data-user-id="${escapeHtml(String(userIdValue))}">
+                    공유 해제
+                </button>` : '';
+
+            return `
+            <div class="share-shared-item${isPending ? ' pending' : ''}">
+                <img src="${avatarSrc}" alt="${displayName}" class="shared-avatar" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=random';" />
                 <div class="shared-info">
-                    <div class="shared-name">${escapeHtml(user.name)}</div>
-                    <div class="shared-email">${escapeHtml(user.email)}</div>
-                    <div class="shared-role">${escapeHtml(user.role)}</div>
+                    <div class="shared-name">${displayName}</div>
+                    <div class="shared-email">${displayEmail}</div>
+                    <div class="shared-role">${displayRole}</div>
+                    ${statusBadge}
                 </div>
                 <div class="shared-date-info">
                     <div class="shared-date-label">공유일</div>
-                    <div class="shared-date-value">${escapeHtml(user.sharedDate)}</div>
+                    <div class="shared-date-value">${sharedDate}</div>
                 </div>
-                <button class="btn-remove-share" data-user-id="${user.id}">
-                    공유 해제
-                </button>
+                ${removeButton}
             </div>
-        `).join('');
+        `;
+        }).join('');
 
         // Attach remove share button listeners
         shareSharedList.querySelectorAll('.btn-remove-share').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const userId = parseInt(btn.getAttribute('data-user-id'));
-                removeSharedUser(userId);
+            btn.addEventListener('click', async () => {
+                const userId = btn.getAttribute('data-user-id');
+                await removeSharedUser(userId);
             });
         });
     }
@@ -734,6 +767,9 @@
                     console.log('[ShareModal] Calling onShare callback after successful share');
                     window.ShareModal.onShare(selectedMembers, selectedMemberDetails);
                 }
+                document.dispatchEvent(new CustomEvent('schedule:sharedUpdated', {
+                    detail: { scheduleId }
+                }));
             } else {
                 throw new Error(data.error || '응답 데이터가 올바르지 않습니다.');
             }
@@ -835,14 +871,85 @@
     }
 
     // Remove shared user
-    function removeSharedUser(userId) {
-        // TODO: Implement remove share API call
-        alreadySharedUsers = alreadySharedUsers.filter(u => u.id !== userId);
-        renderSharedUsers();
-        
-        if (window.notyf) {
-            window.notyf.success('공유가 해제되었습니다.');
+    async function removeSharedUser(userId) {
+        if (!userId || !currentScheduleId || !isScheduleOwner) return;
+
+        const confirmed = await confirmShareRemoval();
+        if (!confirmed) return;
+
+        try {
+            const response = await fetch(`/schedule/api/schedules/${currentScheduleId}/shared/?user_id=${encodeURIComponent(userId)}`, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'same-origin',
+            });
+
+            const data = await response.json().catch(() => ({}));
+
+            if (response.ok) {
+                alreadySharedUsers = alreadySharedUsers.filter(u => {
+                    const uid = u.user_id || u.id || u.email;
+                    return String(uid) !== String(userId);
+                });
+                renderSharedUsers();
+                if (window.notyf) {
+                    window.notyf.success(data.message || '공유가 해제되었습니다.');
+                }
+                if (window.ShareModal && window.ShareModal.onShare) {
+                    window.ShareModal.onShare([], []);
+                }
+                document.dispatchEvent(new CustomEvent('schedule:sharedUpdated', {
+                    detail: { scheduleId: currentScheduleId }
+                }));
+            } else {
+                const message = data.error || '공유 해제에 실패했습니다.';
+                if (window.notyf) {
+                    window.notyf.error(message);
+                } else {
+                    alert(message);
+                }
+            }
+        } catch (error) {
+            console.error('[ShareModal] Failed to remove shared user:', error);
+            if (window.notyf) {
+                window.notyf.error('공유 해제 중 오류가 발생했습니다.');
+            } else {
+                alert('공유 해제 중 오류가 발생했습니다.');
+            }
         }
+    }
+
+    async function confirmShareRemoval() {
+        if (window.Swal) {
+            const result = await window.Swal.fire({
+                title: '공유 해제',
+                text: '선택한 사용자와의 공유를 해제하시겠습니까?',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: '해제',
+                cancelButtonText: '취소',
+                confirmButtonColor: '#ef4444',
+                cancelButtonColor: '#6b7280',
+            });
+            return result.isConfirmed;
+        }
+        return confirm('선택한 사용자와의 공유를 해제하시겠습니까?');
+    }
+
+    function formatSharedDate(dateString) {
+        if (!dateString) return '-';
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return '-';
+        return date.toLocaleString('ko-KR', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
     }
 
     // Escape HTML

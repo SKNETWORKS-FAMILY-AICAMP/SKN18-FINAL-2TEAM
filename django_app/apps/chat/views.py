@@ -109,6 +109,48 @@ def chat_list(request):
 
 @login_required
 @require_http_methods(["GET"])
+def chat_references_api(request, chat_id):
+    """채팅의 참고 문헌만 조회하는 API 엔드포인트 - 로그인한 사용자의 채팅만 조회"""
+    user = request.user
+    user_id = user.user_id
+    
+    # 로그인한 사용자가 생성한 채팅만 조회
+    chat = get_object_or_404(Chat, chat_sid=chat_id, created_id=user_id, status='E')
+    
+    # message_id 파라미터 확인 (선택적)
+    message_id = request.GET.get('message_id', None)
+    
+    # 참고 문헌 조회
+    if message_id:
+        # 특정 메시지의 참고 문헌만 조회
+        try:
+            message = ChatMessage.objects.get(
+                message_sid=message_id,
+                chat=chat,
+                role='A'  # Assistant 메시지만
+            )
+            references = ChatReference.objects.filter(
+                chat=chat,
+                message=message
+            ).order_by('ref_id', 'created_at')
+        except ChatMessage.DoesNotExist:
+            # 메시지가 없으면 빈 리스트 반환
+            references = ChatReference.objects.none()
+    else:
+        # message_id가 없으면 채팅 전체의 참고 문헌 조회 (기존 동작)
+        references = ChatReference.objects.filter(chat=chat).order_by('ref_id', 'created_at')
+    
+    # 참고 문헌 포맷팅
+    formatted_references = [_serialize_reference(ref) for ref in references]
+    
+    return JsonResponse({
+        'status': 'success',
+        'references': formatted_references,
+    })
+
+
+@login_required
+@require_http_methods(["GET"])
 def chat_detail(request, chat_id):
     """채팅 상세 정보 API 엔드포인트 (메시지 + 참고 문헌) - 로그인한 사용자의 채팅만 조회"""
     user = request.user
@@ -122,10 +164,8 @@ def chat_detail(request, chat_id):
     )
     
     # 참고 문헌 조회 (채팅 전체 또는 특정 메시지에 연결된 것)
-    references = ChatReference.objects.filter(chat=chat).order_by('ref_id', 'created_at').values(
-        'reference_sid', 'message_id', 'source', 'badge', 'title', 'description',
-        'journal', 'link', 'ref_pubmed_id', 'ref_date', 'ref_authors', 'ref_id'
-    )
+    # _serialize_reference 함수를 사용하기 위해 객체로 조회
+    references = ChatReference.objects.filter(chat=chat).order_by('ref_id', 'created_at')
     
     # 논문 그래프 조회 (메시지별로 연결된 그래프)
     message_graphs = {}
@@ -307,34 +347,8 @@ def chat_detail(request, chat_id):
     print(f"[DEBUG] Messages with paper_graphs: {[msg['id'] for msg in formatted_messages if len(msg['paper_graphs']) > 0]}")
     
     # 참고 문헌 포맷팅
-    formatted_references = []
-    for ref in references:
-        # source 변환
-        source_map = {'P': 'PubMed', 'W': 'Web', 'N': 'NIH', 'T': 'PROTOCOL'}
-        source = source_map.get(ref['source'], ref['source'])
-        
-        # badge 변환
-        badge_map = {'H': '높은 관련성', 'M': '중간 관련성', 'L': '낮은 관련성'}
-        badge = badge_map.get(ref['badge'], '')
-        
-        # journal 변환
-        journal_map = {'J': 'Journal', 'B': 'Book', 'R': 'Report', 'P': 'Protocol'}
-        journal = journal_map.get(ref['journal'], ref['journal'])
-        
-        formatted_references.append({
-            'id': ref['reference_sid'],
-            'message_id': ref['message_id'],
-            'source': source,
-            'badge': badge,
-            'title': ref['title'],
-            'description': ref['description'] or '',
-            'journal': journal,
-            'link': ref['link'] or '',
-            'pmid': ref['ref_pubmed_id'] or '',
-            'date': ref['ref_date'].strftime('%Y. %m. %d') if ref['ref_date'] else '',
-            'authors': ref['ref_authors'] or '',
-            'ref_id': ref['ref_id'],  # UI에서 [24], [25]로 표시되는 참고문헌 번호
-        })
+    # _serialize_reference 함수를 사용하여 일관된 포맷팅 적용
+    formatted_references = [_serialize_reference(ref) for ref in references]
     
     return JsonResponse({
         'chat': {
@@ -820,9 +834,39 @@ def _serialize_reference(ref):
     badge_map = {'H': '높은 관련성', 'M': '중간 관련성', 'L': '낮은 관련성'}
     badge = badge_map.get(ref.badge, '')
 
-    # journal 변환: DB 코드 -> 표시명 (J=Journal, B=Book, R=Report, P=Protocol)
-    journal_map = {'J': 'Journal', 'B': 'Book', 'R': 'Report', 'P': 'Protocol'}
-    journal = journal_map.get(ref.journal, ref.journal)
+    # description에서 journal_name과 doi 추출
+    journal_name = ''
+    doi = ''
+    if ref.description:
+        try:
+            citation_metadata = json.loads(ref.description)
+            journal_name = citation_metadata.get('journal_name', '')
+            doi = citation_metadata.get('doi', '')
+            # 디버그: doi 추출 확인
+            if doi:
+                print(f"[DEBUG _serialize_reference] doi 추출 성공: {doi}")
+            else:
+                print(f"[DEBUG _serialize_reference] doi가 없음. description: {ref.description[:100]}")
+        except (json.JSONDecodeError, TypeError) as e:
+            print(f"[DEBUG _serialize_reference] JSON 파싱 실패: {e}, description: {ref.description[:100] if ref.description else 'None'}")
+            pass
+
+    # journal: description에서 가져온 실제 저널명이 있으면 사용, 없으면 DB 코드 변환
+    if journal_name:
+        journal = journal_name
+    else:
+        journal_map = {'J': 'Journal', 'B': 'Book', 'R': 'Report', 'P': 'Protocol'}
+        journal = journal_map.get(ref.journal, ref.journal)
+
+    # link 처리: link가 없고 pmid가 있으면 PubMed 링크 URL 생성
+    link = ref.link or ''
+    if not link and ref.ref_pubmed_id:
+        link = f'https://pubmed.ncbi.nlm.nih.gov/{ref.ref_pubmed_id}/'
+
+    # 날짜 처리: year만 표시
+    date_str = ''
+    if ref.ref_date:
+        date_str = str(ref.ref_date.year)  # 연도만 표시
 
     return {
         'id': ref.reference_sid,
@@ -830,12 +874,12 @@ def _serialize_reference(ref):
         'source': source,
         'badge': badge,
         'title': ref.title,
-        'description': ref.description or '',
-        'journal': journal,
-        'link': ref.link or '',
+        'description': '',  # description은 메타데이터로 사용하므로 빈 문자열 반환
+        'journal': journal,  # 실제 저널명
+        'link': link,
         'pmid': ref.ref_pubmed_id or '',
-        'date': ref.ref_date.strftime('%Y. %m. %d') if ref.ref_date else '',
-        'authors': ref.ref_authors or '',
+        'date': date_str,  # 연도만 표시
+        'doi': doi,  # description에서 추출한 doi
         'ref_id': ref.ref_id,  # UI에서 [24], [25]로 표시되는 참고문헌 번호
     }
 
@@ -966,8 +1010,10 @@ def chat_messages(request, chat_id=None):
             source = 'P'  # 기본값: PubMed
 
         # badge 매핑 (score 기반)
-        score = citation.get('score', 0.0)
-        if score >= 0.8:
+        score = citation.get('score', None)
+        if score is None or score == 0.0:
+            badge = ''  # score가 없거나 0.0이면 badge 표시 안 함
+        elif score >= 0.8:
             badge = 'H'  # High
         elif score >= 0.5:
             badge = 'M'  # Medium
@@ -981,17 +1027,25 @@ def chat_messages(request, chat_id=None):
         else:
             journal_code = 'R'  # Report (기본값)
 
-        # 날짜 처리: year, month, day를 datetime.date로 변환
+        # 날짜 처리: year만 사용 (year만 있으면 1월 1일로 설정)
         ref_date = None
         year = citation.get('year')
-        month = citation.get('month')
-        day = citation.get('day')
-        if year and month and day:
+        if year:
             try:
                 from datetime import date
-                ref_date = date(int(year), int(month), int(day))
+                ref_date = date(int(year), 1, 1)  # year만 있으면 1월 1일로 설정
             except (ValueError, TypeError):
                 ref_date = None
+
+        # citation에서 journal과 doi를 가져와서 description에 JSON으로 저장
+        citation_metadata = {
+            'journal_name': citation.get('journal', ''),  # 실제 저널명
+            'doi': citation.get('doi', ''),
+        }
+        description_json = json.dumps(citation_metadata, ensure_ascii=False) if any(citation_metadata.values()) else ''
+        
+        # 디버그: citation에서 doi 확인
+        print(f"[DEBUG ChatReference.create] citation doi: {citation.get('doi', 'N/A')}, description_json: {description_json[:100] if description_json else 'empty'}")
 
         ChatReference.objects.create(
             chat=chat,
@@ -999,12 +1053,12 @@ def chat_messages(request, chat_id=None):
             source=source,
             badge=badge,
             title=citation.get('title', f'출처 {ref_id}'),
-            description='',
+            description=description_json,  # JSON으로 journal_name과 doi 저장
             journal=journal_code,
             link=citation.get('url', ''),
             ref_pubmed_id=citation.get('pmid', ''),
-            ref_date=ref_date,  # 수정: year, month, day로부터 생성된 date 객체
-            ref_authors=citation.get('authors', ''),
+            ref_date=ref_date,  # year만 사용
+            ref_authors='',  # authors 필드 없음
             ref_id=ref_id,  # 참고문헌 번호 (services.py의 id 사용, UI에서 [1], [2], [3]...로 표시됨)
         )
 

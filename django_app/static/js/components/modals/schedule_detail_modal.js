@@ -18,6 +18,7 @@ const scheduleShareEmptyBtn = document.getElementById('scheduleShareEmptyBtn');
 const scheduleSharedList = document.getElementById('scheduleSharedList');
 const scheduleSharedEmpty = document.getElementById('scheduleSharedEmpty');
 const sharedCount = document.getElementById('sharedCount');
+const scheduleDeleteBtn = document.getElementById('scheduleDeleteBtn');
 
 // Initialize modal
 function initScheduleDetailModal() {
@@ -26,6 +27,9 @@ function initScheduleDetailModal() {
     if (!modal) {
         console.error(`[ScheduleDetailModal] Modal with ID "${modalId}" not found`);
         return;
+    }
+    if (scheduleDeleteBtn) {
+        scheduleDeleteBtn.addEventListener('click', handleDeleteClick);
     }
     
     console.log('[ScheduleDetailModal] Modal found, setting up event listeners');
@@ -56,6 +60,7 @@ function initScheduleDetailModal() {
     // Modal events - use document level listener to catch all modal:open events
     document.addEventListener('modal:open', handleModalOpen);
     document.addEventListener('modal:close', handleModalClose);
+    document.addEventListener('schedule:sharedUpdated', handleSharedUpdatedEvent);
     
     console.log('[ScheduleDetailModal] Event listeners attached');
 }
@@ -96,6 +101,14 @@ function handleModalOpen(e) {
 function handleModalClose(e) {
     if (e.detail.modalId !== modalId) return;
     selectedScheduleData = null;
+}
+
+function handleSharedUpdatedEvent(e) {
+    const updatedScheduleId = e.detail && e.detail.scheduleId;
+    if (!updatedScheduleId) return;
+    if (selectedScheduleData && String(selectedScheduleData.id) === String(updatedScheduleId)) {
+        loadSharedUsers(updatedScheduleId);
+    }
 }
 
 // Load schedule detail
@@ -174,6 +187,19 @@ function renderScheduleDetail(schedule) {
             scheduleEditBtn.style.opacity = '1';
             scheduleEditBtn.style.cursor = 'pointer';
             scheduleEditBtn.title = '';
+        }
+    }
+    if (scheduleDeleteBtn) {
+        if (isSharedCopy) {
+            scheduleDeleteBtn.disabled = true;
+            scheduleDeleteBtn.style.opacity = '0.5';
+            scheduleDeleteBtn.style.cursor = 'not-allowed';
+            scheduleDeleteBtn.title = '공유받은 일정은 삭제할 수 없습니다';
+        } else {
+            scheduleDeleteBtn.disabled = false;
+            scheduleDeleteBtn.style.opacity = '1';
+            scheduleDeleteBtn.style.cursor = 'pointer';
+            scheduleDeleteBtn.title = '';
         }
     }
     
@@ -270,6 +296,7 @@ function renderScheduleDetail(schedule) {
     
     // Shared users - load from API if not in schedule data
     if (schedule.shared_with && schedule.shared_with.length > 0) {
+        selectedScheduleData.shared_with = schedule.shared_with;
         renderSharedUsers(schedule.shared_with);
     } else {
         // Try to load shared users from API
@@ -298,7 +325,11 @@ async function loadSharedUsers(scheduleId) {
                     selectedScheduleData.schedule_owner_id = data.schedule_owner_id;
                 }
             }
-            renderSharedUsers(data.results || data || []);
+            const sharedUsers = data.results || data || [];
+            if (selectedScheduleData) {
+                selectedScheduleData.shared_with = sharedUsers;
+            }
+            renderSharedUsers(sharedUsers);
         } else {
             renderSharedUsers([]);
         }
@@ -328,11 +359,12 @@ function renderSharedUsers(sharedUsers) {
         scheduleSharedList.innerHTML = sharedUsers.map((user, index) => {
             const userId = user.user_id || user.email || user.id;
             const isCurrentUser = userId === currentUserId;
+            const isPending = user.status === 'pending';
             
             // 내 일정인 경우: 공유 제거 버튼
             // 내 일정이 아닌 경우: 자신에게만 일정 나가기 버튼 표시
             let actionButton = '';
-            if (isOwner) {
+            if (isOwner && !isPending) {
                 // 소유자: 모든 공유자에 대해 공유 제거 버튼
                 actionButton = `
                     <button 
@@ -356,11 +388,23 @@ function renderSharedUsers(sharedUsers) {
                 `;
             }
             
+            const statusBadge = `
+                <div class="schedule-shared-meta">
+                    <span class="schedule-shared-status ${isPending ? 'pending' : 'accepted'}">
+                        ${isPending ? '대기중' : '공유됨'}
+                    </span>
+                </div>
+            `;
+            const itemClass = isPending ? 'schedule-shared-item pending' : 'schedule-shared-item';
+
             return `
-                <div class="schedule-shared-item">
+                <div class="${itemClass}">
                     <div class="schedule-shared-info">
-                        <p class="schedule-shared-name">${escapeHtml(user.name || user.email || user.username || 'Unknown')}</p>
-                        <p class="schedule-shared-email">${escapeHtml(user.email || userId || '')}</p>
+                        <div class="schedule-shared-text">
+                            <p class="schedule-shared-name">${escapeHtml(user.name || user.email || user.username || 'Unknown')}</p>
+                            <p class="schedule-shared-email">${escapeHtml(user.email || userId || '')}</p>
+                        </div>
+                        ${statusBadge}
                     </div>
                     ${actionButton}
                 </div>
@@ -458,7 +502,135 @@ function handleLinkedNoteClick() {
 // Handle edit click
 function handleEditClick() {
     if (!selectedScheduleData) return;
-    window.location.href = `/schedule/${selectedScheduleData.id}/edit/`;
+    const scheduleDataForEdit = selectedScheduleData ? { ...selectedScheduleData } : null;
+
+    // Close detail modal before opening edit modal
+    if (window.Modal && typeof window.Modal.close === 'function') {
+        window.Modal.close(modalId);
+    }
+
+    if (window.ScheduleAddModal && typeof window.ScheduleAddModal.openForEdit === 'function') {
+        window.ScheduleAddModal.openForEdit(scheduleDataForEdit);
+    } else if (window.ScheduleAddModal && typeof window.ScheduleAddModal.open === 'function') {
+        window.ScheduleAddModal.open();
+    } else {
+        const scheduleId = scheduleDataForEdit?.id || (selectedScheduleData ? selectedScheduleData.id : '');
+        if (scheduleId) {
+            window.location.href = `/schedule/${scheduleId}/edit/`;
+        }
+    }
+}
+
+// Handle delete click
+async function handleDeleteClick() {
+    if (!selectedScheduleData || !selectedScheduleData.id) return;
+
+    if (selectedScheduleData.is_shared_copy) {
+        await showAlert('삭제 불가', '공유받은 일정은 삭제할 수 없습니다.', 'warning');
+        return;
+    }
+
+    const scheduleId = selectedScheduleData.id;
+    const sharedCount = await fetchSharedUserCount(scheduleId);
+
+    if (sharedCount > 0) {
+        await showAlert('삭제 불가', '공유 중인 일정은 삭제할 수 없습니다. 공유자 제거 후 다시 시도해주세요.', 'warning');
+        return;
+    }
+
+    const confirmed = await confirmDelete();
+    if (!confirmed) return;
+
+    try {
+        const response = await fetch(`/schedule/api/schedules/${scheduleId}/`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': getCsrfToken(),
+                'Content-Type': 'application/json',
+            },
+        });
+
+        const data = await response.json().catch(() => ({}));
+        if (response.ok) {
+            if (window.notyf) {
+                window.notyf.success(data.message || '일정이 삭제되었습니다.');
+            }
+            if (window.Modal) {
+                window.Modal.close(modalId);
+            }
+            selectedScheduleData = null;
+            if (window.SchedulePage) {
+                if (window.SchedulePage.loadSchedules) {
+                    window.SchedulePage.loadSchedules();
+                }
+                if (window.SchedulePage.refreshCalendar) {
+                    window.SchedulePage.refreshCalendar();
+                }
+            }
+        } else {
+            const errorMsg = data.error || '일정 삭제에 실패했습니다.';
+            await showAlert('삭제 실패', errorMsg, 'error');
+        }
+    } catch (error) {
+        console.error('Error deleting schedule:', error);
+        if (window.notyf) {
+            window.notyf.error('일정 삭제 중 오류가 발생했습니다.');
+        }
+    }
+}
+
+async function fetchSharedUserCount(scheduleId) {
+    try {
+        const response = await fetch(`/schedule/api/schedules/${scheduleId}/shared/`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+        if (response.ok) {
+            const data = await response.json();
+            const sharedUsers = data.results || data.shared_users || [];
+            if (selectedScheduleData) {
+                selectedScheduleData.shared_with = sharedUsers;
+            }
+            return sharedUsers.length;
+        }
+    } catch (error) {
+        console.error('Error fetching shared users for deletion:', error);
+    }
+    return (selectedScheduleData && Array.isArray(selectedScheduleData.shared_with))
+        ? selectedScheduleData.shared_with.length
+        : 0;
+}
+
+async function confirmDelete() {
+    if (window.Swal) {
+        const result = await window.Swal.fire({
+            title: '일정 삭제',
+            text: '일정을 삭제하시겠습니까? 삭제 후에는 되돌릴 수 없습니다.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: '삭제',
+            cancelButtonText: '취소',
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#6b7280',
+        });
+        return result.isConfirmed;
+    }
+    return confirm('일정을 삭제하시겠습니까?');
+}
+
+async function showAlert(title, text, icon = 'info') {
+    if (window.Swal) {
+        await window.Swal.fire({
+            title,
+            text,
+            icon,
+            confirmButtonText: '확인',
+        });
+    } else {
+        alert(text);
+    }
 }
 
 // Handle share click
