@@ -49,7 +49,7 @@ const experimentResultStatus = document.getElementById('experimentResultStatus')
 const experimentResultProgressFill = document.getElementById('experimentResultProgressFill');
 const experimentResultProgressText = document.getElementById('experimentResultProgressText');
 const experimentResultFilesList = document.getElementById('experimentResultFilesList');
-
+const PIPELINE_ORDER = ['RFdiffusion', 'ProteinMPNN', 'AlphaFold3'];
 // Available tools (will be loaded from API or context)
 // Default tools structure matching React component
 const defaultTools = [
@@ -165,6 +165,10 @@ function initExperiment() {
 
     // Load experiments
     loadExperiments();
+     // ✅ 5초마다 실험 목록 상태 재조회 (폴링)
+    if (!window.__experimentPollTimer) {
+        window.__experimentPollTimer = setInterval(loadExperiments, 30000);
+    }
 
     // Event listeners
     if (toolSearchInput) {
@@ -913,6 +917,10 @@ function handleSaveToNote(result) {
     }
 }
 
+
+
+
+
 // Handle tool selection
 function toggleToolSelection(toolId) {
     if (selectedTools.includes(toolId)) {
@@ -921,6 +929,7 @@ function toggleToolSelection(toolId) {
         selectedTools = [...selectedTools, toolId];
     }
     
+    selectedTools = getSelectedToolsInOrder().map(t => t.id);
     updateToolCards();
     updatePipelineActions();
 }
@@ -1045,13 +1054,14 @@ function renderPipelineVisualization() {
             arrowAfterProtein.className = 'pipeline-arrow';
             arrowAfterProtein.innerHTML = '<i class="fas fa-arrow-right"></i>';
             proteinItem.after(arrowAfterProtein);
-
-            // Insert tools with arrows
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = toolsHtml;
-            while (tempDiv.firstChild) {
-                arrowAfterProtein.after(tempDiv.firstChild);
-            }
+            
+            arrowAfterProtein.insertAdjacentHTML('afterend', toolsHtml);
+            // // Insert tools with arrows
+            // const tempDiv = document.createElement('div');
+            // tempDiv.innerHTML = toolsHtml;
+            // while (tempDiv.firstChild) {
+            //     arrowAfterProtein.after(tempDiv.firstChild);
+            // }
         }
     }
     
@@ -1207,10 +1217,27 @@ function updateToolOption(toolId, fieldName, value) {
 
 // Get selected tools in order
 function getSelectedToolsInOrder() {
-    return selectedTools.map(id => 
-        availableTools.find(t => t.id === id)
-    ).filter(t => t);
+    // 1) 현재 선택된 도구 객체 배열
+    const tools = selectedTools
+        .map(id => availableTools.find(t => t.id === id))
+        .filter(t => t);
+
+    // 2) 이름에 키워드가 들어있는지 기준으로 정렬
+    const getOrderKey = (tool) => {
+        const name = (tool.name || '').toLowerCase();
+
+        if (name.includes('rfdiffusion')) return 0;     // RFdiffusion
+        if (name.includes('proteinmpnn')) return 1;     // ProteinMPNN
+        if (name.includes('alphafold')) return 2;       // AlphaFold3
+
+        return 99;  // 정의 안 된 도구는 맨 뒤
+    };
+
+    return tools.sort((a, b) => getOrderKey(a) - getOrderKey(b));
 }
+    // return selectedTools.map(id => 
+    //     availableTools.find(t => t.id === id)
+    // ).filter(t => t);
 
 // Attach pipeline handlers
 function attachPipelineHandlers() {
@@ -1301,7 +1328,7 @@ function attachPipelineHandlers() {
             }
 
             const sequence = selectedProtein?.sequence || proteinSequenceInput?.value.trim() || sequenceQuery;
-            const selectedToolsData = availableTools.filter(t => selectedTools.includes(t.id));
+            const selectedToolsData = getSelectedToolsInOrder();   
             
             console.log('[ExperimentPage] Opening SimulationConfirmModal');
             console.log('[ExperimentPage] Selected tools:', selectedToolsData);
@@ -1404,7 +1431,7 @@ async function handleRunSimulation() {
     // Open simulation confirm modal
     if (window.SimulationConfirmModal && window.SimulationConfirmModal.open) {
         const sequence = selectedProtein?.sequence || proteinSequenceInput?.value.trim() || sequenceQuery;
-        const selectedToolsData = availableTools.filter(t => selectedTools.includes(t.id));
+        const selectedToolsData = getSelectedToolsInOrder();
         window.SimulationConfirmModal.open(selectedToolsData, sequence);
     } else {
         // Fallback: direct confirmation
@@ -1429,12 +1456,12 @@ async function executeSimulation(sequence = null, title = null) {
         }
         return;
     }
-
+    const orderedTools = getSelectedToolsInOrder().map(t => t.id)
     const requestData = {
-        tools: selectedTools,
+        tools: orderedTools,
         protein_sequence: finalSequence,
         pipeline_name: title || `Pipeline ${new Date().toLocaleString('ko-KR')}`,
-        tool_options: toolOptions, //수정사항
+        tool_options: toolOptions,
     };
     
     console.log('[ExperimentPage] ====== executeSimulation called ======');
@@ -2347,6 +2374,7 @@ function setToolOptions(value) {
 
 function setSelectedTools(value) {
     selectedTools = Array.isArray(value) ? [...value] : [];
+    selectedTools = getSelectedToolsInOrder().map(t => t.id);
     updateToolCards();
     updatePipelineActions();
 }

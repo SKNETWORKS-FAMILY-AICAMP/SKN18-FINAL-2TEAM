@@ -96,7 +96,7 @@ def parse_args():
         default=_get_s3_prefix_default(),
         help="S3 key prefix (folder path). Default uses S3_PREFIX or AWS_S3_BASE_PATH or 'rfdiffusion'",
     )
-    p.add_argument("--s3_upload_logs", action="store_true", help="Also upload job log if exists")
+    p.add_argument("--s3_upload_logs", action="store_true", default=True, help="Also upload job log if exists")
     p.add_argument("--fail_on_s3_error", action="store_true", help="If upload fails, exit non-zero")
 
     return p.parse_args()

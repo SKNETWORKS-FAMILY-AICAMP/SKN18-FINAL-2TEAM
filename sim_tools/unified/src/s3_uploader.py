@@ -1,6 +1,8 @@
 import os
 from pathlib import Path
 import boto3
+from datetime import datetime, timezone, timedelta
+
 
 
 def _region() -> str | None:
@@ -51,14 +53,24 @@ def upload_job_outputs(
         candidates.append(out / "_logs" / f"{job_name}.log")
 
     # ✅ prefix 정규화: 앞/뒤 '/' 제거해서 key 깨짐 방지
-    prefix = (prefix or "rfdiffusion").strip().strip("/")
+    # job_name 형식: "<pipeline(실험ID)>__<step(툴이름)>"
+    pipeline = job_name
+    step = "unknown"
+    if "__" in job_name:
+        pipeline, step = job_name.split("__", 1)
+    KST = timezone(timedelta(hours=9))
+    # dt=YYYY-MM-DD
+    dt = datetime.now(KST).date().strftime("%Y-%m-%d")
+
+    # 최종 prefix: simulations/dt=2026-01-03/pipeline=26/step=rfdiffusion
+    base_prefix = f"{prefix}/dt={dt}/pipeline={pipeline}/step={step}".strip("/")
 
     uploaded: list[str] = []
     for p in candidates:
         if not p.exists() or p.stat().st_size <= 0:
             continue
 
-        key = f"{prefix}/{job_name}/{p.name}"
+        key = f"{base_prefix}/{p.name}"
         content_type = "chemical/x-pdb" if p.suffix == ".pdb" else "application/octet-stream"
         uploaded.append(upload_file_to_s3(str(p), bucket, key, content_type=content_type))
 
