@@ -28,14 +28,14 @@ STEP_FOR_CLI = {
 class RunRequest(BaseModel):
     mode: Literal["backbone", "binder", "other"] = "backbone"
 
-    # # ⚠️ 기존 호환을 위해 남겨두되, 실제 실행에서는 무시함
-    name: Optional[str] = None
+    # # # ⚠️ 기존 호환을 위해 남겨두되, 실제 실행에서는 무시함
+    # name: Optional[str] = None
     contigs: str = Field(default="100")
     iterations: int = Field(default=1)   
     s3_upload_logs: bool = Field(default=True)
     experiment_id: str            # 파이프라인 ID (experiment_sid 문자열)
     step: Literal["rfdiffusion", "protein_mpnn", "alphafold3"]
-    # options: dict = Field(default_factory=dict)
+    options: dict = Field(default_factory=dict)
 
 class RunResponse(BaseModel):
     ok: bool
@@ -126,6 +126,7 @@ def run(req: RunRequest, x_api_key: Optional[str] = None):
     step_api = req.step
     opts = req.options or {}
     step_cli = STEP_FOR_CLI[step_api] 
+
     # job_name = f"{exp_id}__{step}"  
 
     contigs = req.contigs or "100"
@@ -138,21 +139,30 @@ def run(req: RunRequest, x_api_key: Optional[str] = None):
         cautious = bool(opts.get("cautious") or False)
 
     elif step_api == "protein_mpnn":
-        iterations = int(opts.get("numSequences") or iterations)
-
+        contigs = str(opts.get("contigs") or req.contigs)
+        iterations = int(opts.get("numSequences") or req.iterations)
+        cautious = False
     elif step_api == "alphafold3":
-        iterations = int(opts.get("maxRecycles") or iterations)
-
+        contigs = req.contigs
+        iterations = int(opts.get("maxRecycles") or req.iterations)
+        cautious = False
+        
+    protein_seq = (opts.get("protein_sequence") or "").strip()
+    af_sequence_only = bool(opts.get("af_sequence_only"))
 
     # ✅ main.py에 experiment_id / step 전달
     args = [
         "run",
         "--mode", req.mode,
-        "--contigs", contigs,
-        "--iterations", str(iterations),
+        "--contigs", req.contigs,
+        "--iterations", str(req.iterations),
         "--experiment_id", experiment_id,
-        "--step", step_cli,
+        "--step", req.step
     ]
+    if protein_seq:
+        args.extend(["--protein_sequence", protein_seq])
+    if af_sequence_only:
+        args.append("--af_sequence_only")
     if req.s3_upload_logs:
         args.append("--s3_upload_logs")
     if cautious:
