@@ -127,6 +127,48 @@ def protect_table_blocks(text: str) -> tuple[str, list[str]]:
 
     return cleaned_text, extracted_tables
 
+def normalize_table_rows(rows: list[dict], header: list[str]):
+    """
+    header-row mismatch 테이블 재처리
+    """
+    header_len = len(header)
+    normalized = []
+    parse_status = "fixed"
+
+    # 🔹 1) fill-down (병합 셀 대응: 첫 컬럼)
+    last_seen = None
+    for r in rows:
+        values = r["values"]
+
+        if values and values[0]:
+            last_seen = values[0]
+        elif last_seen:
+            values = [last_seen] + values
+
+        normalized.append(values)
+
+    # 🔹 2) 길이 재검사
+    final_rows = []
+    for values in normalized:
+        if len(values) != header_len:
+            parse_status = "invalid"
+            break
+        final_rows.append(values)
+
+    if parse_status == "invalid":
+        return rows, "invalid"
+
+    return (
+        [
+            {
+                "row_number": rows[i]["row_number"],
+                "values": final_rows[i],
+            }
+            for i in range(len(rows))
+        ],
+        "fixed",
+    )
+
 def table_to_json(
     table_text: str,
     table_id: str,
@@ -137,39 +179,69 @@ def table_to_json(
     title: str
 ) -> Dict:
     """
-    보호된 table text를 table 단위 JSON metadata로 변환한다.
-    header는 항상 포함하며, 표 전체를 하나의 JSON 필드로 유지한다.
+    table text → JSON
+    - row_number 분리
+    - header / row length 정합성 보정
     """
 
     # --- 1. line 정리 ---
     lines = [ln.strip() for ln in table_text.splitlines() if ln.strip()]
-    if not lines:
+    if len(lines) < 2:
         return {}
 
     # --- 2. header 파싱 ---
     header_cols = re.split(r'\s{2,}|\t+', lines[0])
     header = [col.strip() for col in header_cols if col.strip()]
+    header_len = len(header)
+
+    rows = []
 
     # --- 3. row 파싱 ---
-    rows: List[List[str]] = []
-
     for line in lines[1:]:
-        cols = re.split(r'\s{2,}|\t+', line)
-
-        # 컬럼이 2개 미만이면 table 종료
+        cols = [c.strip() for c in re.split(r'\s{2,}|\t+', line) if c.strip()]
         if len(cols) < 2:
-            break
+            continue
 
-        row = [col.strip() for col in cols if col.strip()]
-        rows.append(row)
+        row_number = None
+        values = cols
 
-    # --- 4. table JSON 구성 ---
+        # ✅ row_number 분리 (첫 컬럼이 숫자일 경우)
+        if cols[0].isdigit():
+            row_number = cols[0]
+            values = cols[1:]
+
+        # ✅ header 길이 맞추기
+        row_len = len(values)
+
+        rows.append(
+            {
+                "row_number": row_number,
+                "values": values,
+                "value_len": row_len,
+            }
+        )
+    header_len = len(header)
+
+    mismatch_rows = [
+        r for r in rows if r["value_len"] != header_len
+    ]
+
+    if mismatch_rows:
+        rows, parse_status = normalize_table_rows(rows, header)
+    else:
+        parse_status = "ok"
+
+    if not rows:
+        return {}
+
+    # --- 4. table JSON ---
     table_json = {
         "header": header,
-        "rows": rows
+        "rows": rows,
+        "parse_status": parse_status,   # ok / fixed / invalid
     }
 
-    # --- 5. metadata 객체 반환 ---
+    # --- 5. metadata ---
     return {
         "table_id": table_id,
         "chunk_id": chunk_id,
