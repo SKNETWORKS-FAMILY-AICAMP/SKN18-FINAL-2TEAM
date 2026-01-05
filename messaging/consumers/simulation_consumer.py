@@ -336,28 +336,32 @@ def enqueue_next_selection(experiment_sid: int, current_sort_order: int, request
 def handle_simulation_task(message: Dict[str, Any]):
     """
     시뮬레이션 작업 처리
-    
-    Args:
-        message: 메시지 딕셔너리
     """
     task_id = message.get("task_id")
     payload = message.get("payload") or {}
     experiment_sid_raw = payload.get("experiment_sid")
 
     tool_name = payload.get("tool_name")
-    
-    # 파이프라인 단계 정보 / 요청자 ID
-    current_sort_order = payload.get("sort_order", 0)
-    total_steps = payload.get("total_steps", 1)
+    current_sort_order = int(payload.get("sort_order", 0))
+    total_steps = int(payload.get("total_steps", 1))
     requested_by = message.get("requested_by")
-    
+
+    protein_sequence = payload.get("protein_sequence")
+    tool_options = payload.get("tool_options") or {}
+
+    # 🔹 AlphaFold3가 파이프라인 첫 단계일 때만 sequence-only 모드 ON
+    #    (정확한 기준에 맞게 0/1 중 하나만 쓰셔도 됩니다)
+    if tool_name == "AlphaFold3" and int(current_sort_order) == 1:
+        if protein_sequence:
+            tool_options["protein_sequence"] = protein_sequence
+        tool_options["af_sequence_only"] = True
+
     if experiment_sid_raw is None:
         logger.error("Received message without experiment_sid: %s", message)
-        return  # 더 할 수 있는 게 없으니 그냥 ACK 처리
-    
+        return
+
     experiment_sid = int(experiment_sid_raw)
-    sort_order = int(payload.get("sort_order", 0))
-    tool_options = payload.get("tool_options") or {}
+    # sort_order = current_sort_order
     # # 2) 첫 스텝일 때만 “앞선 미완료 실험 있으면 재큐잉”
     # if sort_order == 0 and has_older_pending_experiment(experiment_sid):
     #     logger.info(
@@ -403,9 +407,9 @@ def handle_simulation_task(message: Dict[str, Any]):
         with open(config_path, 'w') as f:
             yaml.dump(config_data, f)
         
-        # 출력 디렉토리/ 수정함
+        # #출력 디렉토리/ 수정함
         output_dir = str(experiment_sid)
-        os.makedirs(output_dir, exist_ok=True)
+        # os.makedirs(output_dir, exist_ok=True)
         
         # 3. 진행률 업데이트: 25%
         update_experiment_status(experiment_sid, 'R', 25)
