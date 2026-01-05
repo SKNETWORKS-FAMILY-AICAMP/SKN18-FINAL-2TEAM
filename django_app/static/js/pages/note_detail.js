@@ -158,9 +158,64 @@ function renderNoteDetail(note) {
         }
     }
     
-    // Content는 HTML이므로 innerHTML 사용 (CKEditor에서 생성된 HTML)
+    // Content 렌더링: HTML과 마크다운 모두 지원
+    // CKEditor에서 생성된 HTML 또는 저장 시 변환된 HTML, 또는 마크다운 형식일 수 있음
     if (noteContentText) {
-        noteContentText.innerHTML = note.content || '';
+        const content = note.content || '';
+        
+        console.log('[NoteDetail] Content 렌더링 시작, 길이:', content.length);
+        console.log('[NoteDetail] Content 샘플 (처음 200자):', content.substring(0, 200));
+        
+        // HTML 태그가 있는지 확인 (더 정확한 체크)
+        // <p>, <div>, <h1>-<h6>, <ul>, <ol>, <li>, <strong>, <em>, <hr> 등의 HTML 태그 확인
+        const htmlTagPattern = /<\/?(p|div|h[1-6]|ul|ol|li|strong|em|b|i|u|a|img|br|hr|blockquote|pre|code|table|thead|tbody|tr|td|th|span)[\s>]/i;
+        const hasHtmlTags = htmlTagPattern.test(content);
+        
+        // 마크다운 패턴 확인 (##, **, -, 1. 등)
+        const markdownPattern = /(^#{1,6}\s|^\*\*|^\-|^\d+\.|^>|```)/m;
+        const hasMarkdownPattern = markdownPattern.test(content);
+        
+        console.log('[NoteDetail] HTML 태그 감지:', hasHtmlTags);
+        console.log('[NoteDetail] 마크다운 패턴 감지:', hasMarkdownPattern);
+        
+        // 렌더링 전략:
+        // 1. HTML 태그가 있으면 → HTML로 렌더링
+        // 2. HTML 태그가 없고 마크다운 패턴이 있으면 → 마크다운으로 변환
+        // 3. 둘 다 없으면 → 평문으로 처리
+        if (hasHtmlTags) {
+            // HTML 형식인 경우 그대로 렌더링
+            console.log('[NoteDetail] HTML 형식으로 렌더링');
+            noteContentText.innerHTML = content;
+        } else if (hasMarkdownPattern || window.MarkdownUtils) {
+            // 마크다운 형식인 경우 HTML로 변환
+            console.log('[NoteDetail] 마크다운 형식으로 감지, HTML 변환 시도');
+            if (window.MarkdownUtils && typeof window.MarkdownUtils.render === 'function') {
+                try {
+                    const renderedHtml = window.MarkdownUtils.render(content);
+                    noteContentText.innerHTML = renderedHtml;
+                    console.log('[NoteDetail] ✅ 마크다운 → HTML 변환 완료');
+                } catch (error) {
+                    console.error('[NoteDetail] ❌ 마크다운 렌더링 실패:', error);
+                    // 변환 실패 시 최소한 줄바꿈은 처리
+                    const processedContent = content.replace(/\n/g, '<br>');
+                    noteContentText.innerHTML = processedContent;
+                }
+            } else {
+                // MarkdownUtils가 없는 경우 최소한 줄바꿈 처리
+                console.warn('[NoteDetail] ⚠️ MarkdownUtils를 사용할 수 없습니다. 기본 포맷팅 적용.');
+                console.warn('[NoteDetail] window.MarkdownUtils:', window.MarkdownUtils);
+                // 줄바꿈 처리
+                const processedContent = content.replace(/\n/g, '<br>');
+                noteContentText.innerHTML = processedContent;
+            }
+        } else {
+            // 평문인 경우 줄바꿈만 처리
+            console.log('[NoteDetail] 평문 형식, 줄바꿈 처리');
+            const processedContent = content.replace(/\n/g, '<br>');
+            noteContentText.innerHTML = processedContent;
+        }
+        
+        console.log('[NoteDetail] Content 렌더링 완료');
     }
     
     // Render tags
