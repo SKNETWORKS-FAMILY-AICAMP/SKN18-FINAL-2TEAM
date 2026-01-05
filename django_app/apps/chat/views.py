@@ -269,7 +269,7 @@ def chat_detail(request, chat_id):
     
     # 메시지 조회
     messages = chat.messages.all().order_by('sort_order', 'created_at').values(
-        'message_sid', 'role', 'content', 'sort_order', 'created_at'
+        'message_sid', 'role', 'content', 'sort_order', 'created_at', 'case_type'
     )
     
     # 참고 문헌 조회 (채팅 전체 또는 특정 메시지에 연결된 것)
@@ -449,6 +449,7 @@ def chat_detail(request, chat_id):
             'content': msg['content'],
             'sort_order': msg['sort_order'],
             'created_at': msg['created_at'].isoformat() if msg['created_at'] else None,
+            'case_type': msg.get('case_type'),
             'paper_graphs': paper_graphs_for_msg,
         })
     
@@ -925,6 +926,7 @@ def _serialize_message(message):
         'content': message.content,
         'sort_order': message.sort_order,
         'created_at': message.created_at.isoformat() if message.created_at else None,
+        'case_type': message.case_type if hasattr(message, 'case_type') else None,
     }
 
 
@@ -1087,13 +1089,15 @@ def chat_messages(request, chat_id=None):
             status=201,
         )
 
-    # 8. AI 메시지 생성
+    # 8. AI 메시지 생성 (case_type 포함)
+    case_type = result_state.get("case_type") or "NO_RELATION"
     assistant_message = ChatMessage.objects.create(
         chat=chat,
         role='A',
         content=ai_text,
         sort_order=next_sort_order + 1,
         created_id='system',
+        case_type=case_type,
     )
     
     # 8-1. 백그라운드에서 논문 네트워크 생성 (비동기 처리)
