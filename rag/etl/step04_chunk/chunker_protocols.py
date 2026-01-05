@@ -11,7 +11,7 @@ import sys
 import hashlib
 from datetime import datetime
 from pathlib import Path
-from typing import List, Dict
+from typing import Dict
 import csv
 import json
 
@@ -51,6 +51,93 @@ SPLIT_ROWS_PER_FILE = int(os.getenv("PROTOCOL_CHUNK_SPLIT_SIZE", "3000"))
 # table metadata CSV 저장 위치
 TABLE_OUTPUT_ROOT = BASE_PATH / "data/entities/protocols"
 
+AGG_KEYS = {"total", "sum", "avg", "average", "mean"}
+
+def detect_row_flags(values, header_len, row_idx, total_rows):
+    flags = []
+
+    # 세로 병합
+    if values and not values[0]:
+        flags.append("fill_down")
+
+    # 가로 병합 후보 (판단은 normalize에서)
+    if len(values) < header_len:
+        flags.append("short_row")
+
+    # aggregate row
+    if values and any(k in values[0].lower() for k in AGG_KEYS):
+        if row_idx >= total_rows - 2:
+            flags.append("aggregate")
+
+    # middle null
+    if len(values) == header_len:
+        empties = [i for i, v in enumerate(values) if not v]
+        if empties and 0 not in empties:
+            flags.append("middle_null")
+
+    return flags
+
+def normalize_table_rows(rows: list[dict], header: list[str]):
+    header_len = len(header)
+
+    normalized_rows = []
+    table_flags = set()
+    last_seen = None
+    prev_values = None
+
+    for idx, r in enumerate(rows):
+        values = r["values"]
+        flags = detect_row_flags(values, header_len, idx, len(rows))
+
+        # 🔥 LEFT MERGE DETECTION
+        left_merged = False
+        if (
+            prev_values
+            and len(values) == header_len - 1
+            and prev_values[0].isdigit()
+            and not values[0].isdigit()
+        ):
+            values = [""] + values
+            flags.append("left_merge")
+            left_merged = True
+
+        # 1️⃣ fill-down (left_merge 제외)
+        if not left_merged and "fill_down" in flags and last_seen:
+            values = [last_seen] + values
+
+        if values and values[0]:
+            last_seen = values[0]
+
+        # 2️⃣ padding (가로 병합 / middle null)
+        original_values = values.copy()
+
+        # padding
+        if len(values) < header_len:
+            values = values + [""] * (header_len - len(values))
+
+        prev_values = original_values
+
+        # 3️⃣ 길이 초과는 잘라냄 (보수적)
+        if len(values) > header_len:
+            return rows, "invalid", ["length_overflow"]
+
+        table_flags.update(flags)
+
+        normalized_rows.append(
+            {
+                "row_number": r["row_number"],
+                "values": values,
+                "row_flags": flags,
+            }
+        )
+
+    # 4️⃣ table status 결정
+    if table_flags:
+        parse_status = "fixed"
+    else:
+        parse_status = "ok"
+
+    return normalized_rows, parse_status, sorted(table_flags)
 
 def protect_table_blocks(text: str) -> tuple[str, list[str]]:
     lines = text.splitlines()
@@ -127,47 +214,16 @@ def protect_table_blocks(text: str) -> tuple[str, list[str]]:
 
     return cleaned_text, extracted_tables
 
-def normalize_table_rows(rows: list[dict], header: list[str]):
+def detect_table_splitter(header_line: str) -> str:
     """
-    header-row mismatch 테이블 재처리
+    header line을 기준으로 table column splitter 결정
+    반환값: 'pipe' | 'tab' | 'space'
     """
-    header_len = len(header)
-    normalized = []
-    parse_status = "fixed"
-
-    # 🔹 1) fill-down (병합 셀 대응: 첫 컬럼)
-    last_seen = None
-    for r in rows:
-        values = r["values"]
-
-        if values and values[0]:
-            last_seen = values[0]
-        elif last_seen:
-            values = [last_seen] + values
-
-        normalized.append(values)
-
-    # 🔹 2) 길이 재검사
-    final_rows = []
-    for values in normalized:
-        if len(values) != header_len:
-            parse_status = "invalid"
-            break
-        final_rows.append(values)
-
-    if parse_status == "invalid":
-        return rows, "invalid"
-
-    return (
-        [
-            {
-                "row_number": rows[i]["row_number"],
-                "values": final_rows[i],
-            }
-            for i in range(len(rows))
-        ],
-        "fixed",
-    )
+    if "|" in header_line:
+        return "pipe"
+    if "\t" in header_line:
+        return "tab"
+    return "space"
 
 def table_to_json(
     table_text: str,
@@ -190,25 +246,38 @@ def table_to_json(
         return {}
 
     # --- 2. header 파싱 ---
-    header_cols = re.split(r'\s{2,}|\t+', lines[0])
-    header = [col.strip() for col in header_cols if col.strip()]
+    splitter = detect_table_splitter(lines[0])
+
+    if splitter == "pipe":
+        header_cols = [c.strip() for c in lines[0].strip("|").split("|")]
+    elif splitter == "tab":
+        header_cols = [c.strip() for c in lines[0].split("\t")]
+    else:  # space
+        header_cols = re.split(r"\s{2,}", lines[0])
+
+    header = [c for c in header_cols if c]
     header_len = len(header)
 
     rows = []
 
     # --- 3. row 파싱 ---
     for line in lines[1:]:
-        cols = [c.strip() for c in re.split(r'\s{2,}|\t+', line) if c.strip()]
-        if len(cols) < 2:
+        if splitter == "pipe":
+            raw_cols = [c.strip() for c in line.strip("|").split("|")]
+        elif splitter == "tab":
+            raw_cols = [c.strip() for c in line.split("\t")]
+        else:  # space
+            raw_cols = re.split(r"\s{2,}", line)
+        if len(raw_cols) < 2:
             continue
 
         row_number = None
-        values = cols
+        values = raw_cols
 
         # ✅ row_number 분리 (첫 컬럼이 숫자일 경우)
-        if cols[0].isdigit():
-            row_number = cols[0]
-            values = cols[1:]
+        if raw_cols[0].isdigit():
+            row_number = raw_cols[0]
+            values = raw_cols[1:]
 
         # ✅ header 길이 맞추기
         row_len = len(values)
@@ -226,8 +295,10 @@ def table_to_json(
         r for r in rows if r["value_len"] != header_len
     ]
 
+    fix_flags = []
+
     if mismatch_rows:
-        rows, parse_status = normalize_table_rows(rows, header)
+        rows, parse_status, fix_flags = normalize_table_rows(rows, header)
     else:
         parse_status = "ok"
 
@@ -239,6 +310,7 @@ def table_to_json(
         "header": header,
         "rows": rows,
         "parse_status": parse_status,   # ok / fixed / invalid
+        "fix_flags": fix_flags
     }
 
     # --- 5. metadata ---
