@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# (옵션) 디버그: OPS_DEBUG=1 이면 bash trace 출력
+OPS_DEBUG="${OPS_DEBUG:-0}"
+[[ "$OPS_DEBUG" == "1" ]] && set -x
+
 ########################################
 # Config (환경변수로 오버라이드 가능)
 ########################################
@@ -51,6 +55,7 @@ ENABLE_JAX_CUDA="${ENABLE_JAX_CUDA:-0}"
 ########################################
 log() { echo "[ops] $*"; }
 die() { echo "[ops][ERROR] $*" >&2; exit 1; }
+warn() { echo "[ops][WARN] $*" >&2; }
 
 need_root() {
   if [[ "${EUID:-$(id -u)}" -ne 0 ]]; then
@@ -62,6 +67,105 @@ ensure_dir() { mkdir -p "$1"; }
 
 venv_python_torch() { echo "${TORCH_VENV}/bin/python"; }
 venv_python_jax()   { echo "${JAX_VENV}/bin/python"; }
+
+# -----------------------------
+# Runtime helpers (venv-safe)
+#  - python 버전(3.10 등) 하드코딩 제거
+#  - site-packages 기반으로 nvidia lib 경로 구성
+# -----------------------------
+torch_site_packages() {
+  "$(venv_python_torch)" - <<'PY'
+import site
+paths = site.getsitepackages()
+print(paths[0] if paths else "")
+PY
+}
+
+jax_site_packages() {
+  "$(venv_python_jax)" - <<'PY'
+import site
+paths = site.getsitepackages()
+print(paths[0] if paths else "")
+PY
+}
+
+set_ld_library_path_for_torch() {
+  local sp
+  sp="$(torch_site_packages || true)"
+
+  if [[ -z "${sp}" ]]; then
+    warn "cannot resolve torch site-packages; LD_LIBRARY_PATH not set"
+    return 0
+  fi
+
+  local nvr="${sp}/nvidia"
+  local parts=()
+
+  for d in \
+    "$nvr/nvtx/lib" \
+    "$nvr/nvjitlink/lib" \
+    "$nvr/nccl/lib" \
+    "$nvr/curand/lib" \
+    "$nvr/cufft/lib" \
+    "$nvr/cuda_runtime/lib" \
+    "$nvr/cuda_nvrtc/lib" \
+    "$nvr/cuda_cupti/lib" \
+    "$nvr/cublas/lib" \
+    "$nvr/cusparse/lib" \
+    "$nvr/cudnn/lib" \
+    "$nvr/cusolver/lib"
+  do
+    [[ -d "$d" ]] && parts+=("$d")
+  done
+
+  if [[ "${#parts[@]}" -eq 0 ]]; then
+    warn "no nvidia lib dirs found under: $nvr (LD_LIBRARY_PATH unchanged)"
+    return 0
+  fi
+
+  export LD_LIBRARY_PATH="$(IFS=:; echo "${parts[*]}"):${LD_LIBRARY_PATH:-}"
+}
+
+sanity_torch() {
+  log "sanity(torch): python=$("$(venv_python_torch)" -V 2>&1 | tr -d '\r')"
+  if command -v nvidia-smi >/dev/null 2>&1; then
+    log "sanity(torch): nvidia-smi OK"
+    nvidia-smi -L || true
+  else
+    warn "sanity(torch): nvidia-smi not found"
+  fi
+
+  "$(venv_python_torch)" - <<'PY'
+try:
+  import torch
+  print("[sanity][torch] version:", torch.__version__)
+  print("[sanity][torch] cuda:", torch.version.cuda)
+  print("[sanity][torch] cuda_available:", torch.cuda.is_available())
+  if torch.cuda.is_available():
+    print("[sanity][torch] device:", torch.cuda.get_device_name(0))
+  try:
+    import torch.backends.cudnn as cudnn
+    print("[sanity][torch] cudnn_version:", cudnn.version())
+  except Exception as e:
+    print("[sanity][torch] cudnn check failed:", repr(e))
+except Exception as e:
+  print("[sanity][torch] import torch failed:", repr(e))
+PY
+}
+
+sanity_jax() {
+  log "sanity(jax): python=$("$(venv_python_jax)" -V 2>&1 | tr -d '\r')"
+  "$(venv_python_jax)" - <<'PY'
+try:
+  import jax
+  dev = jax.devices()
+  print("[sanity][jax] version:", jax.__version__)
+  print("[sanity][jax] devices:", dev)
+  print("[sanity][jax] has_gpu:", any(getattr(d, "platform", "") == "gpu" for d in dev))
+except Exception as e:
+  print("[sanity][jax] import/devices failed:", repr(e))
+PY
+}
 
 add_env_if_nonempty() {
   local -n _arr="$1"
@@ -206,6 +310,10 @@ cmd_install() {
     --index-url https://download.pytorch.org/whl/cu121 \
     torch==2.2.0 torchvision==0.17.0 torchaudio==2.2.0
 
+  # ✅ 중요: torch 2.2.0+cu121이 기대하는 cuDNN(=8.9.2.26)로 "재고정"
+  # - 이전에 9.x가 섞이면 libcudnn.so.8 링크가 없어져 ImportError가 날 수 있음
+  "$(venv_python_torch)" -m pip install -U --no-deps "nvidia-cudnn-cu12==8.9.2.26" || true
+
   "$(venv_python_torch)" -m pip install \
     -f https://data.dgl.ai/wheels/torch-2.2/cu121/repo.html \
     dgl
@@ -266,6 +374,10 @@ cmd_install() {
 
   "$(venv_python_jax)" -m pip install -U pip setuptools wheel
   "$(venv_python_jax)" -m pip install "numpy<2"
+  # ✅ 여기에 넣기 (가장 안전)
+  "$(venv_python_jax)" -m pip install -U boto3 botocore
+  # ✅ alphafold_step / proteinmpnn_step가 pandas를 쓰므로 JAX_VENV에 설치
+  "$(venv_python_jax)" -m pip install -U pandas
 
   ########################################
   # ✅ ColabDesign install (ProteinMPNN / AlphaFold)
@@ -299,10 +411,30 @@ except Exception as e:
   print("torch import failed:", e)
 PY
 
+  # ✅ cudnn .so 존재 체크 (python 버전 하드코딩 제거)
+  TORCH_SP="$(torch_site_packages || true)"
+  if [[ -z "${TORCH_SP}" ]]; then
+    warn "cannot resolve torch site-packages to check cudnn"
+  else
+    CUDNN_SO="${TORCH_SP}/nvidia/cudnn/lib/libcudnn.so.8"
+    if [[ ! -e "$CUDNN_SO" ]]; then
+      warn "libcudnn.so.8 not found: $CUDNN_SO"
+      warn "you may hit: ImportError: libcudnn.so.8"
+    else
+      log "cudnn OK: $(ls -l "$CUDNN_SO" | awk '{print $9, $5, $6, $7, $8}')"
+    fi
+  fi
+
   log "sanity check (JAX_VENV)"
   "$(venv_python_jax)" - <<'PY'
 import sys
 print("python:", sys.version.split()[0])
+try:
+  import pandas as pd
+  print("pandas:", pd.__version__)
+except Exception as e:
+  print("pandas import failed:", e)
+
 try:
   import colabdesign
   print("colabdesign import: OK")
@@ -478,10 +610,6 @@ cmd_run() {
   log "DGLBACKEND=$DGLBACKEND"
   log "DGL_DISABLE_GRAPHBOLT=$DGL_DISABLE_GRAPHBOLT"
 
-  # ✅ unified/src 를 항상 잡고, RFdiffusion은 torch step에서만 직접 필요하지만 harmless
-  export PYTHONPATH="$SCRIPT_DIR/src:$RFDIFFUSION_DIR:${PYTHONPATH:-}"
-  log "PYTHONPATH=$PYTHONPATH"
-
   # step 파싱
   local step
   step="$(extract_step_arg "$@")"
@@ -493,6 +621,10 @@ cmd_run() {
   cmd_download_params
   ensure_unified_params_link
 
+  # ✅ step별 PYTHONPATH 분리 (재발 방지 핵심)
+  # 기본은 src만
+  export PYTHONPATH="$SCRIPT_DIR/src:${PYTHONPATH:-}"
+
   # ✅ 핵심: step별 python 선택 + LD_LIBRARY_PATH 처리
   local py
   if [[ "$step" == "alphafold" || "$step" == "proteinMPNN" ]]; then
@@ -502,13 +634,27 @@ cmd_run() {
     unset LD_LIBRARY_PATH || true
     log "Using JAX_VENV python: $py"
     log "LD_LIBRARY_PATH unset for step=$step (jax/af safety)"
+    log "PYTHONPATH(jax)=$PYTHONPATH"
+
+    # 실행 전 sanity (로그로 증거 남김)
+    sanity_jax
+    if [[ "${ENABLE_JAX_CUDA:-0}" == "1" ]]; then
+      warn "ENABLE_JAX_CUDA=1 (requested). Check has_gpu in sanity log above."
+    fi
   else
     py="$(venv_python_torch)"
 
-    # torch step은 nvidia libs path 세팅
-    export LD_LIBRARY_PATH="$TORCH_VENV/lib/python3.10/site-packages/nvidia/nvtx/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/nvjitlink/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/nccl/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/curand/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cufft/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cuda_runtime/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cuda_nvrtc/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cuda_cupti/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cublas/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cusparse/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cudnn/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cusolver/lib:${LD_LIBRARY_PATH:-}"
+    # torch step은 nvidia libs path 세팅 (python 버전 하드코딩 제거)
+    set_ld_library_path_for_torch
     log "Using TORCH_VENV python: $py"
     log "LD_LIBRARY_PATH set (torch/rfdiffusion)"
+
+    # torch step에서만 RFdiffusion path 추가
+    export PYTHONPATH="$SCRIPT_DIR/src:$RFDIFFUSION_DIR:${PYTHONPATH:-}"
+    log "PYTHONPATH(torch)=$PYTHONPATH"
+
+    # 실행 전 sanity (로그로 증거 남김)
+    sanity_torch
   fi
 
   if [[ -n "${AWS_REGION:-}" ]]; then
@@ -631,6 +777,7 @@ Env overrides:
   OUTPUTS_DIR=/workspace/unified/outputs
   MODELS_DIR=/models
   PORT=8000
+  OPS_DEBUG=0|1
 
 AlphaFold/ColabDesign:
   AF_DIR=/models/alphafold
