@@ -154,7 +154,7 @@ function handleNewChat() {
 
     // Or navigate directly
     if (currentSidebarType === 'chat') {
-        window.location.href = '/chat/new/';
+        window.location.href = '/chat/';
     }
 }
 

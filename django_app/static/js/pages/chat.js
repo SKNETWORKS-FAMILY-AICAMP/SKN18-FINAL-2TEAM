@@ -99,6 +99,8 @@ function initChatAI() {
     // Load chat if chatId is in URL
     const urlParams = new URLSearchParams(window.location.search);
     const chatId = urlParams.get('id');
+    const question = urlParams.get('question');
+    
     if (chatId) {
         loadChat(parseInt(chatId));
     } else {
@@ -106,6 +108,23 @@ function initChatAI() {
         references = [];
         allReferences = [];
         renderReferences();
+        
+        // If question parameter exists, set it in the input field and auto send
+        if (question && question.trim()) {
+            const questionText = question.trim();
+            if (chatInputField) {
+                chatInputField.value = questionText;
+            }
+            if (chatInputFieldBottom) {
+                chatInputFieldBottom.value = questionText;
+            }
+            message = questionText;
+            
+            // Auto send after a short delay to ensure page is fully loaded
+            setTimeout(() => {
+                handleSend();
+            }, 300);
+        }
     }
 
     // Event listeners

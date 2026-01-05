@@ -291,7 +291,7 @@ function handleChatSubmit() {
     }
 
     // Navigate to chat page with question
-    const chatUrl = `/chat/new/?question=${encodeURIComponent(question)}`;
+    const chatUrl = `/chat/?question=${encodeURIComponent(question)}`;
     window.location.href = chatUrl;
 }
 
@@ -319,12 +319,11 @@ function selectRecommendation(index) {
         if (chatQuestionInput) {
             chatQuestionInput.value = question;
             chatQuestion = question;
+            // Focus on input field after setting value
+            chatQuestionInput.focus();
         }
         closeRecommendations();
-        // Auto submit after a short delay
-        setTimeout(() => {
-            handleChatSubmit();
-        }, 100);
+        // No auto submit - user must press Enter or click submit button
     }
 }
 
