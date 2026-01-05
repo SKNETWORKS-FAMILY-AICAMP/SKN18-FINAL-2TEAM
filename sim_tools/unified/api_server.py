@@ -5,7 +5,7 @@ import subprocess
 from pathlib import Path
 from typing import Optional, Literal
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Header
 from pydantic import BaseModel, Field
 
 # ---- Config ----
@@ -115,6 +115,9 @@ def health():
         "jax_venv": JAX_VENV,
         "pythonpath": PYTHONPATH,
 
+        "enable_jax_cuda": os.environ.get("ENABLE_JAX_CUDA", ""),
+        "ld_library_path": os.environ.get("LD_LIBRARY_PATH", ""),
+
         "s3_bucket": os.environ.get("S3_BUCKET", ""),
         "s3_base": os.environ.get("S3_BASE", "simulations"),
         "aws_region": os.environ.get("AWS_REGION", os.environ.get("AWS_DEFAULT_REGION", "")),
@@ -125,7 +128,7 @@ def health():
 
 
 @app.post("/run", response_model=RunResponse)
-def run(req: RunRequest, x_api_key: Optional[str] = None):
+def run(req: RunRequest, x_api_key: Optional[str] = Header(default=None, convert_underscores=False)):
     _auth_or_throw(x_api_key)
     _ensure_paths()
 
@@ -156,13 +159,22 @@ def run(req: RunRequest, x_api_key: Optional[str] = None):
         args.append("--s3_upload_logs")
 
     env = os.environ.copy()
+
+    # ✅ venv / pythonpath / outputs / script 전달
     env["TORCH_VENV"] = TORCH_VENV
     env["JAX_VENV"] = JAX_VENV
     env["PYTHONPATH"] = PYTHONPATH
     env["OUTPUTS_DIR"] = OUTPUTS_DIR
     env["SCRIPT_DIR"] = SCRIPT_DIR
 
-    # S3/AWS env 전달
+    # ✅ JAX GPU 강제 활성화 (API 서버 경유로도 반드시 적용)
+    env["ENABLE_JAX_CUDA"] = "1"
+
+    # ✅ LD_LIBRARY_PATH 오염 방지: 빈 값으로 시작
+    # (실제 CUDA/NVIDIA libs 경로는 unified_shell_script.sh가 step별로 다시 세팅)
+    env["LD_LIBRARY_PATH"] = ""
+
+    # ✅ S3/AWS env 전달
     env["S3_BUCKET"] = os.environ.get("S3_BUCKET", "")
     env["S3_BASE"] = os.environ.get("S3_BASE", "simulations")
     env["AWS_REGION"] = os.environ.get("AWS_REGION", os.environ.get("AWS_DEFAULT_REGION", ""))
@@ -192,7 +204,7 @@ def run(req: RunRequest, x_api_key: Optional[str] = None):
 
 
 @app.get("/status/{name}", response_model=StatusResponse)
-def status(name: str, x_api_key: Optional[str] = None):
+def status(name: str, x_api_key: Optional[str] = Header(default=None, convert_underscores=False)):
     _auth_or_throw(x_api_key)
     _ensure_paths()
 
