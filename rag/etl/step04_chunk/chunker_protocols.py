@@ -380,6 +380,19 @@ def build_output_path(keyword: str, status: str) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     return path
 
+def _build_section(tag: str, text: str) -> str:
+    """
+    섹션 텍스트가 공백/개행만 있으면 빈 문자열 반환,
+    의미 있는 내용이 있으면 <tag> + text 반환
+    """
+    if not isinstance(text, str):
+        return ""
+
+    # 공백 + 개행 제거 후 내용 검사
+    if not text.strip():
+        return ""
+
+    return f"<{tag}>\n{text.strip()}\n"
 
 def chunk_dataframe(
     df: pd.DataFrame,
@@ -654,12 +667,18 @@ def process_file(csv_path: Path) -> None:
             flush=True,
         )
 
-        # 4. cleaned_text 생성 (table 고려 안 함)
+        # 4. cleaned_text 생성 (빈 섹션 태그 제거)
         new_cleaned_df = new_cleaned_df.copy()
+
         new_cleaned_df["cleaned_text"] = (
-            "<abstract>\n" + new_cleaned_df["abstract"].fillna("").astype(str)
-            + "\n<step_content>\n" + new_cleaned_df["step_content"].fillna("").astype(str)
-            + "\n<guidelines>\n" + new_cleaned_df["guidelines"].fillna("").astype(str)
+            new_cleaned_df.apply(
+                lambda row: (
+                    _build_section("abstract", row.get("abstract", ""))
+                    + _build_section("step_content", row.get("step_content", ""))
+                    + _build_section("guidelines", row.get("guidelines", ""))
+                ).strip(),
+                axis=1,
+            )
         )
 
         # 5. chunking + table 추출은 chunk 단계에서 수행
