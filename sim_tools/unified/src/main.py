@@ -146,7 +146,7 @@ def main():
             step_dir.mkdir(parents=True, exist_ok=True)
             result = run_rfdiffusion_step(
                 experiment_id=exp_id,
-                outputs_dir=_dir,
+                outputs_dir=step_dir,
                 contigs=args.contigs,
                 iterations=args.iterations,
                 cautious=args.cautious,
