@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import os
-import uuid
 import subprocess
 from pathlib import Path
 from typing import Optional, Literal
@@ -16,22 +15,27 @@ OUTPUTS_DIR = os.environ.get("OUTPUTS_DIR", f"{SCRIPT_DIR}/outputs")
 TORCH_VENV = os.environ.get("TORCH_VENV", "/opt/venv_torch")
 PYTHONPATH = os.environ.get("PYTHONPATH", "/app/RFdiffusion")
 
-# (선택) 간단한 보호장치
 API_KEY = os.environ.get("API_KEY")  # 설정 안 하면 인증 없이 동작
 
-app = FastAPI(title="RFdiffusion Runner API")
+app = FastAPI(title="Unified Runner API")
 
-
+STEP_FOR_CLI = {
+    "rfdiffusion": "rfdiffusion",
+    "protein_mpnn": "proteinMPNN",
+    "alphafold3": "alphafold",
+}
 # ---------------- Models ----------------
 class RunRequest(BaseModel):
     mode: Literal["backbone", "binder", "other"] = "backbone"
+
+    # # ⚠️ 기존 호환을 위해 남겨두되, 실제 실행에서는 무시함
     name: Optional[str] = None
     contigs: str = Field(default="100")
-    iterations: int = Field(default=1, ge=1, le=1000)
-
-    # ✅ (선택) API 요청에서 로그 업로드까지 하고 싶으면 true
-    s3_upload_logs: bool = Field(default=False)
-
+    iterations: int = Field(default=1)   
+    s3_upload_logs: bool = Field(default=True)
+    experiment_id: str            # 파이프라인 ID (experiment_sid 문자열)
+    step: Literal["rfdiffusion", "protein_mpnn", "alphafold3"]
+    # options: dict = Field(default_factory=dict)
 
 class RunResponse(BaseModel):
     ok: bool
@@ -101,12 +105,10 @@ def health():
         "torch_venv": TORCH_VENV,
         "pythonpath": PYTHONPATH,
 
-        # 기존(최종적으로 쓰이는 값)
         "s3_bucket": os.environ.get("S3_BUCKET", ""),
-        "s3_prefix": os.environ.get("S3_PREFIX", "rfdiffusion"),
+        "s3_base": os.environ.get("S3_BASE", "simulations"),
         "aws_region": os.environ.get("AWS_REGION", os.environ.get("AWS_DEFAULT_REGION", "")),
 
-        # ✅ 추가: RunPod에 AWS_S3_*로 넣었을 때 디버깅 편하게 같이 노출
         "aws_s3_bucket": os.environ.get("AWS_S3_BUCKET", ""),
         "aws_s3_base_path": os.environ.get("AWS_S3_BASE_PATH", ""),
     }
@@ -117,21 +119,44 @@ def run(req: RunRequest, x_api_key: Optional[str] = None):
     _auth_or_throw(x_api_key)
     _ensure_paths()
 
-    job_id = uuid.uuid4().hex[:12]
-    name = req.name or f"job_{job_id}"
+    experiment_id = req.experiment_id.strip()
+    if not experiment_id:
+        raise HTTPException(status_code=400, detail="experiment_id is required")
 
-    log_path, pid_path = _job_paths(name)
+    step_api = req.step
+    opts = req.options or {}
+    step_cli = STEP_FOR_CLI[step_api] 
+    # job_name = f"{exp_id}__{step}"  
 
-    # ✅ 여기서 main.py에 s3_upload_logs 옵션을 넘겨줄지 결정
+    contigs = req.contigs or "100"
+    iterations = req.iterations or 1
+    cautious = False
+
+    if step_api == "rfdiffusion":
+        contigs = str(opts.get("contigs") or contigs)
+        iterations = int(opts.get("numSteps") or iterations)
+        cautious = bool(opts.get("cautious") or False)
+
+    elif step_api == "protein_mpnn":
+        iterations = int(opts.get("numSequences") or iterations)
+
+    elif step_api == "alphafold3":
+        iterations = int(opts.get("maxRecycles") or iterations)
+
+
+    # ✅ main.py에 experiment_id / step 전달
     args = [
         "run",
         "--mode", req.mode,
-        "--name", name,
-        "--contigs", req.contigs,
-        "--iterations", str(req.iterations),
+        "--contigs", contigs,
+        "--iterations", str(iterations),
+        "--experiment_id", experiment_id,
+        "--step", step_cli,
     ]
     if req.s3_upload_logs:
         args.append("--s3_upload_logs")
+    if cautious:
+        args.append("--cautious")
 
     env = os.environ.copy()
     env["TORCH_VENV"] = TORCH_VENV
@@ -139,34 +164,32 @@ def run(req: RunRequest, x_api_key: Optional[str] = None):
     env["OUTPUTS_DIR"] = OUTPUTS_DIR
     env["SCRIPT_DIR"] = SCRIPT_DIR
 
-    # ✅ 중요: S3 관련 env를 자식 프로세스(run)에도 확실히 전달
+    # S3/AWS env 전달
     env["S3_BUCKET"] = os.environ.get("S3_BUCKET", "")
-    env["S3_PREFIX"] = os.environ.get("S3_PREFIX", "rfdiffusion")
+    env["S3_BASE"] = os.environ.get("S3_BASE", "simulations")
     env["AWS_REGION"] = os.environ.get("AWS_REGION", os.environ.get("AWS_DEFAULT_REGION", ""))
     env["AWS_DEFAULT_REGION"] = os.environ.get("AWS_DEFAULT_REGION", env["AWS_REGION"])
 
-    # ✅ (디버깅/호환) AWS_S3_*도 그대로 전달해두면 run 쪽에서 확인하기 쉬움
     env["AWS_S3_BUCKET"] = os.environ.get("AWS_S3_BUCKET", "")
     env["AWS_S3_BASE_PATH"] = os.environ.get("AWS_S3_BASE_PATH", "")
 
-    with open(log_path, "ab") as f:
-        p = subprocess.Popen(
-            ["bash", OPS_SH, *args],
-            env=env,
-            stdout=f,
-            stderr=subprocess.STDOUT,
-            cwd=SCRIPT_DIR,
-        )
+    # with open(log_path, "ab") as f:
+    #     p = subprocess.Popen(
+    #         ["bash", OPS_SH, *args],
+    #         env=env,
+    #         stdout=f,
+    #         stderr=subprocess.STDOUT,
+    #         cwd=SCRIPT_DIR,
+    #     )
 
-    pid_path.write_text(str(p.pid))
+    # pid_path.write_text(str(p.pid))
 
-    return RunResponse(
-        ok=True,
-        job_id=job_id,
-        name=name,
-        outputs_dir=OUTPUTS_DIR,
-        cmd=["bash", OPS_SH, *args],
-    )
+    # return RunResponse(
+    #     ok=True,
+    #     job_id=job_id,
+    #     outputs_dir=OUTPUTS_DIR,
+    #     cmd=["bash", OPS_SH, *args],
+    # )
 
 
 @app.get("/status/{name}", response_model=StatusResponse)

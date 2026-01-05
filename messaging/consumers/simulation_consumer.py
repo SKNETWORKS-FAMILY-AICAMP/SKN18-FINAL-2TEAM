@@ -33,6 +33,7 @@ TOOL_NAME_QUEUE_MAP = {
     "AlphaFold3": "alphafold3",
 }
 
+
 def update_experiment_status(
     experiment_sid: int,
     status: str,
@@ -90,7 +91,8 @@ def launch_simulation_docker(
     tool_name: str,
     config_path: str,
     output_dir: str,
-) -> Dict[str, Any]:
+    options: dict | None = None,
+    ) -> Dict[str, Any]:
     try:
         base = views_runpod._get_runpod_base_url()
         run_url = f"{base}/run"
@@ -100,14 +102,14 @@ def launch_simulation_docker(
 
     from pathlib import Path
     exp_part = Path(output_dir).name or "unknown"
-    job_name = f"{exp_part}__{tool_name}"  # 앞에서 정리한 형식 유지
+    step_for_runpod = TOOL_NAME_QUEUE_MAP.get(tool_name, tool_name)
+    # job_name = f"{exp_part}__{tool_name}" // FALLBACK
 
     body = {
-        "mode": "backbone",
-        "name": job_name,
-        "contigs": "100",
-        "iterations": 1,
-        "s3_upload_logs": False,
+        "experiment_id": str(exp_part),
+        "step": step_for_runpod,
+        "options": options or {},   # ← 여기서만 options 사용
+        "s3_upload_logs": True,
     }
 
     # 1) /run 호출
@@ -355,7 +357,7 @@ def handle_simulation_task(message: Dict[str, Any]):
     
     experiment_sid = int(experiment_sid_raw)
     sort_order = int(payload.get("sort_order", 0))
-
+    tool_options = payload.get("tool_options") or {}
     # # 2) 첫 스텝일 때만 “앞선 미완료 실험 있으면 재큐잉”
     # if sort_order == 0 and has_older_pending_experiment(experiment_sid):
     #     logger.info(
@@ -409,7 +411,12 @@ def handle_simulation_task(message: Dict[str, Any]):
         update_experiment_status(experiment_sid, 'R', 25)
         publish_status(task_id, experiment_sid, 'R', 25)
         
-        result = launch_simulation_docker(tool_name, config_path, output_dir)
+        result = launch_simulation_docker(
+            tool_name, 
+            config_path, 
+            output_dir, 
+            options=tool_options
+            )
 
         if result["success"]:
             # 파이프라인 진행률 계산 (0-based sort_order → 1-based 단계)
