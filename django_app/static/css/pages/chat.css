@@ -1073,8 +1073,8 @@
 }
 
 .reference-item {
-    padding: 1rem;
-    border-bottom: 1px solid #e5e7eb;
+    padding: 1rem; /* px-4 py-4 */
+    border-bottom: 1px solid #e5e7eb; /* border-b border-gray-200 */
     position: relative;
     transition: background-color 0.15s;
     background: white;
@@ -1082,7 +1082,7 @@
 }
 
 .reference-item:hover {
-    background: #f9fafb;
+    background: white; /* hover:bg-white (ResearchAI.tsx와 동일) */
 }
 
 .reference-item:last-child {
@@ -1093,25 +1093,21 @@
 
 .reference-bookmark-btn {
     position: absolute;
-    top: 0.75rem;
-    right: 0.75rem;
-    padding: 0.375rem;
-    border-radius: 0.25rem;
+    top: 0.75rem; /* top-3 */
+    right: 0.75rem; /* right-3 */
+    padding: 0.375rem; /* p-1.5 */
+    border-radius: 0.25rem; /* rounded */
     background: none;
     border: none;
     cursor: pointer;
     transition: background-color 0.15s, color 0.15s;
-    color: #9ca3af;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-right: -5px;
-    margin-top: -5px;
 }
 
 .reference-bookmark-btn:hover {
-    background: #dbeafe;
-    color: #2563eb;
+    background: #dbeafe; /* hover:bg-blue-100 */
 }
 
 .reference-bookmark-btn.bookmarked {
@@ -1119,33 +1115,35 @@
 }
 
 .reference-bookmark-btn i {
-    font-size: 1.0rem;
-    color: #2563eb;
+    font-size: 1.25rem; /* w-5 h-5 */
+    color: #2563eb; /* text-blue-600 */
+    width: 1.25rem;
+    height: 1.25rem;
 }
 
 .reference-bookmark-btn:hover i {
-    color: #1d4ed8;
+    color: #1d4ed8; /* hover:text-blue-700 */
 }
 
 .reference-content {
     display: flex;
     align-items: flex-start;
-    gap: 0.75rem;
-    margin-bottom: 0;
+    gap: 0.75rem; /* gap-3 */
+    margin-bottom: 0.5rem; /* mb-2 */
 }
 
 .reference-number {
     flex-shrink: 0;
-    width: 1.5rem;
-    height: 1.5rem;
-    border-radius: 9999px;
-    background: #f3f4f6;
+    width: 1.5rem; /* w-6 */
+    height: 1.5rem; /* h-6 */
+    border-radius: 9999px; /* rounded-full */
+    background: #f3f4f6; /* bg-gray-100 */
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: #374151;
+    font-size: 0.75rem; /* text-xs */
+    font-weight: 500; /* font-medium */
+    color: #374151; /* text-gray-700 */
 }
 
 .reference-details {
@@ -1156,15 +1154,17 @@
 .reference-meta {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    margin-bottom: 0.25rem;
+    gap: 0.5rem; /* gap-2 */
+    margin-bottom: 0.5rem; /* mb-2 */
     flex-wrap: wrap;
 }
 
 .reference-source {
-    font-size: 0.75rem;
-    color: #2563eb;
-    font-weight: 500;
+    font-size: 0.75rem; /* text-xs */
+    /* text-blue-600 */
+    /* color: #2563eb;  */
+    color: #0baf54;
+    font-weight: 500; /* font-medium */
     display: flex;
     align-items: center;
     gap: 0.25rem;
@@ -1176,32 +1176,31 @@
 }
 
 .reference-badge {
-    padding: 0.125rem 0.5rem;
-    background: #d1fae5;
-    color: #065f46;
-    border-radius: 9999px;
-    font-size: 0.75rem;
+    padding: 0.125rem 0.5rem; /* px-2 py-0.5 */
+    background: #d1fae5; /* bg-green-100 */
+    color: #065f46; /* text-green-700 */
+    border-radius: 9999px; /* rounded-full */
+    font-size: 0.75rem; /* text-xs */
     font-weight: 500;
     white-space: nowrap;
 }
 
 .reference-title {
-    font-size: 1rem;
-    font-weight: 500;
-    color: #111827;
-    margin: 0 0 0.25rem 0;
-    line-height: 1.25;
+    font-size: 0.875rem; /* text-sm */
+    font-weight: 500; /* font-medium */
+    color: #111827; /* text-gray-900 */
+    margin: 0 0 0.25rem 0; /* mb-1 */
+    line-height: 1.25; /* leading-tight */
     word-wrap: break-word;
-    margin-top: 0;
 }
 
 .reference-description {
-    font-size: 0.75rem;
-    color: #9ca3af;
-    margin: 0.25rem 0 0.5rem 0;
-    line-height: 1.5;
+    font-size: 0.75rem; /* text-xs */
+    color: #9ca3af; /* text-gray-400 */
+    margin: 0 0 0.5rem 0; /* mb-2 */
+    line-height: 1.5; /* leading-relaxed */
     display: -webkit-box;
-    -webkit-line-clamp: 2;
+    -webkit-line-clamp: 2; /* line-clamp-2 */
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
@@ -1209,19 +1208,15 @@
 .reference-info {
     display: flex;
     flex-direction: column;
-    /* gap: 0.25rem; */
-    gap: 0;
-    margin-top: 12px;
+    gap: 0.25rem; /* space-y-1 */
 }
 
 .reference-info-item {
     display: flex;
     align-items: center;
-    /* gap: 0.375rem; */
-    gap: 0;
-    font-size: 0.75rem;
-    color: #4b5563;
-    margin-bottom: 0.25rem;
+    gap: 0.375rem; /* gap-1.5 */
+    font-size: 0.75rem; /* text-xs */
+    color: #4b5563; /* text-gray-600 */
 }
 
 .reference-info-item:last-child {
@@ -1229,24 +1224,28 @@
 }
 
 .reference-info-item i {
-    font-size: 0.75rem;
-    color: #2563eb;
+    font-size: 0.75rem; /* w-3 h-3 */
+    color: #2563eb; /* text-blue-600 */
     flex-shrink: 0;
-    margin-right: 5px;
+    width: 0.75rem;
+    height: 0.75rem;
 }
 
 .reference-link {
-    color: #2563eb;
+    color: #2563eb; /* text-blue-600 */
     text-decoration: none;
     transition: text-decoration 0.2s;
+    text-overflow: ellipsis;
+    width: 100%;
+    overflow: hidden;
 }
 
 .reference-link:hover {
-    text-decoration: underline;
+    text-decoration: underline; /* hover:underline */
 }
 
 .reference-info-item span {
-    color: #4b5563;
+    color: #4b5563; /* text-gray-600 */
 }
 
 /* Chat Menu Dropdown - matching React component style */
