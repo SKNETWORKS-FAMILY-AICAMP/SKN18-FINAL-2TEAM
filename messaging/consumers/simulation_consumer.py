@@ -401,8 +401,8 @@ def handle_simulation_task(message: Dict[str, Any]):
         with open(config_path, 'w') as f:
             yaml.dump(config_data, f)
         
-        # 출력 디렉토리
-        output_dir = f"/data/sim_results/{experiment_sid}"
+        # 출력 디렉토리/ 수정함
+        output_dir = str(experiment_sid)
         os.makedirs(output_dir, exist_ok=True)
         
         # 3. 진행률 업데이트: 25%
