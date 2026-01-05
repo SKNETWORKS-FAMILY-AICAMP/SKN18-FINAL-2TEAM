@@ -30,6 +30,7 @@ let attachedExperiments = [];
 let fileInputRef = null;
 let isComposing = false; // IME 조합 상태 (macOS 한글 입력 중복 전송 방지)
 let currentTypingAnimation = null; // 현재 실행 중인 타이핑 애니메이션 제어
+let showEmptyReferencesState = false; // API 응답 직후 빈 참고 문헌 상태 표시 플래그
 
 let chatList = [];
 
@@ -391,15 +392,16 @@ async function handleSend() {
                     content: '',  // 타이핑 애니메이션으로 채워질 예정
                     message_id: data.messages[1].id,
                     timestamp: data.messages[1].created_at,
+                    case_type: data.messages[1].case_type || null, // Include case_type
                 };
                 messages.push(assistantMessage);
                 
                 // 참고문헌을 먼저 추가 (타이핑 애니메이션 중에도 보이도록)
                 console.log('[DEBUG] Received references:', data.references);
                 console.log('[DEBUG] AI message ID:', data.messages[1].id, 'type:', typeof data.messages[1].id);
+                const messageId = data.messages[1].id;
+                
                 if (data.references && Array.isArray(data.references)) {
-                    const messageId = data.messages[1].id;
-
                     // 이 메시지에 대한 기존 레퍼런스 제거 (중복 방지)
                     allReferences = allReferences.filter(ref => ref.message_id !== messageId);
 
@@ -432,13 +434,24 @@ async function handleSend() {
                     console.log('[DEBUG] New references to add (after dedup):', newRefs.length, '개');
                     allReferences = [...allReferences, ...newRefs];
                     console.log('[DEBUG] Total allReferences:', allReferences.length);
+                    
+                    // API 응답을 받은 직후 해당 메시지의 참고 문헌을 표시
+                    references = newRefs;
+                } else {
+                    // 참고 문헌이 없는 경우에도 빈 상태로 표시하기 위해 빈 배열 설정
+                    references = [];
                 }
+                
+                // API 응답 직후 빈 상태 플래그 설정 (참고 문헌이 없어도 사이드바 표시)
+                showEmptyReferencesState = true;
+                renderReferences(); // 참고 문헌 사이드바 즉시 렌더링 (빈 상태일 수도 있음)
 
                 // 타이핑 애니메이션 시작 (비동기)
                 const messageIndex = messages.length - 1;
                 typeWriterEffect(aiContent, messageIndex, 3).then(() => {
                     console.log('[DEBUG] Typing animation completed, updating references');
-                    // 타이핑 완료 후 참고문헌 업데이트
+                    // 타이핑 완료 후 빈 상태 플래그 해제 및 참고문헌 업데이트
+                    showEmptyReferencesState = false;
                     updateVisibleReferences();
                 });
 
@@ -516,6 +529,7 @@ async function loadChat(chatId) {
                 message_id: msg.id,
                 sort_order: msg.sort_order,
                 created_at: msg.created_at,
+                case_type: msg.case_type || null, // Include case_type
                 paper_graphs: msg.paper_graphs || [], // Include paper_graphs data
             }));
             
@@ -701,11 +715,12 @@ function renderMessages() {
 
             // Check if this message has paper_graphs
             const hasPaperGraphs = msg.paper_graphs && Array.isArray(msg.paper_graphs) && msg.paper_graphs.length > 0;
-            const showPaperGraphBtn = hasPaperGraphs;
+            // case_type이 BIO_Q이거나 null일 때만 버튼 표시
+            const caseType = msg.case_type || null;
+            const showPaperGraphBtn = (caseType === 'BIO_Q' || caseType === null) && hasPaperGraphs;
 
-            // Check if this is the last message for experiment button
-            const isLastMessage = index === messages.length - 1;
-            const showExperimentBtn = activeChatId === 2 && isLastMessage;
+            // case_type이 SIMULATION_Q일 때만 실험하기 버튼 표시
+            const showExperimentBtn = caseType === 'SIMULATION_Q';
 
             return `
                 <div class="message-item" data-message-id="${msg.message_id || ''}">
@@ -720,7 +735,7 @@ function renderMessages() {
                             <div class="message-special-actions">
                                 <button class="special-action-btn" data-action="paper-graph" data-message-id="${msg.message_id || index}">
                                     <i class="fas fa-chart-bar"></i>
-                                    관련 논문 상세 보기
+                                    관련 논문 네트워크
                                 </button>
                             </div>
                             ` : ''}
@@ -775,18 +790,8 @@ function renderMessages() {
         });
     }
 
-    // Show/hide references sidebar based on messages and references
-    // 스트리밍 중일 때는 레퍼런스 사이드바 숨기기
-    if (referencesSidebar) {
-        // 스트리밍 중이면 레퍼런스 숨김
-        if (currentTypingAnimation) {
-            referencesSidebar.style.display = 'none';
-        } else if (messages.length > 0 && references.length > 0) {
-            referencesSidebar.style.display = 'flex';
-        } else {
-            referencesSidebar.style.display = 'none';
-        }
-    }
+    // Show/hide references sidebar is handled in renderReferences()
+    // (참고 문헌 표시/숨김은 renderReferences()에서 일괄 처리)
 
     // Re-attach handlers
     attachMessageActionHandlers();
@@ -1552,17 +1557,26 @@ function renderReferences() {
         return;
     }
 
-    // Show references sidebar if references exist and messages exist
-    if (references.length > 0 && messages.length > 0 && referencesSidebar) {
-        referencesSidebar.style.display = 'flex';
+    // Show references sidebar
+    // - API 응답 직후(showEmptyReferencesState=true): 참고 문헌이 없어도 빈 상태로 표시
+    // - 그 외: 참고 문헌이 있을 때만 표시
+    if (messages.length > 0 && referencesSidebar) {
+        if (showEmptyReferencesState || references.length > 0) {
+            referencesSidebar.style.display = 'flex';
+        } else {
+            referencesSidebar.style.display = 'none';
+        }
     } else if (referencesSidebar) {
         referencesSidebar.style.display = 'none';
     }
 
     if (references.length === 0) {
-        referencesList.innerHTML = '<div class="empty-state"><p>참고 문헌이 없습니다.</p></div>';
-        if (referencesCount) {
-            referencesCount.textContent = '0';
+        if (showEmptyReferencesState) {
+            // 빈 상태 메시지 표시
+            referencesList.innerHTML = '<div class="empty-state"><p>참고 문헌이 없습니다.</p></div>';
+            if (referencesCount) {
+                referencesCount.textContent = '0';
+            }
         }
         return;
     }
@@ -1617,7 +1631,7 @@ function renderReferences() {
                                 <a href="https://doi.org/${escapeHtml(ref.doi)}" target="_blank" rel="noopener noreferrer" class="reference-link">DOI: ${escapeHtml(ref.doi)}</a>
                             </div>
                             ` : ''}
-                            ${ref.journal ? `
+                            ${ref.journal && !isWebSource ? `
                             <div class="reference-info-item">
                                 <i class="fas fa-file-lines"></i>
                                 <span>${escapeHtml(ref.journal)}</span>
@@ -1684,10 +1698,103 @@ function handleMessageAction(action, messageId) {
             break;
         case 'paper-graph':
             showPaperGraphModal = true;
-            if (window.PaperGraphModal && window.PaperGraphModal.open) {
-                window.PaperGraphModal.open();
-            } else if (window.Modal && window.Modal.open) {
-                window.Modal.open('paperGraphModal');
+            // Find message by messageId (could be index or actual message_id)
+            const targetMsg = messages.find(msg => 
+                msg.message_id === messageId || msg.message_id === parseInt(messageId) || 
+                messages.indexOf(msg) === parseInt(messageId)
+            );
+            
+            // Extract paper_graphs data from message (캐시된 데이터)
+            let graphData = null;
+            if (targetMsg && targetMsg.paper_graphs && Array.isArray(targetMsg.paper_graphs) && targetMsg.paper_graphs.length > 0) {
+                // Use the first graph (or could allow selection if multiple)
+                const graph = targetMsg.paper_graphs[0];
+                graphData = {
+                    nodes: graph.nodes || [],
+                    edges: graph.edges || [],
+                    title: graph.title || '관련 논문 네트워크',
+                    description: graph.description || ''
+                };
+            }
+            
+            // API를 호출하여 최신 논문 네트워크 데이터 가져오기
+            const actualMessageId = targetMsg?.message_id || messageId;
+            if (actualMessageId) {
+                fetch(`/chat/api/messages/${actualMessageId}/paper-graphs/`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'include',
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.status === 'success' && data.paper_graphs && data.paper_graphs.length > 0) {
+                        // API에서 가져온 최신 데이터 사용
+                        const graph = data.paper_graphs[0];
+                        graphData = {
+                            nodes: graph.nodes || [],
+                            edges: graph.edges || [],
+                            title: graph.title || '관련 논문 네트워크',
+                            description: graph.description || ''
+                        };
+                        
+                        // 메시지 데이터도 업데이트 (다음 클릭 시 캐시 사용)
+                        if (targetMsg) {
+                            targetMsg.paper_graphs = data.paper_graphs;
+                        }
+                    }
+                    
+                    // 모달 열기
+                    if (window.PaperGraphModal && window.PaperGraphModal.open) {
+                        window.PaperGraphModal.open(graphData);
+                    } else if (window.Modal && window.Modal.open) {
+                        window.Modal.open('paperGraphModal');
+                        setTimeout(() => {
+                            const container = document.getElementById('paperGraphContainer');
+                            if (container && window.PaperGraphModal && window.PaperGraphModal.renderGraph) {
+                                window.PaperGraphModal.renderGraph(container, graphData);
+                            }
+                        }, 200);
+                    }
+                })
+                .catch(error => {
+                    console.error('[PaperGraph] API 호출 실패:', error);
+                    // API 실패 시 캐시된 데이터 또는 기본 데이터 사용
+                    if (window.PaperGraphModal && window.PaperGraphModal.open) {
+                        window.PaperGraphModal.open(graphData);
+                    } else if (window.Modal && window.Modal.open) {
+                        window.Modal.open('paperGraphModal');
+                        setTimeout(() => {
+                            if (window.PaperGraphModal && window.PaperGraphModal.renderGraph) {
+                                const container = document.getElementById('paperGraphContainer');
+                                if (container) {
+                                    window.PaperGraphModal.renderGraph(container, graphData);
+                                }
+                            }
+                        }, 100);
+                    }
+                });
+            } else {
+                // messageId가 없으면 기본 데이터로 모달 열기
+                if (window.PaperGraphModal && window.PaperGraphModal.open) {
+                    window.PaperGraphModal.open(graphData);
+                } else if (window.Modal && window.Modal.open) {
+                    window.Modal.open('paperGraphModal');
+                    setTimeout(() => {
+                        if (window.PaperGraphModal && window.PaperGraphModal.renderGraph) {
+                            const container = document.getElementById('paperGraphContainer');
+                            if (container) {
+                                window.PaperGraphModal.renderGraph(container, graphData);
+                            }
+                        }
+                    }, 100);
+                }
             }
             break;
         case 'experiment':

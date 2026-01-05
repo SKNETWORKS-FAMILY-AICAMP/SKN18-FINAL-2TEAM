@@ -260,6 +260,14 @@
     padding-left: 1.5rem;
 }
 
+.note-content-text ul {
+    list-style-type: disc;
+}
+
+.note-content-text ol {
+    list-style-type: decimal;
+}
+
 .note-content-text li {
     margin-bottom: 0.5rem;
 }

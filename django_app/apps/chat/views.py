@@ -6,7 +6,13 @@ from django.contrib.auth.decorators import login_required
 import json
 from .models import RecommendedQuestion, Chat, ChatMessage, ChatReference, ChatMessageFeedback
 from .models.papers_models import PaperGraph, PaperNode, PaperEdge, ChatMessagePaperGraph
-from .services import generate_concept_graph, generate_ai_response, summarize_conversation_title
+from .services import (
+    generate_concept_graph, 
+    generate_ai_response, 
+    summarize_conversation_title,
+    generate_paper_graph_background
+)
+import threading
 
 
 @login_required
@@ -151,6 +157,109 @@ def chat_references_api(request, chat_id):
 
 @login_required
 @require_http_methods(["GET"])
+def message_paper_graphs_api(request, message_id):
+    """
+    특정 메시지의 논문 네트워크 그래프를 조회하는 API 엔드포인트
+    
+    - 로그인한 사용자의 메시지만 조회
+    - 실시간으로 논문 네트워크 데이터를 가져올 수 있음
+    """
+    user = request.user
+    user_id = user.user_id
+    
+    try:
+        # 메시지 조회 (로그인한 사용자의 채팅만)
+        message = ChatMessage.objects.select_related('chat').get(
+            message_sid=message_id,
+            chat__created_id=user_id,
+            chat__status='E'
+        )
+    except ChatMessage.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'error': 'Message not found'
+        }, status=404)
+    
+    # 논문 그래프 조회
+    message_graphs = []
+    
+    try:
+        chat_message_graphs = ChatMessagePaperGraph.objects.filter(
+            message=message
+        ).select_related('graph').order_by('sort_order', 'created_at')
+        
+        for msg_graph in chat_message_graphs:
+            graph = msg_graph.graph
+            
+            # 노드 조회
+            nodes = PaperNode.objects.filter(graph=graph).values(
+                'paper_id', 'paper_label', 'node_size', 'node_color', 
+                'x_position', 'y_position'
+            )
+            
+            # 엣지 조회
+            edges = PaperEdge.objects.filter(graph=graph).values(
+                'source_paper_id', 'target_paper_id'
+            )
+            
+            # 노드 포맷팅
+            # 색상으로부터 논문 타입 추론 (업데이트된 색상 팔레트)
+            color_to_type = {
+                '#E63946': 'central',  # 빨간색 - 중심 논문
+                '#FF6B6B': 'central',  # 이전 색상도 지원 (하위 호환성)
+                '#457B9D': 'related',  # 파란색 - 관련 논문
+                '#4ECDC4': 'related',  # 이전 색상도 지원 (하위 호환성)
+                '#A8DADC': 'derived',   # 연한 청록색 - 파생 논문
+                '#95E1D3': 'derived',   # 이전 색상도 지원 (하위 호환성)
+            }
+            
+            formatted_nodes = []
+            for node in nodes:
+                node_color = node['node_color'] or ''
+                paper_type = color_to_type.get(node_color, 'related')  # 기본값: related
+                
+                formatted_nodes.append({
+                    'id': node['paper_id'],
+                    'label': node['paper_label'],
+                    'size': node['node_size'],
+                    'x': float(node['x_position']) if node['x_position'] is not None else 0.0,
+                    'y': float(node['y_position']) if node['y_position'] is not None else 0.0,
+                    'color': node_color,
+                    'paper_type': paper_type,  # 논문 타입 추가
+                })
+            
+            # 엣지 포맷팅
+            formatted_edges = []
+            for edge in edges:
+                formatted_edges.append([
+                    edge['source_paper_id'],
+                    edge['target_paper_id']
+                ])
+            
+            message_graphs.append({
+                'id': graph.graph_sid,
+                'title': graph.graph_title or '',
+                'description': graph.graph_description or '',
+                'nodes': formatted_nodes,
+                'edges': formatted_edges,
+            })
+        
+        print(f"[PaperGraph API] Message {message_id} has {len(message_graphs)} graph(s)")
+        
+    except Exception as e:
+        print(f"[PaperGraph API] Error loading paper graphs: {e}")
+        import traceback
+        traceback.print_exc()
+    
+    return JsonResponse({
+        'status': 'success',
+        'message_id': message_id,
+        'paper_graphs': message_graphs,
+    })
+
+
+@login_required
+@require_http_methods(["GET"])
 def chat_detail(request, chat_id):
     """채팅 상세 정보 API 엔드포인트 (메시지 + 참고 문헌) - 로그인한 사용자의 채팅만 조회"""
     user = request.user
@@ -160,7 +269,7 @@ def chat_detail(request, chat_id):
     
     # 메시지 조회
     messages = chat.messages.all().order_by('sort_order', 'created_at').values(
-        'message_sid', 'role', 'content', 'sort_order', 'created_at'
+        'message_sid', 'role', 'content', 'sort_order', 'created_at', 'case_type'
     )
     
     # 참고 문헌 조회 (채팅 전체 또는 특정 메시지에 연결된 것)
@@ -340,6 +449,7 @@ def chat_detail(request, chat_id):
             'content': msg['content'],
             'sort_order': msg['sort_order'],
             'created_at': msg['created_at'].isoformat() if msg['created_at'] else None,
+            'case_type': msg.get('case_type'),
             'paper_graphs': paper_graphs_for_msg,
         })
     
@@ -816,6 +926,7 @@ def _serialize_message(message):
         'content': message.content,
         'sort_order': message.sort_order,
         'created_at': message.created_at.isoformat() if message.created_at else None,
+        'case_type': message.case_type if hasattr(message, 'case_type') else None,
     }
 
 
@@ -842,13 +953,14 @@ def _serialize_reference(ref):
             citation_metadata = json.loads(ref.description)
             journal_name = citation_metadata.get('journal_name', '')
             doi = citation_metadata.get('doi', '')
-            # 디버그: doi 추출 확인
-            if doi:
-                print(f"[DEBUG _serialize_reference] doi 추출 성공: {doi}")
-            else:
-                print(f"[DEBUG _serialize_reference] doi가 없음. description: {ref.description[:100]}")
+            # 디버그 로그 제거 (필요시 주석 해제)
+            # if doi:
+            #     print(f"[DEBUG _serialize_reference] doi 추출 성공: {doi}")
+            # else:
+            #     print(f"[DEBUG _serialize_reference] doi가 없음. description: {ref.description[:100]}")
         except (json.JSONDecodeError, TypeError) as e:
-            print(f"[DEBUG _serialize_reference] JSON 파싱 실패: {e}, description: {ref.description[:100] if ref.description else 'None'}")
+            # 디버그 로그 제거 (필요시 주석 해제)
+            # print(f"[DEBUG _serialize_reference] JSON 파싱 실패: {e}, description: {ref.description[:100] if ref.description else 'None'}")
             pass
 
     # journal: description에서 가져온 실제 저널명이 있으면 사용, 없으면 DB 코드 변환
@@ -960,9 +1072,11 @@ def chat_messages(request, chat_id=None):
     chat.updated_id = user_id
     chat.save(update_fields=['preview', 'updated_id', 'updated_at'])
 
-    # 7. AI 응답 생성
+    # 7. AI 응답 생성 (result_state도 함께 받기 위해 return_state=True)
     try:
-        ai_text, citations, scores, reference_type, chat_title = generate_ai_response(chat, content)
+        ai_text, citations, scores, reference_type, chat_title, result_state = generate_ai_response(
+            chat, content, return_state=True
+        )
     except Exception as exc:
         print(f"[ERROR] AI response generation failed: {exc}")
         import traceback
@@ -975,14 +1089,29 @@ def chat_messages(request, chat_id=None):
             status=201,
         )
 
-    # 8. AI 메시지 생성
+    # 8. AI 메시지 생성 (case_type 포함)
+    case_type = result_state.get("case_type") or "NO_RELATION"
     assistant_message = ChatMessage.objects.create(
         chat=chat,
         role='A',
         content=ai_text,
         sort_order=next_sort_order + 1,
         created_id='system',
+        case_type=case_type,
     )
+    
+    # 8-1. 백그라운드에서 논문 네트워크 생성 (비동기 처리)
+    try:
+        thread = threading.Thread(
+            target=generate_paper_graph_background,
+            args=(assistant_message, result_state, content),
+            daemon=True
+        )
+        thread.start()
+        print(f"[PaperGraph] 백그라운드 스레드 시작: message_id={assistant_message.message_sid}")
+    except Exception as e:
+        print(f"[PaperGraph] 백그라운드 스레드 시작 실패: {e}")
+        # 논문 네트워크 생성 실패해도 메시지는 정상 반환
 
     # Chat.preview를 AI 응답으로 업데이트
     chat.preview = ai_text[:200]
