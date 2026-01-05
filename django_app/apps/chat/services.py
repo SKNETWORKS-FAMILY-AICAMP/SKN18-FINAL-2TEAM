@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import sys
 import json
+import math
 from pathlib import Path
 from typing import Any, Dict, List, Sequence
+from decimal import Decimal
 
 # Django 앱(django_app)보다 한 단계 위에 있는 프로젝트 루트를 파이썬 경로에 추가
 # graph 모듈을 import하기 전에 프로젝트 루트를 sys.path에 추가해야 함
@@ -22,6 +24,7 @@ except ImportError:  # pragma: no cover - django 미설치 환경
 
 from .llm import get_llm
 from .models import Chat, ChatMessage
+from .models.papers_models import PaperGraph, PaperNode, PaperEdge, ChatMessagePaperGraph
 
 # try:
 #     from graph.compile import create_medical_rag_workflow
@@ -267,12 +270,18 @@ def _build_history(conversation: Chat) -> list:
     return messages
 
 
-def generate_ai_response(conversation: Chat, prompt: str) -> tuple[str, list, dict, str, str]:
+def generate_ai_response(conversation: Chat, prompt: str, return_state: bool = False) -> tuple:
     """
     LangGraph RAG 워크플로우를 호출하여 답변과 참고문헌 정보를 생성한다.
 
+    Args:
+        conversation: Chat 인스턴스
+        prompt: 사용자 질문
+        return_state: result_state도 반환할지 여부 (논문 네트워크 생성용)
+
     Returns:
-        tuple: (content, citations, scores, reference_type, chat_title)
+        return_state=False: (content, citations, scores, reference_type, chat_title)
+        return_state=True: (content, citations, scores, reference_type, chat_title, result_state)
     """
 
     app = _get_graph_app() # workflow.compile() 결과
@@ -294,6 +303,8 @@ def generate_ai_response(conversation: Chat, prompt: str) -> tuple[str, list, di
     # chat_title 추출 (LangGraph에서 생성한 채팅방 제목)
     chat_title = result_state.get("chat_title") or ""
 
+    if return_state:
+        return content, citations, scores, reference_type, chat_title, result_state
     return content, citations, scores, reference_type, chat_title
 
 
@@ -498,3 +509,451 @@ def generate_related_questions(message: ChatMessage) -> List[str]:
     raw_content = response.content if hasattr(response, "content") else str(response)
     questions = _normalize_questions(raw_content)
     return questions[:3]
+
+
+def extract_pmids_from_rag_result(result_state: Dict[str, Any], max_count: int = 20) -> tuple[List[int], Dict[int, str]]:
+    """
+    RAG 결과에서 논문 pmid를 추출하고 논문 타입을 분류합니다.
+    
+    Args:
+        result_state: LangGraph state 결과
+        max_count: 최대 추출 개수 (기본값: 20)
+        
+    Returns:
+        (pmid 리스트, {pmid: paper_type} 딕셔너리)
+        paper_type: 'central' (중심 논문), 'related' (관련 논문), 'derived' (파생 논문)
+    """
+    pmids = []
+    pmid_types = {}  # {pmid: 'central'|'related'|'derived'}
+    
+    # 1. citations에서 중심 논문 추출 (AI 응답에서 직접 인용된 논문)
+    citations_pmids = set()
+    selected_chunks = result_state.get("selected_chunks", [])
+    web_selected_chunks = result_state.get("web_selected_chunks", [])
+    
+    for chunk in selected_chunks + web_selected_chunks:
+        # chunk가 문자열인 경우 건너뛰기
+        if not isinstance(chunk, dict):
+            continue
+        
+        article = chunk.get("article", {})
+        if not isinstance(article, dict):
+            continue
+            
+        pmid = article.get("pmid")
+        if pmid:
+            try:
+                pmid_int = int(pmid)
+                citations_pmids.add(pmid_int)
+                pmid_types[pmid_int] = 'central'
+            except (ValueError, TypeError):
+                pass
+    
+    # 2. reranked_results에서 관련 논문 추출 (RAG로 검색된 상위 논문)
+    reranked_results = result_state.get("reranked_results", [])
+    for result in reranked_results[:max_count]:
+        # result가 문자열인 경우 건너뛰기
+        if not isinstance(result, dict):
+            continue
+            
+        article = result.get("article", {})
+        if not isinstance(article, dict):
+            continue
+            
+        pmid = article.get("pmid")
+        if pmid:
+            try:
+                pmid_int = int(pmid)
+                if pmid_int not in citations_pmids:
+                    pmids.append(pmid_int)
+                    pmid_types[pmid_int] = 'related'
+            except (ValueError, TypeError):
+                pass
+    
+    # 3. citations를 중심 논문으로 추가
+    pmids = list(citations_pmids) + pmids
+    
+    # 4. reranked_results가 없거나 부족하면 retrieval_results에서 추출
+    if len(pmids) < max_count:
+        retrieval_results = result_state.get("retrieval_results", [])
+        for result in retrieval_results[:max_count]:
+            # result가 문자열인 경우 건너뛰기
+            if not isinstance(result, dict):
+                continue
+                
+            article = result.get("article", {})
+            if not isinstance(article, dict):
+                continue
+                
+            pmid = article.get("pmid")
+            if pmid:
+                try:
+                    pmid_int = int(pmid)
+                    if pmid_int not in pmids:
+                        pmids.append(pmid_int)
+                        if pmid_int not in pmid_types:
+                            pmid_types[pmid_int] = 'related'
+                except (ValueError, TypeError):
+                    pass
+    
+    # 5. contexts에서 직접 추출 (fallback)
+    if len(pmids) < max_count:
+        contexts = result_state.get("contexts", [])
+        for context in contexts[:max_count]:
+            # context가 문자열인 경우 건너뛰기
+            if not isinstance(context, dict):
+                continue
+                
+            article = context.get("article", {})
+            if not isinstance(article, dict):
+                continue
+                
+            pmid = article.get("pmid")
+            if pmid:
+                try:
+                    pmid_int = int(pmid)
+                    if pmid_int not in pmids:
+                        pmids.append(pmid_int)
+                        if pmid_int not in pmid_types:
+                            pmid_types[pmid_int] = 'related'
+                except (ValueError, TypeError):
+                    pass
+    
+    # 중복 제거 및 최대 개수 제한
+    unique_pmids = list(set(pmids))[:max_count]
+    print(f"[PaperGraph] 추출된 pmid 개수: {len(unique_pmids)}개 (중심: {sum(1 for p in unique_pmids if pmid_types.get(p) == 'central')}개, 관련: {sum(1 for p in unique_pmids if pmid_types.get(p) == 'related')}개)")
+    return unique_pmids, pmid_types
+
+
+def query_neo4j_paper_network(pmids: List[int], pmid_types: Dict[int, str] = None) -> Dict[str, Any]:
+    """
+    Neo4j에서 논문 네트워크를 조회합니다.
+    
+    Args:
+        pmids: 논문 pmid 리스트
+        pmid_types: {pmid: 'central'|'related'|'derived'} 딕셔너리
+        
+    Returns:
+        {
+            "nodes": [{"id": pmid, "label": title, "year": year, "paper_type": "central|related|derived", ...}],
+            "edges": [[source_pmid, target_pmid], ...]
+        }
+    """
+    if not pmids:
+        print("[PaperGraph] pmid가 없어 Neo4j 조회를 건너뜁니다.")
+        return {"nodes": [], "edges": []}
+    
+    if pmid_types is None:
+        pmid_types = {}
+    
+    try:
+        from graph.nodes.rag_retriever_bridge import _get_neo4j_driver
+        
+        driver = _get_neo4j_driver()
+        nodes = []
+        edges = []
+        original_pmids_set = set(pmids)  # 원본 pmid 집합 (파생 논문 구분용)
+        
+        with driver.session() as session:
+            # 1. 논문 노드 조회
+            cypher_nodes = """
+            MATCH (a:Article)
+            WHERE a.pmid IN $pmids
+            OPTIONAL MATCH (a)-[:PUBLISHED_IN]->(j:Journal)
+            RETURN a.pmid AS pmid,
+                   a.title AS title,
+                   a.year AS year,
+                   a.doi AS doi,
+                   j.name AS journal_name
+            LIMIT 50
+            """
+            
+            result = session.run(cypher_nodes, pmids=pmids)
+            for record in result:
+                pmid = record.get("pmid")
+                if pmid:
+                    pmid_int = int(pmid) if isinstance(pmid, str) else pmid
+                    # 논문 타입 결정: pmid_types에 있으면 그대로, 없으면 'related'
+                    paper_type = pmid_types.get(pmid_int, 'related')
+                    
+                    nodes.append({
+                        "id": str(pmid),
+                        "label": record.get("title") or f"Paper {pmid}",
+                        "year": record.get("year") or "",
+                        "doi": record.get("doi") or "",
+                        "journal": record.get("journal_name") or "",
+                        "paper_type": paper_type,
+                    })
+            
+            # 2. 논문 간 인용 관계 조회 (CitedWork를 통한 간접 관계)
+            if len(nodes) > 1:
+                cypher_edges = """
+                MATCH (a1:Article)-[:CITES_WORK]->(cw:CitedWork)<-[:CITES_WORK]-(a2:Article)
+                WHERE a1.pmid IN $pmids AND a2.pmid IN $pmids AND a1.pmid <> a2.pmid
+                RETURN DISTINCT a1.pmid AS source_pmid, a2.pmid AS target_pmid
+                LIMIT 100
+                """
+                
+                result = session.run(cypher_edges, pmids=pmids)
+                for record in result:
+                    source = record.get("source_pmid")
+                    target = record.get("target_pmid")
+                    if source and target:
+                        edges.append([str(source), str(target)])
+            
+            # 3. 파생 논문 조회: 원본 논문들이 인용하는 논문들 중 원본에 없는 것
+            cypher_derived = """
+            MATCH (a1:Article)-[:CITES_WORK]->(cw:CitedWork)<-[:CITES_WORK]-(a2:Article)
+            WHERE a1.pmid IN $pmids AND NOT a2.pmid IN $pmids
+            WITH DISTINCT a2.pmid AS derived_pmid, COUNT(DISTINCT a1.pmid) AS citation_count
+            ORDER BY citation_count DESC
+            LIMIT 10
+            MATCH (a2:Article {pmid: derived_pmid})
+            OPTIONAL MATCH (a2)-[:PUBLISHED_IN]->(j:Journal)
+            RETURN a2.pmid AS pmid,
+                   a2.title AS title,
+                   a2.year AS year,
+                   a2.doi AS doi,
+                   j.name AS journal_name,
+                   citation_count
+            """
+            
+            result = session.run(cypher_derived, pmids=pmids)
+            for record in result:
+                pmid = record.get("pmid")
+                if pmid:
+                    pmid_int = int(pmid) if isinstance(pmid, str) else pmid
+                    # 파생 논문 추가
+                    nodes.append({
+                        "id": str(pmid),
+                        "label": record.get("title") or f"Paper {pmid}",
+                        "year": record.get("year") or "",
+                        "doi": record.get("doi") or "",
+                        "journal": record.get("journal_name") or "",
+                        "paper_type": "derived",
+                    })
+                    # 파생 논문과 원본 논문 간 엣지 추가
+                    # 원본 논문 중 이 파생 논문을 인용하는 것들 찾기
+                    for original_pmid in pmids:
+                        edges.append([str(original_pmid), str(pmid)])
+            
+            print(f"[PaperGraph] Neo4j 조회 완료: 노드 {len(nodes)}개 (중심: {sum(1 for n in nodes if n.get('paper_type') == 'central')}개, 관련: {sum(1 for n in nodes if n.get('paper_type') == 'related')}개, 파생: {sum(1 for n in nodes if n.get('paper_type') == 'derived')}개), 엣지 {len(edges)}개")
+            
+    except Exception as e:
+        print(f"[PaperGraph] Neo4j 조회 오류: {e}")
+        import traceback
+        traceback.print_exc()
+        return {"nodes": [], "edges": []}
+    
+    return {"nodes": nodes, "edges": edges}
+
+
+def create_paper_graph_from_neo4j(
+    message: ChatMessage,
+    paper_network: Dict[str, Any],
+    graph_title: str = None,
+    graph_description: str = None
+) -> PaperGraph:
+    """
+    Neo4j에서 조회한 논문 네트워크를 PaperGraph로 저장합니다.
+    
+    Args:
+        message: ChatMessage 인스턴스
+        paper_network: {"nodes": [...], "edges": [...]}
+        graph_title: 그래프 제목 (기본값: "관련 논문 네트워크")
+        graph_description: 그래프 설명
+        
+    Returns:
+        생성된 PaperGraph 인스턴스
+    """
+    nodes_data = paper_network.get("nodes", [])
+    edges_data = paper_network.get("edges", [])
+    
+    if not nodes_data:
+        print("[PaperGraph] 노드가 없어 그래프를 생성하지 않습니다.")
+        return None
+    
+    try:
+        # 1. PaperGraph 생성
+        graph = PaperGraph.objects.create(
+            graph_title=graph_title or "관련 논문 네트워크",
+            graph_description=graph_description or "RAG 결과를 기반으로 조회한 논문 간 인용 관계 네트워크",
+            status='E',
+            created_id='system',
+        )
+        
+        # 2. PaperNode 생성
+        import random
+        import math
+        
+        # 원형 레이아웃으로 노드 위치 계산
+        node_count = len(nodes_data)
+        radius = 200.0
+        center_x = 0.0
+        center_y = 0.0
+        
+        # 논문 타입별로 그룹화하여 배치
+        central_nodes = [n for n in nodes_data if n.get("paper_type") == "central"]
+        related_nodes = [n for n in nodes_data if n.get("paper_type") == "related"]
+        derived_nodes = [n for n in nodes_data if n.get("paper_type") == "derived"]
+        
+        # 타입별 색상 정의 (더 세련된 색상 팔레트)
+        type_colors = {
+            "central": "#E63946",  # 빨간색 (중심 논문) - 더 세련된 빨강
+            "related": "#457B9D",  # 파란색 (관련 논문) - 더 세련된 파랑
+            "derived": "#A8DADC",  # 연한 청록색 (파생 논문) - 더 부드러운 청록
+        }
+        
+        # 타입별 크기 정의
+        type_sizes = {
+            "central": 35,  # 중심 논문은 크게
+            "related": 25,  # 관련 논문은 중간
+            "derived": 20,  # 파생 논문은 작게
+        }
+        
+        node_idx = 0
+        # 중심 논문을 중심에 배치
+        for node_data in central_nodes:
+            angle = 2 * math.pi * node_idx / max(node_count, 1)
+            x = center_x + radius * 0.3 * math.cos(angle)  # 중심에 가깝게
+            y = center_y + radius * 0.3 * math.sin(angle)
+            
+            paper_type = node_data.get("paper_type", "related")
+            PaperNode.objects.create(
+                graph=graph,
+                paper_id=node_data.get("id", str(node_idx)),
+                paper_label=node_data.get("label", f"Paper {node_idx}"),
+                node_size=type_sizes.get(paper_type, 25),
+                node_color=type_colors.get(paper_type, "#5B8E7E"),
+                x_position=Decimal(str(x)),
+                y_position=Decimal(str(y)),
+                created_id='system',
+            )
+            node_idx += 1
+        
+        # 관련 논문을 중간 원에 배치
+        for node_data in related_nodes:
+            angle = 2 * math.pi * node_idx / max(node_count, 1)
+            x = center_x + radius * 0.7 * math.cos(angle)
+            y = center_y + radius * 0.7 * math.sin(angle)
+            
+            paper_type = node_data.get("paper_type", "related")
+            PaperNode.objects.create(
+                graph=graph,
+                paper_id=node_data.get("id", str(node_idx)),
+                paper_label=node_data.get("label", f"Paper {node_idx}"),
+                node_size=type_sizes.get(paper_type, 25),
+                node_color=type_colors.get(paper_type, "#5B8E7E"),
+                x_position=Decimal(str(x)),
+                y_position=Decimal(str(y)),
+                created_id='system',
+            )
+            node_idx += 1
+        
+        # 파생 논문을 외곽에 배치
+        for node_data in derived_nodes:
+            angle = 2 * math.pi * node_idx / max(node_count, 1)
+            x = center_x + radius * 1.2 * math.cos(angle)  # 외곽에
+            y = center_y + radius * 1.2 * math.sin(angle)
+            
+            paper_type = node_data.get("paper_type", "derived")
+            PaperNode.objects.create(
+                graph=graph,
+                paper_id=node_data.get("id", str(node_idx)),
+                paper_label=node_data.get("label", f"Paper {node_idx}"),
+                node_size=type_sizes.get(paper_type, 20),
+                node_color=type_colors.get(paper_type, "#95E1D3"),
+                x_position=Decimal(str(x)),
+                y_position=Decimal(str(y)),
+                created_id='system',
+            )
+            node_idx += 1
+        
+        # 3. PaperEdge 생성
+        for edge_data in edges_data:
+            if len(edge_data) >= 2:
+                source_id = str(edge_data[0])
+                target_id = str(edge_data[1])
+                
+                # 노드가 존재하는지 확인
+                source_exists = PaperNode.objects.filter(graph=graph, paper_id=source_id).exists()
+                target_exists = PaperNode.objects.filter(graph=graph, paper_id=target_id).exists()
+                
+                if source_exists and target_exists:
+                    PaperEdge.objects.get_or_create(
+                        graph=graph,
+                        source_paper_id=source_id,
+                        target_paper_id=target_id,
+                        defaults={
+                            'edge_size': 1,
+                            'edge_color': '#CCCCCC',
+                        }
+                    )
+        
+        # 4. ChatMessagePaperGraph 연결
+        ChatMessagePaperGraph.objects.get_or_create(
+            message=message,
+            graph=graph,
+            defaults={
+                'sort_order': 0,
+                'created_id': 'system',
+            }
+        )
+        
+        print(f"[PaperGraph] 그래프 생성 완료: graph_sid={graph.graph_sid}, 노드 {node_count}개, 엣지 {len(edges_data)}개")
+        return graph
+        
+    except Exception as e:
+        print(f"[PaperGraph] 그래프 생성 오류: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
+
+
+def generate_paper_graph_background(
+    message: ChatMessage,
+    result_state: Dict[str, Any],
+    user_question: str = None
+):
+    """
+    백그라운드에서 논문 네트워크를 생성합니다.
+    
+    Args:
+        message: ChatMessage 인스턴스
+        result_state: LangGraph state 결과
+        user_question: 사용자 질문 (선택적)
+    """
+    try:
+        print(f"[PaperGraph] 백그라운드 논문 네트워크 생성 시작: message_id={message.message_sid}")
+        
+        # 1. RAG 결과에서 pmid 추출 및 타입 분류 (최대 20개)
+        pmids, pmid_types = extract_pmids_from_rag_result(result_state, max_count=20)
+        
+        if not pmids:
+            print("[PaperGraph] 추출된 pmid가 없어 논문 네트워크를 생성하지 않습니다.")
+            return
+        
+        # 2. Neo4j에서 논문 네트워크 조회 (타입 정보 포함)
+        paper_network = query_neo4j_paper_network(pmids, pmid_types)
+        
+        if not paper_network.get("nodes"):
+            print("[PaperGraph] Neo4j에서 조회된 노드가 없습니다.")
+            return
+        
+        # 3. PaperGraph 생성 및 저장
+        graph_title = f"관련 논문 네트워크 ({len(pmids)}개 논문)"
+        graph_description = user_question or "RAG 결과를 기반으로 조회한 논문 간 인용 관계"
+        
+        create_paper_graph_from_neo4j(
+            message=message,
+            paper_network=paper_network,
+            graph_title=graph_title,
+            graph_description=graph_description
+        )
+        
+        print(f"[PaperGraph] 백그라운드 논문 네트워크 생성 완료: message_id={message.message_sid}")
+        
+    except Exception as e:
+        print(f"[PaperGraph] 백그라운드 논문 네트워크 생성 오류: {e}")
+        import traceback
+        traceback.print_exc()

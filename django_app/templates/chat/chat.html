@@ -254,12 +254,13 @@
 
 {% block extra_js %}
 <script src="{% static 'js/components/subsidebar.js' %}"></script>
+<!-- Paper Graph Modal must be loaded before chat.js -->
+<script src="{% static 'js/components/modals/paper_graph_modal.js' %}"></script>
 <script src="{% static 'js/pages/chat.js' %}"></script>
 <script src="{% static 'js/components/modals/bookmark_modal.js' %}"></script>
 <script src="{% static 'js/components/modals/reference_selection_modal.js' %}"></script>
 <script src="{% static 'js/components/modals/graph_summary_modal.js' %}"></script>
 <script src="{% static 'js/components/modals/save_to_note_modal.js' %}"></script>
-<script src="{% static 'js/components/modals/paper_graph_modal.js' %}"></script>
 <script src="{% static 'js/components/modals/table_modal.js' %}"></script>
 <script src="{% static 'js/components/modals/experiment_result_modal.js' %}"></script>
 {% endblock %}

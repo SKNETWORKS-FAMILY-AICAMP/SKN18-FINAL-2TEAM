@@ -8,6 +8,7 @@ urlpatterns = [
     path("api/chats/", views.chat_list, name="chat_list"),
     path("api/chats/<int:chat_id>/", views.chat_detail, name="chat_detail"),
     path("api/chats/<int:chat_id>/references/", views.chat_references_api, name="chat_references"),
+    path("api/messages/<int:message_id>/paper-graphs/", views.message_paper_graphs_api, name="message_paper_graphs"),
     path("api/chats/<int:chat_id>/title/", views.update_chat_title, name="update_chat_title"),
     path("api/chats/<int:chat_id>/messages/", views.chat_messages, name="chat_messages"),
     path("api/chats/messages/", views.chat_messages, name="chat_messages_create"),  # 새 채팅 생성
