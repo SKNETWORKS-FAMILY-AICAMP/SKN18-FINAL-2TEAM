@@ -481,7 +481,7 @@ class GraphCellQueries:
     OPTIONAL MATCH (a)-[:PUBLISHED_IN]->(j:Journal)
 
     RETURN 
-    a { .doi, .title, .year } AS article,
+    a { .doi, .title, .year, .pmid } AS article,
     vec_score,
       j.name AS journal_title,
     evidence_chunks

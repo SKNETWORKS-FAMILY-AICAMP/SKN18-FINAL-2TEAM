@@ -4,7 +4,7 @@
         <!-- Modal Header - matching React: flex items-center justify-between p-6 border-b border-gray-200 -->
         <div class="modal-header">
             <h2 class="modal-title" id="feedbackModalTitle">Feedback</h2>
-            <button class="modal-close-btn" aria-label="닫기">
+            <button class="modal-close-btn" type="button" aria-label="닫기">
                 <i class="fa-solid fa-times"></i>
             </button>
         </div>
@@ -12,7 +12,7 @@
         <!-- Modal Body - matching React: p-6 space-y-4 -->
         <div class="modal-body">
             <div class="feedback-form-group">
-                <label class="feedback-label">카테고리</label>
+                <label class="feedback-label" for="feedbackCategory">카테고리</label>
                 <select
                     id="feedbackCategory"
                     class="feedback-select"
@@ -25,7 +25,7 @@
             </div>
 
             <div class="feedback-form-group">
-                <label class="feedback-label">피드백 내용</label>
+                <label class="feedback-label" for="feedbackText">피드백 내용</label>
                 <textarea
                     id="feedbackText"
                     placeholder="피드백을 입력해주세요..."
@@ -37,8 +37,8 @@
 
         <!-- Modal Footer - matching React: flex items-center justify-end gap-3 p-6 border-t border-gray-200 -->
         <div class="modal-footer">
-            <button class="modal-btn modal-btn-secondary" data-action="close">취소</button>
-            <button class="modal-btn modal-btn-primary" data-action="submit" id="submitFeedbackBtn">
+            <button class="modal-btn modal-btn-secondary" type="button" data-action="close">취소</button>
+            <button class="modal-btn modal-btn-primary" type="button" data-action="submit" id="submitFeedbackBtn">
                 전송
             </button>
         </div>

@@ -82,33 +82,75 @@ def _format_citations(raw_result: Dict[str, Any]) -> tuple[List[Dict[str, Any]],
     # retrieval_results에서 메타데이터 추출 (reranked_results 우선)
     if reranked_results and selected_chunks:
         for idx, result in enumerate(reranked_results[:5], 1):  # 상위 5개만
+            # RAG 파이프라인에서 반환하는 실제 구조: article.title, journal_title 등
+            article = result.get("article") or {}
             metadata = result.get("metadata") or {}
+            
+            # 🔍 DEBUG: RAG에서 추출된 필드 확인
+            title = article.get("title") or metadata.get("title") or f"검색 결과 {idx}"
+            journal = result.get("journal_title") or metadata.get("journal") or ""
+            year = str(article.get("year") or metadata.get("year") or "")
+            doi = article.get("doi") or metadata.get("doi") or ""
+            pmid = article.get("pmid") or metadata.get("pmid") or ""
+            
+            print(f"\n{'='*60}")
+            print(f"[DEBUG _format_citations] Citation #{idx} 필드 추출 결과:")
+            print(f"  title: {title[:80] if title else 'N/A'}...")
+            print(f"  pmid: {pmid or 'N/A'}")
+            print(f"  journal_name: {journal or 'N/A'}")
+            print(f"  year: {year or 'N/A'}")
+            print(f"  doi: {doi or 'N/A'}")
+            print(f"  article 구조: {list(article.keys()) if article else 'empty'}")
+            print(f"  result.keys: {list(result.keys())}")
+            if article:
+                print(f"  article 내용: {article}")
+            print(f"{'='*60}\n")
+            
+            # article 구조에서 먼저 찾고, 없으면 metadata에서 찾기 (fallback)
             formatted.append({
                 "id": idx,
-                "title": metadata.get("title") or f"검색 결과 {idx}",
-                "journal": metadata.get("journal") or "",
-                "year": str(metadata.get("year") or ""),
-                "month": metadata.get("month") or "",  # 추가: 월 정보
-                "day": metadata.get("day") or "",      # 추가: 일 정보
-                "doi": metadata.get("doi") or "",
-                "pmid": metadata.get("pmid") or "",
-                "authors": metadata.get("authors") or "",
+                "title": title,
+                "journal": journal,
+                "year": year,
+                "doi": doi,
+                "pmid": pmid,
                 "source_type": metadata.get("source_type") or metadata.get("db") or "",
                 "score": result.get("rerank_score") or result.get("score") or 0.0,
             })
     elif retrieval_results and selected_chunks:
         for idx, result in enumerate(retrieval_results[:5], 1):
+            # RAG 파이프라인에서 반환하는 실제 구조: article.title, journal_title 등
+            article = result.get("article") or {}
             metadata = result.get("metadata") or {}
+            
+            # 🔍 DEBUG: RAG에서 추출된 필드 확인
+            title = article.get("title") or metadata.get("title") or f"검색 결과 {idx}"
+            journal = result.get("journal_title") or metadata.get("journal") or ""
+            year = str(article.get("year") or metadata.get("year") or "")
+            doi = article.get("doi") or metadata.get("doi") or ""
+            pmid = article.get("pmid") or metadata.get("pmid") or ""
+            
+            print(f"\n{'='*60}")
+            print(f"[DEBUG _format_citations] Citation #{idx} 필드 추출 결과 (retrieval_results):")
+            print(f"  title: {title[:80] if title else 'N/A'}...")
+            print(f"  pmid: {pmid or 'N/A'}")
+            print(f"  journal_name: {journal or 'N/A'}")
+            print(f"  year: {year or 'N/A'}")
+            print(f"  doi: {doi or 'N/A'}")
+            print(f"  article 구조: {list(article.keys()) if article else 'empty'}")
+            print(f"  result.keys: {list(result.keys())}")
+            if article:
+                print(f"  article 내용: {article}")
+            print(f"{'='*60}\n")
+            
+            # article 구조에서 먼저 찾고, 없으면 metadata에서 찾기 (fallback)
             formatted.append({
                 "id": idx,
-                "title": metadata.get("title") or f"검색 결과 {idx}",
-                "journal": metadata.get("journal") or "",
-                "year": str(metadata.get("year") or ""),
-                "month": metadata.get("month") or "",  # 추가: 월 정보
-                "day": metadata.get("day") or "",      # 추가: 일 정보
-                "doi": metadata.get("doi") or "",
-                "pmid": metadata.get("pmid") or "",
-                "authors": metadata.get("authors") or "",
+                "title": title,
+                "journal": journal,
+                "year": year,
+                "doi": doi,
+                "pmid": pmid,
                 "source_type": metadata.get("source_type") or metadata.get("db") or "",
                 "score": result.get("score") or 0.0,
             })

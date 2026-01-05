@@ -403,17 +403,31 @@ async function handleSend() {
                     // 이 메시지에 대한 기존 레퍼런스 제거 (중복 방지)
                     allReferences = allReferences.filter(ref => ref.message_id !== messageId);
 
-                    // 중복 제거: 같은 URL/title을 가진 reference는 하나만 추가
+                    // 중복 제거: 같은 link/title을 가진 reference는 하나만 추가
                     const newRefs = data.references
                         .filter((ref, index, self) => {
-                            // URL이 있으면 URL 기준, 없으면 title 기준으로 중복 체크
-                            const key = ref.url || ref.title;
-                            return index === self.findIndex(r => (r.url || r.title) === key);
+                            // link가 있으면 link 기준, 없으면 title 기준으로 중복 체크
+                            const key = ref.link || ref.title;
+                            return index === self.findIndex(r => (r.link || r.title) === key);
                         })
-                        .map(ref => ({
-                            ...ref,
-                            message_id: messageId
-                        }));
+                        .map(ref => {
+                            // API 응답 구조에 맞게 데이터 매핑
+                            return {
+                                id: ref.id,
+                                ref_id: ref.ref_id || ref.id,
+                                message_id: messageId,
+                                source: ref.source || 'Unknown',
+                                badge: ref.badge || '',
+                                title: ref.title || '',
+                                description: ref.description || '',
+                                journal: ref.journal || '',
+                                link: ref.link || '',  // API에서 link 필드로 전달됨
+                                pmid: ref.pmid || '',
+                                date: ref.date || '',
+                                doi: ref.doi || '',  // DOI 필드 추가
+                                authors: ref.authors || '',
+                            };
+                        });
 
                     console.log('[DEBUG] New references to add (after dedup):', newRefs.length, '개');
                     allReferences = [...allReferences, ...newRefs];
@@ -518,6 +532,7 @@ async function loadChat(chatId) {
                 link: ref.link,
                 pmid: ref.pmid,
                 date: ref.date,
+                doi: ref.doi || '',  // DOI 필드 추가
                 authors: ref.authors,
             }));
 
@@ -1557,6 +1572,24 @@ function renderReferences() {
         const isWebSource = ref.source === 'Web';
         const sourceIcon = isWebSource ? '<i class="fas fa-globe"></i> ' : '';
 
+        // link 처리: "PubMed : {pmid}" 형식이면 실제 URL로 변환, 아니면 그대로 사용
+        let displayLink = ref.link || '';
+        let linkText = displayLink;
+        
+        if (displayLink.startsWith('PubMed : ')) {
+            // "PubMed : 39261613" 형식인 경우
+            const pmid = displayLink.replace('PubMed : ', '').trim();
+            displayLink = `https://pubmed.ncbi.nlm.nih.gov/${pmid}/`;
+            linkText = `PubMed : ${pmid}`;
+        } else if (!displayLink && ref.pmid) {
+            // link가 없고 pmid만 있는 경우
+            displayLink = `https://pubmed.ncbi.nlm.nih.gov/${ref.pmid}/`;
+            linkText = `PubMed : ${ref.pmid}`;
+        } else if (displayLink) {
+            // 일반 URL인 경우
+            linkText = displayLink;
+        }
+
         return `
             <div class="reference-item" data-reference-id="${ref.id}">
                 <button class="reference-bookmark-btn" data-reference-id="${ref.id}" title="북마크에 저장">
@@ -1569,32 +1602,31 @@ function renderReferences() {
                             <span class="reference-source">${sourceIcon}${escapeHtml(ref.source || 'Unknown')}</span>
                             ${ref.badge ? `<span class="reference-badge">${escapeHtml(ref.badge)}</span>` : ''}
                         </div>
-                        <h3 class="reference-title">${escapeHtml(ref.title)}</h3>
+                        <h3 class="reference-title">${escapeHtml(ref.title || '제목 없음')}</h3>
                         ${ref.description ? `<p class="reference-description">${escapeHtml(ref.description)}</p>` : ''}
                         <div class="reference-info">
-                            ${ref.link ? `
+                            ${displayLink ? `
                             <div class="reference-info-item">
                                 <i class="fas fa-link"></i>
-                                <a href="${escapeHtml(ref.link)}" target="_blank" rel="noopener noreferrer" class="reference-link">${escapeHtml(ref.link)}</a>
+                                <a href="${escapeHtml(displayLink)}" target="_blank" rel="noopener noreferrer" class="reference-link">${escapeHtml(linkText)}</a>
+                            </div>
+                            ` : ''}
+                            ${ref.doi ? `
+                            <div class="reference-info-item">
+                                <i class="fas fa-link"></i>
+                                <a href="https://doi.org/${escapeHtml(ref.doi)}" target="_blank" rel="noopener noreferrer" class="reference-link">DOI: ${escapeHtml(ref.doi)}</a>
                             </div>
                             ` : ''}
                             ${ref.journal ? `
                             <div class="reference-info-item">
                                 <i class="fas fa-file-lines"></i>
                                 <span>${escapeHtml(ref.journal)}</span>
-                                ${ref.journal.startsWith('www') ? '<i class="fas fa-external-link-alt"></i>' : ''}
                             </div>
                             ` : ''}
                             ${ref.date ? `
                             <div class="reference-info-item">
                                 <i class="fas fa-calendar"></i>
                                 <span>${escapeHtml(ref.date)}</span>
-                            </div>
-                            ` : ''}
-                            ${ref.authors ? `
-                            <div class="reference-info-item">
-                                <i class="fas fa-user"></i>
-                                <span>${escapeHtml(ref.authors)}</span>
                             </div>
                             ` : ''}
                         </div>
@@ -1943,8 +1975,13 @@ function attachReferenceHandlers() {
 function toggleReferenceBookmark(referenceId, btn) {
     selectedReferenceId = referenceId;
     showBookmarkModal = true;
+    
+    // 참조문헌 데이터 찾기
+    const referenceData = references.find(ref => ref.id == referenceId || ref.reference_sid == referenceId);
+    
     if (window.Modal && window.Modal.open) {
-        window.Modal.open('bookmarkModal');
+        // 참조문헌 데이터를 options로 전달
+        window.Modal.open('bookmarkModal', { referenceData: referenceData || null });
     }
 }
 
@@ -1965,10 +2002,60 @@ function handleSaveReferences() {
         return;
     }
     
-    // Open reference selection modal with chat ID
+    // 현재 표시되고 있는 참고 문헌에서 message_id 추출
+    let messageId = null;
+    if (references && references.length > 0) {
+        // 현재 표시되고 있는 참고 문헌들은 모두 같은 message_id를 가짐
+        messageId = references[0].message_id;
+        console.log('[Chat] handleSaveReferences - messageId from visible references:', messageId);
+    } else {
+        // 참고 문헌이 없으면 가장 가까운 AI 메시지의 ID 찾기
+        if (chatMessagesList) {
+            const aiMessageItems = chatMessagesList.querySelectorAll('.message-item .message-assistant');
+            if (aiMessageItems.length > 0) {
+                // 화면 중앙에 가장 가까운 메시지 찾기
+                const container = chatMessagesList;
+                const containerRect = container.getBoundingClientRect();
+                const targetAreaCenter = containerRect.top + containerRect.height * 0.5;
+                
+                let closestMessageId = null;
+                let closestDistance = Infinity;
+                
+                aiMessageItems.forEach(aiMsg => {
+                    const messageItem = aiMsg.closest('.message-item');
+                    const msgId = messageItem?.getAttribute('data-message-id');
+                    if (msgId) {
+                        const rect = messageItem.getBoundingClientRect();
+                        const messageCenter = (rect.top + rect.bottom) / 2;
+                        const distance = Math.abs(messageCenter - targetAreaCenter);
+                        
+                        if (distance < closestDistance) {
+                            closestDistance = distance;
+                            closestMessageId = parseInt(msgId);
+                        }
+                    }
+                });
+                
+                if (closestMessageId) {
+                    messageId = closestMessageId;
+                    console.log('[Chat] handleSaveReferences - messageId from closest message:', messageId);
+                }
+            }
+        }
+    }
+    
+    if (!messageId) {
+        console.warn('[Chat] No message ID found');
+        if (window.notyf) {
+            window.notyf.error('참고 문헌을 찾을 수 없습니다.');
+        }
+        return;
+    }
+    
+    // Open reference selection modal with chat ID and message ID
     if (window.ReferenceSelectionModal && window.ReferenceSelectionModal.open) {
-        console.log('[Chat] Opening ReferenceSelectionModal with chatId:', chatId);
-        window.ReferenceSelectionModal.open(chatId);
+        console.log('[Chat] Opening ReferenceSelectionModal with chatId:', chatId, 'messageId:', messageId);
+        window.ReferenceSelectionModal.open(chatId, messageId);
     } else if (window.Modal && window.Modal.open) {
         console.log('[Chat] Fallback to window.Modal.open');
         window.Modal.open('referenceSelectionModal');

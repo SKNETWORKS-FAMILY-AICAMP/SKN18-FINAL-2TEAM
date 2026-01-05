@@ -551,6 +551,8 @@ def _build_rrule_from_payload(repeat_type: str | None, repeat_until_date: str | 
         parts.append("FREQ=WEEKLY")
     elif repeat_type == "monthly":
         parts.append("FREQ=MONTHLY")
+    elif repeat_type == "yearly":
+        parts.append("FREQ=YEARLY")
     else:
         return None
 

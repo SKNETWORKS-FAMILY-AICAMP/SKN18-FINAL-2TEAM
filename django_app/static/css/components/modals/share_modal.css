@@ -410,6 +410,10 @@
     border: 1px solid #e5e7eb;
 }
 
+.share-shared-item.pending {
+    opacity: 0.7;
+}
+
 .share-shared-item .shared-avatar {
     width: 2.5rem;
     height: 2.5rem;
@@ -440,6 +444,22 @@
     font-size: 0.75rem;
     color: #9ca3af;
     margin: 0.125rem 0 0 0;
+}
+
+.share-shared-item .shared-status {
+    font-size: 0.75rem;
+    margin-top: 0.25rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.share-shared-item .shared-status.pending {
+    color: #9ca3af;
+}
+
+.share-shared-item .shared-status.accepted {
+    color: #10b981;
 }
 
 .share-shared-item .shared-date-info {

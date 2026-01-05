@@ -102,11 +102,13 @@ console.log('[ReferenceSelectionModal] ===== Script file loading... =====');
     ];
 
     // State
-    let allReferences = [...allMockReferences];
+    let allReferences = [];
     let filteredReferences = [];
     let selectedReferences = [];
     let currentPage = 1;
     let isInitialized = false;
+    let currentChatId = null;
+    let currentMessageId = null;
     const itemsPerPage = 5;
 
     // DOM element references
@@ -334,7 +336,7 @@ console.log('[ReferenceSelectionModal] ===== Script file loading... =====');
     }
 
     // Handle save
-    function handleSave() {
+    async function handleSave() {
         if (selectedReferences.length === 0) {
             if (window.notyf) {
                 window.notyf.error('저장할 참고 문헌을 선택해주세요.');
@@ -342,22 +344,82 @@ console.log('[ReferenceSelectionModal] ===== Script file loading... =====');
             return;
         }
 
-        // Dispatch event with selected references
+        // 선택한 참고 문헌들 가져오기
         const selectedRefs = allReferences.filter(ref => selectedReferences.includes(ref.id));
-        document.dispatchEvent(new CustomEvent('references:selected', {
-            detail: { references: selectedRefs }
-        }));
-
-        // Close this modal and open bookmark modal
+        
+        // 북마크 모달 열기 (선택한 참고 문헌들을 전달)
         closeReferenceSelectionModal();
+        
+        // 북마크 모달에 여러 참고 문헌 전달
         if (window.Modal && window.Modal.open) {
-            window.Modal.open('bookmarkModal');
+            window.Modal.open('bookmarkModal', { 
+                references: selectedRefs,
+                isMultiple: true 
+            });
+        } else if (window.BookmarkModal && window.BookmarkModal.open) {
+            window.BookmarkModal.open(selectedRefs);
+        }
+    }
+
+    // Load references from API
+    async function loadReferencesFromAPI(chatId, messageId) {
+        try {
+            // messageId가 있으면 쿼리 파라미터로 추가
+            let url = `/chat/api/chats/${chatId}/references/`;
+            if (messageId) {
+                url += `?message_id=${messageId}`;
+            }
+            
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'X-CSRFToken': getCsrfToken(),
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            if (data.status === 'success' && data.references) {
+                // API 응답을 모달에서 사용하는 형식으로 변환
+                allReferences = data.references.map(ref => ({
+                    id: ref.id || ref.reference_sid,
+                    reference_sid: ref.id || ref.reference_sid,
+                    source: ref.source || 'Unknown',
+                    badge: ref.badge || '',
+                    title: ref.title || '',
+                    journal: ref.journal || '',
+                    link: ref.link || '',
+                    url: ref.link || ref.url || '',
+                    pmid: ref.pmid || '',
+                    date: ref.date || '',
+                    description: ref.description || '',
+                    doi: ref.doi || '',
+                }));
+                
+                console.log('[ReferenceSelectionModal] Loaded references:', allReferences.length);
+                return true;
+            } else {
+                console.warn('[ReferenceSelectionModal] No references found or invalid response');
+                allReferences = [];
+                return false;
+            }
+        } catch (error) {
+            console.error('[ReferenceSelectionModal] Error loading references:', error);
+            if (window.notyf) {
+                window.notyf.error('참고 문헌을 불러오는 중 오류가 발생했습니다.');
+            }
+            allReferences = [];
+            return false;
         }
     }
 
     // Open modal
-    function openReferenceSelectionModal() {
-        console.log('[ReferenceSelectionModal] Opening modal...');
+    async function openReferenceSelectionModal(chatId, messageId) {
+        console.log('[ReferenceSelectionModal] Opening modal with chatId:', chatId, 'messageId:', messageId);
 
         if (!isInitialized) {
             initReferenceSelectionModal();
@@ -373,9 +435,27 @@ console.log('[ReferenceSelectionModal] ===== Script file loading... =====');
         selectedReferences = [];
         currentPage = 1;
         if (searchInput) searchInput.value = '';
+        currentChatId = chatId;
+        currentMessageId = messageId;
         
-        // Load references
-        allReferences = [...allMockReferences];
+        // Load references from API
+        if (chatId) {
+            const loadingSuccess = await loadReferencesFromAPI(chatId, messageId);
+            if (!loadingSuccess && allReferences.length === 0) {
+                // API 로드 실패 시 빈 상태 표시
+                if (referenceList) {
+                    referenceList.innerHTML = `
+                        <div class="ref-empty-state">
+                            <p>참고 문헌이 없습니다</p>
+                        </div>
+                    `;
+                }
+            }
+        } else {
+            console.warn('[ReferenceSelectionModal] No chatId provided, using empty references');
+            allReferences = [];
+        }
+        
         filterReferences();
         updateSelectedCount();
 
@@ -396,6 +476,18 @@ console.log('[ReferenceSelectionModal] ===== Script file loading... =====');
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+
+    // Get CSRF token
+    function getCsrfToken() {
+        const cookies = document.cookie.split(';');
+        for (let cookie of cookies) {
+            const [name, value] = cookie.trim().split('=');
+            if (name === 'csrftoken') {
+                return value;
+            }
+        }
+        return '';
     }
 
     // Export to window immediately
