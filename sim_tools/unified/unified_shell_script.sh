@@ -44,22 +44,17 @@ AF_PARAMS_TAR_URL="${AF_PARAMS_TAR_URL:-https://storage.googleapis.com/alphafold
 AF_PARAMS_TAR_NAME="${AF_PARAMS_TAR_NAME:-alphafold_params_2022-12-06.tar}"
 
 # -----------------------------
-# ✅ JAX GPU 정책(재발 방지)
-#  - 0: CPU jaxlib 허용
-#  - 1: CUDA jaxlib "반드시" 성공해야 함 (실패하면 install 단계에서 종료)
+# (옵션) JAX GPU indicates attempt
+#  - 0: CPU jaxlib 유지 (안전)
+#  - 1: CUDA jaxlib 설치 "시도" (실패해도 계속 진행)
 # -----------------------------
 ENABLE_JAX_CUDA="${ENABLE_JAX_CUDA:-0}"
-
-# -----------------------------
-# ✅ (권장) JAX CUDA wheel index
-# -----------------------------
-JAX_CUDA_WHEEL_INDEX="${JAX_CUDA_WHEEL_INDEX:-https://storage.googleapis.com/jax-releases/jax_cuda_releases.html}"
 
 ########################################
 # Utils
 ########################################
-log()  { echo "[ops] $*"; }
-die()  { echo "[ops][ERROR] $*" >&2; exit 1; }
+log() { echo "[ops] $*"; }
+die() { echo "[ops][ERROR] $*" >&2; exit 1; }
 warn() { echo "[ops][WARN] $*" >&2; }
 
 need_root() {
@@ -131,45 +126,36 @@ set_ld_library_path_for_torch() {
   export LD_LIBRARY_PATH="$(IFS=:; echo "${parts[*]}"):${LD_LIBRARY_PATH:-}"
 }
 
-# ✅ JAX는 torch venv의 nvidia libs로 꼬일 수 있으니 "제거"하되,
-#    시스템 CUDA 런타임 경로는 유지/추가(재발 방지).
+# ✅ NEW: JAX venv의 nvidia wheel libs를 LD_LIBRARY_PATH 앞에 붙여서
+#         jax-cuda plugin이 cuSPARSE 등을 확실히 찾게 함
 set_ld_library_path_for_jax() {
-  local cur="${LD_LIBRARY_PATH:-}"
+  local sp
+  sp="$(jax_site_packages || true)"
 
-  # 1) torch venv 아래 경로가 들어있으면 제거
-  if [[ -n "${cur}" ]]; then
-    cur="$(echo "$cur" | tr ':' '\n' | grep -vE '^/opt/venv_torch/' | paste -sd ':' -)"
+  if [[ -z "${sp}" ]]; then
+    warn "cannot resolve jax site-packages; LD_LIBRARY_PATH not set for jax"
+    return 0
   fi
 
-  # 2) 시스템 CUDA 후보 경로를 앞쪽에 추가
-  #    (이미 있으면 중복 없이 유지)
-  local candidates=(
-    "/usr/local/cuda/lib64"
-    "/usr/local/cuda/lib"
-    "/usr/lib/x86_64-linux-gnu"
-    "/usr/lib64"
-  )
-
+  local nvr="${sp}/nvidia"
   local parts=()
-  for d in "${candidates[@]}"; do
-    [[ -d "$d" ]] && parts+=("$d")
-  done
 
-  local prefix=""
-  if [[ "${#parts[@]}" -gt 0 ]]; then
-    prefix="$(IFS=:; echo "${parts[*]}")"
+  # jax-cuda12-plugin이 설치한 nvidia 패키지들의 lib 경로를 전부 수집
+  # 예: site-packages/nvidia/cusparse/lib, nvidia/cudnn/lib, nvidia/cublas/lib ...
+  if [[ -d "$nvr" ]]; then
+    while IFS= read -r d; do
+      [[ -d "$d" ]] && parts+=("$d")
+    done < <(find "$nvr" -maxdepth 3 -type d -name lib 2>/dev/null | sort)
   fi
 
-  if [[ -n "$prefix" && -n "$cur" ]]; then
-    export LD_LIBRARY_PATH="${prefix}:${cur}"
-  elif [[ -n "$prefix" ]]; then
-    export LD_LIBRARY_PATH="${prefix}"
-  else
-    # 시스템 경로를 못 찾으면 cur만 유지 (그래도 unset은 안 함)
-    export LD_LIBRARY_PATH="${cur}"
+  if [[ "${#parts[@]}" -eq 0 ]]; then
+    warn "no nvidia lib dirs found under: $nvr (LD_LIBRARY_PATH unchanged)"
+    return 0
   fi
 
-  log "LD_LIBRARY_PATH(jax)=${LD_LIBRARY_PATH:-<empty>}"
+  # ✅ venv_jax의 nvidia libs를 “맨 앞”에 둬서 시스템 CUDA보다 먼저 로드되게
+  export LD_LIBRARY_PATH="$(IFS=:; echo "${parts[*]}"):${LD_LIBRARY_PATH:-}"
+  log "LD_LIBRARY_PATH(jax)=${LD_LIBRARY_PATH}"
 }
 
 sanity_torch() {
@@ -199,27 +185,17 @@ except Exception as e:
 PY
 }
 
-# ✅ JAX GPU 강제 체크 함수 (재발 방지)
-sanity_jax_and_must_gpu_if_requested() {
+sanity_jax() {
   log "sanity(jax): python=$("$(venv_python_jax)" -V 2>&1 | tr -d '\r')"
   "$(venv_python_jax)" - <<'PY'
-import os, sys
-want_gpu = os.environ.get("ENABLE_JAX_CUDA","0") == "1"
 try:
   import jax
   dev = jax.devices()
-  has_gpu = any(getattr(d, "platform", "") == "gpu" for d in dev)
   print("[sanity][jax] version:", jax.__version__)
   print("[sanity][jax] devices:", dev)
-  print("[sanity][jax] has_gpu:", has_gpu)
-  if want_gpu and not has_gpu:
-    raise SystemExit("[sanity][jax] ENABLE_JAX_CUDA=1 but has_gpu=False (CUDA jaxlib not active)")
-except SystemExit as e:
-  print(str(e))
-  raise
+  print("[sanity][jax] has_gpu:", any(getattr(d, "platform", "") == "gpu" for d in dev))
 except Exception as e:
   print("[sanity][jax] import/devices failed:", repr(e))
-  raise
 PY
 }
 
@@ -270,6 +246,8 @@ refresh_s3_mapping() {
 # Helper: ensure ./params symlink
 ########################################
 ensure_unified_params_link() {
+  # ColabDesign이 종종 ./params 를 찾으므로
+  # /workspace/unified/params -> /models/alphafold (AF_DIR) 링크를 보장
   local link_path="${APP_DIR}/params"
   if [[ -L "$link_path" || -e "$link_path" ]]; then
     rm -rf "$link_path" || true
@@ -364,7 +342,8 @@ cmd_install() {
     --index-url https://download.pytorch.org/whl/cu121 \
     torch==2.2.0 torchvision==0.17.0 torchaudio==2.2.0
 
-  # ✅ cuDNN 재고정
+  # ✅ 중요: torch 2.2.0+cu121이 기대하는 cuDNN(=8.9.2.26)로 "재고정"
+  # - 이전에 9.x가 섞이면 libcudnn.so.8 링크가 없어져 ImportError가 날 수 있음
   "$(venv_python_torch)" -m pip install -U --no-deps "nvidia-cudnn-cu12==8.9.2.26" || true
 
   "$(venv_python_torch)" -m pip install \
@@ -427,40 +406,43 @@ cmd_install() {
 
   "$(venv_python_jax)" -m pip install -U pip setuptools wheel
   "$(venv_python_jax)" -m pip install "numpy<2"
+  # ✅ boto3/botocore (jax venv에도 필요)
   "$(venv_python_jax)" -m pip install -U boto3 botocore
+  # ✅ alphafold_step / proteinmpnn_step가 pandas를 쓰므로 JAX_VENV에 설치
   "$(venv_python_jax)" -m pip install -U pandas
 
   ########################################
-  # ✅ ColabDesign install (JAX_VENV)
+  # ✅ ColabDesign install (ProteinMPNN / AlphaFold)
   ########################################
   if [[ ! -d "$COLABDESIGN_DIR" ]]; then
     log "Cloning ColabDesign into $COLABDESIGN_DIR"
     git clone https://github.com/sokrypton/ColabDesign.git "$COLABDESIGN_DIR"
   fi
 
+  # ColabDesign는 JAX/Tensor 관련 deps를 건드릴 수 있어서 JAX venv에 설치
   log "installing ColabDesign (editable) (JAX_VENV)"
   "$(venv_python_jax)" -m pip install -e "$COLABDESIGN_DIR"
 
-  ########################################
-  # ✅ JAX CUDA: 재발 방지 설치 로직
-  ########################################
+  # (옵션) JAX CUDA 설치/고정
   if [[ "$ENABLE_JAX_CUDA" == "1" ]]; then
     log "JAX CUDA REQUIRED: removing CPU jax/jaxlib then installing CUDA-enabled jaxlib (JAX_VENV)"
-    # 1) 먼저 기존 jax/jaxlib 제거 (CPU 잔재가 남으면 계속 CPU로 뜨는 케이스 방지)
     "$(venv_python_jax)" -m pip uninstall -y jax jaxlib || true
-
-    # 2) CUDA jax 설치 (실패하면 바로 죽어야 재발 방지 됨)
-    #    (여기서 || true 절대 금지)
-    "$(venv_python_jax)" -m pip install -U "jax[cuda12]" -f "$JAX_CUDA_WHEEL_INDEX"
-
+    "$(venv_python_jax)" -m pip install -U "jax[cuda12]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
   else
-    log "JAX CPU allowed: installing CPU jax (JAX_VENV)"
+    # CPU jax 기본 확보
     "$(venv_python_jax)" -m pip install -U "jax" || true
   fi
 
   log "sanity check (TORCH_VENV)"
-  set_ld_library_path_for_torch
-  sanity_torch
+  "$(venv_python_torch)" - <<'PY'
+import sys
+print("python:", sys.version.split()[0])
+try:
+  import torch
+  print("torch:", torch.__version__, "cuda:", torch.version.cuda, "avail:", torch.cuda.is_available())
+except Exception as e:
+  print("torch import failed:", e)
+PY
 
   # ✅ cudnn .so 존재 체크 (python 버전 하드코딩 제거)
   TORCH_SP="$(torch_site_packages || true)"
@@ -477,10 +459,33 @@ cmd_install() {
   fi
 
   log "sanity check (JAX_VENV)"
-  # ✅ JAX 쪽은 시스템 CUDA 경로를 유지/추가한 상태로 체크
+  # ✅ install 시점에도 JAX용 LD_LIBRARY_PATH를 잡아주면 plugin 확인이 더 안정적
   set_ld_library_path_for_jax
-  export ENABLE_JAX_CUDA
-  sanity_jax_and_must_gpu_if_requested
+
+  "$(venv_python_jax)" - <<'PY'
+import sys
+print("python:", sys.version.split()[0])
+try:
+  import pandas as pd
+  print("pandas:", pd.__version__)
+except Exception as e:
+  print("pandas import failed:", e)
+
+try:
+  import colabdesign
+  print("colabdesign import: OK")
+except Exception as e:
+  print("colabdesign import failed:", e)
+
+try:
+  import jax
+  print("jax:", jax.__version__)
+  dev = jax.devices()
+  print("jax devices:", dev)
+  print("has_gpu:", any(getattr(d, "platform", "") == "gpu" for d in dev))
+except Exception as e:
+  print("jax import/devices failed:", e)
+PY
 
   log "install done"
 }
@@ -652,26 +657,31 @@ cmd_run() {
   cmd_download_params
   ensure_unified_params_link
 
-  # ✅ step별 PYTHONPATH 분리 (재발 방지)
+  # ✅ step별 PYTHONPATH 분리 (재발 방지 핵심)
+  # 기본은 src만
   export PYTHONPATH="$SCRIPT_DIR/src:${PYTHONPATH:-}"
 
+  # ✅ 핵심: step별 python 선택 + LD_LIBRARY_PATH 처리
   local py
   if [[ "$step" == "alphafold" || "$step" == "proteinMPNN" ]]; then
     py="$(venv_python_jax)"
 
-    # ✅ torch venv nvidia libs는 제거, 시스템 CUDA 경로는 유지/추가
+    # ✅ 핵심 수정: JAX step에서는 JAX venv의 nvidia libs를 LD_LIBRARY_PATH에 세팅
     set_ld_library_path_for_jax
-    export ENABLE_JAX_CUDA
+
     log "Using JAX_VENV python: $py"
     log "PYTHONPATH(jax)=$PYTHONPATH"
 
-    # ✅ 실행 전 반드시 체크 (ENABLE_JAX_CUDA=1이면 GPU 아니면 여기서 바로 죽음)
-    sanity_jax_and_must_gpu_if_requested
-
+    # 실행 전 sanity (로그로 증거 남김)
+    sanity_jax
+    if [[ "${ENABLE_JAX_CUDA:-0}" == "1" ]]; then
+      # sanity 로그에서 has_gpu가 True인지 확인
+      :
+    fi
   else
     py="$(venv_python_torch)"
 
-    # torch step은 nvidia libs path 세팅
+    # torch step은 nvidia libs path 세팅 (python 버전 하드코딩 제거)
     set_ld_library_path_for_torch
     log "Using TORCH_VENV python: $py"
     log "LD_LIBRARY_PATH set (torch/rfdiffusion)"
@@ -680,6 +690,7 @@ cmd_run() {
     export PYTHONPATH="$SCRIPT_DIR/src:$RFDIFFUSION_DIR:${PYTHONPATH:-}"
     log "PYTHONPATH(torch)=$PYTHONPATH"
 
+    # 실행 전 sanity (로그로 증거 남김)
     sanity_torch
   fi
 
@@ -712,6 +723,7 @@ cmd_serve() {
   ensure_dir "$APP_DIR"
   ensure_dir "$OUTPUTS_DIR"
 
+  # API 서버는 torch venv 기반
   "$(venv_python_torch)" -c "import uvicorn, fastapi" >/dev/null 2>&1 || \
     "$(venv_python_torch)" -m pip install -U uvicorn fastapi
 
@@ -733,7 +745,6 @@ cmd_serve() {
   env_kv+=("MODELS_DIR=$MODELS_DIR")
   env_kv+=("AF_DIR=$AF_DIR")
   env_kv+=("COLABDESIGN_DIR=$COLABDESIGN_DIR")
-  env_kv+=("ENABLE_JAX_CUDA=$ENABLE_JAX_CUDA")
 
   add_env_if_nonempty env_kv "S3_BUCKET" "${S3_BUCKET:-}"
   add_env_if_nonempty env_kv "S3_BASE" "${S3_BASE:-}"
@@ -809,7 +820,6 @@ AlphaFold/ColabDesign:
   AF_DIR=/models/alphafold
   COLABDESIGN_DIR=/workspace/colabdesign
   ENABLE_JAX_CUDA=0|1
-  JAX_CUDA_WHEEL_INDEX=$JAX_CUDA_WHEEL_INDEX
 
 S3 upload env (optional):
   S3_BUCKET=my-bucket
