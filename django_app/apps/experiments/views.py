@@ -411,13 +411,38 @@ def _create_experiment_api(request):
             updated_id=user_identifier,
         )
         print(f"[Experiments API] Created Experiment: experiment_sid={experiment.experiment_sid}")
+        # 고정 파이프라인 순서 (tool_name 기준)
+        PIPELINE_ORDER = ['RFdiffusion', 'ProteinMPNN', 'AlphaFold3']
+        ORDER_INDEX = {name: idx for idx, name in enumerate(PIPELINE_ORDER)}
 
-        # 각 tool_sid 기준으로 selection + option 정의 생성
-        for sort_order, raw_tool_id in enumerate(tools):
+        # 1) 전달받은 tools 배열을 tool_sid 리스트로 정규화
+        raw_ids = []
+        for raw_tool_id in tools:
             try:
-                tool_id = int(raw_tool_id)
+                raw_ids.append(int(raw_tool_id))
             except (TypeError, ValueError):
                 print(f"[Experiments API] Invalid tool id in tools list: {raw_tool_id}")
+
+        # 2) 실제 도구 객체 미리 조회
+        tool_qs = ExperimentTool.objects.filter(tool_sid__in=raw_ids, status='E')
+        tools_by_id = {t.tool_sid: t for t in tool_qs}
+
+        # 3) RFdiffusion -> ProteinMPNN -> AlphaFold3 순으로 정렬
+        def sort_key(tool_id: int) -> int:
+            tool = tools_by_id.get(tool_id)
+            if not tool:
+                return 99
+            return ORDER_INDEX.get(tool.tool_name, 99)
+
+        ordered_tool_ids = sorted(
+            [tid for tid in raw_ids if tid in tools_by_id],
+            key=sort_key,
+        )
+        # 각 tool_sid 기준으로 selection + option 정의 생성
+        for sort_order, tool_id in enumerate(ordered_tool_ids):
+            tool = tools_by_id.get(tool_id)
+            if not tool:
+                print(f"[Experiments API] Tool not found or disabled: tool_sid={tool_id}")
                 continue
 
             tool = ExperimentTool.objects.filter(tool_sid=tool_id, status="E").first()
