@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 import boto3
+import zipfile
 from datetime import datetime, timezone, timedelta
 
 
@@ -10,10 +11,6 @@ def _region() -> str | None:
 
 
 def upload_file_to_s3(local_path: str, bucket: str, key: str, content_type: str | None = None) -> str:
-    """
-    Upload a single file to S3 and return s3:// URL.
-    Requires AWS creds in env or shared config.
-    """
     s3 = boto3.client("s3", region_name=_region())
 
     extra_args = {}
@@ -28,26 +25,67 @@ def upload_file_to_s3(local_path: str, bucket: str, key: str, content_type: str 
     return f"s3://{bucket}/{key}"
 
 
+def _zip_dir(src_dir: Path, zip_path: Path) -> Path | None:
+    if not src_dir.exists() or not src_dir.is_dir():
+        return None
+
+    files = [p for p in src_dir.rglob("*") if p.is_file()]
+    if not files:
+        return None
+
+    zip_path.parent.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        for f in files:
+            zf.write(f, arcname=str(f.relative_to(src_dir)))
+    return zip_path if zip_path.exists() and zip_path.stat().st_size > 0 else None
+
+
 def upload_job_outputs(
     outputs_dir: str,
     job_name: str,
+    step: str,
     bucket: str,
-    prefix: str = "rfdiffusion",
+    prefix: str,
     upload_logs: bool = False
 ) -> list[str]:
     """
-    Upload:
-      - {job_name}_0.pdb
-      - {job_name}_0.trb
-      - (optional) _logs/{job_name}.log
-    to:
-      s3://{bucket}/{prefix}/{job_name}/...
+    Upload to:
+      s3://{bucket}/{prefix}/(files...)
+
+    prefix 예:
+      simulations/dt=YYYY-MM-DD/pipeline=EXPERIMENT_ID/step=rfdiffusion
     """
     out = Path(outputs_dir)
-    candidates = [
-        out / f"{job_name}_0.pdb",
-        out / f"{job_name}_0.trb",
-    ]
+    step = (step or "").strip()
+
+    candidates: list[Path] = []
+
+    if step == "rfdiffusion":
+        candidates += [
+            out / f"{job_name}_0.pdb",
+            out / f"{job_name}_0.trb",
+        ]
+
+    elif step == "proteinMPNN":
+        candidates += [
+            out / f"{job_name}_mpnn.fasta",
+            out / f"{job_name}_mpnn_results.csv",
+        ]
+
+    elif step == "alphafold":
+        candidates += [
+            out / f"{job_name}_af_best.pdb",
+            out / f"{job_name}_af_results.csv",
+        ]
+        # all_pdb 폴더는 zip으로 올리기(있으면)
+        all_dir = out / f"{job_name}_af_all_pdb"
+        zip_path = out / f"{job_name}_af_all_pdb.zip"
+        z = _zip_dir(all_dir, zip_path)
+        if z is not None:
+            candidates.append(z)
+
+    else:
+        raise ValueError(f"Unknown step for upload: {step}")
 
     if upload_logs:
         candidates.append(out / "_logs" / f"{job_name}.log")
@@ -72,6 +110,19 @@ def upload_job_outputs(
 
         key = f"{base_prefix}/{p.name}"
         content_type = "chemical/x-pdb" if p.suffix == ".pdb" else "application/octet-stream"
+        key = f"{prefix}/{p.name}"
+
+        if p.suffix == ".pdb":
+            content_type = "chemical/x-pdb"
+        elif p.suffix in [".fasta", ".fa"]:
+            content_type = "text/plain"
+        elif p.suffix == ".csv":
+            content_type = "text/csv"
+        elif p.suffix == ".zip":
+            content_type = "application/zip"
+        else:
+            content_type = "application/octet-stream"
+
         uploaded.append(upload_file_to_s3(str(p), bucket, key, content_type=content_type))
 
     return uploaded
