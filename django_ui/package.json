@@ -21,6 +21,7 @@
     "vite": "^7.2.7"
   },
   "dependencies": {
+    "@ckeditor/ckeditor5-markdown-gfm": "^47.3.0",
     "@fortawesome/fontawesome-free": "^7.1.0",
     "@tailwindcss/vite": "^4.1.18",
     "@yaireo/tagify": "^4.35.6",

@@ -15,4 +15,6 @@ urlpatterns = [
     path("<int:note_id>/comments/<int:comment_id>/delete/", views.comment_delete_api, name="api_comment_delete"),
     # 공유 API
     path("<int:note_id>/share/", views.note_share_api, name="api_note_share"),
+    # 채팅 메시지를 노트에 저장
+    path("save-message/", views.note_save_message_api, name="api_note_save_message"),
 ]

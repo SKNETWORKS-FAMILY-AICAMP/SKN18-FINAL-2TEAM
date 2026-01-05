@@ -807,7 +807,7 @@ function attachScheduleItemHandlers() {
         icon.addEventListener('click', (e) => {
             e.stopPropagation();
             const noteId = icon.getAttribute('data-note-id');
-            window.location.href = `/notes/${noteId}/`;
+            window.location.href = `/notes/detail/?id=${noteId}`;
         });
     });
 }
