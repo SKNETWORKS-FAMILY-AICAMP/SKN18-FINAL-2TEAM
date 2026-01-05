@@ -9,22 +9,22 @@ from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema
 
 
-def _get_runpod_base_url() -> str:
+def _get_runpod_sims_base_url() -> str:
     """
-    RUNPOD_BASE_URL은 반드시 환경변수(.env)로 주입해야 함.
+    RUNPOD_SIMS_BASE_URL은 반드시 환경변수(.env)로 주입해야 함.
     예) https://xxxx.proxy.runpod.net
     """
-    base = (os.environ.get("RUNPOD_BASE_URL") or "").strip()
+    base = (os.environ.get("RUNPOD_SIMS_BASE_URL") or "").strip()
 
     if not base:
         # 운영에서 하드코딩으로 넘어가면 사고나기 쉬워서 "없으면 명확히 에러"로 처리
         raise RuntimeError(
-            "RUNPOD_BASE_URL is not set. Put it in .env (RUNPOD_BASE_URL=https://...)"
+            "RUNPOD_SIMS_BASE_URL is not set. Put it in .env (RUNPOD_SIMS_BASE_URL=https://...)"
         )
 
     if not (base.startswith("http://") or base.startswith("https://")):
         raise RuntimeError(
-            f"RUNPOD_BASE_URL must start with http:// or https:// (got: {base})"
+            f"RUNPOD_SIMS_BASE_URL must start with http:// or https:// (got: {base})"
         )
 
     return base.rstrip("/")
@@ -35,7 +35,7 @@ def _headers() -> dict:
         "accept": "application/json",
         "Content-Type": "application/json",
     }
-    api_key = (os.environ.get("RUNPOD_API_KEY") or "").strip()
+    api_key = (os.environ.get("RUNPOD_SIMS_API_KEY") or "").strip()
     if api_key:
         headers["X-API-KEY"] = api_key
     return headers
@@ -63,7 +63,7 @@ def rfdiffusion_runpod_api(request):
 @permission_classes([IsAuthenticated])
 def runpod_api_health(request):
     try:
-        base = _get_runpod_base_url()
+        base = _get_runpod_sims_base_url()
     except RuntimeError as e:
         return Response({"detail": str(e)}, status=500)
 
@@ -111,7 +111,7 @@ def runpod_api_run(request):
         return Response({"detail": "JSON body is required."}, status=400)
 
     try:
-        base = _get_runpod_base_url()
+        base = _get_runpod_sims_base_url()
     except RuntimeError as e:
         return Response({"detail": str(e)}, status=500)
 
