@@ -25,6 +25,7 @@ class MPNNStepConfig:
     rm_aa: str | None = "C"
     num_seqs: int = 8             # iterations 값을 num_seqs로 매핑할 예정
     mpnn_sampling_temp: float = 0.1
+    num_designs: int = 1        # 디자인할 구조(입력 PDB) 개수
 
 
 def _parse_contigs(contigs_raw: str) -> List[str]:
@@ -179,12 +180,14 @@ def run_mpnn_only(cfg: MPNNStepConfig) -> dict:
     out_dir = cfg.outputs_dir
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    input_pdb = out_dir / f"{exp}_0.pdb"
-    if not input_pdb.exists():
-        raise FileNotFoundError(
-            f"[proteinMPNN] input pdb not found: {input_pdb} "
-            f"(먼저 step=rfdiffusion을 같은 experiment_id로 실행해야 함)"
-        )
+    all_rows = []
+    # for design_idx in range(cfg.num_designs):
+    #     input_pdb = out_dir / f"{exp}_{design_idx}.pdb"
+    # if not input_pdb.exists():
+    #     raise FileNotFoundError(
+    #         f"[proteinMPNN] input pdb not found: {input_pdb} "
+    #         f"(먼저 step=rfdiffusion을 같은 experiment_id로 실행해야 함)"
+    #     )
 
     contigs = _parse_contigs(cfg.contigs)
     rm_aa = cfg.rm_aa if (cfg.rm_aa and cfg.rm_aa.strip()) else None
@@ -197,47 +200,57 @@ def run_mpnn_only(cfg: MPNNStepConfig) -> dict:
 
     mpnn_model = mk_mpnn_model()
 
-    # designability_test.py에서 batch_size 로직 따라감
-    batch_size = 8
-    if cfg.num_seqs < batch_size:
-        batch_size = cfg.num_seqs
-
-    # 1) AF 입력 준비(구조 읽기만)
-    af_model.prep_inputs(str(input_pdb), **prep_flags)
-    if protocol == "partial" and fixed_pos_arr is not None:
-        p = np.where(fixed_pos_arr)[0]
-        af_model.opt["fix_pos"] = p[p < af_model._len]
-
-    # 2) MPNN에 AF 입력 전달 후 샘플링
-    mpnn_model.get_af_inputs(af_model)
-    out = mpnn_model.sample(
-        num=max(1, cfg.num_seqs // batch_size),
-        batch=batch_size,
-        temperature=float(cfg.mpnn_sampling_temp),
-    )
-
-    # out keys 예상: seq, score 등
-    seqs = out.get("seq", [])
-    scores = out.get("score", [])
-
-    # 3) 파일 저장
     fasta_path = out_dir / f"{exp}_mpnn.fasta"
     csv_path = out_dir / f"{exp}_mpnn_results.csv"
 
-    rows = []
+    all_rows = []
     with open(fasta_path, "w") as f:
-        for i, seq in enumerate(seqs):
-            seq_clean = re.sub(r"[^A-Z/]", "", seq).replace("/", "")
-            score = float(scores[i]) if i < len(scores) else float("nan")
-            f.write(f">mpnn_{i}|score={score:.6f}\n{seq_clean}\n")
-            rows.append({"n": i, "mpnn_score": score, "seq": seq_clean})
+        for design_idx in range(cfg.num_designs):
+            input_pdb = out_dir / f"{exp}_{design_idx}.pdb"
+            if not input_pdb.exists():
+                continue
 
-    pd.DataFrame(rows).to_csv(csv_path, index=False)
+            af_model.prep_inputs(str(input_pdb), **prep_flags)
+            if protocol == "partial" and fixed_pos_arr is not None:
+                p = np.where(fixed_pos_arr)[0]
+                af_model.opt["fix_pos"] = p[p < af_model._len]
+
+            mpnn_model.get_af_inputs(af_model)
+
+            # 샘플 개수/배치 설정 (원래 로직에서 가져오면 됨)
+            batch_size = min(8, cfg.num_seqs)
+            num_batches = (cfg.num_seqs + batch_size - 1) // batch_size
+
+            out = mpnn_model.sample(
+                num=num_batches,
+                batch=batch_size,
+                temperature=float(cfg.mpnn_sampling_temp),
+            )
+
+            seqs = out.get("seq", [])
+            scores = out.get("score", [])
+
+            for i, seq in enumerate(seqs[:cfg.num_seqs]):
+                seq_clean = re.sub(r"[^A-Z/]", "", seq).replace("/", "")
+                score = float(scores[i]) if i < len(scores) else float("nan")
+                f.write(
+                    f">design={design_idx};mpnn_{i}|score={score:.6f}\n{seq_clean}\n"
+                )
+                all_rows.append(
+                    {
+                        "design": design_idx,
+                        "n": i,
+                        "mpnn_score": score,
+                        "seq": seq_clean,
+                    }
+                )
+
+    pd.DataFrame(all_rows).to_csv(csv_path, index=False)
 
     return {
-        "input_pdb": str(input_pdb),
+        "input_pdb": None,
         "fasta": str(fasta_path),
         "csv": str(csv_path),
-        "num_seqs": len(rows),
+        "num_seqs": len(all_rows),   # 🔹 전체 생성된 서열 개수
         "protocol": protocol,
     }
