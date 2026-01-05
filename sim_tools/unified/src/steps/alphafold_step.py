@@ -14,11 +14,9 @@ from colabdesign.af import mk_af_model
 class AlphaFoldStepConfig:
     experiment_id: str
     outputs_dir: Path
-    num_recycles: int = 1        # iterations 값을 num_recycles로 매핑
+    num_recycles: int = 1
     use_multimer: bool = False
     initial_guess: bool = False
-    # ✅ AlphaFold params 위치 (env로 지정 가능)
-    alphafold_params_dir: str | None = None
 
 
 def _read_fasta_seqs(fasta_path: Path) -> List[str]:
@@ -40,75 +38,46 @@ def _read_fasta_seqs(fasta_path: Path) -> List[str]:
     if buf:
         seqs.append("".join(buf))
 
-    # 기본 정제
-    seqs = [s.replace("/", "").strip().upper() for s in seqs if s.strip()]
-    return seqs
+    return [s.replace("/", "").strip().upper() for s in seqs if s.strip()]
 
 
-def _resolve_af_params_dir(cfg: AlphaFoldStepConfig) -> Path:
-    # 1) cfg에 명시된 값
-    if cfg.alphafold_params_dir:
-        return Path(cfg.alphafold_params_dir)
+def _ensure_colabdesign_params_visible():
+    """
+    ColabDesign(af)에서 보통 ./params 아래의 params_model_*.npz 를 찾는 경우가 많아서,
+    실행 cwd(/workspace/unified) 기준으로 params 링크를 강제로 보장한다.
+    """
+    models_dir = Path(os.environ.get("MODELS_DIR", "/models"))
+    real_params_dir = Path(os.environ.get("AF_DIR", str(models_dir / "alphafold")))
 
-    # 2) env 우선순위: ALPHAFOLD_PARAMS_DIR -> AF_DIR -> MODELS_DIR/alphafold
-    env_dir = (
-        os.environ.get("ALPHAFOLD_PARAMS_DIR")
-        or os.environ.get("AF_DIR")
-        or ""
-    )
-    if env_dir.strip():
-        return Path(env_dir.strip())
-
-    models_dir = os.environ.get("MODELS_DIR", "/models")
-    return Path(models_dir) / "alphafold"
-
-
-def _assert_params_exist(params_dir: Path, use_multimer: bool):
-    # ColabDesign이 보통 찾는 파일들 (tar에서 풀린 파일명 기준)
-    required = []
-    if use_multimer:
-        required.append(params_dir / "params_model_1_multimer_v3.npz")
-    else:
-        required.append(params_dir / "params_model_1_ptm.npz")
-
-    missing = [str(p) for p in required if not p.exists()]
-    if missing:
-        # 디버깅 도움용: params_dir 내용 일부 보여주기
-        sample = sorted([p.name for p in params_dir.glob("params_model_*.npz")])[:10]
+    # 실제 params 존재 확인
+    need = real_params_dir / "params_model_1_ptm.npz"
+    if not need.exists():
+        sample = sorted([p.name for p in real_params_dir.glob("params_model_*.npz")])[:10]
         raise FileNotFoundError(
             "[alphafold] AlphaFold params not found.\n"
-            f" - params_dir={params_dir}\n"
-            f" - missing={missing}\n"
+            f" - expected: {need}\n"
+            f" - AF_DIR={real_params_dir}\n"
             f" - found_sample={sample}\n"
-            "Fix: ensure params are extracted into /models/alphafold (or set ALPHAFOLD_PARAMS_DIR/AF_DIR)."
         )
 
-
-def _mk_af_model_with_params(protocol: str, flags: dict, params_dir: Path):
-    """
-    ColabDesign 버전 차이 대비:
-    - mk_af_model이 data_dir/params_dir/weights_dir 등을 받을 수도 있음
-    - 못 받으면 모델 생성 후 속성(params_dir/data_dir 등)을 강제로 세팅
-    """
-    # 1) kwarg로 넘기기 (가능한 키를 순서대로 시도)
-    for key in ("params_dir", "data_dir", "weights_dir"):
-        try:
-            return mk_af_model(protocol=protocol, **flags, **{key: str(params_dir)})
-        except TypeError:
-            pass
-
-    # 2) kwarg가 전부 실패하면 생성 후 속성 세팅 시도
-    af_model = mk_af_model(protocol=protocol, **flags)
-
-    # 흔한 속성명들(버전별 상이)을 최대한 커버
-    for attr in ("params_dir", "data_dir", "weights_dir"):
-        if hasattr(af_model, attr):
-            try:
-                setattr(af_model, attr, str(params_dir))
-            except Exception:
-                pass
-
-    return af_model
+    # cwd 기준 ./params 만들기 (symlink)
+    cwd_params = Path.cwd() / "params"
+    try:
+        if cwd_params.is_symlink() or cwd_params.exists():
+            # 이미 있으면 그대로 둠 (다른 곳 가리키면 덮어씀)
+            cwd_params.unlink()
+        cwd_params.symlink_to(real_params_dir, target_is_directory=True)
+    except Exception:
+        # symlink 실패 환경 대비: 디렉토리 생성 + 파일 일부라도 복사하는 fallback(무겁긴 하지만)
+        cwd_params.mkdir(parents=True, exist_ok=True)
+        # 최소한 ptm/multimer 파일은 보장
+        for p in real_params_dir.glob("params_model_*.npz"):
+            dst = cwd_params / p.name
+            if not dst.exists():
+                try:
+                    dst.write_bytes(p.read_bytes())
+                except Exception:
+                    pass
 
 
 def run_alphafold_only(cfg: AlphaFoldStepConfig) -> dict:
@@ -128,9 +97,8 @@ def run_alphafold_only(cfg: AlphaFoldStepConfig) -> dict:
     if not seqs:
         raise RuntimeError(f"[alphafold] no sequences in fasta: {fasta_path}")
 
-    # ✅ params dir 확정 + 존재 체크
-    params_dir = _resolve_af_params_dir(cfg)
-    _assert_params_exist(params_dir, use_multimer=bool(cfg.use_multimer))
+    # ✅ 핵심: ColabDesign이 params를 찾을 수 있게 ./params 보장
+    _ensure_colabdesign_params_visible()
 
     all_pdb_dir = out_dir / f"{exp}_af_all_pdb"
     all_pdb_dir.mkdir(parents=True, exist_ok=True)
@@ -144,10 +112,9 @@ def run_alphafold_only(cfg: AlphaFoldStepConfig) -> dict:
         "model_names": [model_name],
     }
 
-    # ✅ params_dir를 확실히 전달해서 mk_af_model이 모델 파라미터를 찾게 함
-    af_model = _mk_af_model_with_params(protocol="fixbb", flags=flags, params_dir=params_dir)
+    # ✅ params_dir 같은 kwarg 절대 금지 (너 로그에서 바로 죽는 거 확인됨)
+    af_model = mk_af_model(protocol="fixbb", **flags)
 
-    # 입력 구조만 읽어서 “틀” 잡기
     af_model.prep_inputs(str(input_pdb), chain="A")
 
     rows = []
@@ -166,21 +133,12 @@ def run_alphafold_only(cfg: AlphaFoldStepConfig) -> dict:
         af_model.save_current_pdb(str(pdb_path))
 
         rows.append(
-            {
-                "n": i,
-                "plddt": plddt,
-                "ptm": ptm,
-                "pae": pae,
-                "rmsd": rmsd,
-                "pdb": str(pdb_path),
-                "seq": seq,
-            }
+            {"n": i, "plddt": plddt, "ptm": ptm, "pae": pae, "rmsd": rmsd, "pdb": str(pdb_path), "seq": seq}
         )
 
         if (plddt > best["plddt"]) or (plddt == best["plddt"] and (rmsd or 1e9) < best["rmsd"]):
             best = {"idx": i, "plddt": plddt, "rmsd": (rmsd or 1e9), "path": pdb_path}
 
-        # ColabDesign 내부 카운터 증가(기존 흐름 유지)
         af_model._k += 1
 
     csv_path = out_dir / f"{exp}_af_results.csv"
@@ -193,7 +151,6 @@ def run_alphafold_only(cfg: AlphaFoldStepConfig) -> dict:
     return {
         "input_pdb": str(input_pdb),
         "input_fasta": str(fasta_path),
-        "alphafold_params_dir": str(params_dir),
         "model_name": model_name,
         "csv": str(csv_path),
         "best_pdb": str(best_path),
