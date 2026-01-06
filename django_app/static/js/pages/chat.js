@@ -251,11 +251,32 @@ function initChatAI() {
 
     // Click outside handlers
     attachClickOutsideHandlers();
+    
+    // Initialize attach button visibility (기본: 숨김)
+    updateAttachButtonVisibility();
+}
+
+// Auto-resize textarea
+function autoResizeTextarea(textarea) {
+    if (!textarea) return;
+    
+    // 높이를 초기화하여 정확한 scrollHeight 계산
+    textarea.style.height = 'auto';
+    
+    // scrollHeight를 사용하여 내용에 맞는 높이 계산
+    const newHeight = Math.min(
+        textarea.scrollHeight,
+        parseFloat(getComputedStyle(textarea).maxHeight) || Infinity
+    );
+    
+    textarea.style.height = newHeight + 'px';
 }
 
 // Handle input change
 function handleInputChange(e) {
     message = e.target.value;
+    // textarea 높이 자동 조절
+    autoResizeTextarea(e.target);
 }
 
 // Handle input focus
@@ -316,8 +337,14 @@ async function handleSend() {
     renderMessages();
 
     // Clear input
-    if (chatInputField) chatInputField.value = "";
-    if (chatInputFieldBottom) chatInputFieldBottom.value = "";
+    if (chatInputField) {
+        chatInputField.value = "";
+        autoResizeTextarea(chatInputField);
+    }
+    if (chatInputFieldBottom) {
+        chatInputFieldBottom.value = "";
+        autoResizeTextarea(chatInputFieldBottom);
+    }
     message = "";
 
     // Close recommendations
@@ -349,15 +376,21 @@ async function handleSend() {
             ? `/chat/api/chats/${activeChatId}/messages/`  // 기존 채팅에 메시지 추가
             : '/chat/api/chats/messages/';  // 새 채팅 생성
 
+        // 필터가 선택되어 있으면 자동 모드와 관계없이 전달
+        const filterToSend = selectedFilter ? selectedFilter : null;
+        const requestBody = {
+            content: input,
+            filter: filterToSend, // 선택된 필터 전달
+        };
+        console.log('[DEBUG] API 요청 - isAutoMode:', isAutoMode, 'selectedFilter:', selectedFilter, 'filter:', requestBody.filter);
+        
         const response = await fetch(apiUrl, {
             method: 'POST',
             headers: {
                 'X-CSRFToken': getCsrfToken(),
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-                content: input,
-            }),
+            body: JSON.stringify(requestBody),
         });
 
         if (response.ok) {
@@ -393,6 +426,7 @@ async function handleSend() {
                     message_id: data.messages[1].id,
                     timestamp: data.messages[1].created_at,
                     case_type: data.messages[1].case_type || null, // Include case_type
+                    used_web_search: data.messages[1].used_web_search || false, // Include used_web_search
                 };
                 messages.push(assistantMessage);
                 
@@ -530,6 +564,7 @@ async function loadChat(chatId) {
                 sort_order: msg.sort_order,
                 created_at: msg.created_at,
                 case_type: msg.case_type || null, // Include case_type
+                used_web_search: msg.used_web_search || false, // Include used_web_search
                 paper_graphs: msg.paper_graphs || [], // Include paper_graphs data
             }));
             
@@ -713,11 +748,10 @@ function renderMessages() {
                 `;
             }
 
-            // Check if this message has paper_graphs
-            const hasPaperGraphs = msg.paper_graphs && Array.isArray(msg.paper_graphs) && msg.paper_graphs.length > 0;
-            // case_type이 BIO_Q이거나 null일 때만 버튼 표시
+            // case_type이 BIO_Q이면서 used_web_search가 false일 때만 버튼 표시 (RAG 사용한 경우만)
             const caseType = msg.case_type || null;
-            const showPaperGraphBtn = (caseType === 'BIO_Q' || caseType === null) && hasPaperGraphs;
+            const usedWebSearch = msg.used_web_search || false;
+            const showPaperGraphBtn = caseType === 'BIO_Q' && !usedWebSearch;
 
             // case_type이 SIMULATION_Q일 때만 실험하기 버튼 표시
             const showExperimentBtn = caseType === 'SIMULATION_Q';
@@ -955,10 +989,12 @@ function toggleAutoMode(checked) {
     updateFilterButtonsState();
     
     // Update selected filter
-    if (isAutoMode) {
-        selectedFilter = '';
-        handleFilterSelect('');
-    }
+    // 자동 모드가 켜져 있어도 이미 선택된 필터는 유지 (사용자가 명시적으로 선택한 경우)
+    // 단, 필터 버튼은 비활성화됨
+    // Note: handleFilterSelect는 자동 모드에서 호출되지 않으므로 여기서 리셋하지 않음
+    
+    // Update attach button visibility
+    updateAttachButtonVisibility();
 }
 
 // Update filter buttons state based on auto mode
@@ -976,13 +1012,38 @@ function updateFilterButtonsState() {
     });
 }
 
+// Update attach button visibility based on filter and auto mode
+function updateAttachButtonVisibility() {
+    // 자동 모드이거나 interpretation이 선택되지 않았으면 숨김
+    const shouldShow = !isAutoMode && selectedFilter === 'interpretation';
+    
+    if (attachBtn) {
+        attachBtn.style.display = shouldShow ? 'block' : 'none';
+    }
+    if (attachBtnBottom) {
+        attachBtnBottom.style.display = shouldShow ? 'block' : 'none';
+    }
+}
+
 // Handle filter select
 function handleFilterSelect(filter) {
-    if (isAutoMode) {
-        return; // Don't allow filter selection in auto mode
+    console.log('[DEBUG] handleFilterSelect 호출 - filter:', filter, 'isAutoMode:', isAutoMode);
+    
+    // 필터 선택 시 자동 모드를 자동으로 끔
+    if (isAutoMode && filter) {
+        console.log('[DEBUG] 필터 선택 감지 - 자동 모드 자동 해제');
+        toggleAutoMode(false);
     }
     
-    selectedFilter = selectedFilter === filter ? "" : filter;
+    // 필터 선택/해제 처리
+    if (isAutoMode && !filter) {
+        // 필터 해제는 자동 모드에서도 허용 (빈 문자열로 설정)
+        selectedFilter = "";
+    } else {
+        selectedFilter = selectedFilter === filter ? "" : filter;
+    }
+    
+    console.log('[DEBUG] selectedFilter 업데이트:', selectedFilter);
     
     // DOM 요소를 함수 내부에서 다시 가져와서 확실히 존재하는지 확인
     const filterBtnsEls = document.querySelectorAll('.filter-btn');
@@ -994,6 +1055,9 @@ function handleFilterSelect(filter) {
             btn.classList.remove('active');
         }
     });
+    
+    // Update attach button visibility
+    updateAttachButtonVisibility();
 }
 
 // Handle section select (Favorites, Archived) - with toggle
@@ -1085,8 +1149,14 @@ function handleNewChat() {
     if (inputArea) inputArea.style.display = 'none';
 
     // Clear input
-    if (chatInputField) chatInputField.value = "";
-    if (chatInputFieldBottom) chatInputFieldBottom.value = "";
+    if (chatInputField) {
+        chatInputField.value = "";
+        autoResizeTextarea(chatInputField);
+    }
+    if (chatInputFieldBottom) {
+        chatInputFieldBottom.value = "";
+        autoResizeTextarea(chatInputFieldBottom);
+    }
 
     // Clear references
     references = [];
@@ -2297,17 +2367,38 @@ function handleExperimentAttached(event) {
 
 // Render attached items
 function renderAttachedItems() {
+    // 현재 활성화된 입력 영역 찾기
+    // inputArea가 표시되어 있으면 그것을, 없으면 emptyState 내부의 input-wrapper 사용
+    let activeInputWrapper = null;
+    
+    if (inputArea && inputArea.style.display !== 'none') {
+        // inputArea가 활성화되어 있으면 inputArea 내부의 input-wrapper 사용
+        activeInputWrapper = inputArea.querySelector('.input-wrapper');
+    }
+    
+    if (!activeInputWrapper) {
+        // inputArea가 없거나 비활성화되어 있으면 emptyState 내부의 input-wrapper 사용
+        activeInputWrapper = document.querySelector('.empty-state .input-wrapper');
+    }
+    
+    if (!activeInputWrapper) {
+        // 마지막으로 아무 input-wrapper나 찾기
+        activeInputWrapper = document.querySelector('.input-wrapper');
+    }
+    
     // Find attached items container or create one
     let attachedContainer = document.getElementById('attachedItems');
-    if (!attachedContainer) {
+    if (!attachedContainer && activeInputWrapper) {
         // Create container if it doesn't exist
-        const inputWrapper = document.querySelector('.input-wrapper');
-        if (inputWrapper) {
-            attachedContainer = document.createElement('div');
-            attachedContainer.id = 'attachedItems';
-            attachedContainer.className = 'attached-items';
-            inputWrapper.insertBefore(attachedContainer, inputWrapper.firstChild);
-        }
+        attachedContainer = document.createElement('div');
+        attachedContainer.id = 'attachedItems';
+        attachedContainer.className = 'attached-items';
+        activeInputWrapper.insertBefore(attachedContainer, activeInputWrapper.firstChild);
+    }
+    
+    // 컨테이너가 활성 입력 영역과 다른 곳에 있으면 이동
+    if (attachedContainer && activeInputWrapper && !activeInputWrapper.contains(attachedContainer)) {
+        activeInputWrapper.insertBefore(attachedContainer, activeInputWrapper.firstChild);
     }
     
     if (!attachedContainer) return;

@@ -382,6 +382,7 @@ def search_neo4j(query: str, top_k: int = 50) -> List[Dict[str, Any]]:
     try:
         from neo4j import GraphDatabase
         from neo4j_graphrag.retrievers import TextRetriever
+        import json
         
         # Neo4j 연결
         NEO4J_URI = os.getenv("NEO4J_URI")
@@ -401,11 +402,57 @@ def search_neo4j(query: str, top_k: int = 50) -> List[Dict[str, Any]]:
         # 검색 실행
         results = retriever.retrieve(query)
         
+        # 🔍 DEBUG: TextRetriever가 반환하는 원본 데이터 구조 확인
+        print(f"\n{'='*60}")
+        print(f"[DEBUG Neo4j TextRetriever] 검색 결과 수: {len(results) if results else 0}")
+        if results and len(results) > 0:
+            print(f"[DEBUG Neo4j TextRetriever] 첫 번째 결과 타입: {type(results[0])}")
+            print(f"[DEBUG Neo4j TextRetriever] 첫 번째 결과 keys: {list(results[0].keys()) if isinstance(results[0], dict) else 'Not a dict'}")
+            
+            # 첫 번째 결과의 전체 구조 출력 (JSON으로 직렬화 시도)
+            first_result = results[0]
+            try:
+                # dict인 경우 JSON으로 직렬화
+                if isinstance(first_result, dict):
+                    print(f"[DEBUG Neo4j TextRetriever] 첫 번째 결과 전체 구조:")
+                    print(json.dumps(first_result, indent=2, default=str, ensure_ascii=False))
+                else:
+                    print(f"[DEBUG Neo4j TextRetriever] 첫 번째 결과 (직렬화 불가): {first_result}")
+            except Exception as json_err:
+                print(f"[DEBUG Neo4j TextRetriever] JSON 직렬화 실패: {json_err}")
+                print(f"[DEBUG Neo4j TextRetriever] 첫 번째 결과 (raw): {first_result}")
+            
+            # metadata 구조 상세 확인
+            if isinstance(first_result, dict):
+                metadata = first_result.get("metadata", {})
+                print(f"[DEBUG Neo4j TextRetriever] metadata 타입: {type(metadata)}")
+                print(f"[DEBUG Neo4j TextRetriever] metadata keys: {list(metadata.keys()) if isinstance(metadata, dict) else 'Not a dict'}")
+                if isinstance(metadata, dict):
+                    print(f"[DEBUG Neo4j TextRetriever] metadata 내용:")
+                    print(json.dumps(metadata, indent=2, default=str, ensure_ascii=False))
+                
+                # title 관련 필드 확인
+                if isinstance(metadata, dict):
+                    title_fields = [k for k in metadata.keys() if 'title' in k.lower() or 'Title' in k]
+                    if title_fields:
+                        print(f"[DEBUG Neo4j TextRetriever] title 관련 필드: {title_fields}")
+                        for field in title_fields:
+                            print(f"[DEBUG Neo4j TextRetriever]   {field}: {metadata.get(field)}")
+                    else:
+                        print(f"[DEBUG Neo4j TextRetriever] ⚠️ metadata에 title 관련 필드 없음")
+        print(f"{'='*60}\n")
+        
         driver.close()
         
         # 결과 포맷팅
         formatted_results = []
-        for item in results:
+        for idx, item in enumerate(results):
+            # 🔍 DEBUG: 각 항목의 구조 확인 (처음 3개만)
+            if idx < 3:
+                print(f"[DEBUG Neo4j Format] 항목 {idx} 타입: {type(item)}")
+                if isinstance(item, dict):
+                    print(f"[DEBUG Neo4j Format] 항목 {idx} keys: {list(item.keys())}")
+            
             formatted_results.append({
                 "content": item.get("text", ""),
                 "metadata": item.get("metadata", {}),
