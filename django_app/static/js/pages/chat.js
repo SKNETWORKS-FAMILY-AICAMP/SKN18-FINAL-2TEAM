@@ -33,6 +33,7 @@ let currentTypingAnimation = null; // 현재 실행 중인 타이핑 애니메�
 let showEmptyReferencesState = false; // API 응답 직후 빈 참고 문헌 상태 표시 플래그
 
 let chatList = [];
+let dislikeModalHandlersInitialized = false;
 
 // Chat messages for each chat
 const chatMessagesData = {};
@@ -41,13 +42,21 @@ const chatMessagesData = {};
 const mockReferences = [];
 
 // Recommended questions - 카테고리별로 저장
-let recommendedQuestionsByCategory = {
-    'P': [], // 논문
-    'C': [], // 임상
-    'T': [], // 프로토콜
-    'S': [], // 시뮬레이션
-    'R': []  // 결과 해석
-};
+// let recommendedQuestionsByCategory = {
+//     'P': [], // 논문
+//     'C': [], // 임상
+//     'T': [], // 프로토콜
+//     'S': [], // 시뮬레이션
+//     'R': []  // 결과 해석
+// };
+// Recommended questions - dashboard와 동일한 구조로 단일 배열 사용
+let recommendedQuestions = [
+    "BRCA1 유전자의 돌연변이와 유방암 위험도 관계는?",
+    "CRISPR-Cas9의 off-target 효과를 최소화하는 방법은?",
+    "mRNA 백신의 면역 반응 메커니즘을 설명해주세요",
+    "단백질 정제 프로토콜 최적화 조건은?",
+    "AlphaFold2와 RoseTTAFold의 정확도 비교",
+];
 
 // DOM elements
 const chatMessagesList = document.getElementById('chatMessages');
@@ -79,6 +88,7 @@ const fileInputBottom = document.getElementById('fileInputBottom');
 
 // Initialize chat page
 function initChatAI() {
+    setupChatDislikeModalIntegration();
     // Initialize filter buttons state
     updateFilterButtonsState();
 
@@ -471,6 +481,9 @@ async function handleSend() {
                     timestamp: data.messages[1].created_at,
                     case_type: data.messages[1].case_type || null, // Include case_type
                     used_web_search: data.messages[1].used_web_search || false, // Include used_web_search
+                    user_feedback: null,
+                    feedback_reason: null,
+                    feedback_comment: '',
                 };
                 messages.push(assistantMessage);
                 
@@ -617,6 +630,9 @@ async function loadChat(chatId) {
                     paper_graphs: msg.paper_graphs || [], // Include paper_graphs data
                     image_urls: imageUrls, // Include image URLs
                     image_analysis_result: msg.image_analysis_result || null, // Include image analysis result
+                    user_feedback: Object.prototype.hasOwnProperty.call(msg, 'user_feedback') ? msg.user_feedback : null,
+                    feedback_reason: Object.prototype.hasOwnProperty.call(msg, 'feedback_reason') ? msg.feedback_reason : null,
+                    feedback_comment: Object.prototype.hasOwnProperty.call(msg, 'feedback_comment') ? (msg.feedback_comment || '') : '',
                 };
             });
             
@@ -826,6 +842,9 @@ function renderMessages() {
 
             // case_type이 SIMULATION_Q일 때만 실험하기 버튼 표시
             const showExperimentBtn = caseType === 'SIMULATION_Q';
+            const userFeedback = msg.user_feedback || msg.feedback_type || null;
+            const likeBtnClass = `action-btn${userFeedback === 'L' ? ' selected selected-like' : ''}`;
+            const dislikeBtnClass = `action-btn${userFeedback === 'D' ? ' selected selected-dislike' : ''}`;
 
             return `
                 <div class="message-item" data-message-id="${msg.message_id || ''}">
@@ -857,10 +876,10 @@ function renderMessages() {
                                     <button class="action-btn" title="복사" data-action="copy" data-message-index="${index}">
                                         <i class="fas fa-copy"></i>
                                     </button>
-                                    <button class="action-btn" title="좋아요" data-action="like" data-message-id="${msg.message_id || index}">
+                                    <button class="${likeBtnClass}" title="좋아요" data-action="like" data-message-id="${msg.message_id || index}">
                                         <i class="fas fa-thumbs-up"></i>
                                     </button>
-                                    <button class="action-btn" title="싫어요" data-action="dislike" data-message-id="${msg.message_id || index}">
+                                    <button class="${dislikeBtnClass}" title="싫어요" data-action="dislike" data-message-id="${msg.message_id || index}">
                                         <i class="fas fa-thumbs-down"></i>
                                     </button>
                                 </div>
@@ -918,8 +937,8 @@ async function loadRecommendedQuestions() {
         }
         const data = await response.json();
         
-        // 카테고리별로 질문 저장
-        recommendedQuestionsByCategory = data.questions_by_category || {
+        // 모든 카테고리의 질문을 하나의 배열로 합치기
+        const questionsByCategory = data.questions_by_category || {
             'P': [],
             'C': [],
             'T': [],
@@ -927,92 +946,121 @@ async function loadRecommendedQuestions() {
             'R': []
         };
         
-        // 각 카테고리별로 렌더링
-        renderRecommendationsByCategory();
+        // 모든 카테고리의 질문을 하나의 배열로 합치기
+        const apiQuestions = [];
+        Object.keys(questionsByCategory).forEach(category => {
+            const questions = questionsByCategory[category] || [];
+            questions.forEach(question => {
+                apiQuestions.push(question.text || question);
+            });
+        });
+        
+        // API에서 데이터를 성공적으로 로드했고 질문이 있으면 업데이트
+        if (apiQuestions.length > 0) {
+            recommendedQuestions = apiQuestions;
+        }
+        // API 데이터가 없으면 기본 하드코딩된 데이터 유지
+        
+        // 렌더링
+        renderRecommendations();
     } catch (error) {
         console.error('Error loading recommended questions:', error);
-        // 에러 발생 시 빈 배열로 초기화
-        recommendedQuestionsByCategory = {
-            'P': [],
-            'C': [],
-            'T': [],
-            'S': [],
-            'R': []
-        };
-        renderRecommendationsByCategory();
+        // 에러 발생 시 기본 하드코딩된 데이터 유지 (이미 초기화되어 있음)
+        renderRecommendations();
     }
 }
 
-// Render recommendations by category
-function renderRecommendationsByCategory() {
-    const categoryMap = {
-        'P': 'recommendationsListP',
-        'C': 'recommendationsListC',
-        'T': 'recommendationsListT',
-        'S': 'recommendationsListS',
-        'R': 'recommendationsListR'
-    };
-    
-    // 각 카테고리별로 렌더링
-    Object.keys(categoryMap).forEach(category => {
-        const listEl = document.getElementById(categoryMap[category]);
-        if (!listEl) {
-            console.warn(`Recommendations list element not found for category ${category}`);
-            return;
-        }
-        
-        const questions = recommendedQuestionsByCategory[category] || [];
-        
-        if (questions.length === 0) {
-            listEl.innerHTML = '<div class="recommendation-empty">추천 질문이 없습니다.</div>';
-            return;
-        }
-        
-        listEl.innerHTML = questions.map((question, index) => {
-            return `
-                <div class="recommendation-item" data-question-id="${question.id}" data-category="${category}">
-                    ${escapeHtml(question.text)}
-                </div>
-            `;
-        }).join('');
-        
-        // Attach click handlers
-        const recommendationItems = listEl.querySelectorAll('.recommendation-item');
-        recommendationItems.forEach(item => {
-            item.addEventListener('click', (e) => {
-                const questionId = e.currentTarget.getAttribute('data-question-id');
-                const category = e.currentTarget.getAttribute('data-category');
-                selectRecommendation(questionId, category);
-            });
+// Render recommendations by category (보류: 추후 구현 예정)
+// function renderRecommendationsByCategory() {
+//     const categoryMap = {
+//         'P': 'recommendationsListP',
+//         'C': 'recommendationsListC',
+//         'T': 'recommendationsListT',
+//         'S': 'recommendationsListS',
+//         'R': 'recommendationsListR'
+//     };
+//     
+//     // 각 카테고리별로 렌더링
+//     Object.keys(categoryMap).forEach(category => {
+//         const listEl = document.getElementById(categoryMap[category]);
+//         if (!listEl) {
+//             console.warn(`Recommendations list element not found for category ${category}`);
+//             return;
+//         }
+//         
+//         const questions = recommendedQuestionsByCategory[category] || [];
+//         
+//         if (questions.length === 0) {
+//             listEl.innerHTML = '<div class="recommendation-empty">추천 질문이 없습니다.</div>';
+//             return;
+//         }
+//         
+//         listEl.innerHTML = questions.map((question, index) => {
+//             return `
+//                 <div class="recommendation-item" data-question-id="${question.id}" data-category="${category}">
+//                     ${escapeHtml(question.text)}
+//                 </div>
+//             `;
+//         }).join('');
+//         
+//         // Attach click handlers
+//         const recommendationItems = listEl.querySelectorAll('.recommendation-item');
+//         recommendationItems.forEach(item => {
+//             item.addEventListener('click', (e) => {
+//                 const questionId = e.currentTarget.getAttribute('data-question-id');
+//                 const category = e.currentTarget.getAttribute('data-category');
+//                 selectRecommendation(questionId, category);
+//             });
+//         });
+//     });
+// }
+
+// Render recommendations (dashboard와 동일한 구조)
+function renderRecommendations() {
+    if (!recommendationsList) return;
+
+    if (recommendedQuestions.length === 0) {
+        recommendationsList.innerHTML = '<div class="recommendation-empty">추천 질문이 없습니다.</div>';
+        return;
+    }
+
+    recommendationsList.innerHTML = recommendedQuestions.map((question, index) => {
+        return `
+            <div class="recommendation-item" data-question-index="${index}">
+                ${escapeHtml(question)}
+            </div>
+        `;
+    }).join('');
+
+    // Attach click handlers to recommendation items
+    const recommendationItems = recommendationsList.querySelectorAll('.recommendation-item');
+    recommendationItems.forEach(item => {
+        item.addEventListener('click', (e) => {
+            const index = parseInt(e.currentTarget.getAttribute('data-question-index'));
+            selectRecommendation(index);
         });
     });
 }
 
-// Render recommendations (legacy function for backward compatibility)
-function renderRecommendations() {
-    // API에서 데이터를 로드하고 렌더링
-    loadRecommendedQuestions();
-}
-
-// Select recommendation
-function selectRecommendation(questionId, category) {
-    const questions = recommendedQuestionsByCategory[category] || [];
-    const question = questions.find(q => q.id == questionId);
-    
-    if (question) {
-        const questionText = question.text;
+// Select recommendation (dashboard와 동일한 구조)
+function selectRecommendation(index) {
+    if (index >= 0 && index < recommendedQuestions.length) {
+        const question = recommendedQuestions[index];
         if (chatInputField) {
-            chatInputField.value = questionText;
+            chatInputField.value = question;
         }
         if (chatInputFieldBottom) {
-            chatInputFieldBottom.value = questionText;
+            chatInputFieldBottom.value = question;
         }
-        message = questionText;
+        message = question;
         closeRecommendations();
-        // Auto send after a short delay
-        setTimeout(() => {
-            handleSend();
-        }, 100);
+        // Focus on input field after setting value
+        if (chatInputField) {
+            chatInputField.focus();
+        } else if (chatInputFieldBottom) {
+            chatInputFieldBottom.focus();
+        }
+        // No auto send - user must press Enter or click send button
     }
 }
 
@@ -1021,8 +1069,7 @@ function showRecommendationsDropdown() {
     const recommendationsDropdownEl = document.getElementById('recommendationsDropdown');
     if (recommendationsDropdownEl) {
         // 추천 질문이 로드되지 않았다면 API에서 로드
-        const hasData = Object.values(recommendedQuestionsByCategory).some(questions => questions.length > 0);
-        if (!hasData) {
+        if (recommendedQuestions.length === 0) {
             loadRecommendedQuestions();
         }
         recommendationsDropdownEl.style.display = 'block';
@@ -1847,7 +1894,7 @@ function handleMessageAction(action, messageId) {
             likeMessage(messageId);
             break;
         case 'dislike':
-            dislikeMessage(messageId);
+            openDislikeFeedbackModal(messageId);
             break;
         case 'save-to-note':
             saveToNote(messageId);
@@ -1962,6 +2009,55 @@ function handleMessageAction(action, messageId) {
         default:
             console.error('Unknown action:', action);
     }
+}
+
+function openDislikeFeedbackModal(messageId) {
+    const targetMessage = findMessageByIdentifier(messageId);
+    if (window.ChatDislikeModal && typeof window.ChatDislikeModal.open === 'function') {
+        window.ChatDislikeModal.open(messageId, {
+            currentFeedbackType: targetMessage?.user_feedback || null,
+            reasonCode: targetMessage?.feedback_reason || null,
+            reasonText: targetMessage?.feedback_comment || '',
+        });
+    } else {
+        console.warn('ChatDislikeModal is not available');
+        if (window.notyf) {
+            window.notyf.error('피드백 모달을 불러올 수 없습니다.');
+        }
+    }
+}
+
+// 메시지 ID(또는 인덱스)로 messages 배열에서 항목 찾기
+function findMessageByIdentifier(identifier) {
+    if (identifier === null || identifier === undefined) {
+        return null;
+    }
+    const normalizedId = String(identifier);
+    return messages.find((msg, idx) => {
+        const candidateId =
+            msg.message_id != null ? String(msg.message_id) :
+            msg.id != null ? String(msg.id) :
+            msg.message_sid != null ? String(msg.message_sid) :
+            String(idx);
+        return candidateId === normalizedId;
+    }) || null;
+}
+
+// 메시지 피드백 상태 업데이트 후 UI 갱신
+function updateMessageFeedbackState(messageId, feedbackType, reasonCode = null, reasonText = '') {
+    const targetMessage = findMessageByIdentifier(messageId);
+    if (!targetMessage) {
+        return;
+    }
+    targetMessage.user_feedback = feedbackType || null;
+    if (feedbackType === 'D') {
+        targetMessage.feedback_reason = reasonCode || null;
+        targetMessage.feedback_comment = reasonText || '';
+    } else {
+        targetMessage.feedback_reason = null;
+        targetMessage.feedback_comment = '';
+    }
+    renderMessages();
 }
 
 // Copy message
@@ -2079,6 +2175,8 @@ async function likeMessage(messageId) {
                     window.notyf.success('좋아요를 눌렀습니다.');
                 }
             }
+            const nextFeedback = data.action === 'removed' ? null : (data.feedback_type || 'L');
+            updateMessageFeedbackState(messageId, nextFeedback, null, '');
         } else {
             const errorData = await response.json();
             console.error('Error liking message:', errorData);
@@ -2095,17 +2193,35 @@ async function likeMessage(messageId) {
 }
 
 // Dislike message
-async function dislikeMessage(messageId) {
+async function dislikeMessage(messageId, options = {}) {
+    const { reasonCode = null, reasonText = '', remove = false } = options;
+    if (!remove && !reasonCode) {
+        if (window.notyf) {
+            window.notyf.error('싫어요 사유를 선택해주세요.');
+        }
+        return false;
+    }
     try {
+        const payload = {
+            feedback_type: 'D',
+        };
+        if (remove) {
+            payload.remove_feedback = true;
+        } else {
+            payload.feedback_reason = reasonCode;
+            if (reasonCode === 'other') {
+                payload.feedback_comment = (reasonText || '').trim();
+            } else if (reasonText && reasonText.trim()) {
+                payload.feedback_comment = reasonText.trim();
+            }
+        }
         const response = await fetch(`/chat/api/messages/${messageId}/feedback/`, {
             method: 'POST',
             headers: {
                 'X-CSRFToken': getCsrfToken(),
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-                feedback_type: 'D'
-            }),
+            body: JSON.stringify(payload),
         });
         
         if (response.ok) {
@@ -2114,22 +2230,31 @@ async function dislikeMessage(messageId) {
             if (window.notyf) {
                 if (data.action === 'removed') {
                     window.notyf.success('싫어요가 취소되었습니다.');
+                } else if (remove) {
+                    window.notyf.success('싫어요가 삭제되었습니다.');
                 } else {
                     window.notyf.success('싫어요를 눌렀습니다.');
                 }
             }
+            const nextFeedback = data.action === 'removed' ? null : (data.feedback_type || 'D');
+            const nextReason = nextFeedback === 'D' ? (data.feedback_reason || reasonCode) : null;
+            const nextComment = nextFeedback === 'D' ? (data.feedback_comment || reasonText || '') : '';
+            updateMessageFeedbackState(messageId, nextFeedback, nextReason, nextComment);
+            return true;
         } else {
             const errorData = await response.json();
             console.error('Error disliking message:', errorData);
             if (window.notyf) {
                 window.notyf.error(errorData.error || '싫어요 처리 중 오류가 발생했습니다.');
             }
+            return false;
         }
     } catch (error) {
         console.error('Error disliking message:', error);
         if (window.notyf) {
             window.notyf.error('싫어요 처리 중 오류가 발생했습니다.');
         }
+        return false;
     }
 }
 
@@ -2137,11 +2262,7 @@ async function dislikeMessage(messageId) {
 function saveToNote(messageId) {
     showSaveToNotesModal = true;
     const normalizedId = String(messageId);
-    const targetMessage = messages.find((msg, idx) => {
-        const candidateId = msg.message_id != null ? String(msg.message_id) :
-            msg.id != null ? String(msg.id) : String(idx);
-        return candidateId === normalizedId;
-    });
+    const targetMessage = findMessageByIdentifier(normalizedId);
     // const previewText = targetMessage?.content
     //     ? targetMessage.content.replace(/\s+/g, ' ').trim()
     //     : '';
@@ -2218,6 +2339,31 @@ function showGraphSummary(messageId) {
         }, 100);
     }
 }
+
+function setupChatDislikeModalIntegration() {
+    if (dislikeModalHandlersInitialized) {
+        return;
+    }
+    if (window.ChatDislikeModal && typeof window.ChatDislikeModal.setHandlers === 'function') {
+        window.ChatDislikeModal.setHandlers({
+            onSubmit: async ({ messageId, reasonCode, reasonText }) => {
+                const success = await dislikeMessage(messageId, { reasonCode, reasonText });
+                if (success) {
+                    window.ChatDislikeModal.close();
+                }
+            },
+            onRemove: async ({ messageId }) => {
+                const success = await dislikeMessage(messageId, { remove: true });
+                if (success) {
+                    window.ChatDislikeModal.close();
+                }
+            },
+        });
+        dislikeModalHandlersInitialized = true;
+    }
+}
+
+document.addEventListener('chat-dislike-modal:ready', setupChatDislikeModalIntegration);
 
 // Attach reference handlers
 function attachReferenceHandlers() {

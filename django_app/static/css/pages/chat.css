@@ -979,6 +979,30 @@
     font-size: 0.875rem;
 }
 
+.action-btn.selected {
+    font-weight: 600;
+}
+
+.action-btn.selected-like {
+    background: #ecfdf5;
+    border-color: #34d399;
+    color: #047857;
+}
+
+.action-btn.selected-like:hover {
+    background: #d1fae5;
+}
+
+.action-btn.selected-dislike {
+    background: #fef2f2;
+    border-color: #f87171;
+    color: #b91c1c;
+}
+
+.action-btn.selected-dislike:hover {
+    background: #fee2e2;
+}
+
 .action-btn-text {
     display: flex;
     align-items: center;
