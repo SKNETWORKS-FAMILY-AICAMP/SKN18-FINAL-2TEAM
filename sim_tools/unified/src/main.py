@@ -3,6 +3,7 @@ import os
 import sys
 import argparse
 import subprocess
+import shutil
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
 
@@ -15,7 +16,6 @@ def resolve_rfdiffusion_entry() -> str:
     candidates = [
         Path("/app/RFdiffusion/run_inference.py"),
         Path("/workspace/RFdiffusion/run_inference.py"),
-        Path(__file__).resolve().parent / "RFdiffusion" / "run_inference.py",
         Path("/app/RFdiffusion/scripts/run_inference.py"),
     ]
 
@@ -28,7 +28,7 @@ def resolve_rfdiffusion_entry() -> str:
         if c.is_file():
             return str(c)
 
-    for base in [Path("/app"), Path("/workspace"), Path(__file__).resolve().parent]:
+    for base in [Path("/app"), Path("/workspace")]:
         try:
             for p in base.rglob("run_inference.py"):
                 if "RFdiffusion" in str(p):
@@ -69,13 +69,15 @@ def build_s3_prefix(base: str, dt: str, experiment_id: str, step: str) -> str:
     return f"{base}/dt={dt}/pipeline={experiment_id}/step={step}"
 
 
+def build_local_step_dir(outputs_root: Path, dt: str, experiment_id: str, step: str) -> Path:
+    return outputs_root / f"dt={dt}" / f"pipeline={experiment_id}" / f"step={step}"
+
+
 def parse_args():
     p = argparse.ArgumentParser()
 
     p.add_argument("--mode", default="backbone", choices=["backbone", "binder", "other"])
-
-    # ⚠️ 여전히 받을 수는 있지만 실제로는 experiment_id로 덮어씀 (호환용)
-    p.add_argument("--name", default="test_job")
+    p.add_argument("--name", default="test_job")  # 호환용(실제로는 experiment_id로 덮어씀)
 
     p.add_argument("--contigs", default="100")
     p.add_argument("--iterations", type=int, default=1)
@@ -84,19 +86,12 @@ def parse_args():
     p.add_argument("--rfdiffusion_entry", default=resolve_rfdiffusion_entry())
     p.add_argument("--outputs_dir", default=os.environ.get("OUTPUTS_DIR", "/outputs"))
 
-    # ✅ S3 업로드 옵션 (S3_*가 없으면 AWS_S3_* fallback 지원)
-    p.add_argument(
-        "--s3_bucket",
-        default=_get_s3_bucket_default(),
-        help="If set, upload outputs to S3",
-    )
-    p.add_argument(
-        "--s3_prefix",
-        default=_get_s3_prefix_default(),
-        help="S3 key prefix (folder path). Default uses S3_PREFIX or AWS_S3_BASE_PATH or 'rfdiffusion'",
-    )
-    p.add_argument("--s3_upload_logs", action="store_true", default=True, help="Also upload job log if exists")
-    p.add_argument("--fail_on_s3_error", action="store_true", help="If upload fails, exit non-zero")
+    # ✅ 필수: API에서 내려주는 pipeline id
+    p.add_argument("--experiment_id", required=True)
+    # ✅ step은 unified_shell_script.sh 기준으로 맞춤
+    p.add_argument("--step", required=True, choices=["rfdiffusion", "proteinMPNN", "alphafold"])
+    # ✅ dt 파티션 (없으면 KST 오늘)
+    p.add_argument("--dt", default=_kst_today())
 
     # ✅ S3 업로드 옵션
     p.add_argument("--s3_bucket", default=_get_s3_bucket_default())
@@ -104,33 +99,47 @@ def parse_args():
     p.add_argument("--s3_upload_logs", action="store_true")
     p.add_argument("--fail_on_s3_error", action="store_true")
 
-    # (옵션) 이후 확장용: MPNN/AF 세부파라미터를 CLI로 받게 하고 싶으면 여기에 추가하면 됨
     return p.parse_args()
 
 
 def run_cmd(cmd, env=None):
-    print("[main.py] exec:", " ".join(cmd))
+    print("[main.py] exec:", " ".join(map(str, cmd)))
     subprocess.run(cmd, check=True, env=env)
+
+
+def _copy_if_exists(src: Path, dst: Path):
+    if src.exists():
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src, dst)
 
 
 def main():
     args = parse_args()
 
-    # ✅ 팀장님 지시: job name = experiment_id
-    args.name = args.experiment_id.strip()
+    args.experiment_id = args.experiment_id.strip()
+    if not args.experiment_id:
+        raise SystemExit("experiment_id is required")
 
-    outputs_dir = Path(args.outputs_dir)
-    outputs_dir.mkdir(parents=True, exist_ok=True)
+    args.name = args.experiment_id  # ✅ 팀장님 지시: job name = experiment_id
+
+    dt = (args.dt or "").strip() or _kst_today()
+    step = args.step
+
+    outputs_root = Path(args.outputs_dir)
+    outputs_root.mkdir(parents=True, exist_ok=True)
+
+    step_dir = build_local_step_dir(outputs_root, dt, args.experiment_id, step)
+    step_dir.mkdir(parents=True, exist_ok=True)
 
     # 공통 env
     env = os.environ.copy()
     env.setdefault("DGLBACKEND", "pytorch")
     env.setdefault("DGL_DISABLE_GRAPHBOLT", "1")
 
-    # -----------------------
-    # 1) step 분기 실행
-    # -----------------------
-    step = args.step
+    print("[main.py] outputs_root :", outputs_root)
+    print("[main.py] step_dir     :", step_dir)
+
+    produced = []
 
     if step == "rfdiffusion":
         contig_str = str(args.contigs).strip()
@@ -140,7 +149,7 @@ def main():
         cmd = [
             py,
             args.rfdiffusion_entry,
-            f"inference.output_prefix={outputs_dir / args.name}",
+            f"inference.output_prefix={step_dir / args.name}",  # ✅ step 폴더로 고정
             f"inference.num_designs={int(args.iterations)}",
             contig_override,
         ]
@@ -150,17 +159,21 @@ def main():
         run_cmd(cmd, env=env)
 
         produced = [
-            outputs_dir / f"{args.name}_0.pdb",
-            outputs_dir / f"{args.name}_0.trb",
+            step_dir / f"{args.name}_0.pdb",
+            step_dir / f"{args.name}_0.trb",
         ]
 
-    elif step == "protein_mpnn":
-        # iterations를 num_seqs로 매핑 (테스트하기 가장 편함)
+    elif step == "proteinMPNN":
+        # ✅ 기존 proteinmpnn_step.py는 "outputs_dir 안에서 exp_0.pdb"를 찾음
+        # => rfdiffusion 결과를 proteinMPNN step 폴더로 복사해서 코드 수정 최소화
+        rfd_dir = build_local_step_dir(outputs_root, dt, args.experiment_id, "rfdiffusion")
+        _copy_if_exists(rfd_dir / f"{args.name}_0.pdb", step_dir / f"{args.name}_0.pdb")
+
         from steps.proteinmpnn_step import MPNNStepConfig, run_mpnn_only
 
         cfg = MPNNStepConfig(
-            experiment_id=args.experiment_id.strip(),
-            outputs_dir=outputs_dir,
+            experiment_id=args.experiment_id,
+            outputs_dir=step_dir,                # ✅ step 폴더
             contigs=str(args.contigs).strip(),
             num_seqs=int(args.iterations),
             mpnn_sampling_temp=0.1,
@@ -170,17 +183,24 @@ def main():
         print("[proteinMPNN] result:", result)
 
         produced = [
-            outputs_dir / f"{args.name}_mpnn.fasta",
-            outputs_dir / f"{args.name}_mpnn_results.csv",
+            step_dir / f"{args.name}_mpnn.fasta",
+            step_dir / f"{args.name}_mpnn_results.csv",
         ]
 
-    elif step == "alphafold3":
-        # iterations를 num_recycles로 매핑 (1이면 빠름)
+    elif step == "alphafold":
+        # ✅ 기존 alphafold_step.py는 "outputs_dir 안에서 exp_0.pdb + exp_mpnn.fasta"를 찾음
+        # => rfdiffusion pdb + mpnn fasta를 alphafold step 폴더로 복사
+        rfd_dir = build_local_step_dir(outputs_root, dt, args.experiment_id, "rfdiffusion")
+        mpnn_dir = build_local_step_dir(outputs_root, dt, args.experiment_id, "proteinMPNN")
+
+        _copy_if_exists(rfd_dir / f"{args.name}_0.pdb", step_dir / f"{args.name}_0.pdb")
+        _copy_if_exists(mpnn_dir / f"{args.name}_mpnn.fasta", step_dir / f"{args.name}_mpnn.fasta")
+
         from steps.alphafold_step import AlphaFoldStepConfig, run_alphafold_only
 
         cfg = AlphaFoldStepConfig(
-            experiment_id=args.experiment_id.strip(),
-            outputs_dir=outputs_dir,
+            experiment_id=args.experiment_id,
+            outputs_dir=step_dir,                # ✅ step 폴더
             num_recycles=int(args.iterations),
             use_multimer=False,
             initial_guess=False,
@@ -189,25 +209,19 @@ def main():
         print("[alphafold] result:", result)
 
         produced = [
-            outputs_dir / f"{args.name}_af_best.pdb",
-            outputs_dir / f"{args.name}_af_results.csv",
+            step_dir / f"{args.name}_af_best.pdb",
+            step_dir / f"{args.name}_af_results.csv",
         ]
 
     else:
         raise SystemExit(f"Unknown step: {step}")
 
-    # -----------------------
-    # 2) 생성물 확인
-    # -----------------------
     print(f"[main.py] step={step} produced:")
     for pth in produced:
-        if pth.exists():
-            print(" -", pth, f"({pth.stat().st_size} bytes)")
-        else:
-            print(" -", pth, "(missing)")
+        print(" -", pth, "(ok)" if pth.exists() else "(missing)")
 
     # -----------------------
-    # 3) S3 업로드 (옵션)
+    # S3 Upload
     # -----------------------
     bucket = (args.s3_bucket or "").strip()
     if not bucket:
@@ -216,9 +230,9 @@ def main():
 
     prefix = build_s3_prefix(
         base=args.s3_base,
-        dt=args.dt,
+        dt=dt,
         experiment_id=args.experiment_id,
-        step=args.step,
+        step=step,
     )
 
     print(f"[s3] bucket={bucket}")
@@ -226,27 +240,15 @@ def main():
 
     try:
         from s3_uploader import upload_job_outputs
-    except Exception as e:
-        print("[s3][ERROR] cannot import s3_uploader:", repr(e))
-        if args.fail_on_s3_error:
-            raise SystemExit(2)
-        return
-
-    try:
         uploaded = upload_job_outputs(
-            outputs_dir=str(outputs_dir),
+            outputs_dir=str(step_dir),     # ✅ step_dir만 업로드 => 로컬/S3 구조 자연 정렬
             job_name=args.name,
-            step=args.step,
+            step=step,
             bucket=bucket,
             prefix=prefix,
             upload_logs=args.s3_upload_logs,
         )
-        if uploaded:
-            print("[s3] uploaded:")
-            for u in uploaded:
-                print(" -", u)
-        else:
-            print("[s3] nothing uploaded (no files found?)")
+        print("[s3] uploaded:", uploaded)
     except Exception as e:
         print("[s3][ERROR]", repr(e))
         if args.fail_on_s3_error:

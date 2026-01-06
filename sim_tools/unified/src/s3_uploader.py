@@ -2,8 +2,6 @@ import os
 from pathlib import Path
 import boto3
 import zipfile
-from datetime import datetime, timezone, timedelta
-
 
 
 def _region() -> str | None:
@@ -57,6 +55,7 @@ def upload_job_outputs(
     """
     out = Path(outputs_dir)
     step = (step or "").strip()
+    prefix = (prefix or "").strip().strip("/")  # ✅ 정규화
 
     candidates: list[Path] = []
 
@@ -77,7 +76,6 @@ def upload_job_outputs(
             out / f"{job_name}_af_best.pdb",
             out / f"{job_name}_af_results.csv",
         ]
-        # all_pdb 폴더는 zip으로 올리기(있으면)
         all_dir = out / f"{job_name}_af_all_pdb"
         zip_path = out / f"{job_name}_af_all_pdb.zip"
         z = _zip_dir(all_dir, zip_path)
@@ -87,29 +85,17 @@ def upload_job_outputs(
     else:
         raise ValueError(f"Unknown step for upload: {step}")
 
+    # 로그는 outputs_root/_logs에 존재 (main.py는 step_dir만 넘김)
     if upload_logs:
-        candidates.append(out / "_logs" / f"{job_name}.log")
-
-    # ✅ prefix 정규화: 앞/뒤 '/' 제거해서 key 깨짐 방지
-    # job_name 형식: "<pipeline(실험ID)>__<step(툴이름)>"
-    pipeline = job_name
-    step = "unknown"
-    if "__" in job_name:
-        pipeline, step = job_name.split("__", 1)
-    KST = timezone(timedelta(hours=9))
-    # dt=YYYY-MM-DD
-    dt = datetime.now(KST).date().strftime("%Y-%m-%d")
-
-    # 최종 prefix: simulations/dt=2026-01-03/pipeline=26/step=rfdiffusion
-    base_prefix = f"{prefix}/dt={dt}/pipeline={pipeline}/step={step}".strip("/")
+        # step_dir 기준으로 3단계 위가 outputs_root
+        outputs_root = out.parent.parent.parent
+        candidates.append(outputs_root / "_logs" / f"{job_name}.log")
 
     uploaded: list[str] = []
     for p in candidates:
         if not p.exists() or p.stat().st_size <= 0:
             continue
 
-        key = f"{base_prefix}/{p.name}"
-        content_type = "chemical/x-pdb" if p.suffix == ".pdb" else "application/octet-stream"
         key = f"{prefix}/{p.name}"
 
         if p.suffix == ".pdb":
