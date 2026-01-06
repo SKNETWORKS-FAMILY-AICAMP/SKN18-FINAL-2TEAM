@@ -6,6 +6,7 @@ let searchQuery = "";
 let selectedDateRange = undefined;
 let notesPerPage = 10;
 let viewMode = 'card';
+let myNotesOnly = false;
 
 // DOM Elements
 let notesListView;
@@ -17,6 +18,8 @@ let btnCardView, btnTableView;
 let btnDateFilter, dateFilterText, dateFilterPopover, dateFilterCalendar, dateFilterActions, btnDateReset;
 // Search buttons
 let btnResetSearch, btnSearch;
+// My notes only checkbox
+let chkMyNotesOnly;
 // window.airDatepickerInstance는 window 객체에 저장 (중복 초기화 방지 및 디버깅용)
 
 // Notes data state
@@ -47,6 +50,8 @@ function initNotes() {
     // Search buttons
     btnResetSearch = document.getElementById('btnResetSearch');
     btnSearch = document.getElementById('btnSearch');
+    // My notes only checkbox
+    chkMyNotesOnly = document.getElementById('chkMyNotesOnly');
 
     // Attach event listeners
     if (btnCreateNote) btnCreateNote.addEventListener('click', handleCreateNote);
@@ -68,16 +73,76 @@ function initNotes() {
     // Search button event listeners
     if (btnResetSearch) btnResetSearch.addEventListener('click', handleResetAllFilters);
     if (btnSearch) btnSearch.addEventListener('click', handleSearchSubmit);
+    // My notes only checkbox event listener
+    if (chkMyNotesOnly) {
+        chkMyNotesOnly.addEventListener('change', handleMyNotesOnlyChange);
+    }
     
     // Initialize AirDatepicker
     initDateFilter();
 
-    // Render initial state
-    renderNotesList();
-    renderPagination();
+    // Load user settings and apply view mode
+    loadUserSettings().then(() => {
+        // Render initial state
+        renderNotesList();
+        renderPagination();
 
-    // Load notes from API
-    loadNotesFromApi();
+        // Load notes from API
+        loadNotesFromApi();
+    });
+}
+
+// Load user settings and apply view mode
+async function loadUserSettings() {
+    const savedViewMode = await loadNotesViewMode();
+    viewMode = savedViewMode;
+    
+    // Apply view mode to UI
+    if (btnCardView && btnTableView) {
+        if (viewMode === 'card') {
+            btnCardView.classList.add('active');
+            btnTableView.classList.remove('active');
+        } else {
+            btnCardView.classList.remove('active');
+            btnTableView.classList.add('active');
+        }
+    }
+    
+    // Apply view mode display
+    if (notesGrid && notesTableContainer) {
+        if (viewMode === 'card') {
+            notesGrid.style.display = 'grid';
+            notesTableContainer.style.display = 'none';
+        } else {
+            notesGrid.style.display = 'none';
+            notesTableContainer.style.display = 'block';
+        }
+    }
+}
+
+// Load notes view mode from user settings
+async function loadNotesViewMode() {
+    try {
+        const response = await fetch('/api/settings/', {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+            },
+            credentials: 'same-origin'
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            if (data.settings && data.settings.notes_view_mode) {
+                return data.settings.notes_view_mode;
+            }
+        }
+    } catch (error) {
+        console.error('[Notes] Error loading view mode setting:', error);
+    }
+    
+    // 기본값: card
+    return 'card';
 }
 
 // Load notes via API
@@ -86,7 +151,30 @@ async function loadNotesFromApi() {
     isLoadingNotes = true;
     
     try {
-        const response = await fetch('/api/notes/', {
+        // Build query parameters
+        const params = new URLSearchParams();
+        if (myNotesOnly) {
+            params.append('my_notes_only', 'true');
+        }
+        if (searchQuery && searchQuery.trim()) {
+            params.append('search', searchQuery.trim());
+        }
+        // 날짜 필터 파라미터 추가
+        if (selectedDateRange?.from) {
+            const fromDate = selectedDateRange.from;
+            const fromStr = `${fromDate.getFullYear()}-${String(fromDate.getMonth() + 1).padStart(2, '0')}-${String(fromDate.getDate()).padStart(2, '0')}`;
+            params.append('date_from', fromStr);
+        }
+        if (selectedDateRange?.to) {
+            const toDate = selectedDateRange.to;
+            const toStr = `${toDate.getFullYear()}-${String(toDate.getMonth() + 1).padStart(2, '0')}-${String(toDate.getDate()).padStart(2, '0')}`;
+            params.append('date_to', toStr);
+        }
+        
+        const url = '/api/notes/' + (params.toString() ? '?' + params.toString() : '');
+        console.log('[Notes] Loading notes from API:', url);
+        
+        const response = await fetch(url, {
             method: 'GET',
             headers: {
                 'Accept': 'application/json',
@@ -99,6 +187,7 @@ async function loadNotesFromApi() {
         
         const data = await response.json();
         const apiNotes = Array.isArray(data?.results) ? data.results : (Array.isArray(data) ? data : []);
+        console.log('[Notes] Loaded notes count:', apiNotes.length);
         notes = apiNotes.map(normalizeApiNote);
     } catch (error) {
         console.error('Error loading notes:', error);
@@ -114,9 +203,13 @@ function normalizeApiNote(note) {
         id: note?.id ?? null,
         title: note?.title || '제목 없음',
         content: note?.content || '',
+        contentPreview: note?.contentPreview || '',  // 백엔드에서 제공하는 텍스트 미리보기
         date: note?.date || '',
+        author: note?.author || '',
         shared: typeof note?.shared === 'number' ? note.shared : 0,
         comments: typeof note?.comments === 'number' ? note.comments : 0,
+        isPublic: Boolean(note?.is_public),
+        isShared: Boolean(note?.is_shared),  // 공유받은 노트인지 여부
         tags: Array.isArray(note?.tags) ? note.tags : [],
     };
 }
@@ -185,6 +278,11 @@ function initDateFilter() {
                 updateDateFilterText();
                 if (dateFilterActions) dateFilterActions.style.display = 'none';
             }
+            
+            // 날짜 선택/초기화 시 페이지 초기화 및 리렌더링
+            currentPage = 1;
+            renderNotesList();
+            renderPagination();
         }
     });
 
@@ -238,6 +336,10 @@ function handleResetDateFilter() {
     selectedDateRange = undefined;
     updateDateFilterText();
     if (dateFilterActions) dateFilterActions.style.display = 'none';
+    
+    // 페이지 초기화 및 API 호출 (날짜 필터 초기화 후 전체 데이터 조회)
+    currentPage = 1;
+    loadNotesFromApi();
 }
 
 // Handle reset all filters (날짜 + 검색어 모두 초기화)
@@ -256,23 +358,41 @@ function handleResetAllFilters() {
         searchInput.value = "";
     }
     
+    // 내 노트만 필터 초기화
+    myNotesOnly = false;
+    if (chkMyNotesOnly) {
+        chkMyNotesOnly.checked = false;
+    }
+    
     // 페이지 초기화 및 리렌더링
     currentPage = 1;
-    renderNotesList();
-    renderPagination();
+    loadNotesFromApi();
 }
 
 // Handle search submit (검색 버튼 클릭 시)
 function handleSearchSubmit() {
-    searchQuery = searchInput?.value || "";
+    if (!searchInput) {
+        console.error('[Notes] searchInput element not found');
+        return;
+    }
+    
+    searchQuery = searchInput.value.trim();
+    console.log('[Notes] Search submitted:', searchQuery);
+    
     currentPage = 1;
-    renderNotesList();
-    renderPagination();
+    loadNotesFromApi();
     
     // 날짜 필터 팝오버 닫기
     if (dateFilterPopover) {
         dateFilterPopover.style.display = 'none';
     }
+}
+
+// Handle my notes only checkbox change
+function handleMyNotesOnlyChange() {
+    myNotesOnly = chkMyNotesOnly?.checked || false;
+    currentPage = 1;
+    loadNotesFromApi();
 }
 
 // Update date filter text
@@ -333,7 +453,11 @@ function renderCardView(currentNotes) {
     }
 
     notesGrid.innerHTML = currentNotes.map(note => {
-        const previewContent = getNoteContentPreview(note.content);
+        // 백엔드에서 제공하는 contentPreview 사용 (없으면 기존 함수 사용)
+        const previewContent = note.contentPreview || getNoteContentPreview(note.content);
+        const lockIcon = note.isPublic ? 'fa-lock-open' : 'fa-lock';
+        const lockStateClass = note.isPublic ? 'lock-public' : 'lock-private';
+        const lockTooltip = note.isPublic ? '모두가 검색할 수 있는 공개 노트 입니다' : '비공개 노트 입니다';
         return `
         <div class="note-card" data-note-id="${note.id}">
             <h3 class="note-title">${escapeHtml(note.title)}</h3>
@@ -342,7 +466,14 @@ function renderCardView(currentNotes) {
                 ${note.tags.map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join('')}
             </div>
             <div class="note-footer">
-                <span class="note-date">${note.date}</span>
+                <div class="note-author-date author-date">
+                    ${note.author ? `
+                        <span class="author-label">${escapeHtml(note.author)}</span>
+                        ${note.isShared ? `<span class="shared-badge">[공유]</span>` : ''}
+                        <span class="author-separator">|</span>
+                    ` : ''}
+                    <span class="note-date date-label">${escapeHtml(note.date)}</span>
+                </div>
                 <div class="note-stats">
                     <span class="stat">
                         <i class="fas fa-share-nodes"></i>
@@ -351,6 +482,9 @@ function renderCardView(currentNotes) {
                     <span class="stat">
                         <i class="fas fa-comment-dots"></i>
                         ${note.comments}
+                    </span>
+                    <span class="stat stat-lock ${lockStateClass}" data-tooltip="${lockTooltip}">
+                        <i class="fas ${lockIcon}"></i>
                     </span>
                 </div>
             </div>
@@ -396,9 +530,22 @@ function renderTableView(currentNotes) {
 
     notesTableBody.innerHTML = currentNotes.map((note, index) => {
         const rowNumber = startIndex + index + 1;
-        const contentLines = note.content.split('\n');
-        const firstLine = contentLines[0] || '';
-        const contentPreview = firstLine.length > 50 ? firstLine.substring(0, 50) + '...' : firstLine;
+        
+        // 백엔드에서 제공하는 contentPreview 사용 (없으면 기존 방식 사용)
+        let contentPreview = note.contentPreview || '';
+        if (!contentPreview && note.content) {
+            const contentLines = note.content.split('\n');
+            const firstLine = contentLines[0] || '';
+            contentPreview = firstLine.length > 100 ? firstLine.substring(0, 100) + '...' : firstLine;
+        }
+        // 테이블 뷰에서는 100자로 제한
+        if (contentPreview.length > 100) {
+            contentPreview = contentPreview.substring(0, 100) + '...';
+        }
+        
+        const lockIcon = note.isPublic ? 'fa-lock-open' : 'fa-lock';
+        const lockStateClass = note.isPublic ? 'lock-public' : 'lock-private';
+        const lockTooltip = note.isPublic ? '모두가 검색할 수 있는 공개 노트 입니다' : '비공개 노트 입니다';
         
         return `
         <tr data-note-id="${note.id}">
@@ -407,12 +554,21 @@ function renderTableView(currentNotes) {
                 <h4>${escapeHtml(note.title)}</h4>
                 <p>${escapeHtml(contentPreview)}</p>
             </td>
+            <td class="table-cell-author">
+                ${note.author ? escapeHtml(note.author) : '-'}
+                ${note.isShared ? `<span class="shared-badge">[공유]</span>` : ''}
+            </td>
             <td class="table-cell-date">${escapeHtml(note.date)}</td>
             <td class="table-cell-tags">
                 ${note.tags.map(tag => `<span class="meta-tag">${escapeHtml(tag)}</span>`).join('')}
             </td>
             <td class="table-cell-shared">${note.shared}</td>
             <td class="table-cell-comments">${note.comments}</td>
+            <td class="table-cell-visibility">
+                <span class="lock-icon ${lockStateClass}" data-tooltip="${lockTooltip}">
+                    <i class="fas ${lockIcon}"></i>
+                </span>
+            </td>
         </tr>
     `;
     }).join('');
@@ -432,34 +588,10 @@ function openNoteDetail(noteId) {
     window.location.href = `/notes/detail/?id=${noteId}`;
 }
 
-// Filter notes
+// Filter notes (서버에서 필터링 처리되므로 클라이언트 사이드 필터링 불필요)
 function filterNotes() {
-    let filtered = [...notes];
-    
-    if (searchQuery) {
-        const query = searchQuery.toLowerCase();
-        filtered = filtered.filter(note => 
-            note.title.toLowerCase().includes(query) ||
-            note.content.toLowerCase().includes(query) ||
-            note.tags.some(tag => tag.toLowerCase().includes(query))
-        );
-    }
-    
-    if (selectedDateRange?.from) {
-        const fromDate = new Date(selectedDateRange.from);
-        fromDate.setHours(0, 0, 0, 0);
-        
-        const toDate = selectedDateRange.to ? new Date(selectedDateRange.to) : new Date(selectedDateRange.from);
-        toDate.setHours(23, 59, 59, 999);
-        
-        filtered = filtered.filter(note => {
-            const noteDate = new Date(note.date);
-            noteDate.setHours(0, 0, 0, 0);
-            return noteDate >= fromDate && noteDate <= toDate;
-        });
-    }
-    
-    return filtered;
+    // 모든 필터링은 서버에서 처리되므로 notes를 그대로 반환
+    return [...notes];
 }
 
 // Get current notes for pagination
@@ -529,7 +661,7 @@ function handleNotesPerPageChange(e) {
 }
 
 // Handle view mode change
-function handleViewModeChange(mode) {
+async function handleViewModeChange(mode) {
     viewMode = mode;
     
     if (btnCardView && btnTableView) {
@@ -542,7 +674,49 @@ function handleViewModeChange(mode) {
         }
     }
     
+    // 설정 저장
+    await saveNotesViewMode(mode);
+    
     renderNotesList();
+}
+
+// Save notes view mode to user settings
+async function saveNotesViewMode(mode) {
+    try {
+        const response = await fetch('/api/settings/', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({
+                notes_view_mode: mode
+            })
+        });
+        
+        if (!response.ok) {
+            console.error('[Notes] Failed to save view mode setting');
+        }
+    } catch (error) {
+        console.error('[Notes] Error saving view mode setting:', error);
+    }
+}
+
+// Get CSRF token from cookie
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
 }
 
 // Escape HTML

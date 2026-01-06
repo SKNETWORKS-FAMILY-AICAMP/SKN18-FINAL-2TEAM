@@ -1,18 +1,19 @@
 /* Notes Container */
 .notes-container {
-    height: 100%;
+    flex: 1;
     display: flex;
     flex-direction: column;
+    min-height: 0;
     background: var(--color-bg-gray-50);
-    /* sidebar(4rem = 64px)를 고려하여 왼쪽 여백 설정 - subsidebar 없음 */
-    margin-left: 4rem;
+    /* padding: 1.5rem; */
 }
 
 /* Notes List View */
 .notes-list-view {
-    height: 100%;
+    flex: 1;
     display: flex;
     flex-direction: column;
+    min-height: 0;
 }
 
 .notes-header {
@@ -42,6 +43,44 @@
     display: flex;
     align-items: center;
     gap: 0.75rem;
+}
+
+/* My Notes Only Filter */
+.filter-checkbox-wrapper {
+    display: flex;
+    align-items: center;
+}
+
+.filter-checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    user-select: none;
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
+    padding: 0.375rem 0.75rem;
+    border: 1px solid var(--color-border-gray);
+    border-radius: 0.5rem;
+    background: var(--color-bg-white);
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.filter-checkbox-label:hover {
+    background: var(--color-bg-gray-50);
+    border-color: var(--color-border-gray-dark);
+}
+
+.filter-checkbox {
+    margin: 0;
+    cursor: pointer;
+    width: 1rem;
+    height: 1rem;
+    accent-color: var(--color-primary);
+}
+
+.filter-checkbox-label span {
+    white-space: nowrap;
 }
 
 .search-wrapper {
@@ -205,7 +244,9 @@
 
 .notes-content {
     flex: 1;
+    min-height: 0;
     overflow-y: auto;
+    overflow-x: hidden;
     padding: 1.5rem 2rem;
     /* 하단 고정 pagination 영역 높이만큼 여백 추가 */
     padding-bottom: 5rem;
@@ -237,8 +278,8 @@
     cursor: pointer;
     transition: all 0.15s;
     height: 280px;
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-rows: auto 1fr auto auto;
 }
 
 .note-card:hover {
@@ -268,7 +309,6 @@
     -webkit-box-orient: vertical;
     overflow: hidden;
     text-overflow: ellipsis;
-    flex: 1;
 }
 
 .note-tags {
@@ -293,12 +333,40 @@
     justify-content: space-between;
     padding-top: 1rem;
     border-top: 1px solid #f3f4f6;
-    margin-top: auto;
+    margin-top: 0;
 }
 
 .note-date {
     font-size: 0.875rem;
     color: #6b7280;
+}
+
+.author-date {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.875rem;
+    color: #4b5563;
+}
+
+.author-date .author-label {
+    color: #111827;
+    font-weight: 500;
+}
+
+.author-date .author-separator {
+    color: #d1d5db;
+}
+
+.author-date .date-label {
+    color: #6b7280;
+}
+
+.shared-badge {
+    color: var(--color-primary, #3b82f6);
+    font-weight: 600;
+    font-size: 0.75rem;
+    margin-left: 0.25rem;
 }
 
 .note-stats {
@@ -309,10 +377,82 @@
     color: #6b7280;
 }
 
+.stat-lock {
+    display: flex;
+    align-items: center;
+    padding-left: 0.25rem;
+}
+
+.stat-lock i {
+    font-size: 0.9rem;
+}
+
+.lock-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    position: relative;
+}
+
+.lock-public i {
+    color: #ef4444;
+}
+
+.lock-private i {
+    color: #2563eb;
+}
+
 .stat {
     display: flex;
     align-items: center;
     gap: 0.25rem;
+}
+
+.stat-lock {
+    position: relative;
+    cursor: default;
+}
+
+.stat-lock[data-tooltip]::after,
+.lock-icon[data-tooltip]::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 0.35rem);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #111827;
+    color: white;
+    padding: 0.35rem 0.5rem;
+    font-size: 0.7rem;
+    border-radius: 0.25rem;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s ease;
+    z-index: 10;
+}
+
+.stat-lock[data-tooltip]::before,
+.lock-icon[data-tooltip]::before {
+    content: '';
+    position: absolute;
+    bottom: calc(100% + 0.1rem);
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 5px;
+    border-style: solid;
+    border-color: #111827 transparent transparent transparent;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    z-index: 10;
+}
+
+.stat-lock[data-tooltip]:hover::after,
+.stat-lock[data-tooltip]:hover::before,
+.lock-icon[data-tooltip]:hover::after,
+.lock-icon[data-tooltip]:hover::before {
+    opacity: 1;
 }
 
 .stat i {
@@ -408,7 +548,7 @@
     background: white;
     border-radius: 0.5rem;
     border: 1px solid #e5e7eb;
-    overflow: hidden;
+    overflow: visible;
 }
 
 .notes-table {
@@ -445,7 +585,12 @@
 
 .table-col-title {
     width: auto;
-    min-width: 300px;
+    min-width: 260px;
+}
+
+.table-col-author {
+    width: 140px;
+    white-space: nowrap;
 }
 
 .table-col-date {
@@ -454,7 +599,7 @@
 }
 
 .table-col-tags {
-    width: 200px;
+    width: 360px;
 }
 
 .table-col-shared {
@@ -463,6 +608,11 @@
 }
 
 .table-col-comments {
+    width: 80px;
+    text-align: center;
+}
+
+.table-col-visibility {
     width: 80px;
     text-align: center;
 }
@@ -482,12 +632,29 @@
 }
 
 .notes-table-body td {
-    padding: 1rem 1.5rem;
+    /* padding: 1rem 1.5rem; */
+    padding: 0.7rem 1.2rem;
     vertical-align: top;
 }
 
 .table-cell-title {
-    max-width: 28rem;
+    max-width: 24rem;
+}
+
+.table-cell-author {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    color: #111827;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.table-cell-author .shared-badge {
+    color: var(--color-primary, #3b82f6);
+    font-weight: 600;
+    font-size: 0.75rem;
 }
 
 .table-cell-title h4 {
@@ -531,14 +698,18 @@
     color: #2563eb;
     padding: 0.25rem 0.5rem;
     border-radius: 0.25rem;
-    white-space: nowrap;
 }
 
 .table-cell-shared,
-.table-cell-comments {
+.table-cell-comments,
+.table-cell-visibility {
     text-align: center;
     font-size: 0.875rem;
     color: #4b5563;
+}
+
+.table-cell-visibility .lock-icon {
+    margin-left: 0;
 }
 
 /* Meta Tag (공통) */

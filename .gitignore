@@ -411,15 +411,15 @@ infra/aws/lambda_build/nih/
 infra/aws/lambda_build/pubmed/
 
 # Vite 빌드 결과물 (django_app/static에 생성되는 파일들)
-django_app/static/js-lib/**
-django_app/static/assets/**
+# 주의: 프로덕션 배포를 위해 빌드된 파일은 git에 커밋 필요
+# django_app/static/js-lib/**
+# django_app/static/assets/**
 
 # neo4j plugins
 infra/neo4j/plugins/**
 
 # ML 모델 파일 (용량이 크므로 Git에 포함하지 않음)
 graph/models/
-models/
 
 # Fine-tuning data directory
 .fine-tuning/data/

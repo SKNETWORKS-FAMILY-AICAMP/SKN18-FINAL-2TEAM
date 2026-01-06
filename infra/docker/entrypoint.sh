@@ -324,6 +324,36 @@ python manage.py collectstatic --noinput || echo "Warning: collectstatic failed 
 
 echo "Migrations completed. Starting application..."
 
+# ========================================
+# CrossEncoder 모델 사전 다운로드 (첫 실행 시 지연 방지)
+# ========================================
+echo "Checking CrossEncoder model..."
+if [ ! -f "/app/models/.cross-encoder-ready" ]; then
+  echo "CrossEncoder model not found. Pre-downloading..."
+  python -c "
+import os
+os.makedirs('/app/models', exist_ok=True)
+os.environ['SENTENCE_TRANSFORMERS_HOME'] = '/app/models'
+os.environ['HF_HOME'] = '/app/models'
+os.environ['HF_HUB_DOWNLOAD_TIMEOUT'] = '180'
+
+try:
+    from sentence_transformers import CrossEncoder
+    print('[CrossEncoder] Downloading model: cross-encoder/ms-marco-MiniLM-L-6-v2')
+    model = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2', cache_folder='/app/models')
+    print('[CrossEncoder] Model downloaded successfully')
+    # 다운로드 완료 표시
+    with open('/app/models/.cross-encoder-ready', 'w') as f:
+        f.write('ready')
+    print('[CrossEncoder] Model pre-download complete')
+except Exception as e:
+    print(f'[CrossEncoder] Warning: Model pre-download failed: {e}')
+    print('[CrossEncoder] Model will be downloaded on first use (may cause delay)')
+" || echo "Warning: Model pre-download failed (will download on first use)"
+else
+  echo "CrossEncoder model already available (skipping download)"
+fi
+
 # CMD로 전달된 명령어 실행
 exec "$@"
 

@@ -35,8 +35,8 @@ console.log('[SaveToNoteModal] ===== Script file loading... =====');
         { id: 15, title: '바이오마커 연구', date: '2025-11-14', category: '진단' },
     ];
 
-    // All notes (will use mock data)
-    let allNotes = [...allMockNotes];
+    // All notes (will be loaded from API)
+    let allNotes = [];
 
     // DOM elements
     const modalId = 'saveToNoteModal';
@@ -46,6 +46,7 @@ console.log('[SaveToNoteModal] ===== Script file loading... =====');
     let notesPagination = null;
     let newNoteNameInput = null;
     let saveNoteBtn = null;
+    let isLoadingNotes = false;
 
     // Get DOM elements
     function getModalElements() {
@@ -82,16 +83,28 @@ console.log('[SaveToNoteModal] ===== Script file loading... =====');
                 tabGroup.addEventListener('sl-tab-show', (e) => {
                     const panelName = e.detail.name;
                     setSaveToNoteOption(panelName === 'existing' ? 'existing' : 'new');
+                    
+                    // 'existing' 패널이 활성화될 때 노트 목록 로드
+                    if (panelName === 'existing') {
+                        loadNotes(noteSearchQuery);
+                    }
                 });
             });
         }
 
-        // Search input
+        // Search input with debounce
+        let searchTimeout = null;
         if (noteSearchInput) {
             noteSearchInput.addEventListener('input', (e) => {
-                setNoteSearchQuery(e.target.value);
+                const query = e.target.value;
+                setNoteSearchQuery(query);
                 currentPage = 1; // Reset to page 1 on search
-                renderNotesList();
+                
+                // Debounce API calls (500ms delay)
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => {
+                    loadNotes(query);
+                }, 500);
             });
         }
 
@@ -113,15 +126,95 @@ console.log('[SaveToNoteModal] ===== Script file loading... =====');
         return true;
     }
 
-    // Load notes (use mock data)
-    function loadNotes() {
-        allNotes = [...allMockNotes];
-        currentPage = 1;
-        selectedNote = null;
-        renderNotesList();
+    // Load notes from API
+    async function loadNotes(searchQuery = '') {
+        if (isLoadingNotes) return;
+        
+        isLoadingNotes = true;
+        
+        // Show loading state
+        if (notesList) {
+            notesList.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-spinner fa-spin empty-icon"></i>
+                    <p class="empty-text">노트 목록을 불러오는 중...</p>
+                </div>
+            `;
+        }
+        
+        try {
+            // Build API URL with query parameters
+            const params = new URLSearchParams();
+            if (searchQuery) {
+                params.append('search', searchQuery);
+            }
+            params.append('my_notes_only', 'true'); // 내 노트만 조회
+            
+            const apiUrl = `/api/notes/?${params.toString()}`;
+            
+            const response = await fetch(apiUrl, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'same-origin',
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            console.log('[SaveToNoteModal] API 응답 데이터:', data);
+            
+            if (data.status === 'success' && Array.isArray(data.results)) {
+                // Transform API response to match expected format
+                allNotes = data.results.map(note => ({
+                    id: note.id,
+                    title: note.title,
+                    date: note.date,
+                    category: note.tags && note.tags.length > 0 ? note.tags[0] : '', // 첫 번째 태그를 카테고리로 사용
+                    tags: note.tags || [],
+                }));
+                
+                console.log('[SaveToNoteModal] 변환된 노트 목록:', allNotes);
+                console.log('[SaveToNoteModal] 노트 개수:', allNotes.length);
+                
+                currentPage = 1;
+                selectedNote = null;
+                renderNotesList();
+            } else {
+                console.error('[SaveToNoteModal] 잘못된 응답 형식:', data);
+                throw new Error('Invalid response format');
+            }
+        } catch (error) {
+            console.error('[SaveToNoteModal] Failed to load notes:', error);
+            
+            // Show error state
+            if (notesList) {
+                notesList.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-exclamation-triangle empty-icon"></i>
+                        <p class="empty-text">노트 목록을 불러오는데 실패했습니다</p>
+                        <p class="empty-hint">${error.message}</p>
+                        <button class="retry-btn" onclick="window.SaveToNoteModal && window.SaveToNoteModal.loadNotes()">
+                            다시 시도
+                        </button>
+                    </div>
+                `;
+            }
+            
+            // Fallback to empty array
+            allNotes = [];
+            renderNotesList();
+        } finally {
+            isLoadingNotes = false;
+        }
     }
 
-    // Filter notes by search query
+        // Filter notes by search query (client-side filtering for pagination)
+    // Note: API already filters by search query, but we filter again for client-side pagination
     function getFilteredNotes() {
         if (!noteSearchQuery.trim()) {
             return allNotes;
@@ -130,7 +223,8 @@ console.log('[SaveToNoteModal] ===== Script file loading... =====');
         const query = noteSearchQuery.toLowerCase();
         return allNotes.filter(note =>
             note.title.toLowerCase().includes(query) ||
-            (note.category && note.category.toLowerCase().includes(query))
+            (note.category && note.category.toLowerCase().includes(query)) ||
+            (note.tags && note.tags.some(tag => tag.toLowerCase().includes(query)))
         );
     }
 
@@ -156,9 +250,14 @@ console.log('[SaveToNoteModal] ===== Script file loading... =====');
         if (!notesList) {
             getModalElements();
         }
-        if (!notesList) return;
+        if (!notesList) {
+            console.warn('[SaveToNoteModal] notesList 요소를 찾을 수 없습니다.');
+            return;
+        }
 
+        console.log('[SaveToNoteModal] renderNotesList 호출됨');
         const { notes, totalPages, total, startIndex, endIndex } = getPaginatedNotes();
+        console.log('[SaveToNoteModal] 페이지네이션된 노트:', notes);
 
         if (notes.length === 0) {
             notesList.innerHTML = `
@@ -309,16 +408,56 @@ console.log('[SaveToNoteModal] ===== Script file loading... =====');
     }
 
     // Handle save
-    function handleSave() {
+    async function handleSave() {
+        const messageId = saveToNoteContext?.messageId;
+        
+        if (!messageId) {
+            console.error('[SaveToNoteModal] messageId가 없습니다.');
+            if (window.notyf) {
+                window.notyf.error('메시지 ID를 찾을 수 없습니다.');
+            }
+            return;
+        }
+        
+        // Save button 비활성화 (중복 요청 방지)
+        if (saveNoteBtn) {
+            saveNoteBtn.disabled = true;
+            saveNoteBtn.textContent = '저장 중...';
+        }
+        
+        try {
         if (saveToNoteOption === 'existing' && selectedNote) {
-            const saveData = {
+                // 기존 노트에 추가
+                const response = await fetch('/api/notes/save-message/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({
+                        message_id: parseInt(messageId),
+                        option: 'existing',
+                        note_id: selectedNote.id,
+                    }),
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({ error: '알 수 없는 오류가 발생했습니다.' }));
+                    throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    // Dispatch event
+                    document.dispatchEvent(new CustomEvent('saveToNote:save', { 
+                        detail: {
                 option: 'existing',
                 noteId: selectedNote.id,
                 noteTitle: selectedNote.title,
-            };
-
-            // Dispatch event
-            document.dispatchEvent(new CustomEvent('saveToNote:save', { detail: saveData }));
+                            data: data
+                        }
+                    }));
 
             // Call callback if provided
             if (saveToNoteContext && typeof saveToNoteContext.onSave === 'function') {
@@ -326,14 +465,41 @@ console.log('[SaveToNoteModal] ===== Script file loading... =====');
             }
 
             closeSaveToNoteModal();
+                } else {
+                    throw new Error(data.error || '저장에 실패했습니다.');
+                }
+                
         } else if (saveToNoteOption === 'new' && newNoteName.trim()) {
-            const saveData = {
+                // 신규 노트 생성
+                const response = await fetch('/api/notes/save-message/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({
+                        message_id: parseInt(messageId),
+                        option: 'new',
+                        note_name: newNoteName.trim(),
+                    }),
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({ error: '알 수 없는 오류가 발생했습니다.' }));
+                    throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    // Dispatch event
+                    document.dispatchEvent(new CustomEvent('saveToNote:save', { 
+                        detail: {
                 option: 'new',
                 noteName: newNoteName.trim(),
-            };
-
-            // Dispatch event
-            document.dispatchEvent(new CustomEvent('saveToNote:save', { detail: saveData }));
+                            data: data
+                        }
+                    }));
 
             // Call callback if provided
             if (saveToNoteContext && typeof saveToNoteContext.onSave === 'function') {
@@ -341,6 +507,22 @@ console.log('[SaveToNoteModal] ===== Script file loading... =====');
             }
 
             closeSaveToNoteModal();
+                } else {
+                    throw new Error(data.error || '저장에 실패했습니다.');
+                }
+            }
+        } catch (error) {
+            console.error('[SaveToNoteModal] Failed to save:', error);
+            if (window.notyf) {
+                window.notyf.error(error.message || '노트 저장 중 오류가 발생했습니다.');
+            }
+        } finally {
+            // Save button 재활성화
+            if (saveNoteBtn) {
+                saveNoteBtn.disabled = false;
+                saveNoteBtn.textContent = '저장';
+                updateSaveButtonState(); // 상태에 따라 다시 비활성화할 수 있음
+            }
         }
     }
 
@@ -351,7 +533,7 @@ console.log('[SaveToNoteModal] ===== Script file loading... =====');
         newNoteName = '';
         noteSearchQuery = '';
         currentPage = 1;
-        saveToNoteContext = null;
+        // saveToNoteContext는 reset하지 않음 (messageId 보존을 위해)
 
         if (noteSearchInput) noteSearchInput.value = '';
         if (newNoteNameInput) newNoteNameInput.value = '';
@@ -367,7 +549,7 @@ console.log('[SaveToNoteModal] ===== Script file loading... =====');
 
     // Open modal
     function openSaveToNoteModal(data = null) {
-        console.log('[SaveToNoteModal] Opening modal...');
+        console.log('[SaveToNoteModal] Opening modal...', data);
 
         // Ensure initialization
         if (!isInitialized) {
@@ -380,8 +562,12 @@ console.log('[SaveToNoteModal] ===== Script file loading... =====');
             return;
         }
 
-        // Store context
-        saveToNoteContext = data;
+        // Store context (data 전체를 저장하여 messageId 보존)
+        saveToNoteContext = data ? { ...data } : null;
+        
+        // 디버깅: 저장된 context 확인
+        console.log('[SaveToNoteModal] saveToNoteContext:', saveToNoteContext);
+        console.log('[SaveToNoteModal] messageId:', saveToNoteContext?.messageId);
 
         // Update title and description if provided
         if (data && data.title) {
@@ -393,13 +579,59 @@ console.log('[SaveToNoteModal] ===== Script file loading... =====');
             if (descEl) descEl.textContent = data.description;
         }
 
-        // Reset and load notes
+        // Save context temporarily before reset
+        const tempContext = data ? { ...data } : null;
+        
+        // Reset state (이 함수는 saveToNoteContext를 null로 초기화함)
         resetState();
-        loadNotes();
-        updateSaveButtonState();
-
+        
+        // Restore context after reset (messageId 보존)
+        saveToNoteContext = tempContext;
+        console.log('[SaveToNoteModal] Context 복원됨:', saveToNoteContext);
+        console.log('[SaveToNoteModal] messageId:', saveToNoteContext?.messageId);
+        
         modal.classList.add('active');
         console.log('[SaveToNoteModal] Modal opened');
+        
+        // Shoelace 탭이 완전히 초기화된 후 노트 목록 로드
+        // 'existing' 탭이 기본 선택되어 있으므로, 탭이 활성화된 후 데이터 로드
+        if (tabGroup) {
+            customElements.whenDefined('sl-tab-group').then(() => {
+                // 탭 패널이 실제로 활성화되었는지 확인하는 함수
+                const checkAndLoadNotes = () => {
+                    const existingPanel = tabGroup.querySelector('sl-tab-panel[name="existing"]');
+                    const existingTab = tabGroup.querySelector('sl-tab[panel="existing"]');
+                    
+                    // 탭 패널이 존재하고 활성화되어 있는지 확인
+                    if (existingPanel && existingTab && existingTab.hasAttribute('active')) {
+                        console.log('[SaveToNoteModal] Existing 탭이 활성화됨, 노트 목록 로드 시작');
+                        loadNotes('');
+                        return true;
+                    }
+                    return false;
+                };
+                
+                // 즉시 확인 시도
+                if (checkAndLoadNotes()) {
+                    return;
+                }
+                
+                // 탭 패널이 아직 활성화되지 않았다면, 약간의 지연 후 재시도
+                setTimeout(() => {
+                    if (!checkAndLoadNotes()) {
+                        console.warn('[SaveToNoteModal] Existing 탭이 활성화되지 않음, 강제로 노트 로드');
+                        // 탭이 활성화되지 않았어도 데이터는 로드 (나중에 탭이 활성화되면 표시됨)
+                        loadNotes('');
+                    }
+                }, 150);
+            });
+        } else {
+            // 탭 그룹이 없으면 즉시 로드
+            console.log('[SaveToNoteModal] 탭 그룹이 없음, 즉시 노트 로드');
+            loadNotes('');
+        }
+        
+        updateSaveButtonState();
     }
 
     // Close modal
@@ -424,6 +656,7 @@ console.log('[SaveToNoteModal] ===== Script file loading... =====');
         open: openSaveToNoteModal,
         close: closeSaveToNoteModal,
         init: initSaveToNoteModal,
+        loadNotes: loadNotes,
         isReady: function() {
             return isInitialized;
         }

@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     "apps.organization.apps.OrganizationConfig",
     "apps.codes.apps.CodesConfig",
     "apps.bookmark.apps.BookmarkConfig",
+    "apps.feedback.apps.FeedbackConfig",
     
     "django.contrib.admin",
     "django.contrib.auth",
@@ -68,6 +69,9 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "apps.account.middleware.DatabasePerformanceMiddleware",  # DB 성능 모니터링 (디버깅용)
+    "apps.account.middleware.UserActivityLoggingMiddleware",
+    "apps.account.middleware.SessionTimeoutMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -106,6 +110,26 @@ DATABASES = {
         'PASSWORD': env("POSTGRES_PASSWORD"),
         'HOST': env("POSTGRES_HOST"),
         'PORT': env("POSTGRES_PORT"),
+        # 연결 풀링 설정
+        # CONN_MAX_AGE: 연결을 재사용할 시간(초)
+        # 0 (기본값): 각 요청마다 새로운 연결을 만들고 닫음 (느림)
+        # None: 연결을 영구적으로 유지 (권장하지 않음 - 연결 누수 위험)
+        # 양수: 해당 시간 동안 연결을 재사용 (권장: 300-600초)
+        'CONN_MAX_AGE': env.int('DB_CONN_MAX_AGE', default=600),  # 10분
+        # 연결 옵션 (psycopg 연결 파라미터)
+        'OPTIONS': {
+            # 연결 타임아웃 (초) - 너무 짧으면 느린 네트워크에서 실패
+            'connect_timeout': env.int('DB_CONNECT_TIMEOUT', default=10),
+            # 연결 유지 옵션 (TCP keepalive)
+            'keepalives': 1,
+            'keepalives_idle': 600,  # 10분
+            'keepalives_interval': 30,  # 30초마다 확인
+            'keepalives_count': 3,  # 3회 실패 시 연결 종료
+            # 연결 풀링 관련 (psycopg v3용)
+            # 'application_name': 'django_app',  # DB에서 확인 가능한 앱 이름
+        },
+        # 트랜잭션 자동 commit (롤백 메시지 감소)
+        'ATOMIC_REQUESTS': False,  # False 권장 (성능상 이점)
     }
 }
 
@@ -166,11 +190,28 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'uploads'
 
+# File upload settings
+# 1GB 파일 업로드 지원을 위한 설정
+DATA_UPLOAD_MAX_MEMORY_SIZE = 1024 * 1024 * 1024  # 1GB (기본값: 2.5MB)
+FILE_UPLOAD_MAX_MEMORY_SIZE = 1024 * 1024 * 1024  # 1GB (기본값: 2.5MB)
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 10000  # 최대 필드 수 (기본값: 1000)
+
 # 인증 관련 설정
 LOGIN_URL = 'accounts:login'
 LOGIN_REDIRECT_URL = 'dashboard:dashboard'
 LOGOUT_REDIRECT_URL = 'accounts:login'
 AUTH_USER_MODEL = 'account.CustomUser'
+
+# 기본 세션 만료 설정
+SESSION_COOKIE_AGE = 60 * 60  # 기본 세션 쿠키 만료 (1시간)
+SESSION_SAVE_EVERY_REQUEST = False
+SESSION_REFRESH_SECONDS = 60 * 60  # 활동 시마다 연장할 시간
+SESSION_MAX_IDLE_SECONDS = 3 * 60 * 60  # 최대 무활동 허용 시간
+
+# # 테스트(예: 10초 후 만료, 5초마다 연장) 시 아래 값으로 임시 대체
+# SESSION_COOKIE_AGE = 10
+# SESSION_REFRESH_SECONDS = 5
+# SESSION_MAX_IDLE_SECONDS = 10
 
 
 # Default primary key field type
@@ -198,7 +239,15 @@ X_FRAME_OPTIONS = "SAMEORIGIN"
 # ───────────────────────────────────
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
-GOOGLE_REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI", "")
+
+# 용도별 리디렉션 URI
+GOOGLE_REDIRECT_URIS = {
+    'calendar': os.getenv("GOOGLE_CALENDAR_REDIRECT_URI", "http://localhost:8000/schedule/google/oauth2/callback/"),
+    'profile': os.getenv("GOOGLE_PROFILE_REDIRECT_URI", "http://localhost:8000/accounts/google/login/callback/"),
+}
+
+# 기존 호환성 유지
+GOOGLE_REDIRECT_URI = GOOGLE_REDIRECT_URIS.get('calendar', os.getenv("GOOGLE_REDIRECT_URI", ""))
 
 GOOGLE_CALENDAR_SCOPE = os.getenv(
     "GOOGLE_CALENDAR_SCOPE",

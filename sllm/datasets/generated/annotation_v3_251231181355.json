@@ -1,0 +1,165 @@
+[
+  {
+    "sid": 1,
+    "section_id": "39797660_sec21",
+    "observations": [
+      "The total follow-up time was 88 years.",
+      "The total number of appointments was 76, with 21 censored.",
+      "The new model of care decreased the average time to first hepatology clinic appointment, but the 95% credible intervals included the potential for longer times with the new model of care (mean HR 1.18, 95% CI 0.75 to 1.85)."
+    ],
+    "question": "How does the new model of care compare to the previous model in terms of time to first hepatology clinic appointment?",
+    "conclusion": {
+      "interpretation": [
+        "The new model of care decreased the average time to first hepatology clinic appointment."
+      ],
+      "interpretation_limits": [
+        "The comparison is limited to the average time to first hepatology clinic appointment and does not account for other factors."
+      ],
+      "cautions": [
+        "The credible intervals suggest variability, indicating that the new model may not always result in shorter times."
+      ],
+      "suggested_next_steps": [
+        "Conduct further studies to confirm the effect of the new model of care on time to first hepatology clinic appointment under different conditions."
+      ]
+    },
+    "interpretation_boundary": {
+      "can_conclude": [
+        "The new model of care decreased the average time to first hepatology clinic appointment."
+      ],
+      "cannot_conclude": [
+        "ANY molecular, structural, catalytic, physiological, or clinical explanations.",
+        "ANY causal or mechanistic claims not explicitly demonstrated."
+      ]
+    }
+  },
+  {
+    "sid": 2,
+    "section_id": "39797660_sec22",
+    "observations": [
+      "There were no presentations that related specifically to a liver-related condition."
+    ],
+    "question": "Were there any emergency department presentations related to liver conditions?",
+    "conclusion": {
+      "interpretation": [
+        "No liver-related conditions were observed in emergency department presentations."
+      ],
+      "interpretation_limits": [
+        "The observation is limited to the specific conditions of emergency department presentations."
+      ],
+      "cautions": [
+        "The findings are specific to the context of emergency department presentations and may not apply to other settings."
+      ],
+      "suggested_next_steps": [
+        "Conduct further studies to assess liver-related conditions in different healthcare settings or populations."
+      ]
+    },
+    "interpretation_boundary": {
+      "can_conclude": [
+        "No liver-related conditions were observed in the emergency department presentations."
+      ],
+      "cannot_conclude": [
+        "ANY molecular, structural, catalytic, physiological, or clinical explanations.",
+        "ANY causal or mechanistic claims not explicitly demonstrated.",
+        "Paraphrasing is allowed ONLY if numerical or directional meaning is preserved.",
+        "No abstraction beyond the observed comparison is allowed."
+      ]
+    }
+  },
+  {
+    "sid": 3,
+    "section_id": "39797660_sec23",
+    "observations": [
+      "There were too few events noted during the follow-up period."
+    ],
+    "question": "Were there enough events during the follow-up period to warrant further analysis?",
+    "conclusion": {
+      "interpretation": [
+        "The number of events was insufficient for further analysis."
+      ],
+      "interpretation_limits": [
+        "The observation is limited to the follow-up period and the specific events being tracked."
+      ],
+      "cautions": [
+        "The results are constrained by the low number of events, limiting the ability to draw broader conclusions."
+      ],
+      "suggested_next_steps": [
+        "Conduct a study with a longer follow-up period or a larger sample size to increase the number of events."
+      ]
+    },
+    "interpretation_boundary": {
+      "can_conclude": [
+        "The number of events was insufficient for further analysis."
+      ],
+      "cannot_conclude": [
+        "ANY molecular, structural, catalytic, physiological, or clinical explanations.",
+        "ANY causal or mechanistic claims not explicitly demonstrated.",
+        "Paraphrasing is allowed ONLY if numerical or directional meaning is preserved.",
+        "No abstraction beyond the observed comparison is allowed."
+      ]
+    }
+  },
+  {
+    "sid": 4,
+    "section_id": "39797660_sec25",
+    "observations": [
+      "There were no admissions to hospital for NAFLD-related events for any participants during the follow-up period."
+    ],
+    "question": "Were there any hospital admissions for NAFLD-related events during the follow-up period?",
+    "conclusion": {
+      "interpretation": [
+        "No hospital admissions for NAFLD-related events were observed during the follow-up period."
+      ],
+      "interpretation_limits": [
+        "The observation is limited to the follow-up period and the specific participant group studied."
+      ],
+      "cautions": [
+        "The results are specific to the follow-up period and may not be generalizable to other time frames or populations."
+      ],
+      "suggested_next_steps": [
+        "Conduct follow-up studies with different participant groups or extended follow-up periods to confirm the absence of hospital admissions for NAFLD-related events."
+      ]
+    },
+    "interpretation_boundary": {
+      "can_conclude": [
+        "No hospital admissions for NAFLD-related events were observed during the follow-up period."
+      ],
+      "cannot_conclude": [
+        "ANY molecular, structural, catalytic, physiological, or clinical explanations.",
+        "ANY causal or mechanistic claims not explicitly demonstrated.",
+        "Paraphrasing is allowed ONLY if numerical or directional meaning is preserved.",
+        "No abstraction beyond the observed comparison is allowed."
+      ]
+    }
+  },
+  {
+    "sid": 5,
+    "section_id": "39797660_sec27",
+    "observations": [
+      "Two participants were diagnosed with variceal bleeding during the follow-up period, both from the usual care cohort."
+    ],
+    "question": "Were there any cases of variceal bleeding in the usual care cohort compared to other cohorts?",
+    "conclusion": {
+      "interpretation": [
+        "Variceal bleeding was observed in two participants from the usual care cohort."
+      ],
+      "interpretation_limits": [
+        "The observation is limited to the follow-up period and the usual care cohort."
+      ],
+      "cautions": [
+        "The findings are specific to the cohort and time frame studied."
+      ],
+      "suggested_next_steps": [
+        "Conduct follow-up studies to assess variceal bleeding in different cohorts or over extended follow-up periods."
+      ]
+    },
+    "interpretation_boundary": {
+      "can_conclude": [
+        "Variceal bleeding was observed in two participants from the usual care cohort."
+      ],
+      "cannot_conclude": [
+        "ANY molecular, structural, catalytic, physiological, or clinical explanations.",
+        "ANY causal or mechanistic claims not explicitly demonstrated."
+      ]
+    }
+  }
+]

@@ -52,6 +52,7 @@ whitenoise  # 정적 파일 서빙 (프로덕션 환경)
 requests
 lxml
 markdownify
+markdown  # 마크다운 → HTML 변환 (노트 저장용)
 python-dateutil
 beautifulsoup4
 nltk

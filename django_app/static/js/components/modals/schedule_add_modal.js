@@ -3,14 +3,34 @@
   'use strict';
 
   const API_BASE = '/schedule';
+  const TYPE_FORM_TO_SERVER = {
+    experiment: 'E',
+    meeting: 'M',
+    analysis: 'A',
+    seminar: 'S',
+    E: 'E',
+    M: 'M',
+    A: 'A',
+    S: 'S',
+  };
+  const TYPE_SERVER_TO_FORM = {
+    E: 'experiment',
+    M: 'meeting',
+    A: 'analysis',
+    S: 'seminar',
+  };
 
   let noteSearchQuery = '';
   let showNoteDropdown = false;
   let selectedNoteId = null;
   let sharedEmails = [];
   let prefillDate = null;
+  let isEditMode = false;
+  let editingScheduleId = null;
+  let editingScheduleData = null;
 
-  let googleCalendarsForSelect = [];
+  let availableCalendarsForSelect = [];
+  let selectedCalendarIdForForm = null;
 
   let customRepeatInterval = 1;
   let customRepeatUnit = 'week';
@@ -22,6 +42,7 @@
   // DOM elements
   const modalId = 'scheduleAddModal';
   const scheduleAddForm = document.getElementById('scheduleAddForm');
+  const scheduleAddModalTitle = document.getElementById('scheduleAddModalTitle');
   const scheduleTitleInput = document.getElementById('scheduleTitleInput');
   const scheduleDescriptionInput = document.getElementById('scheduleDescriptionInput');
   const scheduleLocationInput = document.getElementById('scheduleLocationInput');
@@ -52,6 +73,7 @@
   const repeatEndDateInput = document.getElementById('repeatEndDate');
   const repeatEndCountInput = document.getElementById('repeatEndCount');
   const customRepeatSummary = document.getElementById('customRepeatSummary');
+  const calendarAddInlineBtn = document.getElementById('openCalendarAddInlineBtn');
 
   // ✅ 이거 하나만 선언 (중복 금지)
   const targetCalendarSelect = document.getElementById('targetCalendarSelect');
@@ -132,8 +154,11 @@
 
     // ✅ select 클릭/포커스 때도 다시 로드 (모달 이벤트가 안 잡혀도 커버)
     if (targetCalendarSelect) {
-      targetCalendarSelect.addEventListener('focus', loadGoogleCalendarsForTargetSelect);
-      targetCalendarSelect.addEventListener('click', loadGoogleCalendarsForTargetSelect);
+      targetCalendarSelect.addEventListener('focus', () => loadUserCalendarsForTargetSelect());
+      targetCalendarSelect.addEventListener('click', () => loadUserCalendarsForTargetSelect());
+      targetCalendarSelect.addEventListener('change', (event) => {
+        selectedCalendarIdForForm = event.target.value;
+      });
     }
 
     // click outside dropdown
@@ -141,26 +166,39 @@
       if (scheduleNoteSearchInput && scheduleNoteDropdown) {
             if (!scheduleNoteSearchInput.contains(e.target) && 
                 !scheduleNoteDropdown.contains(e.target)) {
-          showNoteDropdown = false;
-          scheduleNoteDropdown.style.display = 'none';
-        }
+        showNoteDropdown = false;
+        scheduleNoteDropdown.style.display = 'none';
       }
+     }
     });
 
-    // Load notes
+    document.addEventListener('calendar:add', async () => {
+      await loadUserCalendarsForTargetSelect();
+    });
+
+    if (calendarAddInlineBtn) {
+      calendarAddInlineBtn.addEventListener('click', () => {
+        if (window.CalendarAddModal && window.CalendarAddModal.open) {
+          window.CalendarAddModal.open();
+        } else if (window.Modal) {
+          window.Modal.open('calendarAddModal');
+        }
+      });
+    }
+
+    loadUserCalendarsForTargetSelect();
     loadNotes();
   }
 
-  async function loadGoogleCalendarsForTargetSelect() {
+  async function loadUserCalendarsForTargetSelect(preferredCalendarId = null) {
     if (!targetCalendarSelect) return;
 
-    console.log('[ScheduleAddModal] loadGoogleCalendarsForTargetSelect called');
+    if (preferredCalendarId !== null && preferredCalendarId !== undefined) {
+      selectedCalendarIdForForm = preferredCalendarId;
+    }
 
     try {
-      const url = `${API_BASE}/api/google-calendar/calendars/`;
-      console.log('[ScheduleAddModal] fetching:', url);
-
-      const res = await fetch(url, {
+      const res = await fetch('/api/calendars/', {
         method: 'GET',
         credentials: 'same-origin',
         headers: {
@@ -169,24 +207,18 @@
         },
       });
 
-      console.log('[ScheduleAddModal] calendars status:', res.status);
-
       if (!res.ok) {
-        googleCalendarsForSelect = [];
-        renderTargetCalendarOptions();
-        return;
+        availableCalendarsForSelect = [];
+      } else {
+        const data = await res.json();
+        availableCalendarsForSelect = Array.isArray(data?.results) ? data.results : (Array.isArray(data) ? data : []);
       }
-
-      const data = await res.json();
-      googleCalendarsForSelect = data.results || data || [];
-      console.log('[ScheduleAddModal] calendars payload:', googleCalendarsForSelect);
-
-      renderTargetCalendarOptions();
     } catch (err) {
-      console.error('[ScheduleAddModal] calendars fetch error:', err);
-      googleCalendarsForSelect = [];
-      renderTargetCalendarOptions();
+      console.error('[ScheduleAddModal] user calendar fetch error:', err);
+      availableCalendarsForSelect = [];
     }
+
+    renderTargetCalendarOptions();
   }
 
   function renderTargetCalendarOptions() {
@@ -194,34 +226,36 @@
 
     targetCalendarSelect.innerHTML = '';
 
-    const localOpt = document.createElement('option');
-    localOpt.value = 'local';
-    localOpt.textContent = '내 일정(웹 캘린더)';
-    localOpt.selected = true;
-    targetCalendarSelect.appendChild(localOpt);
-
-    if (!googleCalendarsForSelect || googleCalendarsForSelect.length === 0) {
+    if (!availableCalendarsForSelect.length) {
+      const placeholder = document.createElement('option');
+      placeholder.value = '';
+      placeholder.textContent = '등록된 캘린더가 없습니다';
+      targetCalendarSelect.appendChild(placeholder);
+      targetCalendarSelect.disabled = true;
       return;
     }
 
-    const selected = googleCalendarsForSelect.filter(c => !!c.selected);
-    const unselected = googleCalendarsForSelect.filter(c => !c.selected);
-    const ordered = [...selected, ...unselected];
+    targetCalendarSelect.disabled = false;
 
-    ordered.forEach(cal => {
-      const calendarId = cal.calendar_id || cal.email || cal.id;
-      if (!calendarId) return;
+    const preferredId = selectedCalendarIdForForm || (availableCalendarsForSelect[0] ? availableCalendarsForSelect[0].id : null);
 
-      const name = cal.name || cal.summary || 'Google Calendar';
-
+    availableCalendarsForSelect.forEach((calendar, index) => {
       const opt = document.createElement('option');
-      opt.value = `google:${String(calendarId)}`;
-      opt.textContent = cal.selected ? name : `${name} (미선택)`;
-
+      opt.value = calendar.id;
+      opt.textContent = calendar.source_type === 'google'
+        ? `${calendar.name || 'Google Calendar'} (Google)`
+        : (calendar.name || '내 캘린더');
+      if (preferredId) {
+        opt.selected = String(calendar.id) === String(preferredId);
+      } else if (index === 0) {
+        opt.selected = true;
+      }
       targetCalendarSelect.appendChild(opt);
     });
 
-    console.log('[ScheduleAddModal] renderTargetCalendarOptions done. option count:', targetCalendarSelect.options.length);
+    if (!preferredId && availableCalendarsForSelect[0]) {
+      selectedCalendarIdForForm = availableCalendarsForSelect[0].id;
+    }
   }
 
   function handleModalOpen(e) {
@@ -231,34 +265,210 @@
 
     console.log('[ScheduleAddModal] modal open detected:', openedId);
 
-    const urlParams = new URLSearchParams(window.location.search);
-    const dateParam = urlParams.get('date') || prefillDate;
-
-    if (dateParam) {
-      prefillDate = dateParam;
-      if (scheduleStartDate) {
-          scheduleStartDate.value = dateParam;
-      }
-      if (scheduleEndDate) {
-          scheduleEndDate.value = dateParam;
-      }
-    } else {
-      // Default to today
-      const today = new Date().toISOString().split('T')[0];
-      if (scheduleStartDate) scheduleStartDate.value = today;
-      if (scheduleEndDate) scheduleEndDate.value = today;
-    }
-    
-    // Reset form
+    // 항상 초기화 먼저
     resetForm();
 
-    if (scheduleIsAllDay) handleAllDayChange({ target: scheduleIsAllDay });
+    if (isEditMode && editingScheduleData) {
+      populateFormForEdit(editingScheduleData);
+    } else {
+      applyDefaultDatePrefill();
+    }
+
+    if (scheduleIsAllDay && !scheduleIsAllDay.checked) {
+      handleAllDayChange({ target: scheduleIsAllDay });
+    }
 
     if (scheduleRepeatSelect) handleRepeatTypeChange({ target: scheduleRepeatSelect });
     updateCustomRepeatSummary();
 
     // ✅ 여기서도 로드
-    loadGoogleCalendarsForTargetSelect();
+    loadUserCalendarsForTargetSelect(selectedCalendarIdForForm);
+  }
+
+  function applyDefaultDatePrefill() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const dateParam = urlParams.get('date') || prefillDate;
+
+    if (dateParam) {
+      prefillDate = dateParam;
+      if (scheduleIsAllDay) {
+        scheduleIsAllDay.checked = true;
+        handleAllDayChange({ target: scheduleIsAllDay });
+      }
+      if (scheduleStartDate) {
+        scheduleStartDate.value = dateParam;
+      }
+      if (scheduleEndDate) {
+        scheduleEndDate.value = dateParam;
+      }
+      if (scheduleStartTime) scheduleStartTime.value = '';
+      if (scheduleEndTime) scheduleEndTime.value = '';
+    } else {
+      if (scheduleIsAllDay) {
+        scheduleIsAllDay.checked = false;
+        handleAllDayChange({ target: scheduleIsAllDay });
+      }
+
+      const now = new Date();
+      const start = new Date(now.getTime() + 60 * 60 * 1000);
+      const end = new Date(start.getTime() + 60 * 60 * 1000);
+
+      const startDateStr = start.toISOString().split('T')[0];
+      const endDateStr = end.toISOString().split('T')[0];
+      const startTimeStr = start.toTimeString().slice(0, 5);
+      const endTimeStr = end.toTimeString().slice(0, 5);
+
+      if (scheduleStartDate) scheduleStartDate.value = startDateStr;
+      if (scheduleEndDate) scheduleEndDate.value = endDateStr;
+      if (scheduleStartTime) scheduleStartTime.value = startTimeStr;
+      if (scheduleEndTime) scheduleEndTime.value = endTimeStr;
+    }
+  }
+
+  function populateFormForEdit(schedule) {
+    if (!schedule) return;
+
+    if (scheduleAddModalTitle) {
+      scheduleAddModalTitle.textContent = '일정 수정';
+    }
+    if (scheduleAddSaveBtn) {
+      scheduleAddSaveBtn.textContent = '수정하기';
+    }
+
+    if (scheduleTitleInput) scheduleTitleInput.value = schedule.title || '';
+    if (scheduleDescriptionInput) scheduleDescriptionInput.value = schedule.description || '';
+    if (scheduleLocationInput) scheduleLocationInput.value = schedule.location || '';
+
+    if (scheduleTypeSelect) {
+      const mappedType = TYPE_SERVER_TO_FORM[schedule.type] || schedule.type || 'experiment';
+      scheduleTypeSelect.value = mappedType;
+    }
+    if (scheduleStatusSelectAdd && schedule.status) {
+      scheduleStatusSelectAdd.value = schedule.status;
+    }
+
+    const isAllDay = schedule.is_all_day === true || schedule.is_all_day === 'Y';
+    if (scheduleIsAllDay) {
+      scheduleIsAllDay.checked = isAllDay;
+      handleAllDayChange({ target: scheduleIsAllDay });
+    }
+
+    const startDate = schedule.start_datetime ? new Date(schedule.start_datetime) : null;
+    const endDate = schedule.end_datetime ? new Date(schedule.end_datetime) : null;
+    if (startDate && scheduleStartDate) {
+      scheduleStartDate.value = formatDateForInput(startDate);
+    }
+    if (startDate && scheduleStartTime) {
+      scheduleStartTime.value = isAllDay ? '00:00' : formatTimeForInput(startDate);
+    }
+    if (endDate && scheduleEndDate) {
+      scheduleEndDate.value = formatDateForInput(endDate);
+    }
+    if (endDate && scheduleEndTime) {
+      scheduleEndTime.value = isAllDay ? '23:59' : formatTimeForInput(endDate);
+    }
+
+    const linkedNote = typeof schedule.linked_note === 'object' ? schedule.linked_note : null;
+    const linkedNoteId = linkedNote ? linkedNote.id : (schedule.linked_note || null);
+    if (scheduleLinkedNoteId) {
+      scheduleLinkedNoteId.value = linkedNoteId || '';
+    }
+    if (scheduleNoteSearchInput) {
+      scheduleNoteSearchInput.value = linkedNote?.title || '';
+    }
+    selectedNoteId = linkedNoteId || null;
+
+    selectedCalendarIdForForm = schedule.user_calendar_id || schedule.calendar_id || (schedule.calendar ? schedule.calendar.id : null) || selectedCalendarIdForForm;
+    if (targetCalendarSelect && selectedCalendarIdForForm) {
+      targetCalendarSelect.value = String(selectedCalendarIdForForm);
+    }
+
+    const emails = extractSharedEmails(schedule);
+    updateSharedEmailsDisplay(emails);
+
+    applyRecurrenceSettings(schedule);
+  }
+
+  function extractSharedEmails(schedule) {
+    if (!schedule) return [];
+    const emailSet = new Set();
+    const sharedList = Array.isArray(schedule.shared_with) ? schedule.shared_with : [];
+    sharedList.forEach(member => {
+      if (!member) return;
+      const value = member.email || member.user_id || member.id;
+      if (value) {
+        emailSet.add(value);
+      }
+    });
+    const sharedEmailList = Array.isArray(schedule.shared_emails) ? schedule.shared_emails : [];
+    sharedEmailList.forEach(email => {
+      if (email) emailSet.add(email);
+    });
+    return Array.from(emailSet);
+  }
+
+  function applyRecurrenceSettings(schedule) {
+    if (!scheduleRepeatSelect) return;
+
+    const recurrence = schedule?.recurrence;
+    const repeatTypeChar = schedule?.repeat_type;
+    let selectValue = 'none';
+
+    if (recurrence && recurrence.freq) {
+      const freq = (recurrence.freq || '').toUpperCase();
+      const interval = parseInt(recurrence.interval || '1', 10);
+      const weekDays = Array.isArray(recurrence.week_days) ? recurrence.week_days.map(day => parseInt(day, 10)) : [];
+      const monthDays = Array.isArray(recurrence.month_days) ? recurrence.month_days : [];
+      const hasCustom =
+        interval > 1 ||
+        weekDays.length > 0 ||
+        monthDays.length > 0 ||
+        Boolean(recurrence.count) ||
+        Boolean(recurrence.until);
+
+      if (hasCustom) {
+        selectValue = 'custom';
+        customRepeatInterval = interval;
+        customRepeatUnit = freq === 'DAILY' ? 'day' :
+          freq === 'WEEKLY' ? 'week' :
+          freq === 'MONTHLY' ? 'month' : 'year';
+        if (customRepeatIntervalInput) customRepeatIntervalInput.value = customRepeatInterval;
+        if (customRepeatUnitSelect) customRepeatUnitSelect.value = customRepeatUnit;
+        selectedWeekDays = weekDays;
+        updateWeekDayButtons();
+
+        repeatEndType = recurrence.count ? 'count' : (recurrence.until ? 'date' : 'never');
+        if (repeatEndRadios) {
+          repeatEndRadios.forEach(radio => {
+            radio.checked = radio.value === repeatEndType;
+          });
+        }
+        if (repeatEndDateInput) {
+          repeatEndDateInput.value = recurrence.until ? recurrence.until.split('T')[0] : '';
+          repeatEndDateInput.style.display = repeatEndType === 'date' ? 'block' : 'none';
+        }
+        if (repeatEndCountInput) {
+          repeatEndCountInput.value = recurrence.count || 10;
+        }
+        const repeatCountContainer = document.querySelector('.repeat-count-input');
+        if (repeatCountContainer) {
+          repeatCountContainer.style.display = repeatEndType === 'count' ? 'flex' : 'none';
+        }
+      } else {
+        selectValue =
+          freq === 'DAILY' ? 'daily' :
+            freq === 'WEEKLY' ? 'weekly' :
+              freq === 'MONTHLY' ? 'monthly' :
+                freq === 'YEARLY' ? 'yearly' : 'none';
+        selectedWeekDays = [];
+        updateWeekDayButtons();
+      }
+    } else if (repeatTypeChar) {
+      const repeatMap = { D: 'daily', W: 'weekly', M: 'monthly', Y: 'yearly', N: 'none' };
+      selectValue = repeatMap[repeatTypeChar] || 'none';
+    }
+
+    scheduleRepeatSelect.value = selectValue;
   }
 
   function handleModalClose(e) {
@@ -266,6 +476,7 @@
     if (closedId && closedId !== modalId) return;
     resetForm();
     prefillDate = null;
+    exitEditMode();
   }
 
   // Reset form
@@ -277,20 +488,39 @@
     showNoteDropdown = false;
     selectedNoteId = null;
     sharedEmails = [];
+    selectedCalendarIdForForm = null;
 
     // Reset custom repeat state
     customRepeatInterval = 1;
     customRepeatUnit = 'week';
     selectedWeekDays = [];
+    updateWeekDayButtons();
     repeatEndType = 'never';
     repeatEndDate = '';
     repeatEndCount = 10;
 
     if (scheduleNoteDropdown) scheduleNoteDropdown.style.display = 'none';
     if (sharedEmailsDisplay) sharedEmailsDisplay.style.display = 'none';
+    if (sharedEmailsCount) sharedEmailsCount.textContent = '0';
     if (scheduleLinkedNoteId) scheduleLinkedNoteId.value = '';
     if (scheduleNoteSearchInput) scheduleNoteSearchInput.value = '';
     if (scheduleCustomRepeatPanel) scheduleCustomRepeatPanel.style.display = 'none';
+    if (repeatEndRadios) {
+      repeatEndRadios.forEach(radio => {
+        radio.checked = radio.value === 'never';
+      });
+    }
+    if (repeatEndDateInput) {
+      repeatEndDateInput.value = '';
+      repeatEndDateInput.style.display = 'none';
+    }
+    if (repeatEndCountInput) {
+      repeatEndCountInput.value = '10';
+    }
+    const repeatCountContainer = document.querySelector('.repeat-count-input');
+    if (repeatCountContainer) {
+      repeatCountContainer.style.display = 'none';
+    }
 
     if (scheduleAddGrid) {
       scheduleAddGrid.classList.remove('grid-cols-3');
@@ -301,7 +531,29 @@
       scheduleAddModalContainer.classList.add('modal-medium');
     }
 
-    if (targetCalendarSelect) targetCalendarSelect.value = 'local';
+    if (targetCalendarSelect) {
+      const firstOption = targetCalendarSelect.querySelector('option');
+      if (firstOption) {
+        targetCalendarSelect.value = firstOption.value;
+      } else {
+        targetCalendarSelect.value = '';
+      }
+    }
+
+    if (scheduleAddModalTitle) {
+      scheduleAddModalTitle.textContent = '일정 추가';
+    }
+    if (scheduleAddSaveBtn) {
+      scheduleAddSaveBtn.textContent = '등록하기';
+    }
+  }
+
+  function exitEditMode() {
+    if (!isEditMode) return;
+    isEditMode = false;
+    editingScheduleId = null;
+    editingScheduleData = null;
+    selectedCalendarIdForForm = null;
   }
 
   // Load notes
@@ -388,7 +640,10 @@
     if (scheduleStartTime) scheduleStartTime.style.display = isAllDay ? 'none' : 'block';
     if (scheduleEndTime) scheduleEndTime.style.display = isAllDay ? 'none' : 'block';
 
-    if (!isAllDay) {
+    if (isAllDay) {
+      if (scheduleStartTime) scheduleStartTime.value = '00:00';
+      if (scheduleEndTime) scheduleEndTime.value = '23:59';
+    } else {
       if (scheduleStartTime && !scheduleStartTime.value) scheduleStartTime.value = '09:00';
       if (scheduleEndTime && !scheduleEndTime.value) scheduleEndTime.value = '18:00';
     }
@@ -447,13 +702,24 @@
 
     if (idx > -1) {
       selectedWeekDays.splice(idx, 1);
-      e.target.classList.remove('active');
     } else {
       selectedWeekDays.push(day);
       selectedWeekDays.sort();
-      e.target.classList.add('active');
     }
+    updateWeekDayButtons();
     updateCustomRepeatSummary();
+  }
+
+  function updateWeekDayButtons() {
+    if (!weekDayButtons) return;
+    weekDayButtons.forEach(btn => {
+      const day = parseInt(btn.getAttribute('data-day'), 10);
+      if (selectedWeekDays.includes(day)) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    });
   }
 
   // Handle repeat end change
@@ -549,23 +815,55 @@
     const formData = new FormData(scheduleAddForm);
     const isAllDay = scheduleIsAllDay?.checked || false;
     
-    // Build schedule data
     const repeatType = scheduleRepeatSelect?.value || 'none';
 
-    // Build custom repeat data
-    const customRepeatData = repeatType === 'custom' ? {
-      custom_repeat_interval: customRepeatIntervalInput?.value || 1,
-      custom_repeat_unit: customRepeatUnitSelect?.value || 'week',
-      custom_repeat_week_days: selectedWeekDays,
-      custom_repeat_end_type: repeatEndType,
-      custom_repeat_end_date: repeatEndDateInput?.value || null,
-      custom_repeat_end_count: repeatEndCountInput ? (parseInt(repeatEndCountInput.value) || 10) : 10,
-    } : {};
+    let recurrencePayload = null;
+    if (repeatType !== 'none') {
+      const freqMap = {
+        daily: 'DAILY',
+        weekly: 'WEEKLY',
+        monthly: 'MONTHLY',
+        yearly: 'YEARLY',
+        custom: customRepeatUnitSelect?.value === 'year' ? 'YEARLY'
+          : customRepeatUnitSelect?.value === 'month' ? 'MONTHLY'
+          : customRepeatUnitSelect?.value === 'day' ? 'DAILY'
+          : 'WEEKLY',
+      };
+
+      const baseFreq = repeatType === 'custom'
+        ? (customRepeatUnitSelect?.value || 'week')
+        : repeatType;
+
+      const untilStr = repeatEndType === 'date' && repeatEndDateInput?.value
+        ? `${repeatEndDateInput.value}T23:59:59`
+        : null;
+
+      const countValue = repeatEndType === 'count'
+        ? (repeatEndCountInput ? parseInt(repeatEndCountInput.value || '10', 10) : 10)
+        : null;
+
+      const monthDay = scheduleStartDate?.value
+        ? new Date(scheduleStartDate.value).getDate()
+        : null;
+
+      recurrencePayload = {
+        freq: freqMap[baseFreq] || freqMap.weekly,
+        interval: repeatType === 'custom'
+          ? parseInt(customRepeatIntervalInput?.value || '1', 10)
+          : 1,
+        week_days: (repeatType === 'weekly' || baseFreq === 'week') ? selectedWeekDays : [],
+        month_days: baseFreq === 'month' && monthDay ? [monthDay] : [],
+        until: untilStr,
+        count: countValue,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Seoul',
+      };
+    }
 
     const scheduleData = {
       title: scheduleTitleInput?.value || '',
       description: scheduleDescriptionInput?.value || '',
       location: scheduleLocationInput?.value || '',
+      is_all_day: isAllDay,
       start_datetime: isAllDay
         ? `${scheduleStartDate?.value || ''}T00:00:00`
         : `${scheduleStartDate?.value || ''}T${scheduleStartTime?.value || '00:00'}:00`,
@@ -574,11 +872,10 @@
         : `${scheduleEndDate?.value || ''}T${scheduleEndTime?.value || '00:00'}:00`,
       type: scheduleTypeSelect?.value || 'experiment',
       status: scheduleStatusSelectAdd?.value || 'scheduled',
-      repeat: repeatType,
+      recurrence: recurrencePayload,
       notification: scheduleNotificationSelect?.value || 'none',
       linked_note_id: scheduleLinkedNoteId?.value || null,
       shared_emails: sharedEmails,
-      ...customRepeatData,
     };
 
     // Validation
@@ -596,52 +893,109 @@
       return;
   }
 
-    const target = targetCalendarSelect ? targetCalendarSelect.value : 'local';
+    const selectedCalendarId = targetCalendarSelect ? targetCalendarSelect.value : '';
+    if (!selectedCalendarId) {
+      if (window.notyf) {
+        window.notyf.error('캘린더를 선택해주세요.');
+      }
+      return;
+    }
+
+    const calendarIdPayload = parseInt(selectedCalendarId, 10) || selectedCalendarId;
 
     try {
-      const response = await fetch(`${API_BASE}/api/schedules/`, {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: {
-          'X-CSRFToken': getCsrfToken(),
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ ...scheduleData, target_calendar: target }),
-      });
-
-      if (response.ok) {
-        // 용도: 서버 응답에서 생성된 일정의 상세 객체를 받아옴 (추후 활용 가능)
-        const data = await response.json();
-        
-        if (window.notyf) {
-            window.notyf.success('일정이 등록되었습니다.');
-        }
-        
-        // Close modal
-        if (window.Modal) {
-            window.Modal.close(modalId);
-        }
-            
-        // Refresh calendar and list
-        if (window.SchedulePage) {
-          if (window.SchedulePage.loadSchedules) {
-              window.SchedulePage.loadSchedules();
-          }
-          if (window.SchedulePage.refreshCalendar) {
-              window.SchedulePage.refreshCalendar();
-          }
-        }
+      if (isEditMode && editingScheduleId) {
+        await submitScheduleUpdate(editingScheduleId, scheduleData, calendarIdPayload);
       } else {
-        const error = await response.json().catch(() => ({}));
-        console.error('Failed to create schedule:', error);
-        if (window.notyf) {
-            window.notyf.error(error.detail || '일정 등록에 실패했습니다.');
-        }
+        await submitScheduleCreate(scheduleData, calendarIdPayload);
       }
     } catch (error) {
-      console.error('Error creating schedule:', error);
+      console.error('Error saving schedule:', error);
       if (window.notyf) {
-          window.notyf.error('일정 등록 중 오류가 발생했습니다.');
+        window.notyf.error('일정을 저장하는 중 오류가 발생했습니다.');
+      }
+    }
+  }
+
+  async function submitScheduleCreate(scheduleData, calendarId) {
+    const response = await fetch(`${API_BASE}/api/schedules/`, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {
+        'X-CSRFToken': getCsrfToken(),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ ...scheduleData, calendar_id: calendarId }),
+    });
+
+    if (response.ok) {
+      await response.json().catch(() => ({}));
+
+      if (window.notyf) {
+        window.notyf.success('일정이 등록되었습니다.');
+      }
+
+      if (window.Modal) {
+        window.Modal.close(modalId);
+      }
+
+      if (window.SchedulePage) {
+        if (window.SchedulePage.loadSchedules) {
+          window.SchedulePage.loadSchedules();
+        }
+        if (window.SchedulePage.refreshCalendar) {
+          window.SchedulePage.refreshCalendar();
+        }
+      }
+    } else {
+      const error = await response.json().catch(() => ({}));
+      console.error('Failed to create schedule:', error);
+      if (window.notyf) {
+        window.notyf.error(error.detail || '일정 등록에 실패했습니다.');
+      }
+    }
+  }
+
+  async function submitScheduleUpdate(scheduleId, scheduleData, calendarId) {
+    const payload = { ...scheduleData };
+    if (calendarId) {
+      payload.calendar_id = calendarId;
+    }
+
+    const response = await fetch(`${API_BASE}/api/schedules/${scheduleId}/`, {
+      method: 'PATCH',
+      credentials: 'same-origin',
+      headers: {
+        'X-CSRFToken': getCsrfToken(),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (response.ok) {
+      await response.json().catch(() => ({}));
+      if (window.notyf) {
+        window.notyf.success('일정이 수정되었습니다.');
+      }
+      if (window.Modal) {
+        window.Modal.close(modalId);
+      }
+      if (window.SchedulePage) {
+        if (window.SchedulePage.loadSchedules) {
+          window.SchedulePage.loadSchedules();
+        }
+        if (window.SchedulePage.refreshCalendar) {
+          window.SchedulePage.refreshCalendar();
+        }
+      }
+      document.dispatchEvent(new CustomEvent('schedule:updated', {
+        detail: { scheduleId },
+      }));
+    } else {
+      const error = await response.json().catch(() => ({}));
+      console.error('Failed to update schedule:', error);
+      if (window.notyf) {
+        window.notyf.error(error.detail || '일정 수정에 실패했습니다.');
       }
     }
   }
@@ -662,6 +1016,18 @@
   function formatDate(dateString) {
     const date = new Date(dateString);
     return date.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' });
+  }
+
+  function formatDateForInput(date) {
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
+    return date.toISOString().split('T')[0];
+  }
+
+  function formatTimeForInput(date) {
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${hours}:${minutes}`;
   }
 
 // Get CSRF token
@@ -701,6 +1067,20 @@
       open: (date = null) => {
         prefillDate = date;
         if (window.Modal) window.Modal.open(modalId);
+      },
+      openForEdit: (schedule) => {
+        if (!schedule || !schedule.id) {
+          console.error('[ScheduleAddModal] openForEdit requires a schedule with id');
+          return;
+        }
+        isEditMode = true;
+        editingScheduleId = schedule.id;
+        editingScheduleData = { ...schedule };
+        selectedCalendarIdForForm = schedule.user_calendar_id || schedule.calendar_id || (schedule.calendar ? schedule.calendar.id : null);
+        prefillDate = null;
+        if (window.Modal) {
+          window.Modal.open(modalId, { scheduleId: schedule.id, mode: 'edit' });
+        }
       },
       updateSharedEmails: updateSharedEmailsDisplay,
       get sharedEmails() { return sharedEmails; },

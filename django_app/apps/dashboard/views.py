@@ -1,5 +1,13 @@
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
+from django.db.models import Count, Q
+import logging
+
+from apps.experiments.models import Experiment
+from apps.notes.models import Note
+from apps.chat.models import Chat, ChatMessage
+
+logger = logging.getLogger(__name__)
 
 
 @login_required
@@ -8,11 +16,71 @@ def index(request):
     Dashboard 메인 페이지 뷰
     인증된 사용자만 접근 가능
     """
-    # TODO: 모델이 구현되면 실제 데이터를 가져오도록 수정
-    # from apps.schedule.models import Schedule
-    # from apps.experiments.models import Experiment
-    # from apps.notes.models import Note
-    # from apps.chat.models import Chat
+    user = request.user
+    user_id = user.user_id
+    
+    # 디버깅: 로그인한 사용자 정보 확인
+    logger.debug(f"Dashboard - Logged in user: {user.email}, user_id: {user_id}")
+
+    # 실험 현황 (10건) - 현재 사용자가 생성한 실험만 조회
+    recent_experiments = Experiment.objects.filter(
+        created_id=user_id
+    ).select_related().prefetch_related('tools').order_by('-created_at')[:10]
+    
+    # 디버깅: 실험 개수 확인
+    logger.debug(f"Dashboard - Found {recent_experiments.count()} experiments for user_id: {user_id}")
+
+    # 최근 연구 노트 (10건) - 현재 사용자가 생성한 노트만 조회
+    recent_notes = Note.objects.filter(
+        created_id=user_id,
+        status='E'
+    ).prefetch_related('tags').annotate(
+        share_count=Count('shares'),
+        comment_count=Count('comments')
+    ).order_by('-created_at')[:10]
+    
+    # 디버깅: 노트 개수 확인
+    logger.debug(f"Dashboard - Found {recent_notes.count()} notes for user_id: {user_id}")
+
+    # 최근 AI 채팅 (10건) - 현재 사용자가 생성한 채팅만 조회
+    # 첫 번째 사용자 메시지를 question으로 표시하기 위해 서브쿼리 사용
+    recent_chats = Chat.objects.filter(
+        created_id=user_id,
+        status='E'
+    ).order_by('-created_at')[:10]
+    
+    # 디버깅: 채팅 개수 및 상세 정보 확인
+    # 주의: [:10] 슬라이싱 후에는 count()가 정확하지 않으므로 list로 변환 후 len() 사용
+    chats_list = list(recent_chats)
+    logger.debug(f"Dashboard - Found {len(chats_list)} chats for user_id: {user_id}")
+    for chat in chats_list:
+        logger.debug(f"Dashboard - Chat ID: {chat.chat_sid}, created_id: {chat.created_id}, title: {chat.title}")
+    
+    # 디버깅: 전체 채팅 개수 확인 (필터링 전)
+    total_chats_count = Chat.objects.filter(status='E').count()
+    user_chats_count = Chat.objects.filter(created_id=user_id, status='E').count()
+    logger.debug(f"Dashboard - Total active chats: {total_chats_count}, User's chats: {user_chats_count}")
+
+    # 각 채팅의 첫 번째 사용자 메시지를 가져와서 question 필드로 추가
+    chats_with_question = []
+    for chat in chats_list:
+        first_user_message = ChatMessage.objects.filter(
+            chat=chat,
+            role='U'
+        ).order_by('sort_order', 'created_at').first()
+        
+        # question이 없으면 title이나 preview를 사용
+        if first_user_message:
+            chat.question = first_user_message.content
+        elif chat.title:
+            chat.question = chat.title
+        elif chat.preview:
+            # preview가 너무 길면 앞부분만 사용
+            chat.question = chat.preview[:100] + '...' if len(chat.preview) > 100 else chat.preview
+        else:
+            chat.question = '제목 없음'
+        
+        chats_with_question.append(chat)
 
     notifications = [
         {
@@ -54,9 +122,9 @@ def index(request):
 
     context = {
         "important_schedules": [],  # Schedule.objects.filter(is_important=True).order_by('-start_date')[:5]
-        "recent_experiments": [],  # Experiment.objects.order_by('-created_at')[:10]
-        "recent_notes": [],  # Note.objects.order_by('-created_at')[:10]
-        "recent_chats": [],  # Chat.objects.order_by('-created_at')[:10]
+        "recent_experiments": recent_experiments,
+        "recent_notes": recent_notes,
+        "recent_chats": chats_with_question,
         "notifications": notifications,
         "unread_notifications_count": sum(
             1 for notification in notifications if notification["unread"]

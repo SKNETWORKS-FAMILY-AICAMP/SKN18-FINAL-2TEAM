@@ -18,6 +18,7 @@ const scheduleShareEmptyBtn = document.getElementById('scheduleShareEmptyBtn');
 const scheduleSharedList = document.getElementById('scheduleSharedList');
 const scheduleSharedEmpty = document.getElementById('scheduleSharedEmpty');
 const sharedCount = document.getElementById('sharedCount');
+const scheduleDeleteBtn = document.getElementById('scheduleDeleteBtn');
 
 // Initialize modal
 function initScheduleDetailModal() {
@@ -26,6 +27,9 @@ function initScheduleDetailModal() {
     if (!modal) {
         console.error(`[ScheduleDetailModal] Modal with ID "${modalId}" not found`);
         return;
+    }
+    if (scheduleDeleteBtn) {
+        scheduleDeleteBtn.addEventListener('click', handleDeleteClick);
     }
     
     console.log('[ScheduleDetailModal] Modal found, setting up event listeners');
@@ -56,6 +60,7 @@ function initScheduleDetailModal() {
     // Modal events - use document level listener to catch all modal:open events
     document.addEventListener('modal:open', handleModalOpen);
     document.addEventListener('modal:close', handleModalClose);
+    document.addEventListener('schedule:sharedUpdated', handleSharedUpdatedEvent);
     
     console.log('[ScheduleDetailModal] Event listeners attached');
 }
@@ -96,6 +101,14 @@ function handleModalOpen(e) {
 function handleModalClose(e) {
     if (e.detail.modalId !== modalId) return;
     selectedScheduleData = null;
+}
+
+function handleSharedUpdatedEvent(e) {
+    const updatedScheduleId = e.detail && e.detail.scheduleId;
+    if (!updatedScheduleId) return;
+    if (selectedScheduleData && String(selectedScheduleData.id) === String(updatedScheduleId)) {
+        loadSharedUsers(updatedScheduleId);
+    }
 }
 
 // Load schedule detail
@@ -161,25 +174,99 @@ function renderScheduleDetail(schedule) {
         scheduleStatusSelect.className = `schedule-status-select status-${schedule.status || 'scheduled'}`;
     }
     
+    // 공유받은 일정인 경우 수정/삭제 버튼 비활성화
+    const isSharedCopy = schedule.is_shared_copy || false;
+    if (scheduleEditBtn) {
+        if (isSharedCopy) {
+            scheduleEditBtn.disabled = true;
+            scheduleEditBtn.style.opacity = '0.5';
+            scheduleEditBtn.style.cursor = 'not-allowed';
+            scheduleEditBtn.title = '공유받은 일정은 수정할 수 없습니다';
+        } else {
+            scheduleEditBtn.disabled = false;
+            scheduleEditBtn.style.opacity = '1';
+            scheduleEditBtn.style.cursor = 'pointer';
+            scheduleEditBtn.title = '';
+        }
+    }
+    if (scheduleDeleteBtn) {
+        if (isSharedCopy) {
+            scheduleDeleteBtn.disabled = true;
+            scheduleDeleteBtn.style.opacity = '0.5';
+            scheduleDeleteBtn.style.cursor = 'not-allowed';
+            scheduleDeleteBtn.title = '공유받은 일정은 삭제할 수 없습니다';
+        } else {
+            scheduleDeleteBtn.disabled = false;
+            scheduleDeleteBtn.style.opacity = '1';
+            scheduleDeleteBtn.style.cursor = 'pointer';
+            scheduleDeleteBtn.title = '';
+        }
+    }
+    
+    // 공유받은 일정 표시
+    if (isSharedCopy && scheduleTitle) {
+        const sharedBadge = document.createElement('span');
+        sharedBadge.className = 'schedule-shared-badge';
+        sharedBadge.textContent = '공유받은 일정';
+        sharedBadge.style.cssText = 'font-size: 0.75rem; color: #6b7280; margin-left: 0.5rem;';
+        if (!scheduleTitle.querySelector('.schedule-shared-badge')) {
+            scheduleTitle.appendChild(sharedBadge);
+        }
+    }
+    
     // Date and time
     if (scheduleDateTime) {
+        const isAllDay = schedule.is_all_day === true || schedule.is_all_day === 'Y';
         if (schedule.start_datetime) {
-            const startDate = new Date(schedule.start_datetime);
-            const dateStr = startDate.toLocaleDateString('ko-KR', { 
-                year: 'numeric', 
-                month: '2-digit', 
-                day: '2-digit' 
-            });
-            
-            if (schedule.is_all_day) {
-                scheduleDateTime.textContent = dateStr;
+            if (isAllDay) {
+                const startDateRaw = (schedule.start_datetime || '').split('T')[0];
+                const endDateRaw = (schedule.end_datetime || schedule.start_datetime || '').split('T')[0];
+                const startDisplay = formatDateOnlyFromISO(startDateRaw);
+                const endDisplay = formatDateOnlyFromISO(endDateRaw);
+
+                if (startDisplay && endDisplay && startDisplay !== endDisplay) {
+                    scheduleDateTime.textContent = `${startDisplay} ~ ${endDisplay} · 하루 종일`;
+                } else if (startDisplay) {
+                    scheduleDateTime.textContent = `${startDisplay} · 하루 종일`;
+                } else {
+                    scheduleDateTime.textContent = '날짜 정보 없음';
+                }
             } else {
-                const timeStr = startDate.toLocaleTimeString('ko-KR', { 
-                    hour: '2-digit', 
-                    minute: '2-digit',
-                    hour12: false
+                const startDate = new Date(schedule.start_datetime);
+                const endDate = schedule.end_datetime ? new Date(schedule.end_datetime) : null;
+
+                const startDateStr = startDate.toLocaleDateString('ko-KR', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
                 });
-                scheduleDateTime.textContent = `${dateStr} ${timeStr}`;
+                const endDateStr = endDate
+                    ? endDate.toLocaleDateString('ko-KR', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                      })
+                    : '';
+
+                const startTimeStr = startDate.toLocaleTimeString('ko-KR', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false,
+                });
+                const endTimeStr = endDate
+                    ? endDate.toLocaleTimeString('ko-KR', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: false,
+                      })
+                    : '';
+                const endSegment = endDate
+                    ? `${endDateStr} ${endTimeStr}`.trim()
+                    : '';
+                const startSegment = `${startDateStr} ${startTimeStr}`.trim();
+                scheduleDateTime.textContent = endSegment
+                    ? `${startSegment} ~ ${endSegment}`
+                    : startSegment;
             }
         } else {
             scheduleDateTime.textContent = '날짜 정보 없음';
@@ -209,6 +296,7 @@ function renderScheduleDetail(schedule) {
     
     // Shared users - load from API if not in schedule data
     if (schedule.shared_with && schedule.shared_with.length > 0) {
+        selectedScheduleData.shared_with = schedule.shared_with;
         renderSharedUsers(schedule.shared_with);
     } else {
         // Try to load shared users from API
@@ -229,7 +317,19 @@ async function loadSharedUsers(scheduleId) {
         
         if (response.ok) {
             const data = await response.json();
-            renderSharedUsers(data.results || data || []);
+            // API 응답에서 소유자 정보와 현재 사용자 ID 저장
+            if (data.is_owner !== undefined) {
+                if (selectedScheduleData) {
+                    selectedScheduleData.is_owner = data.is_owner;
+                    selectedScheduleData.current_user_id = data.current_user_id;
+                    selectedScheduleData.schedule_owner_id = data.schedule_owner_id;
+                }
+            }
+            const sharedUsers = data.results || data || [];
+            if (selectedScheduleData) {
+                selectedScheduleData.shared_with = sharedUsers;
+            }
+            renderSharedUsers(sharedUsers);
         } else {
             renderSharedUsers([]);
         }
@@ -252,12 +352,83 @@ function renderSharedUsers(sharedUsers) {
         scheduleSharedEmpty.style.display = 'none';
         sharedCount.textContent = sharedUsers.length.toString();
         
-        scheduleSharedList.innerHTML = sharedUsers.map((user, index) => `
-            <div class="schedule-shared-item">
-                <p class="schedule-shared-name">${escapeHtml(user.name || user.email || user.username || 'Unknown')}</p>
-                <p class="schedule-shared-email">${escapeHtml(user.email || '')}</p>
-            </div>
-        `).join('');
+        // 현재 사용자 ID와 소유자 정보 확인
+        const currentUserId = selectedScheduleData?.current_user_id || getCurrentUserId();
+        const isOwner = selectedScheduleData?.is_owner || (selectedScheduleData && selectedScheduleData.created_id === currentUserId);
+        
+        scheduleSharedList.innerHTML = sharedUsers.map((user, index) => {
+            const userId = user.user_id || user.email || user.id;
+            const isCurrentUser = userId === currentUserId;
+            const isPending = user.status === 'pending';
+            
+            // 내 일정인 경우: 공유 제거 버튼
+            // 내 일정이 아닌 경우: 자신에게만 일정 나가기 버튼 표시
+            let actionButton = '';
+            if (isOwner && !isPending) {
+                // 소유자: 모든 공유자에 대해 공유 제거 버튼
+                actionButton = `
+                    <button 
+                        class="schedule-shared-remove-btn" 
+                        data-user-id="${escapeHtml(userId)}"
+                        title="공유 제거"
+                    >
+                        <i class="fa-solid fa-times"></i>
+                    </button>
+                `;
+            } else if (isCurrentUser) {
+                // 공유된 사용자: 자신에게만 일정 나가기 버튼
+                actionButton = `
+                    <button 
+                        class="schedule-shared-leave-btn" 
+                        title="일정에서 나가기"
+                    >
+                        <i class="fa-solid fa-sign-out-alt"></i>
+                        <span>나가기</span>
+                    </button>
+                `;
+            }
+            
+            const statusBadge = `
+                <div class="schedule-shared-meta">
+                    <span class="schedule-shared-status ${isPending ? 'pending' : 'accepted'}">
+                        ${isPending ? '대기중' : '공유됨'}
+                    </span>
+                </div>
+            `;
+            const itemClass = isPending ? 'schedule-shared-item pending' : 'schedule-shared-item';
+
+            return `
+                <div class="${itemClass}">
+                    <div class="schedule-shared-info">
+                        <div class="schedule-shared-text">
+                            <p class="schedule-shared-name">${escapeHtml(user.name || user.email || user.username || 'Unknown')}</p>
+                            <p class="schedule-shared-email">${escapeHtml(user.email || userId || '')}</p>
+                        </div>
+                        ${statusBadge}
+                    </div>
+                    ${actionButton}
+                </div>
+            `;
+        }).join('');
+        
+        // 공유 제거 버튼 이벤트 리스너
+        const removeBtns = scheduleSharedList.querySelectorAll('.schedule-shared-remove-btn');
+        removeBtns.forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const userId = btn.getAttribute('data-user-id');
+                await handleRemoveShare(userId);
+            });
+        });
+        
+        // 일정 나가기 버튼 이벤트 리스너
+        const leaveBtn = scheduleSharedList.querySelector('.schedule-shared-leave-btn');
+        if (leaveBtn) {
+            leaveBtn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                await handleLeaveSchedule();
+            });
+        }
     }
 }
 
@@ -324,16 +495,142 @@ function handleLinkedNoteClick() {
     
     const noteId = linkedNoteBtn.getAttribute('data-note-id');
     if (noteId) {
-        if (confirm('노트 페이지로 이동하시겠습니까?')) {
-            window.location.href = `/notes/${noteId}/`;
-        }
+        window.location.href = `/notes/detail/?id=${noteId}`;
     }
 }
 
 // Handle edit click
 function handleEditClick() {
     if (!selectedScheduleData) return;
-    window.location.href = `/schedule/${selectedScheduleData.id}/edit/`;
+    const scheduleDataForEdit = selectedScheduleData ? { ...selectedScheduleData } : null;
+
+    // Close detail modal before opening edit modal
+    if (window.Modal && typeof window.Modal.close === 'function') {
+        window.Modal.close(modalId);
+    }
+
+    if (window.ScheduleAddModal && typeof window.ScheduleAddModal.openForEdit === 'function') {
+        window.ScheduleAddModal.openForEdit(scheduleDataForEdit);
+    } else if (window.ScheduleAddModal && typeof window.ScheduleAddModal.open === 'function') {
+        window.ScheduleAddModal.open();
+    } else {
+        const scheduleId = scheduleDataForEdit?.id || (selectedScheduleData ? selectedScheduleData.id : '');
+        if (scheduleId) {
+            window.location.href = `/schedule/${scheduleId}/edit/`;
+        }
+    }
+}
+
+// Handle delete click
+async function handleDeleteClick() {
+    if (!selectedScheduleData || !selectedScheduleData.id) return;
+
+    if (selectedScheduleData.is_shared_copy) {
+        await showAlert('삭제 불가', '공유받은 일정은 삭제할 수 없습니다.', 'warning');
+        return;
+    }
+
+    const scheduleId = selectedScheduleData.id;
+    const sharedCount = await fetchSharedUserCount(scheduleId);
+
+    if (sharedCount > 0) {
+        await showAlert('삭제 불가', '공유 중인 일정은 삭제할 수 없습니다. 공유자 제거 후 다시 시도해주세요.', 'warning');
+        return;
+    }
+
+    const confirmed = await confirmDelete();
+    if (!confirmed) return;
+
+    try {
+        const response = await fetch(`/schedule/api/schedules/${scheduleId}/`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': getCsrfToken(),
+                'Content-Type': 'application/json',
+            },
+        });
+
+        const data = await response.json().catch(() => ({}));
+        if (response.ok) {
+            if (window.notyf) {
+                window.notyf.success(data.message || '일정이 삭제되었습니다.');
+            }
+            if (window.Modal) {
+                window.Modal.close(modalId);
+            }
+            selectedScheduleData = null;
+            if (window.SchedulePage) {
+                if (window.SchedulePage.loadSchedules) {
+                    window.SchedulePage.loadSchedules();
+                }
+                if (window.SchedulePage.refreshCalendar) {
+                    window.SchedulePage.refreshCalendar();
+                }
+            }
+        } else {
+            const errorMsg = data.error || '일정 삭제에 실패했습니다.';
+            await showAlert('삭제 실패', errorMsg, 'error');
+        }
+    } catch (error) {
+        console.error('Error deleting schedule:', error);
+        if (window.notyf) {
+            window.notyf.error('일정 삭제 중 오류가 발생했습니다.');
+        }
+    }
+}
+
+async function fetchSharedUserCount(scheduleId) {
+    try {
+        const response = await fetch(`/schedule/api/schedules/${scheduleId}/shared/`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+        if (response.ok) {
+            const data = await response.json();
+            const sharedUsers = data.results || data.shared_users || [];
+            if (selectedScheduleData) {
+                selectedScheduleData.shared_with = sharedUsers;
+            }
+            return sharedUsers.length;
+        }
+    } catch (error) {
+        console.error('Error fetching shared users for deletion:', error);
+    }
+    return (selectedScheduleData && Array.isArray(selectedScheduleData.shared_with))
+        ? selectedScheduleData.shared_with.length
+        : 0;
+}
+
+async function confirmDelete() {
+    if (window.Swal) {
+        const result = await window.Swal.fire({
+            title: '일정 삭제',
+            text: '일정을 삭제하시겠습니까? 삭제 후에는 되돌릴 수 없습니다.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: '삭제',
+            cancelButtonText: '취소',
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#6b7280',
+        });
+        return result.isConfirmed;
+    }
+    return confirm('일정을 삭제하시겠습니까?');
+}
+
+async function showAlert(title, text, icon = 'info') {
+    if (window.Swal) {
+        await window.Swal.fire({
+            title,
+            text,
+            icon,
+            confirmButtonText: '확인',
+        });
+    } else {
+        alert(text);
+    }
 }
 
 // Handle share click
@@ -352,13 +649,151 @@ function handleShareClick() {
                 loadSharedUsers(selectedScheduleData.id);
             }
         };
-        window.ShareModal.open(selectedScheduleData ? selectedScheduleData.id : null, null, null, '일정 공유');
+        // context를 'schedule'로 지정하여 일정 공유로 처리
+        window.ShareModal.open(selectedScheduleData ? selectedScheduleData.id : null, null, null, '일정 공유', 'schedule');
     } else {
         console.warn('ShareModal not loaded. Please refresh the page.');
         if (window.notyf) {
             window.notyf.error('공유 모달을 로드할 수 없습니다. 페이지를 새로고침해주세요.');
         }
     }
+}
+
+// Handle remove share (소유자가 공유 제거)
+async function handleRemoveShare(userId) {
+    if (!selectedScheduleData || !selectedScheduleData.id) return;
+    
+    // Confirm removal
+    let confirmed = false;
+    if (window.Swal) {
+        const result = await window.Swal.fire({
+            title: '공유 제거',
+            text: '이 사용자와의 공유를 제거하시겠습니까?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: '제거',
+            cancelButtonText: '취소',
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#6b7280',
+        });
+        confirmed = result.isConfirmed;
+    } else {
+        confirmed = confirm('이 사용자와의 공유를 제거하시겠습니까?');
+    }
+    
+    if (!confirmed) return;
+    
+    try {
+        const response = await fetch(`/schedule/api/schedules/${selectedScheduleData.id}/shared/?user_id=${encodeURIComponent(userId)}`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': getCsrfToken(),
+                'Content-Type': 'application/json',
+            },
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            if (window.notyf) {
+                window.notyf.success(data.message || '공유가 제거되었습니다.');
+            }
+            // Refresh shared users
+            await loadSharedUsers(selectedScheduleData.id);
+        } else {
+            const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+            if (window.notyf) {
+                window.notyf.error(error.error || '공유 제거에 실패했습니다.');
+            }
+        }
+    } catch (error) {
+        console.error('Error removing share:', error);
+        if (window.notyf) {
+            window.notyf.error('공유 제거 중 오류가 발생했습니다.');
+        }
+    }
+}
+
+// Handle leave schedule (공유된 사용자가 일정에서 나가기)
+async function handleLeaveSchedule() {
+    if (!selectedScheduleData || !selectedScheduleData.id) return;
+    
+    // Confirm leaving
+    let confirmed = false;
+    if (window.Swal) {
+        const result = await window.Swal.fire({
+            title: '일정에서 나가기',
+            text: '이 일정에서 나가시겠습니까?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: '나가기',
+            cancelButtonText: '취소',
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#6b7280',
+        });
+        confirmed = result.isConfirmed;
+    } else {
+        confirmed = confirm('이 일정에서 나가시겠습니까?');
+    }
+    
+    if (!confirmed) return;
+    
+    try {
+        const response = await fetch(`/schedule/api/schedules/${selectedScheduleData.id}/shared/`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': getCsrfToken(),
+                'Content-Type': 'application/json',
+            },
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            if (window.notyf) {
+                window.notyf.success(data.message || '일정에서 나갔습니다.');
+            }
+            // Close modal and refresh calendar
+            if (window.Modal && window.Modal.close) {
+                window.Modal.close(modalId);
+            }
+            if (window.SchedulePage) {
+                if (window.SchedulePage.refreshCalendar) {
+                    window.SchedulePage.refreshCalendar();
+                }
+                if (window.SchedulePage.loadSchedules) {
+                    window.SchedulePage.loadSchedules();
+                }
+            }
+        } else {
+            const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+            if (window.notyf) {
+                window.notyf.error(error.error || '일정에서 나가기에 실패했습니다.');
+            }
+        }
+    } catch (error) {
+        console.error('Error leaving schedule:', error);
+        if (window.notyf) {
+            window.notyf.error('일정에서 나가는 중 오류가 발생했습니다.');
+        }
+    }
+}
+
+// Get current user ID
+function getCurrentUserId() {
+    // 여러 방법으로 현재 사용자 ID 가져오기 시도
+    // 1. 메타 태그에서 가져오기
+    const metaUserId = document.querySelector('meta[name=user-id]');
+    if (metaUserId) {
+        return metaUserId.getAttribute('content');
+    }
+    
+    // 2. 전역 변수에서 가져오기
+    if (window.currentUser && window.currentUser.user_id) {
+        return window.currentUser.user_id;
+    }
+    
+    // 3. 일정 데이터에서 created_id와 비교하여 추론
+    // (임시 방법)
+    return null;
 }
 
 // Open modal with schedule data
@@ -421,6 +856,18 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+function formatDateOnlyFromISO(dateString) {
+    if (!dateString) return '';
+    const [year, month, day] = dateString.split('-');
+    if (!year || !month || !day) return dateString || '';
+    const localDate = new Date(`${year}-${month}-${day}T00:00:00`);
+    return localDate.toLocaleDateString('ko-KR', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+    });
 }
 
 // Initialize when DOM is ready

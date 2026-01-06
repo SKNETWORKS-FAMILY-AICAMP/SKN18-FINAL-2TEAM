@@ -47,6 +47,18 @@
                         <!-- Divider -->
                         <div class="schedule-divider"></div>
 
+                        <!-- Description -->
+                        <div class="schedule-info-item">
+                            <h4 class="schedule-info-label">
+                                <i class="fa-solid fa-align-left"></i>
+                                설명
+                            </h4>
+                            <p class="schedule-info-value" id="scheduleDescription"></p>
+                        </div>
+
+                        <!-- Divider -->
+                        <div class="schedule-divider"></div>
+
                         <!-- Location -->
                         <div class="schedule-info-item">
                             <h4 class="schedule-info-label">
@@ -54,15 +66,6 @@
                                 장소
                             </h4>
                             <p class="schedule-info-value" id="scheduleLocation"></p>
-                        </div>
-
-                        <!-- Divider -->
-                        <div class="schedule-divider"></div>
-
-                        <!-- Description -->
-                        <div class="schedule-info-item">
-                            <h4 class="schedule-info-label">설명</h4>
-                            <p class="schedule-info-value" id="scheduleDescription"></p>
                         </div>
                     </div>
                 </div>
@@ -95,10 +98,17 @@
         </div>
         
         <div class="modal-footer">
-            <button class="modal-btn modal-btn-secondary" data-action="close">닫기</button>
-            <button class="modal-btn modal-btn-primary" data-action="edit" id="scheduleEditBtn">
-                수정하기
-            </button>
+            <div class="modal-footer-left">
+                <button class="modal-btn modal-btn-danger" data-action="delete" id="scheduleDeleteBtn">
+                    삭제
+                </button>
+            </div>
+            <div class="modal-footer-right">
+                <button class="modal-btn modal-btn-secondary" data-action="close">닫기</button>
+                <button class="modal-btn modal-btn-primary" data-action="edit" id="scheduleEditBtn">
+                    수정하기
+                </button>
+            </div>
         </div>
     </div>
 </div>

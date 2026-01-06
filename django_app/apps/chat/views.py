@@ -6,7 +6,13 @@ from django.contrib.auth.decorators import login_required
 import json
 from .models import RecommendedQuestion, Chat, ChatMessage, ChatReference, ChatMessageFeedback
 from .models.papers_models import PaperGraph, PaperNode, PaperEdge, ChatMessagePaperGraph
-from .services import generate_concept_graph, generate_ai_response, summarize_conversation_title
+from .services import (
+    generate_concept_graph, 
+    generate_ai_response, 
+    summarize_conversation_title,
+    generate_paper_graph_background
+)
+import threading
 
 
 @login_required
@@ -50,13 +56,19 @@ def recommended_questions(request):
     })
 
 
+@login_required
 @require_http_methods(["GET"])
 def chat_list(request):
-    """채팅 목록 API 엔드포인트"""
+    """채팅 목록 API 엔드포인트 - 로그인한 사용자의 채팅만 조회"""
+    user = request.user
+    user_id = user.user_id
     section = request.GET.get('section', None)
     
-    # 기본적으로 활성화된 채팅만 조회
-    queryset = Chat.objects.filter(status='E')
+    # 로그인한 사용자가 생성한 활성화된 채팅만 조회
+    queryset = Chat.objects.filter(
+        created_id=user_id,
+        status='E'
+    )
     
     # 섹션별 필터링
     if section == 'favorites':
@@ -87,10 +99,10 @@ def chat_list(request):
     # 즐겨찾기 채팅을 앞으로 이동
     items.sort(key=lambda x: (x['favorite'] != 'Y', x['created_at'] or ''), reverse=True)
 
-    # 카운트 정보 계산 (필터와 관계없이 전체 채팅 기준)
-    all_active_chats = Chat.objects.filter(status='E')
-    favorites_count = all_active_chats.filter(favorite='Y').count()
-    archived_count = all_active_chats.filter(archived='Y').count()
+    # 카운트 정보 계산 (로그인한 사용자의 채팅 기준)
+    user_active_chats = Chat.objects.filter(created_id=user_id, status='E')
+    favorites_count = user_active_chats.filter(favorite='Y').count()
+    archived_count = user_active_chats.filter(archived='Y').count()
 
     return JsonResponse({
         'items': items,
@@ -101,21 +113,168 @@ def chat_list(request):
     })
 
 
+@login_required
+@require_http_methods(["GET"])
+def chat_references_api(request, chat_id):
+    """채팅의 참고 문헌만 조회하는 API 엔드포인트 - 로그인한 사용자의 채팅만 조회"""
+    user = request.user
+    user_id = user.user_id
+    
+    # 로그인한 사용자가 생성한 채팅만 조회
+    chat = get_object_or_404(Chat, chat_sid=chat_id, created_id=user_id, status='E')
+    
+    # message_id 파라미터 확인 (선택적)
+    message_id = request.GET.get('message_id', None)
+    
+    # 참고 문헌 조회
+    if message_id:
+        # 특정 메시지의 참고 문헌만 조회
+        try:
+            message = ChatMessage.objects.get(
+                message_sid=message_id,
+                chat=chat,
+                role='A'  # Assistant 메시지만
+            )
+            references = ChatReference.objects.filter(
+                chat=chat,
+                message=message
+            ).order_by('ref_id', 'created_at')
+        except ChatMessage.DoesNotExist:
+            # 메시지가 없으면 빈 리스트 반환
+            references = ChatReference.objects.none()
+    else:
+        # message_id가 없으면 채팅 전체의 참고 문헌 조회 (기존 동작)
+        references = ChatReference.objects.filter(chat=chat).order_by('ref_id', 'created_at')
+    
+    # 참고 문헌 포맷팅
+    formatted_references = [_serialize_reference(ref) for ref in references]
+    
+    return JsonResponse({
+        'status': 'success',
+        'references': formatted_references,
+    })
+
+
+@login_required
+@require_http_methods(["GET"])
+def message_paper_graphs_api(request, message_id):
+    """
+    특정 메시지의 논문 네트워크 그래프를 조회하는 API 엔드포인트
+    
+    - 로그인한 사용자의 메시지만 조회
+    - 실시간으로 논문 네트워크 데이터를 가져올 수 있음
+    """
+    user = request.user
+    user_id = user.user_id
+    
+    try:
+        # 메시지 조회 (로그인한 사용자의 채팅만)
+        message = ChatMessage.objects.select_related('chat').get(
+            message_sid=message_id,
+            chat__created_id=user_id,
+            chat__status='E'
+        )
+    except ChatMessage.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'error': 'Message not found'
+        }, status=404)
+    
+    # 논문 그래프 조회
+    message_graphs = []
+    
+    try:
+        chat_message_graphs = ChatMessagePaperGraph.objects.filter(
+            message=message
+        ).select_related('graph').order_by('sort_order', 'created_at')
+        
+        for msg_graph in chat_message_graphs:
+            graph = msg_graph.graph
+            
+            # 노드 조회
+            nodes = PaperNode.objects.filter(graph=graph).values(
+                'paper_id', 'paper_label', 'node_size', 'node_color', 
+                'x_position', 'y_position'
+            )
+            
+            # 엣지 조회
+            edges = PaperEdge.objects.filter(graph=graph).values(
+                'source_paper_id', 'target_paper_id'
+            )
+            
+            # 노드 포맷팅
+            # 색상으로부터 논문 타입 추론 (업데이트된 색상 팔레트)
+            color_to_type = {
+                '#E63946': 'central',  # 빨간색 - 중심 논문
+                '#FF6B6B': 'central',  # 이전 색상도 지원 (하위 호환성)
+                '#457B9D': 'related',  # 파란색 - 관련 논문
+                '#4ECDC4': 'related',  # 이전 색상도 지원 (하위 호환성)
+                '#A8DADC': 'derived',   # 연한 청록색 - 파생 논문
+                '#95E1D3': 'derived',   # 이전 색상도 지원 (하위 호환성)
+            }
+            
+            formatted_nodes = []
+            for node in nodes:
+                node_color = node['node_color'] or ''
+                paper_type = color_to_type.get(node_color, 'related')  # 기본값: related
+                
+                formatted_nodes.append({
+                    'id': node['paper_id'],
+                    'label': node['paper_label'],
+                    'size': node['node_size'],
+                    'x': float(node['x_position']) if node['x_position'] is not None else 0.0,
+                    'y': float(node['y_position']) if node['y_position'] is not None else 0.0,
+                    'color': node_color,
+                    'paper_type': paper_type,  # 논문 타입 추가
+                })
+            
+            # 엣지 포맷팅
+            formatted_edges = []
+            for edge in edges:
+                formatted_edges.append([
+                    edge['source_paper_id'],
+                    edge['target_paper_id']
+                ])
+            
+            message_graphs.append({
+                'id': graph.graph_sid,
+                'title': graph.graph_title or '',
+                'description': graph.graph_description or '',
+                'nodes': formatted_nodes,
+                'edges': formatted_edges,
+            })
+        
+        print(f"[PaperGraph API] Message {message_id} has {len(message_graphs)} graph(s)")
+        
+    except Exception as e:
+        print(f"[PaperGraph API] Error loading paper graphs: {e}")
+        import traceback
+        traceback.print_exc()
+    
+    return JsonResponse({
+        'status': 'success',
+        'message_id': message_id,
+        'paper_graphs': message_graphs,
+    })
+
+
+@login_required
 @require_http_methods(["GET"])
 def chat_detail(request, chat_id):
-    """채팅 상세 정보 API 엔드포인트 (메시지 + 참고 문헌)"""
-    chat = get_object_or_404(Chat, chat_sid=chat_id, status='E')
+    """채팅 상세 정보 API 엔드포인트 (메시지 + 참고 문헌) - 로그인한 사용자의 채팅만 조회"""
+    user = request.user
+    user_id = user.user_id
+    # 로그인한 사용자가 생성한 채팅만 조회
+    chat = get_object_or_404(Chat, chat_sid=chat_id, created_id=user_id, status='E')
     
     # 메시지 조회
     messages = chat.messages.all().order_by('sort_order', 'created_at').values(
-        'message_sid', 'role', 'content', 'sort_order', 'created_at'
+        'message_sid', 'role', 'content', 'sort_order', 'created_at', 'case_type', 'used_web_search'
     )
     
     # 참고 문헌 조회 (채팅 전체 또는 특정 메시지에 연결된 것)
-    references = ChatReference.objects.filter(chat=chat).order_by('ref_id', 'created_at').values(
-        'reference_sid', 'message_id', 'source', 'badge', 'title', 'description',
-        'journal', 'link', 'ref_pubmed_id', 'ref_date', 'ref_authors', 'ref_id'
-    )
+    # _serialize_reference 함수를 사용하기 위해 객체로 조회
+    references = ChatReference.objects.filter(chat=chat).order_by('ref_id', 'created_at')
     
     # 논문 그래프 조회 (메시지별로 연결된 그래프)
     message_graphs = {}
@@ -290,6 +449,8 @@ def chat_detail(request, chat_id):
             'content': msg['content'],
             'sort_order': msg['sort_order'],
             'created_at': msg['created_at'].isoformat() if msg['created_at'] else None,
+            'case_type': msg.get('case_type'),
+            'used_web_search': msg.get('used_web_search', False),
             'paper_graphs': paper_graphs_for_msg,
         })
     
@@ -297,34 +458,8 @@ def chat_detail(request, chat_id):
     print(f"[DEBUG] Messages with paper_graphs: {[msg['id'] for msg in formatted_messages if len(msg['paper_graphs']) > 0]}")
     
     # 참고 문헌 포맷팅
-    formatted_references = []
-    for ref in references:
-        # source 변환
-        source_map = {'P': 'PubMed', 'W': 'Web', 'N': 'NIH', 'T': 'PROTOCOL'}
-        source = source_map.get(ref['source'], ref['source'])
-        
-        # badge 변환
-        badge_map = {'H': '높은 관련성', 'M': '중간 관련성', 'L': '낮은 관련성'}
-        badge = badge_map.get(ref['badge'], '')
-        
-        # journal 변환
-        journal_map = {'J': 'Journal', 'B': 'Book', 'R': 'Report', 'P': 'Protocol'}
-        journal = journal_map.get(ref['journal'], ref['journal'])
-        
-        formatted_references.append({
-            'id': ref['reference_sid'],
-            'message_id': ref['message_id'],
-            'source': source,
-            'badge': badge,
-            'title': ref['title'],
-            'description': ref['description'] or '',
-            'journal': journal,
-            'link': ref['link'] or '',
-            'pmid': ref['ref_pubmed_id'] or '',
-            'date': ref['ref_date'].strftime('%Y. %m. %d') if ref['ref_date'] else '',
-            'authors': ref['ref_authors'] or '',
-            'ref_id': ref['ref_id'],  # UI에서 [24], [25]로 표시되는 참고문헌 번호
-        })
+    # _serialize_reference 함수를 사용하여 일관된 포맷팅 적용
+    formatted_references = [_serialize_reference(ref) for ref in references]
     
     return JsonResponse({
         'chat': {
@@ -342,12 +477,16 @@ def chat_detail(request, chat_id):
     })
 
 
+@login_required
 @require_http_methods(["PATCH"])
 def update_chat_title(request, chat_id):
-    """채팅방 제목 수정 API"""
+    """채팅방 제목 수정 API - 로그인한 사용자의 채팅만 수정 가능"""
     from django.utils import timezone
+    user = request.user
+    user_id = user.user_id
 
-    chat = get_object_or_404(Chat, chat_sid=chat_id, status='E')
+    # 로그인한 사용자가 생성한 채팅만 수정 가능
+    chat = get_object_or_404(Chat, chat_sid=chat_id, created_id=user_id, status='E')
 
     try:
         data = json.loads(request.body)
@@ -636,16 +775,19 @@ def message_feedback(request, message_id):
         }, status=500)
 
 
+@login_required
 @csrf_exempt
 @require_http_methods(["POST"])
 def toggle_favorite(request, chat_id):
     """
     채팅 favorite 상태를 토글하는 API 엔드포인트
-    Y <-> N 전환
+    Y <-> N 전환 - 로그인한 사용자의 채팅만 토글 가능
     """
     try:
-        # 채팅 조회
-        chat = get_object_or_404(Chat, chat_sid=chat_id, status='E')
+        user = request.user
+        user_id = user.user_id
+        # 로그인한 사용자가 생성한 채팅만 토글 가능
+        chat = get_object_or_404(Chat, chat_sid=chat_id, created_id=user_id, status='E')
 
         # favorite 상태 토글
         if chat.favorite == 'Y':
@@ -658,7 +800,6 @@ def toggle_favorite(request, chat_id):
             message = '즐겨찾기에 추가되었습니다.'
 
         # 사용자 ID 설정
-        user_id = str(request.user.user_id) if request.user.is_authenticated else 'anonymous'
         chat.updated_id = user_id
         chat.save()
 
@@ -682,16 +823,19 @@ def toggle_favorite(request, chat_id):
         }, status=500)
 
 
+@login_required
 @csrf_exempt
 @require_http_methods(["POST"])
 def toggle_archive(request, chat_id):
     """
     채팅 archived 상태를 토글하는 API 엔드포인트
-    Y <-> N 전환
+    Y <-> N 전환 - 로그인한 사용자의 채팅만 토글 가능
     """
     try:
-        # 채팅 조회
-        chat = get_object_or_404(Chat, chat_sid=chat_id, status='E')
+        user = request.user
+        user_id = user.user_id
+        # 로그인한 사용자가 생성한 채팅만 토글 가능
+        chat = get_object_or_404(Chat, chat_sid=chat_id, created_id=user_id, status='E')
 
         # archived 상태 토글
         if chat.archived == 'Y':
@@ -704,7 +848,6 @@ def toggle_archive(request, chat_id):
             message = '채팅이 보관되었습니다.'
 
         # 사용자 ID 설정
-        user_id = str(request.user.user_id) if request.user.is_authenticated else 'anonymous'
         chat.updated_id = user_id
         chat.save()
 
@@ -728,16 +871,19 @@ def toggle_archive(request, chat_id):
         }, status=500)
 
 
+@login_required
 @csrf_exempt
 @require_http_methods(["POST", "DELETE"])
 def delete_chat(request, chat_id):
     """
     채팅을 삭제하는 API 엔드포인트
-    status를 'R' (Removed)로 변경하여 soft delete
+    status를 'R' (Removed)로 변경하여 soft delete - 로그인한 사용자의 채팅만 삭제 가능
     """
     try:
-        # 채팅 조회 (이미 삭제된 것도 조회 가능하도록 status 필터 제거)
-        chat = get_object_or_404(Chat, chat_sid=chat_id)
+        user = request.user
+        user_id = user.user_id
+        # 로그인한 사용자가 생성한 채팅만 삭제 가능 (이미 삭제된 것도 조회 가능하도록 status 필터 제거)
+        chat = get_object_or_404(Chat, chat_sid=chat_id, created_id=user_id)
 
         # 이미 삭제된 채팅인지 확인
         if chat.status == 'R':
@@ -751,7 +897,6 @@ def delete_chat(request, chat_id):
         chat.status = 'R'
 
         # 사용자 ID 설정
-        user_id = str(request.user.user_id) if request.user.is_authenticated else 'anonymous'
         chat.updated_id = user_id
         chat.save()
 
@@ -782,6 +927,8 @@ def _serialize_message(message):
         'content': message.content,
         'sort_order': message.sort_order,
         'created_at': message.created_at.isoformat() if message.created_at else None,
+        'case_type': message.case_type if hasattr(message, 'case_type') else None,
+        'used_web_search': message.used_web_search if hasattr(message, 'used_web_search') else False,
     }
 
 
@@ -800,9 +947,40 @@ def _serialize_reference(ref):
     badge_map = {'H': '높은 관련성', 'M': '중간 관련성', 'L': '낮은 관련성'}
     badge = badge_map.get(ref.badge, '')
 
-    # journal 변환: DB 코드 -> 표시명 (J=Journal, B=Book, R=Report, P=Protocol)
-    journal_map = {'J': 'Journal', 'B': 'Book', 'R': 'Report', 'P': 'Protocol'}
-    journal = journal_map.get(ref.journal, ref.journal)
+    # description에서 journal_name과 doi 추출
+    journal_name = ''
+    doi = ''
+    if ref.description:
+        try:
+            citation_metadata = json.loads(ref.description)
+            journal_name = citation_metadata.get('journal_name', '')
+            doi = citation_metadata.get('doi', '')
+            # 디버그 로그 제거 (필요시 주석 해제)
+            # if doi:
+            #     print(f"[DEBUG _serialize_reference] doi 추출 성공: {doi}")
+            # else:
+            #     print(f"[DEBUG _serialize_reference] doi가 없음. description: {ref.description[:100]}")
+        except (json.JSONDecodeError, TypeError) as e:
+            # 디버그 로그 제거 (필요시 주석 해제)
+            # print(f"[DEBUG _serialize_reference] JSON 파싱 실패: {e}, description: {ref.description[:100] if ref.description else 'None'}")
+            pass
+
+    # journal: description에서 가져온 실제 저널명이 있으면 사용, 없으면 DB 코드 변환
+    if journal_name:
+        journal = journal_name
+    else:
+        journal_map = {'J': 'Journal', 'B': 'Book', 'R': 'Report', 'P': 'Protocol'}
+        journal = journal_map.get(ref.journal, ref.journal)
+
+    # link 처리: link가 없고 pmid가 있으면 PubMed 링크 URL 생성
+    link = ref.link or ''
+    if not link and ref.ref_pubmed_id:
+        link = f'https://pubmed.ncbi.nlm.nih.gov/{ref.ref_pubmed_id}/'
+
+    # 날짜 처리: year만 표시
+    date_str = ''
+    if ref.ref_date:
+        date_str = str(ref.ref_date.year)  # 연도만 표시
 
     return {
         'id': ref.reference_sid,
@@ -810,12 +988,12 @@ def _serialize_reference(ref):
         'source': source,
         'badge': badge,
         'title': ref.title,
-        'description': ref.description or '',
-        'journal': journal,
-        'link': ref.link or '',
+        'description': '',  # description은 메타데이터로 사용하므로 빈 문자열 반환
+        'journal': journal,  # 실제 저널명
+        'link': link,
         'pmid': ref.ref_pubmed_id or '',
-        'date': ref.ref_date.strftime('%Y. %m. %d') if ref.ref_date else '',
-        'authors': ref.ref_authors or '',
+        'date': date_str,  # 연도만 표시
+        'doi': doi,  # description에서 추출한 doi
         'ref_id': ref.ref_id,  # UI에서 [24], [25]로 표시되는 참고문헌 번호
     }
 
@@ -857,10 +1035,11 @@ def chat_messages(request, chat_id=None):
 
     # 3. 채팅 조회 또는 생성
     if chat_id:
-        # 기존 채팅에 메시지 추가
+        # 기존 채팅에 메시지 추가 - 로그인한 사용자의 채팅만 조회
         chat = get_object_or_404(
             Chat,
             chat_sid=chat_id,
+            created_id=user_id,
             status='E',
             archived='N',
         )
@@ -895,9 +1074,11 @@ def chat_messages(request, chat_id=None):
     chat.updated_id = user_id
     chat.save(update_fields=['preview', 'updated_id', 'updated_at'])
 
-    # 7. AI 응답 생성
+    # 7. AI 응답 생성 (result_state도 함께 받기 위해 return_state=True)
     try:
-        ai_text, citations, scores, reference_type, chat_title = generate_ai_response(chat, content)
+        ai_text, citations, scores, reference_type, chat_title, result_state = generate_ai_response(
+            chat, content, return_state=True
+        )
     except Exception as exc:
         print(f"[ERROR] AI response generation failed: {exc}")
         import traceback
@@ -910,14 +1091,31 @@ def chat_messages(request, chat_id=None):
             status=201,
         )
 
-    # 8. AI 메시지 생성
+    # 8. AI 메시지 생성 (case_type, used_web_search 포함)
+    case_type = result_state.get("case_type") or "NO_RELATION"
+    used_web_search = result_state.get("used_web_search", False)
     assistant_message = ChatMessage.objects.create(
         chat=chat,
         role='A',
         content=ai_text,
         sort_order=next_sort_order + 1,
         created_id='system',
+        case_type=case_type,
+        used_web_search=used_web_search,
     )
+    
+    # 8-1. 백그라운드에서 논문 네트워크 생성 (비동기 처리)
+    try:
+        thread = threading.Thread(
+            target=generate_paper_graph_background,
+            args=(assistant_message, result_state, content),
+            daemon=True
+        )
+        thread.start()
+        print(f"[PaperGraph] 백그라운드 스레드 시작: message_id={assistant_message.message_sid}")
+    except Exception as e:
+        print(f"[PaperGraph] 백그라운드 스레드 시작 실패: {e}")
+        # 논문 네트워크 생성 실패해도 메시지는 정상 반환
 
     # Chat.preview를 AI 응답으로 업데이트
     chat.preview = ai_text[:200]
@@ -945,8 +1143,10 @@ def chat_messages(request, chat_id=None):
             source = 'P'  # 기본값: PubMed
 
         # badge 매핑 (score 기반)
-        score = citation.get('score', 0.0)
-        if score >= 0.8:
+        score = citation.get('score', None)
+        if score is None or score == 0.0:
+            badge = ''  # score가 없거나 0.0이면 badge 표시 안 함
+        elif score >= 0.8:
             badge = 'H'  # High
         elif score >= 0.5:
             badge = 'M'  # Medium
@@ -960,17 +1160,25 @@ def chat_messages(request, chat_id=None):
         else:
             journal_code = 'R'  # Report (기본값)
 
-        # 날짜 처리: year, month, day를 datetime.date로 변환
+        # 날짜 처리: year만 사용 (year만 있으면 1월 1일로 설정)
         ref_date = None
         year = citation.get('year')
-        month = citation.get('month')
-        day = citation.get('day')
-        if year and month and day:
+        if year:
             try:
                 from datetime import date
-                ref_date = date(int(year), int(month), int(day))
+                ref_date = date(int(year), 1, 1)  # year만 있으면 1월 1일로 설정
             except (ValueError, TypeError):
                 ref_date = None
+
+        # citation에서 journal과 doi를 가져와서 description에 JSON으로 저장
+        citation_metadata = {
+            'journal_name': citation.get('journal', ''),  # 실제 저널명
+            'doi': citation.get('doi', ''),
+        }
+        description_json = json.dumps(citation_metadata, ensure_ascii=False) if any(citation_metadata.values()) else ''
+        
+        # 디버그: citation에서 doi 확인
+        print(f"[DEBUG ChatReference.create] citation doi: {citation.get('doi', 'N/A')}, description_json: {description_json[:100] if description_json else 'empty'}")
 
         ChatReference.objects.create(
             chat=chat,
@@ -978,12 +1186,12 @@ def chat_messages(request, chat_id=None):
             source=source,
             badge=badge,
             title=citation.get('title', f'출처 {ref_id}'),
-            description='',
+            description=description_json,  # JSON으로 journal_name과 doi 저장
             journal=journal_code,
             link=citation.get('url', ''),
             ref_pubmed_id=citation.get('pmid', ''),
-            ref_date=ref_date,  # 수정: year, month, day로부터 생성된 date 객체
-            ref_authors=citation.get('authors', ''),
+            ref_date=ref_date,  # year만 사용
+            ref_authors='',  # authors 필드 없음
             ref_id=ref_id,  # 참고문헌 번호 (services.py의 id 사용, UI에서 [1], [2], [3]...로 표시됨)
         )
 

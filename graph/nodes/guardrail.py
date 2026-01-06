@@ -74,6 +74,7 @@ def _check_harmful_content(question: str) -> Dict[str, Any]:
 
 JSON만 출력하고 다른 텍스트는 포함하지 마세요."""
 
+    response = None
     try:
         model_name = get_model_name(guardrail_check_safety_llm)
         print(f"[Guardrail] 안전 검사 모델: {model_name}")
@@ -102,7 +103,10 @@ JSON만 출력하고 다른 텍스트는 포함하지 마세요."""
         
     except Exception as e:
         print(f"[Guardrail Error] {e}")
-        print(f"[Guardrail Error] Response: {response}")
+        if response is not None:
+            print(f"[Guardrail Error] Response: {response}")
+        else:
+            print(f"[Guardrail Error] Response: (not available - error occurred before LLM call)")
         # 오류 시 안전하게 차단 (False Positive보다 False Negative가 더 위험)
         return {
             "is_safe": True,  # 에러 시에는 통과시키고 다음 단계에서 처리

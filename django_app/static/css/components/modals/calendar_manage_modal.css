@@ -1,0 +1,210 @@
+/* Calendar Manage Modal Styles */
+
+#calendarManageModal .modal-container {
+    border-radius: 1rem;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    max-width: 500px;
+    width: 100%;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+}
+
+#calendarManageModal .modal-header {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+}
+
+#calendarManageModal .modal-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #111827;
+    margin: 0;
+}
+
+#calendarManageModal .modal-close-btn {
+    padding: 0.5rem;
+    background: transparent;
+    border: none;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    color: #6b7280;
+    transition: background-color 0.2s, color 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+}
+
+#calendarManageModal .modal-close-btn:hover {
+    background: #f3f4f6;
+    color: #111827;
+}
+
+#calendarManageModal .modal-close-btn i {
+    font-size: 1rem;
+}
+
+#calendarManageModal .modal-body.calendar-manage-modal-body {
+    padding: 1.5rem;
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+}
+
+#calendarManageModal .calendar-manage-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+#calendarManageModal .calendar-manage-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    background: #ffffff;
+    transition: background-color 0.2s, border-color 0.2s;
+    cursor: move;
+}
+
+#calendarManageModal .calendar-manage-item:hover {
+    background: #f9fafb;
+    border-color: #d1d5db;
+}
+
+#calendarManageModal .calendar-manage-item-ghost {
+    opacity: 0.4;
+    background: #f3f4f6;
+}
+
+#calendarManageModal .calendar-manage-item-chosen {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+#calendarManageModal .calendar-manage-item-drag {
+    opacity: 0.8;
+}
+
+#calendarManageModal .calendar-manage-item-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex: 1;
+    min-width: 0;
+}
+
+#calendarManageModal .calendar-manage-drag-handle {
+    color: #9ca3af;
+    cursor: grab;
+    font-size: 0.875rem;
+    padding: 0.25rem;
+    transition: color 0.2s;
+    flex-shrink: 0;
+}
+
+#calendarManageModal .calendar-manage-drag-handle:hover {
+    color: #6b7280;
+}
+
+#calendarManageModal .calendar-manage-drag-handle:active {
+    cursor: grabbing;
+}
+
+#calendarManageModal .calendar-manage-color {
+    width: 1rem;
+    height: 1rem;
+    border-radius: 9999px;
+    flex-shrink: 0;
+}
+
+#calendarManageModal .calendar-manage-name {
+    font-size: 0.875rem;
+    color: #111827;
+    font-weight: 500;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#calendarManageModal .calendar-manage-source-icon {
+    font-size: 0.875rem;
+    color: #9ca3af;
+    flex-shrink: 0;
+    margin-left: 0.25rem;
+}
+
+#calendarManageModal .calendar-manage-delete-btn {
+    padding: 0.5rem;
+    background: transparent;
+    border: none;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    color: #ef4444;
+    transition: background-color 0.2s, color 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    flex-shrink: 0;
+}
+
+#calendarManageModal .calendar-manage-delete-btn:hover {
+    background: #fef2f2;
+    color: #dc2626;
+}
+
+#calendarManageModal .calendar-manage-delete-btn i {
+    font-size: 0.875rem;
+}
+
+#calendarManageModal .empty-state {
+    padding: 2rem 1rem;
+    text-align: center;
+    color: #9ca3af;
+    font-size: 0.875rem;
+}
+
+#calendarManageModal .empty-state p {
+    margin: 0;
+}
+
+#calendarManageModal .modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    padding: 1rem 1.5rem;
+    border-top: 1px solid #e5e7eb;
+    background: #ffffff;
+    flex-shrink: 0;
+}
+
+#calendarManageModal .modal-btn {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    border-radius: 0.5rem;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+#calendarManageModal .modal-btn-primary {
+    background: #2563eb;
+    color: #ffffff;
+}
+
+#calendarManageModal .modal-btn-primary:hover {
+    background: #1d4ed8;
+}
+
+

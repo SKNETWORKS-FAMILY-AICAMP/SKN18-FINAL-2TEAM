@@ -67,7 +67,21 @@
             feedbackBtn.addEventListener('click', function(e) {
                 e.preventDefault();
                 console.log('Feedback clicked');
-                // 여기에 피드백 모달 열기 로직을 추가하세요
+                
+                // Prefer FeedbackModal API if available
+                if (window.FeedbackModal && typeof window.FeedbackModal.open === 'function') {
+                    window.FeedbackModal.open();
+                } else if (window.Modal && typeof window.Modal.open === 'function') {
+                    window.Modal.open('feedbackModal');
+                } else {
+                    const modal = document.getElementById('feedbackModal');
+                    if (modal) {
+                        modal.classList.add('active');
+                        document.body.style.overflow = 'hidden';
+                    } else {
+                        console.warn('[Sidebar] feedbackModal element not found');
+                    }
+                }
             });
         }
     }

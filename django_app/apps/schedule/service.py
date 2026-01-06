@@ -10,8 +10,16 @@ from django.conf import settings
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
+from django.db import transaction
 
-from .models import GoogleCredentials, SyncedCalendar
+from .models import (
+    GoogleCredentials,
+    SyncedCalendar,
+    Schedule,
+    GoogleSyncedEvent,
+    UserCalendar,
+)
 from django.views.decorators.http import require_GET, require_http_methods
 
 # ---------------------------------------------------------------------
@@ -81,6 +89,450 @@ def _normalize_hex_color(value: str | None) -> str:
     return DEFAULT_CAL_COLOR
 
 
+def _owner_identifier(user) -> str:
+    if not user or not getattr(user, "is_authenticated", False):
+        return "system"
+    raw = getattr(user, "user_id", None)
+    if raw:
+        return str(raw)
+    return getattr(user, "email", "system")
+
+
+def _user_calendar_queryset(user):
+    owner_id = _owner_identifier(user)
+    if not owner_id:
+        return UserCalendar.objects.none()
+    return UserCalendar.objects.filter(created_id=owner_id)
+
+
+def _next_user_calendar_sort(owner_id: str) -> int:
+    last = (
+        UserCalendar.objects.filter(created_id=owner_id)
+        .order_by("-sort_order")
+        .values_list("sort_order", flat=True)
+        .first()
+    )
+    return (last or 0) + 1
+
+
+def _ensure_google_user_calendar(user, synced_calendar: SyncedCalendar) -> UserCalendar | None:
+    owner_id = _owner_identifier(user)
+    if not owner_id:
+        return None
+
+    qs = UserCalendar.objects.filter(
+        created_id=owner_id,
+        source_type=UserCalendar.Source.GOOGLE,
+        external_id=synced_calendar.calendar_id,
+    )
+    calendar = qs.first()
+
+    if calendar is None and not synced_calendar.selected:
+        return None
+
+    defaults = {
+        "calendar_name": synced_calendar.summary or synced_calendar.calendar_id,
+        "color": _normalize_hex_color(getattr(synced_calendar, "color", None)),
+        "is_visible": 1,
+        "sort_order": _next_user_calendar_sort(owner_id),
+        "created_id": owner_id,
+        "updated_id": owner_id,
+        "source_type": UserCalendar.Source.GOOGLE,
+        "external_id": synced_calendar.calendar_id,
+    }
+
+    if calendar is None:
+        calendar = UserCalendar.objects.create(**defaults)
+        return calendar
+
+    updated_fields: list[str] = []
+    desired_name = defaults["calendar_name"]
+    if calendar.calendar_name != desired_name:
+        calendar.calendar_name = desired_name
+        updated_fields.append("calendar_name")
+
+    desired_color = defaults["color"]
+    if desired_color and calendar.color != desired_color:
+        calendar.color = desired_color
+        updated_fields.append("color")
+
+    desired_visible = 1 if synced_calendar.selected else 0
+    if calendar.is_visible != desired_visible:
+        calendar.is_visible = desired_visible
+        updated_fields.append("is_visible")
+
+    if updated_fields:
+        calendar.updated_id = owner_id
+        updated_fields.append("updated_id")
+        calendar.save(update_fields=updated_fields)
+
+    return calendar
+
+
+def _sync_user_calendars_from_google(user):
+    owner_id = _owner_identifier(user)
+    if not owner_id:
+        return
+
+    selected = SyncedCalendar.objects.filter(user=user, selected=True)
+    keep_external_ids: set[str] = set()
+    for cal in selected:
+        entry = _ensure_google_user_calendar(user, cal)
+        if entry:
+            keep_external_ids.add(cal.calendar_id)
+
+    qs = UserCalendar.objects.filter(
+        created_id=owner_id,
+        source_type=UserCalendar.Source.GOOGLE,
+    )
+    if keep_external_ids:
+        qs = qs.exclude(external_id__in=keep_external_ids)
+    qs.delete()
+
+
+def _parse_google_datetime_payload(info: dict | None) -> datetime:
+    """
+    구글 이벤트 start/end payload를 timezone-aware datetime으로 변환.
+    """
+    if not info:
+        return timezone.now()
+
+    value = info.get("dateTime")
+    if value:
+        dt = parse_datetime(value)
+        if dt is None:
+            try:
+                dt = datetime.fromisoformat(value)
+            except Exception:
+                dt = None
+        if dt:
+            if timezone.is_naive(dt):
+                dt = timezone.make_aware(dt, timezone.get_current_timezone())
+            return dt
+
+    date_value = info.get("date")
+    if date_value:
+        try:
+            base = datetime.fromisoformat(date_value)
+        except Exception:
+            try:
+                base = datetime.strptime(date_value, "%Y-%m-%d")
+            except Exception:
+                return timezone.now()
+        naive = datetime.combine(base.date(), datetime.min.time())
+        return timezone.make_aware(naive, timezone.get_current_timezone())
+
+    return timezone.now()
+
+
+def _coerce_to_datetime(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    dt = parse_datetime(value)
+    if dt:
+        if timezone.is_naive(dt):
+            dt = timezone.make_aware(dt, timezone.get_current_timezone())
+        return dt
+    try:
+        parsed = datetime.fromisoformat(value)
+    except Exception:
+        return None
+    if timezone.is_naive(parsed):
+        parsed = timezone.make_aware(parsed, timezone.get_current_timezone())
+    return parsed
+
+
+def _ensure_calendar_cache(user, creds: GoogleCredentials) -> GoogleCredentials:
+    """
+    Google CalendarList를 SyncedCalendar 테이블에 반영.
+    """
+    headers = {"Authorization": f"Bearer {creds.access_token}"}
+    resp = requests.get(
+        "https://www.googleapis.com/calendar/v3/users/me/calendarList",
+        headers=headers,
+        timeout=10,
+    )
+
+    if resp.status_code == 401 and creds.refresh_token:
+        creds = _refresh_google_token(creds)
+        headers = {"Authorization": f"Bearer {creds.access_token}"}
+        resp = requests.get(
+            "https://www.googleapis.com/calendar/v3/users/me/calendarList",
+            headers=headers,
+            timeout=10,
+        )
+
+    if resp.status_code == 200:
+        data = resp.json()
+        for item in data.get("items", []):
+            cid = item.get("id")
+            if not cid:
+                continue
+            summary = item.get("summary", cid)
+            SyncedCalendar.objects.update_or_create(
+                user=user,
+                calendar_id=cid,
+                defaults={
+                    "summary": summary,
+                    "color": _normalize_hex_color(item.get("backgroundColor")),
+                },
+            )
+
+    return creds
+
+
+def _upsert_schedule_from_google_payload(
+    *,
+    user,
+    calendar: SyncedCalendar,
+    event_payload: dict,
+    owner_id: str,
+) -> Schedule:
+    """
+    Google 이벤트 JSON을 Schedule + GoogleSyncedEvent에 저장/갱신.
+    """
+    event_id = event_payload.get("id")
+    if not event_id:
+        raise ValueError("google event payload missing id")
+
+    start_info = event_payload.get("start", {})
+    end_info = event_payload.get("end", {})
+    is_all_day = "date" in start_info or "date" in end_info
+
+    start_dt = _parse_google_datetime_payload(start_info)
+    end_dt = _parse_google_datetime_payload(end_info) if end_info else start_dt + timedelta(hours=1)
+
+    # Google all-day end는 exclusive (다음 날 00:00:00)이므로 실제 종료일로 변환
+    # 예: start: 2026-01-13, end: 2026-01-14 (exclusive) → 실제로는 2026-01-13 종일
+    # 따라서 end_dt를 하루 빼서 같은 날로 맞춤
+    if is_all_day:
+        # 종일 일정의 경우 end date를 하루 빼서 저장 (같은 날짜로)
+        # Google API의 exclusive end를 inclusive end로 변환
+        if end_dt > start_dt:
+            # end_dt가 start_dt보다 크면 (보통 하루 차이) 하루 빼기
+            end_dt = end_dt - timedelta(days=1)
+            # 종일 일정이므로 시간을 23:59:59로 설정
+            end_dt = end_dt.replace(hour=23, minute=59, second=59)
+        elif end_dt <= start_dt:
+            # end_dt가 start_dt보다 작거나 같으면 같은 날로 설정
+            end_dt = start_dt.replace(hour=23, minute=59, second=59)
+    elif end_dt <= start_dt:
+        # 일반 일정의 경우
+        end_dt = start_dt + timedelta(hours=1)
+
+    title = event_payload.get("summary") or "(제목 없음)"
+    description = event_payload.get("description") or ""
+    location = event_payload.get("location") or ""
+
+    user_calendar = _ensure_google_user_calendar(user, calendar)
+
+    with transaction.atomic():
+        link = GoogleSyncedEvent.objects.select_for_update().filter(
+            user=user, calendar=calendar, event_id=event_id
+        ).select_related("schedule").first()
+
+        if link and link.schedule:
+            schedule = link.schedule
+        else:
+            schedule = Schedule.objects.create(
+                title=title,
+                description=description,
+                schedule_type="M",
+                schedule_status="E",
+                use_yn="Y",
+                start_date=start_dt,
+                end_date=end_dt,
+                is_all_day="Y" if is_all_day else "N",
+                location=location,
+                color=calendar.color or DEFAULT_CAL_COLOR,
+                repeat_type="N",
+                calendar=user_calendar,
+                created_id=owner_id,
+                updated_id=owner_id,
+            )
+            link = GoogleSyncedEvent.objects.create(
+                user=user,
+                calendar=calendar,
+                schedule=schedule,
+                event_id=event_id,
+            )
+
+        # schedule 정보 갱신
+        schedule.title = title
+        schedule.description = description
+        schedule.location = location
+        schedule.start_date = start_dt
+        schedule.end_date = end_dt
+        schedule.is_all_day = "Y" if is_all_day else "N"
+        schedule.schedule_type = schedule.schedule_type or "M"
+        schedule.schedule_status = "E"
+        schedule.repeat_type = schedule.repeat_type or "N"
+        schedule.color = calendar.color or schedule.color or DEFAULT_CAL_COLOR
+        schedule.use_yn = "Y"
+        if user_calendar and schedule.calendar_id != user_calendar.calendar_sid:
+            schedule.calendar = user_calendar
+        schedule.updated_id = owner_id
+        if not schedule.created_id:
+            schedule.created_id = owner_id
+        schedule.save(
+            update_fields=[
+                "title",
+                "description",
+                "location",
+                "start_date",
+                "end_date",
+                "is_all_day",
+                "schedule_type",
+                "schedule_status",
+                "repeat_type",
+                "color",
+                "use_yn",
+                "updated_id",
+                "created_id",
+                "updated_at",
+            ]
+        )
+
+        link.summary = title
+        link.status = event_payload.get("status", "confirmed")
+        link.etag = event_payload.get("etag")
+        updated_raw = event_payload.get("updated")
+        link.google_updated = parse_datetime(updated_raw) if updated_raw else None
+        link.raw_payload = event_payload
+        link.save(update_fields=["summary", "status", "etag", "google_updated", "raw_payload", "updated_at"])
+
+    return schedule
+
+
+def _deactivate_missing_events(
+    user,
+    calendar,
+    synced_ids: set[str],
+    owner_id: str,
+    start_dt: datetime,
+    end_dt: datetime,
+) -> int:
+    """
+    더 이상 Google에서 내려오지 않는 이벤트는 RDB에서 비활성화.
+    """
+    removed = 0
+    qs = GoogleSyncedEvent.objects.filter(
+        user=user,
+        calendar=calendar,
+        schedule__start_date__gte=start_dt,
+        schedule__start_date__lte=end_dt,
+    )
+    if synced_ids:
+        qs = qs.exclude(event_id__in=synced_ids)
+
+    for link in qs.select_related("schedule"):
+        if link.schedule and link.schedule.use_yn != "N":
+            link.schedule.use_yn = "N"
+            link.schedule.updated_id = owner_id
+            link.schedule.save(update_fields=["use_yn", "updated_id", "updated_at"])
+        link.status = "deleted"
+        link.save(update_fields=["status", "updated_at"])
+        removed += 1
+    return removed
+
+
+def _sync_google_events_to_db(user, *, start_dt: datetime | None = None, end_dt: datetime | None = None) -> dict:
+    """
+    선택된 Google 캘린더 이벤트를 RDB(t_schedule)로 동기화.
+    """
+    if not user or not user.is_authenticated:
+        return {"synced": 0, "removed": 0, "status": "unauthenticated"}
+
+    try:
+        creds = _get_valid_creds(user)
+    except GoogleCredentials.DoesNotExist:
+        return {"synced": 0, "removed": 0, "status": "no_credentials"}
+
+    start_dt = start_dt or (timezone.now() - timedelta(days=30))
+    end_dt = end_dt or (timezone.now() + timedelta(days=90))
+
+    owner_id = _owner_identifier(user)
+
+    creds = _ensure_calendar_cache(user, creds)
+
+    calendar_qs = SyncedCalendar.objects.filter(user=user)
+    selected = calendar_qs.filter(selected=True)
+    calendars = list(selected or calendar_qs)
+    if not calendars:
+        return {"synced": 0, "removed": 0, "status": "no_calendars"}
+
+    synced_count = 0
+    removed_count = 0
+
+    headers = {"Authorization": f"Bearer {creds.access_token}"}
+    time_min = start_dt.isoformat()
+    time_max = end_dt.isoformat()
+
+    for calendar in calendars:
+        encoded_cal_id = quote(calendar.calendar_id, safe="")
+        page_token = None
+        current_ids: set[str] = set()
+
+        while True:
+            params = {
+                "timeMin": time_min,
+                "timeMax": time_max,
+                "singleEvents": True,
+                "orderBy": "startTime",
+            }
+            if page_token:
+                params["pageToken"] = page_token
+
+            res = requests.get(
+                f"https://www.googleapis.com/calendar/v3/calendars/{encoded_cal_id}/events",
+                headers=headers,
+                params=params,
+                timeout=15,
+            )
+
+            if res.status_code == 401 and creds.refresh_token:
+                creds = _refresh_google_token(creds)
+                headers = {"Authorization": f"Bearer {creds.access_token}"}
+                continue
+
+            if res.status_code != 200:
+                break
+
+            data = res.json()
+            for item in data.get("items", []):
+                event_id = item.get("id")
+                if not event_id:
+                    continue
+                current_ids.add(event_id)
+                _upsert_schedule_from_google_payload(
+                    user=user,
+                    calendar=calendar,
+                    event_payload=item,
+                    owner_id=owner_id,
+                )
+                synced_count += 1
+
+            page_token = data.get("nextPageToken")
+            if not page_token:
+                break
+
+        removed_count += _deactivate_missing_events(
+            user,
+            calendar,
+            current_ids,
+            owner_id,
+            start_dt,
+            end_dt,
+        )
+
+    return {
+        "synced": synced_count,
+        "removed": removed_count,
+        "status": "ok",
+        "calendars": len(calendars),
+    }
+
+
 # ---------------------------------------------------------------------
 # 반복 RRULE 생성
 # ---------------------------------------------------------------------
@@ -99,6 +551,8 @@ def _build_rrule_from_payload(repeat_type: str | None, repeat_until_date: str | 
         parts.append("FREQ=WEEKLY")
     elif repeat_type == "monthly":
         parts.append("FREQ=MONTHLY")
+    elif repeat_type == "yearly":
+        parts.append("FREQ=YEARLY")
     else:
         return None
 
@@ -245,11 +699,56 @@ def google_callback(request: HttpRequest) -> HttpResponse:
 # 3) 연동 해제
 # ---------------------------------------------------------------------
 def google_logout(request: HttpRequest) -> HttpResponse:
+    """
+    구글 계정 연동 제거
+    
+    안전한 처리 방식:
+    1. GoogleCredentials 삭제 (동기화 토큰 제거)
+    2. UserCalendar (GOOGLE) → LOCAL 변환 (UI 유지)
+    3. SyncedCalendar 보존 (GoogleSyncedEvent의 calendar 참조 유지를 위해)
+    4. GoogleSyncedEvent 보존 (재연동 시 event_id로 upsert 가능)
+    
+    주의: GoogleSyncedEvent.calendar는 SyncedCalendar를 ForeignKey로 참조하므로,
+    SyncedCalendar를 삭제하면 CASCADE로 GoogleSyncedEvent도 삭제됩니다.
+    따라서 event_id 매핑 정보를 보존하려면 SyncedCalendar도 보존해야 합니다.
+    재연동 시 동일한 calendar_id로 SyncedCalendar가 생성되면 기존 GoogleSyncedEvent를 찾을 수 있습니다.
+    """
     if not request.user.is_authenticated:
         return redirect(settings.LOGIN_URL)
 
-    GoogleCredentials.objects.filter(user=request.user).delete()
-    SyncedCalendar.objects.filter(user=request.user).delete()
+    user = request.user
+    owner_id = _owner_identifier(user)
+    
+    # 1. GoogleCredentials 삭제 (동기화 토큰 제거 - 동기화 중단)
+    GoogleCredentials.objects.filter(user=user).delete()
+    
+    # 2. UserCalendar (GOOGLE) → LOCAL 변환
+    #    - source_type을 LOCAL로 변경
+    #    - external_id는 보존 (재연동 시 calendar_id 매핑에 사용 가능)
+    #    - UI는 LOCAL 캘린더로 표시되지만 external_id는 보존
+    google_calendars = UserCalendar.objects.filter(
+        created_id=owner_id,
+        source_type=UserCalendar.Source.GOOGLE
+    )
+    
+    for calendar in google_calendars:
+        calendar.source_type = UserCalendar.Source.LOCAL
+        # external_id는 보존 (재연동 시 calendar_id 매핑에 사용)
+        calendar.save(update_fields=['source_type'])
+    
+    # 3. SyncedCalendar 보존
+    #    - GoogleSyncedEvent.calendar가 SyncedCalendar를 ForeignKey로 참조 (CASCADE)
+    #    - SyncedCalendar를 삭제하면 GoogleSyncedEvent도 삭제됨
+    #    - 재연동 시 동일한 calendar_id로 SyncedCalendar가 생성되면
+    #      GoogleSyncedEvent의 calendar 참조를 업데이트할 수 있음
+    #    - 또는 재연동 시 external_id와 calendar_id를 매칭하여 처리
+    #    - 현재는 보존 (동기화만 중단, 데이터는 유지)
+    # SyncedCalendar.objects.filter(user=user).delete()  # 보존
+    
+    # 4. GoogleSyncedEvent 보존
+    #    - 재연동 시 event_id로 기존 Schedule을 찾아 업데이트 가능
+    #    - SyncedCalendar를 보존하므로 GoogleSyncedEvent도 보존됨
+    
     return redirect("schedule:schedule")
 
 
@@ -725,6 +1224,7 @@ def google_calendar_calendars_api(request: HttpRequest) -> JsonResponse:
             except Exception:
                 pass
 
+        _sync_user_calendars_from_google(request.user)
         return JsonResponse({"ok": True, "updated": updated}, json_dumps_params={"ensure_ascii": False})
 
     # ✅ 2) JS payload: selected_calendar_ids + calendar_colors(dict)
@@ -757,7 +1257,29 @@ def google_calendar_calendars_api(request: HttpRequest) -> JsonResponse:
             calendar_id=cal_id
         ).update(color=normalized)
 
+    _sync_user_calendars_from_google(request.user)
     return JsonResponse(
         {"ok": True, "updated_colors": updated_colors},
         json_dumps_params={"ensure_ascii": False}
     )
+
+
+@require_http_methods(["POST"])
+def google_events_sync(request: HttpRequest) -> JsonResponse:
+    if not request.user.is_authenticated:
+        return _json_error("login_required", status=401)
+
+    body = _parse_json_body(request)
+    start_raw = body.get("timeMin") or body.get("time_min")
+    end_raw = body.get("timeMax") or body.get("time_max")
+
+    start_dt = _coerce_to_datetime(start_raw)
+    end_dt = _coerce_to_datetime(end_raw)
+
+    summary = _sync_google_events_to_db(
+        request.user,
+        start_dt=start_dt,
+        end_dt=end_dt,
+    )
+    status_code = 200 if summary.get("status") in {"ok", "no_calendars", "no_credentials"} else 400
+    return JsonResponse(summary, status=status_code, json_dumps_params={"ensure_ascii": False})
