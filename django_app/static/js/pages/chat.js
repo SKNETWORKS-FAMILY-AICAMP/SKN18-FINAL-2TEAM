@@ -393,6 +393,7 @@ async function handleSend() {
                     message_id: data.messages[1].id,
                     timestamp: data.messages[1].created_at,
                     case_type: data.messages[1].case_type || null, // Include case_type
+                    used_web_search: data.messages[1].used_web_search || false, // Include used_web_search
                 };
                 messages.push(assistantMessage);
                 
@@ -530,6 +531,7 @@ async function loadChat(chatId) {
                 sort_order: msg.sort_order,
                 created_at: msg.created_at,
                 case_type: msg.case_type || null, // Include case_type
+                used_web_search: msg.used_web_search || false, // Include used_web_search
                 paper_graphs: msg.paper_graphs || [], // Include paper_graphs data
             }));
             
@@ -713,11 +715,10 @@ function renderMessages() {
                 `;
             }
 
-            // Check if this message has paper_graphs
-            const hasPaperGraphs = msg.paper_graphs && Array.isArray(msg.paper_graphs) && msg.paper_graphs.length > 0;
-            // case_type이 BIO_Q이거나 null일 때만 버튼 표시
+            // case_type이 BIO_Q이면서 used_web_search가 false일 때만 버튼 표시 (RAG 사용한 경우만)
             const caseType = msg.case_type || null;
-            const showPaperGraphBtn = (caseType === 'BIO_Q' || caseType === null) && hasPaperGraphs;
+            const usedWebSearch = msg.used_web_search || false;
+            const showPaperGraphBtn = caseType === 'BIO_Q' && !usedWebSearch;
 
             // case_type이 SIMULATION_Q일 때만 실험하기 버튼 표시
             const showExperimentBtn = caseType === 'SIMULATION_Q';
@@ -2297,17 +2298,38 @@ function handleExperimentAttached(event) {
 
 // Render attached items
 function renderAttachedItems() {
+    // 현재 활성화된 입력 영역 찾기
+    // inputArea가 표시되어 있으면 그것을, 없으면 emptyState 내부의 input-wrapper 사용
+    let activeInputWrapper = null;
+    
+    if (inputArea && inputArea.style.display !== 'none') {
+        // inputArea가 활성화되어 있으면 inputArea 내부의 input-wrapper 사용
+        activeInputWrapper = inputArea.querySelector('.input-wrapper');
+    }
+    
+    if (!activeInputWrapper) {
+        // inputArea가 없거나 비활성화되어 있으면 emptyState 내부의 input-wrapper 사용
+        activeInputWrapper = document.querySelector('.empty-state .input-wrapper');
+    }
+    
+    if (!activeInputWrapper) {
+        // 마지막으로 아무 input-wrapper나 찾기
+        activeInputWrapper = document.querySelector('.input-wrapper');
+    }
+    
     // Find attached items container or create one
     let attachedContainer = document.getElementById('attachedItems');
-    if (!attachedContainer) {
+    if (!attachedContainer && activeInputWrapper) {
         // Create container if it doesn't exist
-        const inputWrapper = document.querySelector('.input-wrapper');
-        if (inputWrapper) {
-            attachedContainer = document.createElement('div');
-            attachedContainer.id = 'attachedItems';
-            attachedContainer.className = 'attached-items';
-            inputWrapper.insertBefore(attachedContainer, inputWrapper.firstChild);
-        }
+        attachedContainer = document.createElement('div');
+        attachedContainer.id = 'attachedItems';
+        attachedContainer.className = 'attached-items';
+        activeInputWrapper.insertBefore(attachedContainer, activeInputWrapper.firstChild);
+    }
+    
+    // 컨테이너가 활성 입력 영역과 다른 곳에 있으면 이동
+    if (attachedContainer && activeInputWrapper && !activeInputWrapper.contains(attachedContainer)) {
+        activeInputWrapper.insertBefore(attachedContainer, activeInputWrapper.firstChild);
     }
     
     if (!attachedContainer) return;
