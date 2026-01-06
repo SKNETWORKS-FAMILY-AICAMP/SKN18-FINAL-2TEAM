@@ -67,7 +67,7 @@ autodetect_af_dir() {
 #  - 0: CPU jaxlib 유지 (안전)
 #  - 1: CUDA jaxlib 설치 "시도" (실패해도 계속 진행)
 # -----------------------------
-ENABLE_JAX_CUDA="${ENABLE_JAX_CUDA:-0}"
+ENABLE_JAX_CUDA="${ENABLE_JAX_CUDA:-1}"
 
 ########################################
 # Utils
