@@ -269,7 +269,7 @@ def chat_detail(request, chat_id):
     
     # 메시지 조회
     messages = chat.messages.all().order_by('sort_order', 'created_at').values(
-        'message_sid', 'role', 'content', 'sort_order', 'created_at', 'case_type'
+        'message_sid', 'role', 'content', 'sort_order', 'created_at', 'case_type', 'used_web_search'
     )
     
     # 참고 문헌 조회 (채팅 전체 또는 특정 메시지에 연결된 것)
@@ -450,6 +450,7 @@ def chat_detail(request, chat_id):
             'sort_order': msg['sort_order'],
             'created_at': msg['created_at'].isoformat() if msg['created_at'] else None,
             'case_type': msg.get('case_type'),
+            'used_web_search': msg.get('used_web_search', False),
             'paper_graphs': paper_graphs_for_msg,
         })
     
@@ -927,6 +928,7 @@ def _serialize_message(message):
         'sort_order': message.sort_order,
         'created_at': message.created_at.isoformat() if message.created_at else None,
         'case_type': message.case_type if hasattr(message, 'case_type') else None,
+        'used_web_search': message.used_web_search if hasattr(message, 'used_web_search') else False,
     }
 
 
@@ -1089,8 +1091,9 @@ def chat_messages(request, chat_id=None):
             status=201,
         )
 
-    # 8. AI 메시지 생성 (case_type 포함)
+    # 8. AI 메시지 생성 (case_type, used_web_search 포함)
     case_type = result_state.get("case_type") or "NO_RELATION"
+    used_web_search = result_state.get("used_web_search", False)
     assistant_message = ChatMessage.objects.create(
         chat=chat,
         role='A',
@@ -1098,6 +1101,7 @@ def chat_messages(request, chat_id=None):
         sort_order=next_sort_order + 1,
         created_id='system',
         case_type=case_type,
+        used_web_search=used_web_search,
     )
     
     # 8-1. 백그라운드에서 논문 네트워크 생성 (비동기 처리)

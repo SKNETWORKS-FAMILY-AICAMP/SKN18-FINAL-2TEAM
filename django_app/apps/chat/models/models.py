@@ -155,6 +155,11 @@ class ChatMessage(models.Model):
         db_column='case_type',
         help_text='LangGraph에서 분류한 질의 타입 (NO_RELATION, BIO_Q, SIMULATION_Q, PROTOCOL_Q, INFERENCE_Q, USER_INFO)'
     )
+    used_web_search = models.BooleanField(
+        default=False,
+        db_column='used_web_search',
+        help_text='웹 검색을 사용했는지 여부 (RAG 실패 시 fallback)'
+    )
     
     class Meta:
         db_table = 't_chat_message'
