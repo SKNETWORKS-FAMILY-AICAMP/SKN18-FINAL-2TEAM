@@ -50,7 +50,7 @@ venv_python() { echo "${TORCH_VENV}/bin/python"; }
 add_env_if_nonempty() {
   local -n _arr="$1"
   local k="$2"
-  local v="${3:-}"
+  local v="${3:-}"C:\dev\study\skn18_fianl-2team\SKN18-FINAL-2TEAM\sim_tools\unified\unified_shell_script.sh
   if [[ -n "${v}" ]]; then
     _arr+=("${k}=${v}")
   fi
@@ -210,6 +210,12 @@ cmd_install() {
   fi
   if [[ -f "$RFDIFFUSION_DIR/env/requirements.txt" ]]; then
     "$(venv_python)" -m pip install -r "$RFDIFFUSION_DIR/env/requirements.txt"
+  fi
+
+  # ProteinMPNN / colabdesign (for MPNN step)
+  log "installing colabdesign (for ProteinMPNN)"
+  if ! "$(venv_python)" -c "import colabdesign" >/dev/null 2>&1; then
+    "$(venv_python)" -m pip install colabdesign || true
   fi
 
   # 안전장치
