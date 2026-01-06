@@ -103,7 +103,7 @@ def launch_simulation_docker(
     from pathlib import Path
     exp_part = Path(output_dir).name or "unknown"
     step_for_runpod = TOOL_NAME_QUEUE_MAP.get(tool_name, tool_name)
-    # job_name = f"{exp_part}__{tool_name}" // FALLBACK
+    job_name = f"{exp_part}__{tool_name}" 
 
     body = {
         "experiment_id": str(exp_part),
@@ -149,7 +149,7 @@ def launch_simulation_docker(
     status_url = f"{base}/status/{run_name}"
 
     max_wait_seconds = 60 * 60 * 24     # 최대 1시간 대기 (원하시면 조정)
-    poll_interval = 60 * 3                # 30초마다 상태 체크
+    poll_interval = 5                # 30초마다 상태 체크
     start_ts = time.time()
 
     last_status = None
@@ -174,7 +174,7 @@ def launch_simulation_docker(
             s_resp = requests.get(
                 status_url,
                 headers=views_runpod._headers(),
-                timeout=30,
+                timeout=10,
             )
             try:
                 s_data = s_resp.json()
@@ -192,7 +192,7 @@ def launch_simulation_docker(
         status = s_data.get("status")
         last_status = status
 
-        logger.info(f"[RunPod] status check: name={run_name}, status={status}")
+        logger.info(f"[RunPod] status check: name={run_name}, status={status}, raw={s_data}")
 
         if status == "done":
             # unified/api_server.py 기준:
@@ -263,6 +263,15 @@ def enqueue_next_selection(experiment_sid: int, current_sort_order: int, request
             .filter(experiment_id=experiment_sid)
             .order_by("sort_order")
         )
+
+        # 🔹 추가: 현재 파이프라인 상태 찍기
+        logger.info(
+            "[enqueue_next] experiment_sid=%s, current_sort_order=%s, tools=%s",
+            experiment_sid,
+            current_sort_order,
+            [(r.sort_order, r.tool.tool_name) for r in qs],
+        )
+
         next_sel = qs.filter(sort_order__gt=current_sort_order).first()
         if not next_sel:
             return None  # 더 이상 다음 단계 없음
@@ -271,6 +280,13 @@ def enqueue_next_selection(experiment_sid: int, current_sort_order: int, request
 
         tool_name_display = next_sel.tool.tool_name
         tool_name_for_queue = TOOL_NAME_QUEUE_MAP.get(tool_name_display)
+
+        logger.info(
+            "[enqueue_next] selected next tool: display=%s, queue=%s",
+            tool_name_display,
+            tool_name_for_queue,
+        )
+
         if not tool_name_for_queue:
             logger.warning(f"Unknown tool for queue: {tool_name_display}")
             return None
@@ -421,6 +437,13 @@ def handle_simulation_task(message: Dict[str, Any]):
             output_dir, 
             options=tool_options
             )
+        
+        logger.info(
+            "[handle] RunPod result: tool=%s, success=%s, raw=%s",
+            tool_name,
+            result.get("success"),
+            result.get("raw"),
+        )
 
         if result["success"]:
             # 파이프라인 진행률 계산 (0-based sort_order → 1-based 단계)
