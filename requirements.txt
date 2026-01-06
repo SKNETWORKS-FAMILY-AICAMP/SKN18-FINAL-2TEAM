@@ -10,7 +10,7 @@ numpy==1.26.4
 pandas
 scipy
 spacy
-gilda
+# gilda
 
 # OpenAI API (embedding용)
 openai
