@@ -413,6 +413,7 @@ cmd_install() {
   "$(venv_python_jax)" -m pip install -U boto3 botocore
   "$(venv_python_jax)" -m pip install -U pandas
 
+
   # ColabDesign
   if [[ ! -d "$COLABDESIGN_DIR" ]]; then
     log "Cloning ColabDesign into $COLABDESIGN_DIR"
@@ -421,19 +422,22 @@ cmd_install() {
   log "installing ColabDesign (editable) (JAX_VENV)"
   "$(venv_python_jax)" -m pip install -e "$COLABDESIGN_DIR"
 
-  # JAX (옵션 CUDA)
+  # ★ JAX 설치 (CUDA / CPU 모드 분리)
   if [[ "$ENABLE_JAX_CUDA" == "1" ]]; then
-    log "JAX CUDA attempt: installing CUDA-enabled jaxlib (JAX_VENV)"
+    log "JAX CUDA mode: jax[cuda12_pip]==0.4.26 (JAX_VENV)"
     "$(venv_python_jax)" -m pip uninstall -y jax jaxlib || true
-    "$(venv_python_jax)" -m pip install -U "jax[cuda12]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html || true
+    "$(venv_python_jax)" -m pip install \
+      "jax[cuda12_pip]==0.4.26" \
+      -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
   else
-    "$(venv_python_jax)" -m pip install -U "jax" || true
+    log "JAX CPU mode: jax==0.4.26 jaxlib==0.4.26 (JAX_VENV)"
+    "$(venv_python_jax)" -m pip install \
+      "jax==0.4.26" \
+      "jaxlib==0.4.26"
   fi
-    # ★ Alphafold 호환 버전으로 다시 고정
-  "$(venv_python_jax)" -m pip install \
-    "jax==0.4.26" \
-    "jaxlib==0.4.26" \
-    "dm-haiku==0.0.12"
+
+  # Haiku는 공통
+  "$(venv_python_jax)" -m pip install "dm-haiku==0.0.12"
 
 
 
