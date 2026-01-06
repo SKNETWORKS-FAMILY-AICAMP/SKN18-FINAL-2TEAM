@@ -1,14 +1,21 @@
 # /workspace/unified/src/steps/alphafold_step.py
 from __future__ import annotations
-
-import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List
-
+import os  
 import pandas as pd
+import jax
+from jax import tree_util as jax_tree_util
 from colabdesign.af import mk_af_model
 
+# JAX 0.6.0 호환용: colabdesign 이 jax.tree_* 옛 API를 기대해서 alias 로 맞춰 줌
+if not hasattr(jax, "tree_map"):
+    jax.tree_map = jax_tree_util.tree_map  # type: ignore[attr-defined]
+if not hasattr(jax, "tree_flatten"):
+    jax.tree_flatten = jax_tree_util.tree_flatten  # type: ignore[attr-defined]
+if not hasattr(jax, "tree_unflatten"):
+    jax.tree_unflatten = jax_tree_util.tree_unflatten
 
 @dataclass
 class AlphaFoldStepConfig:
@@ -17,7 +24,8 @@ class AlphaFoldStepConfig:
     num_recycles: int = 1
     use_multimer: bool = False
     initial_guess: bool = False
-    max_seqs: int | None = None  
+    max_seqs: int | None = None
+    protein_sequence: str | None = None
 
 
 def _read_fasta_seqs(fasta_path: Path) -> List[str]:
@@ -40,6 +48,73 @@ def _read_fasta_seqs(fasta_path: Path) -> List[str]:
         seqs.append("".join(buf))
 
     return [s.replace("/", "").strip().upper() for s in seqs if s.strip()]
+
+def read_mpnn_fasta_with_meta(fasta_path: Path):
+    """
+    ProteinMPNN 이 만든 FASTA 파일에서
+    '>design=0;mpnn_0|score=...' 형태의 헤더를 파싱해서
+    (design_idx, seq_idx, seq) 튜플 리스트로 반환한다.
+    """
+    if not fasta_path.exists():
+        raise FileNotFoundError(f"[alphafold] fasta not found: {fasta_path}")
+
+    entries = []
+    design_idx = 0
+    seq_idx = 0
+    seq_buf: list[str] = []
+
+    def flush_current():
+        nonlocal seq_buf, design_idx, seq_idx
+        if not seq_buf:
+            return
+        seq = "".join(seq_buf).strip().replace("/", "").upper()
+        if seq:
+            entries.append((design_idx, seq_idx, seq))
+        seq_buf = []
+
+    for line in fasta_path.read_text().splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        if line.startswith(">"):
+            # 직전 서열 먼저 기록
+            flush_current()
+
+            # 예: >design=0;mpnn_0|score=1.23456
+            header = line[1:]
+            design_idx = 0
+            seq_idx = 0
+            try:
+                # design=숫자
+                if "design=" in header:
+                    part = header.split("design=", 1)[1]
+                    design_str = part.split(";", 1)[0]
+                    design_idx = int(design_str)
+
+                # mpnn_숫자
+                if "mpnn_" in header:
+                    part = header.split("mpnn_", 1)[1]
+                    num_str = ""
+                    for ch in part:
+                        if ch.isdigit():
+                            num_str += ch
+                        else:
+                            break
+                    if num_str:
+                        seq_idx = int(num_str)
+            except Exception:
+                # 헤더 파싱 실패하면 기본값(0,0) 유지
+                design_idx = 0
+                seq_idx = 0
+            continue
+
+        # 서열 라인
+        seq_buf.append(line)
+
+    # 마지막 서열 flush
+    flush_current()
+
+    return entries
 
 
 def _ensure_colabdesign_params_visible():
@@ -86,17 +161,42 @@ def run_alphafold_only(cfg: AlphaFoldStepConfig) -> dict:
     out_dir = cfg.outputs_dir
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    input_pdb = out_dir / f"{exp}_0.pdb"
-    if not input_pdb.exists():
+    # RFdiffusion 결과가 있는 디렉터리에서 디자인별 PDB들을 모은다.
+    rfd_dir = out_dir.parent / "step-rfdiffusion"
+    pdb_paths = sorted(rfd_dir.glob(f"{exp}_*.pdb"))
+
+    if not pdb_paths:
         raise FileNotFoundError(
-            f"[alphafold] input pdb not found: {input_pdb} "
-            f"(먼저 step=rfdiffusion을 같은 experiment_id로 실행해야 함)"
+            f"[alphafold] no RFdiffusion pdb found under {rfd_dir} "
+            f"(expected {exp}_0.pdb, {exp}_1.pdb, ...)"
         )
 
-    fasta_path = out_dir / f"{exp}_mpnn.fasta"
-    entries = _read_mpnn_fasta_with_meta(fasta_path)
+    # 디자인 인덱스 -> PDB 경로 매핑 (예: 0 -> exp_0.pdb, 1 -> exp_1.pdb ...)
+    pdb_map: dict[int, Path] = {}
+    for p in pdb_paths:
+        stem = p.stem  # "17_0" 같은 형식
+        try:
+            idx = int(stem.split("_")[-1])
+        except ValueError:
+            continue
+        pdb_map[idx] = p
+
+    # 최소한 0번 디자인은 fallback 으로 쓸 수 있게 확보
+    if 0 not in pdb_map:
+        pdb_map[0] = pdb_paths[0]
+
+        # 최소한 0번 디자인은 fallback 으로 쓸 수 있게 확보
+    if 0 not in pdb_map:
+        pdb_map[0] = pdb_paths[0]
+
+    # 🔹 ProteinMPNN 출력 폴더에서 FASTA 읽기
+    mpnn_dir = out_dir.parent / "step-proteinMPNN"
+    fasta_path = mpnn_dir / f"{exp}_mpnn.fasta"
+
+    entries = read_mpnn_fasta_with_meta(fasta_path)  # 함수 이름은 실제 정의와 맞춰서 (_read_... 이면 그걸로)
     if not entries:
         raise RuntimeError(f"[alphafold] no sequences in fasta: {fasta_path}")
+
 
     _ensure_colabdesign_params_visible()
 
@@ -115,12 +215,17 @@ def run_alphafold_only(cfg: AlphaFoldStepConfig) -> dict:
     # ✅ params_dir 같은 kwarg 절대 금지 (너 로그에서 바로 죽는 거 확인됨)
     af_model = mk_af_model(protocol="fixbb", **flags)
 
-    af_model.prep_inputs(str(input_pdb), chain="A")
-    top_k = 5  # 사용자가 파라미터로 전달한 값이라고 가정
+    top_k = 5
     rows = []
     best = {"idx": -1, "plddt": -1.0, "rmsd": 1e9, "path": None}
 
     for design_idx, seq_idx, seq in entries:
+        # 이 서열에 해당하는 디자인의 PDB 사용, 없으면 0번 디자인으로 fallback
+        input_pdb = pdb_map.get(design_idx, pdb_map[0])
+
+        # 디자인별 PDB로 입력 준비
+        af_model.prep_inputs(str(input_pdb), chain="A")
+
         for k in range(top_k):
             af_model.predict(seq=seq, num_recycles=int(cfg.num_recycles), verbose=False)
 
@@ -146,10 +251,13 @@ def run_alphafold_only(cfg: AlphaFoldStepConfig) -> dict:
             }
         )
 
-        if (plddt > best["plddt"]) or (plddt == best["plddt"] and (rmsd or 1e9) < best["rmsd"]):
-            best = {"idx": i, "plddt": plddt, "rmsd": (rmsd or 1e9), "path": pdb_path}
+        if (plddt > best["plddt"]) or (
+            plddt == best["plddt"] and (rmsd or 1e9) < best["rmsd"]
+        ):
+            best = {"idx": design_idx, "plddt": plddt, "rmsd": (rmsd or 1e9), "path": pdb_path}
 
         af_model._k += 1
+
 
     csv_path = out_dir / f"{exp}_af_results.csv"
     pd.DataFrame(rows).to_csv(csv_path, index=False)
