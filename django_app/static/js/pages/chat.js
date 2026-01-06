@@ -175,6 +175,20 @@ function initChatAI() {
             await autoModeToggleEl.updateComplete;
             autoModeToggleEl.checked = isAutoMode;
             
+            // 초기 상태에 맞춰 필터 설정 (스위치 OFF면 "paper" 기본값)
+            if (!isAutoMode) {
+                selectedFilter = "paper";
+                const filterBtnsEls = document.querySelectorAll('.filter-btn');
+                filterBtnsEls.forEach(btn => {
+                    const btnFilter = btn.getAttribute('data-filter');
+                    if (btnFilter === "paper") {
+                        btn.classList.add('active');
+                    } else {
+                        btn.classList.remove('active');
+                    }
+                });
+            }
+            
             // 초기 상태에 맞춰 filter-btn 상태 업데이트
             updateFilterButtonsState();
             
@@ -346,6 +360,26 @@ async function handleSend() {
         autoResizeTextarea(chatInputFieldBottom);
     }
     message = "";
+    
+    // 이미지 데이터를 먼저 백업 (API 요청 전에, 정리하기 전에)
+    const imagesToSend = [];
+    if (attachedImages && attachedImages.length > 0) {
+        for (const img of attachedImages) {
+            if (img.file && typeof img.file === 'string') {
+                // base64 문자열
+                imagesToSend.push(img.file);
+            }
+        }
+    }
+    
+    // 첨부된 이미지 정리 (UI에서만 제거, 실제 데이터는 이미 백업됨)
+    attachedImages.forEach(img => {
+        if (img.url) {
+            URL.revokeObjectURL(img.url);
+        }
+    });
+    attachedImages = [];
+    renderAttachedItems();
 
     // Close recommendations
     closeRecommendations();
@@ -376,13 +410,21 @@ async function handleSend() {
             ? `/chat/api/chats/${activeChatId}/messages/`  // 기존 채팅에 메시지 추가
             : '/chat/api/chats/messages/';  // 새 채팅 생성
 
-        // 필터가 선택되어 있으면 자동 모드와 관계없이 전달
-        const filterToSend = selectedFilter ? selectedFilter : null;
+        // 스위치 ON (isAutoMode = true): filter_type을 null로 보내기 (LLM 동작)
+        // 스위치 OFF (isAutoMode = false): selectedFilter 전달 (기본값 "paper")
+        const filterToSend = isAutoMode ? null : (selectedFilter || null);
+        
+        // JSON으로 전송 (백업한 이미지 사용)
         const requestBody = {
             content: input,
-            filter: filterToSend, // 선택된 필터 전달
+            filter: filterToSend,
         };
-        console.log('[DEBUG] API 요청 - isAutoMode:', isAutoMode, 'selectedFilter:', selectedFilter, 'filter:', requestBody.filter);
+        
+        if (imagesToSend.length > 0) {
+            requestBody.images = imagesToSend;
+        }
+        
+        console.log('[DEBUG] API 요청 - isAutoMode:', isAutoMode, 'selectedFilter:', selectedFilter, 'filter:', filterToSend, 'imagesCount:', imagesToSend.length);
         
         const response = await fetch(apiUrl, {
             method: 'POST',
@@ -416,6 +458,8 @@ async function handleSend() {
                     content: data.messages[0].content,
                     message_id: data.messages[0].id,
                     timestamp: data.messages[0].created_at,
+                    image_urls: data.messages[0].image_urls || [],
+                    image_analysis_result: data.messages[0].image_analysis_result || null,
                 };
 
                 // AI 응답 메시지 추가 (타이핑 애니메이션용으로 빈 상태로 시작)
@@ -557,16 +601,24 @@ async function loadChat(chatId) {
             activeChatId = chatId;
             
             // Format messages
-            messages = (data.messages || []).map(msg => ({
-                role: msg.role,
-                content: msg.content,
-                message_id: msg.id,
-                sort_order: msg.sort_order,
-                created_at: msg.created_at,
-                case_type: msg.case_type || null, // Include case_type
-                used_web_search: msg.used_web_search || false, // Include used_web_search
-                paper_graphs: msg.paper_graphs || [], // Include paper_graphs data
-            }));
+            messages = (data.messages || []).map(msg => {
+                const imageUrls = msg.image_urls || [];
+                if (imageUrls.length > 0) {
+                    console.log(`[DEBUG loadChat] Message ${msg.id} has ${imageUrls.length} image(s):`, imageUrls);
+                }
+                return {
+                    role: msg.role,
+                    content: msg.content,
+                    message_id: msg.id,
+                    sort_order: msg.sort_order,
+                    created_at: msg.created_at,
+                    case_type: msg.case_type || null, // Include case_type
+                    used_web_search: msg.used_web_search || false, // Include used_web_search
+                    paper_graphs: msg.paper_graphs || [], // Include paper_graphs data
+                    image_urls: imageUrls, // Include image URLs
+                    image_analysis_result: msg.image_analysis_result || null, // Include image analysis result
+                };
+            });
             
             // Format references (전체 참고문헌 저장)
             allReferences = (data.references || []).map(ref => ({
@@ -702,11 +754,30 @@ function renderMessages() {
 
     messagesView.innerHTML = messages.map((msg, index) => {
         if (msg.role === 'user') {
+            // 이미지 표시 부분
+            let imagesHtml = '';
+            if (msg.image_urls && msg.image_urls.length > 0) {
+                console.log(`[DEBUG renderMessages] Rendering ${msg.image_urls.length} image(s) for user message:`, msg.image_urls);
+                imagesHtml = `
+                    <div class="message-images">
+                        ${msg.image_urls.map(url => `
+                            <div class="message-image-item">
+                                <img src="${escapeHtml(url)}" alt="첨부 이미지" loading="lazy" />
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            } else if (msg.role === 'user') {
+                // 디버그: 이미지가 없는 경우 로그
+                console.log(`[DEBUG renderMessages] User message ${msg.message_id} has no images`, msg);
+            }
+            
             return `
                 <div class="message-item" data-message-id="${msg.message_id || ''}">
                     <div class="message-user">
                         <div class="message-content-user">
                             <div class="message-bubble-user">
+                                ${imagesHtml}
                                 <p>${escapeHtml(msg.content)}</p>
                             </div>
                         </div>
@@ -985,13 +1056,31 @@ function toggleAutoMode(checked) {
         }
     });
 
+    // 스위치 OFF (isAutoMode = false): 기본값으로 "paper" (BIO_Q) 설정
+    if (!isAutoMode) {
+        selectedFilter = "paper";
+        // "논문/임상" 버튼을 active 상태로
+        const filterBtnsEls = document.querySelectorAll('.filter-btn');
+        filterBtnsEls.forEach(btn => {
+            const btnFilter = btn.getAttribute('data-filter');
+            if (btnFilter === "paper") {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+    } else {
+        // 스위치 ON (isAutoMode = true): filter_type 비우기
+        selectedFilter = "";
+        // 모든 필터 버튼 비활성화
+        const filterBtnsEls = document.querySelectorAll('.filter-btn');
+        filterBtnsEls.forEach(btn => {
+            btn.classList.remove('active');
+        });
+    }
+
     // Update filter buttons state
     updateFilterButtonsState();
-    
-    // Update selected filter
-    // 자동 모드가 켜져 있어도 이미 선택된 필터는 유지 (사용자가 명시적으로 선택한 경우)
-    // 단, 필터 버튼은 비활성화됨
-    // Note: handleFilterSelect는 자동 모드에서 호출되지 않으므로 여기서 리셋하지 않음
     
     // Update attach button visibility
     updateAttachButtonVisibility();
@@ -2327,17 +2416,27 @@ function handleImageSelect(e) {
     if (files && files.length > 0) {
         Array.from(files).forEach(file => {
             if (file.type.startsWith('image/')) {
-                const imageData = {
-                    id: Date.now() + Math.random(),
-                    name: file.name,
-                    size: file.size,
-                    url: URL.createObjectURL(file),
-                    file: file
+                // 이미지를 base64로 미리 읽어서 저장
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    const base64String = reader.result;
+                    const imageData = {
+                        id: Date.now() + Math.random(),
+                        name: file.name,
+                        size: file.size,
+                        url: URL.createObjectURL(file), // 미리보기용 blob URL
+                        file: base64String, // base64 문자열로 저장
+                        type: file.type
+                    };
+                    attachedImages.push(imageData);
+                    renderAttachedItems();
                 };
-                attachedImages.push(imageData);
+                reader.onerror = () => {
+                    console.error('[Chat] 이미지 읽기 실패:', file.name);
+                };
+                reader.readAsDataURL(file);
             }
         });
-        renderAttachedItems();
         
         // Show success message (you can use toast library if available)
         console.log(`${files.length}개의 이미지가 첨부되었습니다`);

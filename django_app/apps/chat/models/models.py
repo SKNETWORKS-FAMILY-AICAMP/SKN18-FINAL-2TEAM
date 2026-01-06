@@ -160,6 +160,19 @@ class ChatMessage(models.Model):
         db_column='used_web_search',
         help_text='웹 검색을 사용했는지 여부 (RAG 실패 시 fallback)'
     )
+    image_urls = models.JSONField(
+        default=list,
+        blank=True,
+        db_column='image_urls',
+        help_text='사용자가 첨부한 이미지의 S3 URL 리스트'
+    )
+    image_analysis_result = models.JSONField(
+        default=dict,
+        blank=True,
+        null=True,
+        db_column='image_analysis_result',
+        help_text='Vision API로 추출한 이미지 분석 결과 (JSON)'
+    )
     
     class Meta:
         db_table = 't_chat_message'

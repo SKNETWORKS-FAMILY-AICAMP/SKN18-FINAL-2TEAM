@@ -687,6 +687,30 @@
     margin: 0;
 }
 
+/* Message Images */
+.message-images {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.message-image-item {
+    max-width: 200px;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.message-image-item img {
+    width: 100%;
+    height: auto;
+    display: block;
+    max-height: 300px;
+    object-fit: contain;
+}
+
 .user-avatar {
     width: 2rem; /* w-8 h-8 */
     height: 2rem;

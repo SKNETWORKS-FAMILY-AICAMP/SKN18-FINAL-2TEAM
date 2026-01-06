@@ -135,10 +135,14 @@ def guardrail_input_node(state: Dict[str, Any]) -> Dict[str, Any]:
     print(f"  question: {str(state.get('question', ''))[:50]}...")
     print(f"{'='*60}\n")
     
+    # 디버깅: attached_images 확인
+    attached_images = state.get("attached_images", [])
+    print(f"[Guardrail] attached_images 확인: {len(attached_images) if attached_images else 0}개")
+    
     question = (state.get("question") or "").strip()
     
     if not question:
-        # 빈 질문은 통과
+        # 빈 질문은 통과 (attached_images 유지)
         state["guardrail_passed"] = True
         return state
     
@@ -188,6 +192,11 @@ def guardrail_input_node(state: Dict[str, Any]) -> Dict[str, Any]:
         print(f"  risk_category: {risk_category}")
         print(f"  reason: {risk_reason}")
     print(f"{'='*60}\n")
+    
+    # attached_images가 있으면 명시적으로 유지 (LangGraph state 병합을 위해)
+    if attached_images:
+        state["attached_images"] = attached_images
+        print(f"[Guardrail] attached_images 유지: {len(attached_images)}개")
     
     return state
 

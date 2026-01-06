@@ -269,7 +269,8 @@ def chat_detail(request, chat_id):
     
     # 메시지 조회
     messages = chat.messages.all().order_by('sort_order', 'created_at').values(
-        'message_sid', 'role', 'content', 'sort_order', 'created_at', 'case_type', 'used_web_search'
+        'message_sid', 'role', 'content', 'sort_order', 'created_at', 'case_type', 'used_web_search',
+        'image_urls', 'image_analysis_result'
     )
     
     # 참고 문헌 조회 (채팅 전체 또는 특정 메시지에 연결된 것)
@@ -442,7 +443,8 @@ def chat_detail(request, chat_id):
     for msg in messages:
         message_id = msg['message_sid']
         paper_graphs_for_msg = message_graphs.get(message_id, [])
-        print(f"[DEBUG] Message {message_id} will have {len(paper_graphs_for_msg)} paper_graphs")
+        image_urls = msg.get('image_urls', []) or []
+        print(f"[DEBUG] Message {message_id} - paper_graphs: {len(paper_graphs_for_msg)}, image_urls: {len(image_urls)}")
         formatted_messages.append({
             'id': message_id,
             'role': 'user' if msg['role'] == 'U' else 'assistant',
@@ -452,6 +454,8 @@ def chat_detail(request, chat_id):
             'case_type': msg.get('case_type'),
             'used_web_search': msg.get('used_web_search', False),
             'paper_graphs': paper_graphs_for_msg,
+            'image_urls': image_urls,  # 이미지 URL 배열
+            'image_analysis_result': msg.get('image_analysis_result'),  # 이미지 분석 결과
         })
     
     print(f"[DEBUG] Total formatted messages: {len(formatted_messages)}")
@@ -929,6 +933,8 @@ def _serialize_message(message):
         'created_at': message.created_at.isoformat() if message.created_at else None,
         'case_type': message.case_type if hasattr(message, 'case_type') else None,
         'used_web_search': message.used_web_search if hasattr(message, 'used_web_search') else False,
+        'image_urls': message.image_urls if hasattr(message, 'image_urls') else [],
+        'image_analysis_result': message.image_analysis_result if hasattr(message, 'image_analysis_result') else None,
     }
 
 
@@ -1023,7 +1029,17 @@ def chat_messages(request, chat_id=None):
 
     # 2. 요청 본문 파싱
     try:
-        payload = json.loads(request.body or "{}")
+        # Content-Type이 multipart/form-data인 경우와 application/json인 경우 모두 처리
+        if request.content_type and 'multipart/form-data' in request.content_type:
+            # FormData로 이미지가 전송된 경우
+            payload = {
+                "content": request.POST.get("content", ""),
+                "filter": request.POST.get("filter"),
+                "images": request.FILES.getlist("images") if hasattr(request, 'FILES') else []
+            }
+        else:
+            # JSON으로 전송된 경우
+            payload = json.loads(request.body or "{}")
     except json.JSONDecodeError:
         return JsonResponse({"error": "invalid_json"}, status=400)
 
@@ -1033,6 +1049,48 @@ def chat_messages(request, chat_id=None):
 
     # 필터 정보 추출 (선택적)
     filter_type = payload.get("filter") or None
+
+    # 이미지 정보 추출 및 처리
+    attached_images = []
+    images_data = payload.get("images", [])
+    print(f"[DEBUG] chat_messages - images_data 타입: {type(images_data)}, 길이: {len(images_data) if images_data else 0}")
+    if images_data:
+        import base64
+        for idx, img_data in enumerate(images_data):
+            print(f"[DEBUG] chat_messages - 이미지 {idx}: 타입={type(img_data)}, 길이={len(img_data) if isinstance(img_data, str) else 'N/A'}")
+            if isinstance(img_data, str):
+                # base64 문자열인 경우
+                img_dict = {
+                    "file": img_data,  # base64 문자열
+                    "name": "image.png",
+                    "type": "image/png"
+                }
+                # data:image 형식에서 타입 추출
+                if img_data.startswith('data:image'):
+                    parts = img_data.split(';base64,')
+                    if len(parts) == 2:
+                        mime_type = parts[0].replace('data:', '')
+                        img_dict["type"] = mime_type
+                        # 확장자 추출
+                        if 'png' in mime_type:
+                            img_dict["name"] = "image.png"
+                        elif 'jpeg' in mime_type or 'jpg' in mime_type:
+                            img_dict["name"] = "image.jpg"
+                        elif 'gif' in mime_type:
+                            img_dict["name"] = "image.gif"
+                        elif 'webp' in mime_type:
+                            img_dict["name"] = "image.webp"
+            else:
+                # File 객체인 경우
+                img_dict = {
+                    "file": img_data,
+                    "name": img_data.name,
+                    "type": img_data.content_type or "image/png"
+                }
+            attached_images.append(img_dict)
+            print(f"[DEBUG] chat_messages - 이미지 {idx} 처리 완료: {list(img_dict.keys())}")
+    
+    print(f"[DEBUG] chat_messages - 최종 attached_images: {len(attached_images)}개")
 
     user_id = str(request.user.user_id) if request.user.is_authenticated else 'anonymous'
 
@@ -1063,13 +1121,14 @@ def chat_messages(request, chat_id=None):
         )
         next_sort_order = 1
 
-    # 4. 사용자 메시지 생성
+    # 4. 사용자 메시지 생성 (이미지 URL은 아직 모르므로 일단 빈 배열)
     user_message = ChatMessage.objects.create(
         chat=chat,
         role='U',
         content=content,
         sort_order=next_sort_order,
         created_id=user_id,
+        image_urls=[],  # 초기값, AI 응답 후 업데이트
     )
 
     # 6. Chat.preview 업데이트
@@ -1080,8 +1139,23 @@ def chat_messages(request, chat_id=None):
     # 7. AI 응답 생성 (result_state도 함께 받기 위해 return_state=True)
     try:
         ai_text, citations, scores, reference_type, chat_title, result_state = generate_ai_response(
-            chat, content, return_state=True, filter_type=filter_type
+            chat, content, return_state=True, filter_type=filter_type, attached_images=attached_images if attached_images else None
         )
+        
+        # 7-1. 사용자 메시지에 이미지 URL 및 분석 결과 업데이트
+        uploaded_image_urls = result_state.get("uploaded_image_urls", [])
+        image_analysis_result = result_state.get("image_analysis_result")
+        
+        if uploaded_image_urls:
+            user_message.image_urls = uploaded_image_urls
+            print(f"[DEBUG] 사용자 메시지에 이미지 URL 저장: {len(uploaded_image_urls)}개")
+        
+        if image_analysis_result:
+            user_message.image_analysis_result = image_analysis_result
+            print(f"[DEBUG] 사용자 메시지에 이미지 분석 결과 저장")
+        
+        if uploaded_image_urls or image_analysis_result:
+            user_message.save(update_fields=['image_urls', 'image_analysis_result'])
     except Exception as exc:
         print(f"[ERROR] AI response generation failed: {exc}")
         import traceback
