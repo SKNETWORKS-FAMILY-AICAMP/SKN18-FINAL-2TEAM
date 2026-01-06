@@ -9,6 +9,21 @@ from typing import List, Tuple
 import numpy as np
 import pandas as pd
 
+import jax
+from jax import tree_util as jax_tree_util
+
+# ------------------------------------------------------------------
+# JAX 0.6.0 이후 jax.tree_map 이 제거되었기 때문에,
+# colabdesign 이 오래된 API(jax.tree_map)를 기대하는 경우를 위해
+# 여기서 미리 alias 를 만들어 준다.
+# (이 파일이 colabdesign 보다 먼저 import 되므로 안전하게 패치 가능)
+if not hasattr(jax, "tree_map"):
+    jax.tree_map = jax_tree_util.tree_map  # type: ignore[attr-defined]
+if not hasattr(jax, "tree_flatten"):
+    jax.tree_flatten = jax_tree_util.tree_flatten  # type: ignore[attr-defined]
+if not hasattr(jax, "tree_unflatten"):
+    jax.tree_unflatten = jax_tree_util.tree_unflatten  # type: ignore[attr-defined]
+
 from colabdesign.mpnn import mk_mpnn_model
 from colabdesign.af import mk_af_model
 from string import ascii_uppercase, ascii_lowercase
@@ -179,8 +194,8 @@ def run_mpnn_only(cfg: MPNNStepConfig) -> dict:
     exp = cfg.experiment_id
     out_dir = cfg.outputs_dir
     out_dir.mkdir(parents=True, exist_ok=True)
-
-    all_rows = []
+    rfd_dir = out_dir.parent / "step-rfdiffusion"
+    pdb_paths = sorted(rfd_dir.glob(f"{exp}_*.pdb"))
     # for design_idx in range(cfg.num_designs):
     #     input_pdb = out_dir / f"{exp}_{design_idx}.pdb"
     # if not input_pdb.exists():
@@ -205,10 +220,11 @@ def run_mpnn_only(cfg: MPNNStepConfig) -> dict:
 
     all_rows = []
     with open(fasta_path, "w") as f:
-        for design_idx in range(cfg.num_designs):
-            input_pdb = out_dir / f"{exp}_{design_idx}.pdb"
-            if not input_pdb.exists():
-                continue
+        with open(fasta_path, "w") as f:
+        # RFdiffusion이 실제로 만들어 놓은 PDB 개수만큼 반복
+            for design_idx, input_pdb in enumerate(pdb_paths):
+                if not input_pdb.exists():
+                    continue
 
             af_model.prep_inputs(str(input_pdb), **prep_flags)
             if protocol == "partial" and fixed_pos_arr is not None:
