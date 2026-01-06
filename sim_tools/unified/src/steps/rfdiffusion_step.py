@@ -4,6 +4,7 @@ import sys
 import subprocess
 from pathlib import Path
 from typing import Dict, Any
+import shutil
 
 def resolve_rfdiffusion_entry() -> str:
     env_entry = os.environ.get("RFDIFFUSION_ENTRY")
@@ -53,22 +54,22 @@ def run_rfdiffusion_step(
     cautious: bool,
     env: Dict[str, str],
 ) -> Dict[str, Any]:
-    """
-    RFdiffusion 단일 스텝 실행 전용.
-    - experiment_id: 파일 prefix (job name)
-    - outputs_dir: 결과 폴더(Path)
-    """
     outputs_dir.mkdir(parents=True, exist_ok=True)
 
     contig_str = str(contigs).strip()
-    contig_override = f"contigmap.contigs=[{contig_str!r}]"
+    # 문자열 리스트로 전달
+    contig_override = f"contigmap.contigs=['{contig_str}']"
 
     py = pick_python()
     entry = resolve_rfdiffusion_entry()
+
+    # 이제 경로에 '=' 가 없으므로 그대로 사용
+    output_prefix = str(outputs_dir / experiment_id)
+
     cmd = [
         py,
         entry,
-        f"inference.output_prefix={outputs_dir / experiment_id}",
+        f"inference.output_prefix={output_prefix}",
         f"inference.num_designs={int(iterations)}",
         contig_override,
     ]
@@ -78,10 +79,11 @@ def run_rfdiffusion_step(
     print("[rfdiffusion_step] exec:", " ".join(cmd))
     subprocess.run(cmd, check=True, env=env)
 
-    n = int(iterations)
+    # RFdiffusion이 만든 파일 목록
     produced = []
-    for i in range(n):
+    for i in range(int(iterations)):
         produced.append(outputs_dir / f"{experiment_id}_{i}.pdb")
         produced.append(outputs_dir / f"{experiment_id}_{i}.trb")
 
     return {"produced": produced}
+
