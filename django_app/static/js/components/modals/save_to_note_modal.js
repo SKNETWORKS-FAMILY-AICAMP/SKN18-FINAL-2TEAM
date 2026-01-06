@@ -83,6 +83,11 @@ console.log('[SaveToNoteModal] ===== Script file loading... =====');
                 tabGroup.addEventListener('sl-tab-show', (e) => {
                     const panelName = e.detail.name;
                     setSaveToNoteOption(panelName === 'existing' ? 'existing' : 'new');
+                    
+                    // 'existing' 패널이 활성화될 때 노트 목록 로드
+                    if (panelName === 'existing') {
+                        loadNotes(noteSearchQuery);
+                    }
                 });
             });
         }
@@ -161,6 +166,8 @@ console.log('[SaveToNoteModal] ===== Script file loading... =====');
             
             const data = await response.json();
             
+            console.log('[SaveToNoteModal] API 응답 데이터:', data);
+            
             if (data.status === 'success' && Array.isArray(data.results)) {
                 // Transform API response to match expected format
                 allNotes = data.results.map(note => ({
@@ -171,10 +178,14 @@ console.log('[SaveToNoteModal] ===== Script file loading... =====');
                     tags: note.tags || [],
                 }));
                 
-        currentPage = 1;
-        selectedNote = null;
-        renderNotesList();
+                console.log('[SaveToNoteModal] 변환된 노트 목록:', allNotes);
+                console.log('[SaveToNoteModal] 노트 개수:', allNotes.length);
+                
+                currentPage = 1;
+                selectedNote = null;
+                renderNotesList();
             } else {
+                console.error('[SaveToNoteModal] 잘못된 응답 형식:', data);
                 throw new Error('Invalid response format');
             }
         } catch (error) {
@@ -239,9 +250,14 @@ console.log('[SaveToNoteModal] ===== Script file loading... =====');
         if (!notesList) {
             getModalElements();
         }
-        if (!notesList) return;
+        if (!notesList) {
+            console.warn('[SaveToNoteModal] notesList 요소를 찾을 수 없습니다.');
+            return;
+        }
 
+        console.log('[SaveToNoteModal] renderNotesList 호출됨');
         const { notes, totalPages, total, startIndex, endIndex } = getPaginatedNotes();
+        console.log('[SaveToNoteModal] 페이지네이션된 노트:', notes);
 
         if (notes.length === 0) {
             notesList.innerHTML = `
@@ -574,12 +590,48 @@ console.log('[SaveToNoteModal] ===== Script file loading... =====');
         console.log('[SaveToNoteModal] Context 복원됨:', saveToNoteContext);
         console.log('[SaveToNoteModal] messageId:', saveToNoteContext?.messageId);
         
-        // Load notes from API (search query will be empty initially)
-        loadNotes('');
-        updateSaveButtonState();
-
         modal.classList.add('active');
         console.log('[SaveToNoteModal] Modal opened');
+        
+        // Shoelace 탭이 완전히 초기화된 후 노트 목록 로드
+        // 'existing' 탭이 기본 선택되어 있으므로, 탭이 활성화된 후 데이터 로드
+        if (tabGroup) {
+            customElements.whenDefined('sl-tab-group').then(() => {
+                // 탭 패널이 실제로 활성화되었는지 확인하는 함수
+                const checkAndLoadNotes = () => {
+                    const existingPanel = tabGroup.querySelector('sl-tab-panel[name="existing"]');
+                    const existingTab = tabGroup.querySelector('sl-tab[panel="existing"]');
+                    
+                    // 탭 패널이 존재하고 활성화되어 있는지 확인
+                    if (existingPanel && existingTab && existingTab.hasAttribute('active')) {
+                        console.log('[SaveToNoteModal] Existing 탭이 활성화됨, 노트 목록 로드 시작');
+                        loadNotes('');
+                        return true;
+                    }
+                    return false;
+                };
+                
+                // 즉시 확인 시도
+                if (checkAndLoadNotes()) {
+                    return;
+                }
+                
+                // 탭 패널이 아직 활성화되지 않았다면, 약간의 지연 후 재시도
+                setTimeout(() => {
+                    if (!checkAndLoadNotes()) {
+                        console.warn('[SaveToNoteModal] Existing 탭이 활성화되지 않음, 강제로 노트 로드');
+                        // 탭이 활성화되지 않았어도 데이터는 로드 (나중에 탭이 활성화되면 표시됨)
+                        loadNotes('');
+                    }
+                }, 150);
+            });
+        } else {
+            // 탭 그룹이 없으면 즉시 로드
+            console.log('[SaveToNoteModal] 탭 그룹이 없음, 즉시 노트 로드');
+            loadNotes('');
+        }
+        
+        updateSaveButtonState();
     }
 
     // Close modal

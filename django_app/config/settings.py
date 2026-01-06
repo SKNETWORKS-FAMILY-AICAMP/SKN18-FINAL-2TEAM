@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     "apps.organization.apps.OrganizationConfig",
     "apps.codes.apps.CodesConfig",
     "apps.bookmark.apps.BookmarkConfig",
+    "apps.feedback.apps.FeedbackConfig",
     
     "django.contrib.admin",
     "django.contrib.auth",

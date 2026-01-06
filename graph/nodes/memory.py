@@ -179,6 +179,7 @@ def memory_read_basic_tool(chat_room_id: str, user_id: str = "default") -> dict:
         cursor.execute(query, (chat_room_id_int, user_id))
         latest_conv = cursor.fetchone()
         cursor.close()
+        conn.commit()  # SELECT 쿼리 후 트랜잭션 명시적 커밋
 
         if not latest_conv:
             return {
@@ -255,6 +256,7 @@ def memory_read_node(state):
         cursor.execute(query, (chat_room_id, user_id))
         conversations = cursor.fetchall()
         cursor.close()
+        conn.commit()  # SELECT 쿼리 후 트랜잭션 명시적 커밋
 
         # 조회된 대화들의 chat_id 로그
         print(f"\n[MemoryRead] 조회된 대화 개수: {len(conversations)}")

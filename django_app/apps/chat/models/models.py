@@ -148,6 +148,13 @@ class ChatMessage(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, db_column='created_at')
     created_id = models.CharField(max_length=60, db_column='created_id')
     concept_graph = models.TextField(blank=True, null=True, db_column='concept_graph')  # blank=True, null=True 둘 다 있어야 DB에 NULL을 저장할 수 있음
+    case_type = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True,
+        db_column='case_type',
+        help_text='LangGraph에서 분류한 질의 타입 (NO_RELATION, BIO_Q, SIMULATION_Q, PROTOCOL_Q, INFERENCE_Q, USER_INFO)'
+    )
     
     class Meta:
         db_table = 't_chat_message'

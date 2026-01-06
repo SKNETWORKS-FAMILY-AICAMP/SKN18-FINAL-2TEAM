@@ -164,6 +164,31 @@
     line-height: 1.5;
 }
 
+.modal-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.5rem;
+    border-top: 1px solid #e5e7eb;
+}
+
+.modal-footer-left,
+.modal-footer-right {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.modal-btn-danger {
+    background-color: #ef4444;
+    color: #fff;
+}
+
+.modal-btn-danger:hover {
+    background-color: #dc2626;
+}
+
 /* Right Column - Shared Users */
 .schedule-detail-right {
     width: 20rem; /* 320px - React uses w-80 which is 20rem */
@@ -239,30 +264,66 @@
     padding: 0.75rem;
     background: white;
     border: 1px solid #e5e7eb;
-    border-radius: 0.5rem;
+    border-radius: 12px;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 0.75rem;
 }
 
+.schedule-shared-item.pending {
+    opacity: 0.7;
+}
+
 .schedule-shared-info {
     flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.schedule-shared-text {
+    display: flex;
+    flex-direction: column;
     min-width: 0;
 }
 
 .schedule-shared-name {
-    font-size: 0.875rem;
-    font-weight: 500;
+    font-size: 0.9rem;
+    font-weight: 600;
     color: #111827;
-    margin: 0 0 0.25rem 0;
+    margin: 0;
 }
 
 .schedule-shared-email {
-    font-size: 0.75rem;
-    color: #6b7280;
-    margin: 0;
+    font-size: 0.8rem;
+    color: #9ca3af;
+    margin: 0.1rem 0 0 0;
     word-break: break-all;
+}
+
+.schedule-shared-status {
+    font-size: 0.75rem;
+    padding: 0.15rem 0.7rem;
+    border-radius: 9999px;
+    border: 1px solid #d1d5db;
+    color: #9ca3af;
+    background: #f8fafc;
+    white-space: nowrap;
+}
+
+.schedule-shared-status.pending {
+    color: #9ca3af;
+    border-color: #d1d5db;
+    background: #f9fafb;
+}
+
+.schedule-shared-status.accepted {
+    color: #0f766e;
+    border-color: #34d399;
+    background: #d1fae5;
 }
 
 .schedule-shared-remove-btn,

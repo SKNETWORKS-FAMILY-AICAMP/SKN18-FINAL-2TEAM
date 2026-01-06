@@ -57,6 +57,7 @@ urlpatterns = [
     path("api/experiments/", include("apps.experiments.api_urls")),
     path("api/notes/", include("apps.notes.api_urls")),
     path("api/bookmarks/", include("apps.bookmark.api_urls")),
+    path("api/feedback/", include("apps.feedback.api_urls")),
     path("api/profile/", include("apps.account.api_urls")),
     path("api/settings/", settings_api, name="api_settings"),
     path("api/organization/", include("apps.organization.urls")),
