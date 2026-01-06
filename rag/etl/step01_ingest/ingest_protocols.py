@@ -152,37 +152,55 @@ def looks_like_table_header(header: str, first_body_row: str) -> bool:
     return True
 
 def detect_pseudo_table_from_text(text: str) -> str:
-    lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
-    if len(lines) < 3:
-        return text
-    
-    header_candidates = set(find_header_candidates(lines))
+    raw_lines = text.splitlines()   # ❗ strip / filter 하지 않음
+    n = len(raw_lines)
 
     i = 0
-    while i < len(lines):
-        if lines[i] in ("<PSEUDO_TABLE>", "</PSEUDO_TABLE>"):
+    while i < n:
+        # 공백 라인은 스킵
+        if not raw_lines[i].strip():
             i += 1
             continue
-        if i in header_candidates:
-            for size in range(15, 2, -1):
-                chunk = lines[i:i+size]
-                if not is_pseudo_table(chunk):
-                    continue
 
-                start = i
-                full_chunk = chunk
+        # header 후보인지 확인
+        if i + 1 < n and looks_like_table_header(
+            raw_lines[i].strip(),
+            raw_lines[i + 1].strip()
+        ):
+            # 연속 block 수집
+            block = []
+            j = i
+            while j < n and raw_lines[j].strip():
+                block.append(raw_lines[j].strip())
+                j += 1
 
-                lines = (lines[:start]
-                         + ["<PSEUDO_TABLE>"]
-                         + full_chunk
-                         + ["</PSEUDO_TABLE>"]
-                         + lines[start + len(full_chunk):])
-                
-                i = start + len(full_chunk) + 1  # 태그 뒤로 이동
-                break
+            if is_pseudo_table(block):
+                wrapped = (
+                    ["<PSEUDO_TABLE>"]
+                    + block
+                    + ["</PSEUDO_TABLE>"]
+                )
+                raw_lines[i:j] = wrapped
+                n = len(raw_lines)
+                i += len(wrapped)
+                continue
+
         i += 1
 
-    return "\n".join(lines)
+    return "\n".join(raw_lines)
+
+def strip_pseudo_table_tags(text: str) -> str:
+    """
+    <PSEUDO_TABLE> 태그 제거 (내용은 유지)
+    """
+    if not text:
+        return text
+    return (
+        text
+        .replace("<PSEUDO_TABLE>", "")
+        .replace("</PSEUDO_TABLE>", "")
+        .strip()
+    )
 
 # -------------------------
 # (2) API 데이터 수집
@@ -452,6 +470,7 @@ def ingest_keyword(search_keyword: str, raw_dir: Path | None = None) -> None:
             abstract_html = parse_table_to_text(abstract_html)
             abstract_str = html_to_text_with_superscript(abstract_html)
             abstract_str = detect_pseudo_table_from_text(abstract_str)
+            abstract_str = strip_pseudo_table_tags(abstract_str)
             if not abstract_str.strip():
                 abstract_str = "<no data>"
             print(f"abstract: {abstract_str}")
@@ -495,6 +514,7 @@ def ingest_keyword(search_keyword: str, raw_dir: Path | None = None) -> None:
                 step_str = "<no data>"
 
             step_str = detect_pseudo_table_from_text(step_str)
+            step_str = strip_pseudo_table_tags(step_str)
             print(f"step_content: {step_str}")
 
 
@@ -502,6 +522,7 @@ def ingest_keyword(search_keyword: str, raw_dir: Path | None = None) -> None:
             reference_html = parse_table_to_text(reference_html)
             reference_str = html_to_text_with_superscript(reference_html)
             reference_str = detect_pseudo_table_from_text(reference_str)
+            reference_str = strip_pseudo_table_tags(reference_str)
             if not reference_str.strip():
                 reference_str = "<no data>"
             print(f"reference: {reference_str}")
@@ -510,6 +531,7 @@ def ingest_keyword(search_keyword: str, raw_dir: Path | None = None) -> None:
             guidelines_html = parse_table_to_text(guidelines_html)
             guidelines_str = html_to_text_with_superscript(guidelines_html)
             guidelines_str = detect_pseudo_table_from_text(guidelines_str)
+            guidelines_str = strip_pseudo_table_tags(guidelines_str)
             if not guidelines_str.strip():
                 guidelines_str = "<no data>"
             print(f"guidelines: {guidelines_str}")
@@ -518,6 +540,7 @@ def ingest_keyword(search_keyword: str, raw_dir: Path | None = None) -> None:
             materials_html = parse_table_to_text(materials_html)
             materials_str = html_to_text_with_superscript(materials_html)
             materials_str = detect_pseudo_table_from_text(materials_str)
+            materials_str = strip_pseudo_table_tags(materials_str)
             if not materials_str.strip():
                 materials_str = "<no data>"
             print(f"materials: {materials_str}")
