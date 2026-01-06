@@ -19,6 +19,7 @@ class BioRAGState(TypedDict, total=False):
     question: str                       # 사용자가 "방금" 입력한 실제 질문
     conversation_id: NotRequired[str]   # Django DB PK (chat_room_id)
     user_id: str                        # 사용자 ID
+    filter_type: NotRequired[str]       # 프론트엔드에서 선택한 필터 타입 (paper, protocol, simulation, interpretation)
 
     # -----------------------------
     # 🔹 2. Guardrail (Safety Check)

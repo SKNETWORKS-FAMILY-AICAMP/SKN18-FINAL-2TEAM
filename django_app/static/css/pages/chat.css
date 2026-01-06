@@ -150,6 +150,12 @@
     border: none;
     outline: none;
     color: #111827;
+    resize: none; /* textarea 크기 조절 비활성화 */
+    overflow-y: auto; /* 내용이 많을 때 스크롤 */
+    min-height: 2.5rem; /* 기본 높이 (input과 비슷) */
+    max-height: calc(1.5rem * 3 + 1rem); /* 최대 높이 (3줄 정도) */
+    line-height: 1.5rem; /* 줄 간격 */
+    padding: 0.5rem 0; /* 상하 패딩 */
 }
 
 .chat-input-field::placeholder {
