@@ -150,12 +150,7 @@
     border: none;
     outline: none;
     color: #111827;
-    resize: none; /* textarea 크기 조절 비활성화 */
-    overflow-y: auto; /* 내용이 많을 때 스크롤 */
-    min-height: 2.5rem; /* 기본 높이 (input과 비슷) */
-    max-height: calc(1.5rem * 3 + 1rem); /* 최대 높이 (3줄 정도) */
-    line-height: 1.5rem; /* 줄 간격 */
-    padding: 0.5rem 0; /* 상하 패딩 */
+    
 }
 
 .chat-input-field::placeholder {
@@ -674,6 +669,7 @@
     flex: 1; /* flex-1 */
     display: flex;
     justify-content: flex-end; /* flex justify-end */
+    min-width: 0; /* allow text to wrap inside flex */
 }
 
 .message-bubble-user {
@@ -729,12 +725,20 @@
 
 .message-content-assistant {
     flex: 1; /* flex-1 */
+    min-width: 0; /* keep markdown content from overflowing flex container */
 }
 
 .markdown-content {
     font-size: 0.875rem; /* text-sm */
     color: #111827; /* text-gray-900 */
     line-height: 1.75;
+    overflow-wrap: anywhere; /* break long tokens like URLs */
+    word-break: break-word;
+}
+
+.markdown-content a {
+    overflow-wrap: anywhere;
+    word-break: break-all; /* ensure raw URLs wrap safely */
 }
 
 .markdown-content h1 {
@@ -804,12 +808,19 @@
     overflow-x: auto;
     margin-bottom: 0.75rem; /* mb-3 */
     display: block;
+    max-width: 100%; /* 부모 컨테이너 너비를 초과하지 않도록 */
+    word-wrap: break-word; /* 긴 단어도 줄바꿈 */
 }
 
 .markdown-content pre code {
     background: none;
     padding: 0;
     font-size: 0.875rem; /* text-sm */
+    white-space: pre-wrap; /* 공백과 줄바꿈 유지하되, 필요시 줄바꿈 */
+    word-wrap: break-word; /* 긴 단어도 줄바꿈 */
+    overflow-wrap: break-word; /* 긴 URL이나 토큰도 줄바꿈 */
+    display: block;
+    max-width: 100%;
 }
 
 /* Mermaid Chart Styles */
