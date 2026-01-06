@@ -5,6 +5,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
 from typing import Iterable
+import re
 
 # 패키지 형태로 실행하지 않아도 rag.* 모듈을 찾을 수 있도록 루트 경로 추가
 import os
@@ -37,9 +38,6 @@ def parse_table_to_text(html):
     soup = BeautifulSoup(html, "html.parser")
     tables = soup.find_all("table")
 
-    if not tables:
-        return html
-
     for table in tables:
         rows = []
 
@@ -57,8 +55,104 @@ def parse_table_to_text(html):
         table_text = "\n".join(rows)
         table.replace_with("\n" + table_text + "\n")
 
+    # pseudo-table 감지 (html 내에 table 태그가 없지만, 표 형식의 클래스나 스타일이 있는 경우)
+    blocks = soup.find_all(lambda tag: tag.name in ["p", "div", "pre", "li"] and tag.get_text(strip=True))
+
+    segments = []
+    current = []
+
+    for block in blocks:
+        text = block.get_text(strip=True)
+
+        # segment 분리 기준
+        if not text or len(text) > 500:
+            if current:
+                segments.append(current)
+                current = []
+            continue
+
+        current.append(block)
+
+    if current:
+        segments.append(current)
+
+    for segment in segments:
+        lines = [
+            b.get_text("\n", strip=True)
+            for b in segment
+            if b.get_text(strip=True)
+        ]
+
+        if is_pseudo_table(lines):
+            pseudo_html = (
+                "<PSEUDO_TABLE>\n"
+                + "\n".join(lines)
+                + "\n</PSEUDO_TABLE>"
+            )
+
+            anchor = segment[0]
+
+            anchor.insert_before(
+                BeautifulSoup(pseudo_html, "html.parser")
+            )
+
+            for b in segment:
+                b.decompose()
+
     return str(soup)
 
+def is_pseudo_table(lines: list[str]) -> bool:
+    if len(lines) < 2:
+        return False
+
+    def split_line(line: str) -> list[str]:
+        if "\t" in line:
+            return [c.strip() for c in line.split("\t")]
+        if "|" in line:
+            return [c.strip() for c in line.strip("|").split("|")]
+        return [c.strip() for c in re.split(r"\s{2,}", line)]
+
+    split_rows = [split_line(ln) for ln in lines]
+
+    col_lens = [len(r) for r in split_rows]
+
+    # 모든 줄에서 column 수 동일해야 함
+    if len(set(col_lens)) != 1:
+        return False
+
+    # column 수 2 미만은 표 아님
+    if col_lens[0] < 2:
+        return False
+
+    # header + data 최소 구조
+    if len(split_rows) < 2:
+        return False
+
+    # data row 최소 개수 (header 제외)
+    data_like = 0
+    for row in split_rows[1:]:
+        joined = " ".join(row)
+        if re.search(r"\d", joined) or re.search(r"(µ|°|mg|ml|min|sec)", joined, re.I):
+            data_like += 1
+
+    if data_like < 1:
+        return False
+    
+    VERB_PATTERN = re.compile(
+        r"\b(add|mix|incubate|prepare|wash|place|remove|spin|pipette)\b",
+        re.I
+    )
+
+    sentence_like = 0
+    for ln in lines:
+        if VERB_PATTERN.search(ln):
+            sentence_like += 1
+
+    # 문장형 라인이 절반 이상이면 pseudo-table 아님
+    if sentence_like >= len(lines) / 2:
+        return False
+
+    return True
 
 # -------------------------
 # (2) API 데이터 수집
