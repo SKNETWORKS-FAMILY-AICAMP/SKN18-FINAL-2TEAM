@@ -1,16 +1,21 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# (옵션) 디버그: OPS_DEBUG=1 이면 bash trace 출력
+OPS_DEBUG="${OPS_DEBUG:-0}"
+[[ "$OPS_DEBUG" == "1" ]] && set -x
+
 ########################################
 # Config (환경변수로 오버라이드 가능)
 ########################################
 PY_BIN="${PY_BIN:-python3}"
-TORCH_VENV="${TORCH_VENV:-/opt/venv_torch}"
 
-# unified 폴더 위치 (스크립트가 있는 경로 기준으로 자동 추론 가능)
+# ✅ Split venvs
+TORCH_VENV="${TORCH_VENV:-/opt/venv_torch}"
+JAX_VENV="${JAX_VENV:-/opt/venv_jax}"
+
 APP_DIR="${APP_DIR:-/workspace/unified}"
 SCRIPT_DIR="${SCRIPT_DIR:-$APP_DIR}"
-
 RFDIFFUSION_DIR="${RFDIFFUSION_DIR:-/app/RFdiffusion}"
 
 MODELS_DIR="${MODELS_DIR:-/models}"
@@ -24,18 +29,52 @@ UVICORN_PID="${UVICORN_PID:-${APP_DIR}/uvicorn_${PORT}.pid}"
 # (옵션) S3 업로드 관련 env
 # -----------------------------
 S3_BUCKET="${S3_BUCKET:-}"
-S3_BASE="${S3_BASE:-simulations}"           # ✅ NEW: base root (default: simulations)
+S3_BASE="${S3_BASE:-simulations}"
 AWS_REGION="${AWS_REGION:-${AWS_DEFAULT_REGION:-}}"
 
-# ✅ AWS_S3_*도 지원 (RunPod Secret에서 AWS_S3_*만 넣어도 동작)
 AWS_S3_BUCKET="${AWS_S3_BUCKET:-}"
-AWS_S3_BASE_PATH="${AWS_S3_BASE_PATH:-}"   # ex) simulations  (or legacy values)
+AWS_S3_BASE_PATH="${AWS_S3_BASE_PATH:-}"
+
+# -----------------------------
+# ColabDesign / AlphaFold params
+# -----------------------------
+COLABDESIGN_DIR="${COLABDESIGN_DIR:-/workspace/colabdesign}"
+AF_DIR="${AF_DIR:-${MODELS_DIR}/alphafold}"
+AF_PARAMS_TAR_URL="${AF_PARAMS_TAR_URL:-https://storage.googleapis.com/alphafold/alphafold_params_2022-12-06.tar}"
+AF_PARAMS_TAR_NAME="${AF_PARAMS_TAR_NAME:-alphafold_params_2022-12-06.tar}"
+
+
+# ★ AlphaFold params 위치 자동 감지
+autodetect_af_dir() {
+  # 이미 제대로 있으면 그대로 사용
+  if [[ -s "${AF_DIR}/params_model_1_ptm.npz" ]]; then
+    return 0
+  fi
+  # 사용자가 AF_DIR 환경변수로 직접 지정한 경우는 건드리지 않음
+  if env | grep -q '^AF_DIR='; then
+    return 0
+  fi
+  local found
+  found="$(find /workspace /models -type f -name 'params_model_1_ptm.npz' 2>/dev/null | head -n 1 || true)"
+  if [[ -n "$found" ]]; then
+    AF_DIR="$(dirname "$found")"
+    log "autodetect AF_DIR from params: $AF_DIR"
+  fi
+}
+
+# -----------------------------
+# (옵션) JAX GPU indicates attempt
+#  - 0: CPU jaxlib 유지 (안전)
+#  - 1: CUDA jaxlib 설치 "시도" (실패해도 계속 진행)
+# -----------------------------
+ENABLE_JAX_CUDA="${ENABLE_JAX_CUDA:-0}"
 
 ########################################
 # Utils
 ########################################
 log() { echo "[ops] $*"; }
 die() { echo "[ops][ERROR] $*" >&2; exit 1; }
+warn() { echo "[ops][WARN] $*" >&2; }
 
 need_root() {
   if [[ "${EUID:-$(id -u)}" -ne 0 ]]; then
@@ -44,20 +83,143 @@ need_root() {
 }
 
 ensure_dir() { mkdir -p "$1"; }
-venv_python() { echo "${TORCH_VENV}/bin/python"; }
 
-# ✅ "비어있으면 env로 넘기지 않기" 헬퍼
+venv_python_torch() { echo "${TORCH_VENV}/bin/python"; }
+venv_python_jax()   { echo "${JAX_VENV}/bin/python"; }
+
+# -----------------------------
+# Runtime helpers (venv-safe)
+# -----------------------------
+torch_site_packages() {
+  "$(venv_python_torch)" - <<'PY'
+import site
+paths = site.getsitepackages()
+print(paths[0] if paths else "")
+PY
+}
+
+jax_site_packages() {
+  "$(venv_python_jax)" - <<'PY'
+import site
+paths = site.getsitepackages()
+print(paths[0] if paths else "")
+PY
+}
+
+set_ld_library_path_for_torch() {
+  local sp
+  sp="$(torch_site_packages || true)"
+
+  if [[ -z "${sp}" ]]; then
+    warn "cannot resolve torch site-packages; LD_LIBRARY_PATH not set"
+    return 0
+  fi
+
+  local nvr="${sp}/nvidia"
+  local parts=()
+
+  for d in \
+    "$nvr/nvtx/lib" \
+    "$nvr/nvjitlink/lib" \
+    "$nvr/nccl/lib" \
+    "$nvr/curand/lib" \
+    "$nvr/cufft/lib" \
+    "$nvr/cuda_runtime/lib" \
+    "$nvr/cuda_nvrtc/lib" \
+    "$nvr/cuda_cupti/lib" \
+    "$nvr/cublas/lib" \
+    "$nvr/cusparse/lib" \
+    "$nvr/cudnn/lib" \
+    "$nvr/cusolver/lib"
+  do
+    [[ -d "$d" ]] && parts+=("$d")
+  done
+
+  if [[ "${#parts[@]}" -eq 0 ]]; then
+    warn "no nvidia lib dirs found under: $nvr (LD_LIBRARY_PATH unchanged)"
+    return 0
+  fi
+
+  export LD_LIBRARY_PATH="$(IFS=:; echo "${parts[*]}"):${LD_LIBRARY_PATH:-}"
+}
+
+set_ld_library_path_for_jax() {
+  local sp
+  sp="$(jax_site_packages || true)"
+
+  if [[ -z "${sp}" ]]; then
+    warn "cannot resolve jax site-packages; LD_LIBRARY_PATH not set for jax"
+    return 0
+  fi
+
+  local nvr="${sp}/nvidia"
+  local parts=()
+
+  if [[ -d "$nvr" ]]; then
+    while IFS= read -r d; do
+      [[ -d "$d" ]] && parts+=("$d")
+    done < <(find "$nvr" -maxdepth 3 -type d -name lib 2>/dev/null | sort)
+  fi
+
+  if [[ "${#parts[@]}" -eq 0 ]]; then
+    warn "no nvidia lib dirs found under: $nvr (LD_LIBRARY_PATH unchanged)"
+    return 0
+  fi
+
+  export LD_LIBRARY_PATH="$(IFS=:; echo "${parts[*]}"):${LD_LIBRARY_PATH:-}"
+  log "LD_LIBRARY_PATH(jax)=${LD_LIBRARY_PATH}"
+}
+
+sanity_torch() {
+  log "sanity(torch): python=$("$(venv_python_torch)" -V 2>&1 | tr -d '\r')"
+  if command -v nvidia-smi >/dev/null 2>&1; then
+    log "sanity(torch): nvidia-smi OK"
+    nvidia-smi -L || true
+  else
+    warn "sanity(torch): nvidia-smi not found"
+  fi
+
+  "$(venv_python_torch)" - <<'PY'
+try:
+  import torch
+  print("[sanity][torch] version:", torch.__version__)
+  print("[sanity][torch] cuda:", torch.version.cuda)
+  print("[sanity][torch] cuda_available:", torch.cuda.is_available())
+  if torch.cuda.is_available():
+    print("[sanity][torch] device:", torch.cuda.get_device_name(0))
+  try:
+    import torch.backends.cudnn as cudnn
+    print("[sanity][torch] cudnn_version:", cudnn.version())
+  except Exception as e:
+    print("[sanity][torch] cudnn check failed:", repr(e))
+except Exception as e:
+  print("[sanity][torch] import torch failed:", repr(e))
+PY
+}
+
+sanity_jax() {
+  log "sanity(jax): python=$("$(venv_python_jax)" -V 2>&1 | tr -d '\r')"
+  "$(venv_python_jax)" - <<'PY'
+try:
+  import jax
+  dev = jax.devices()
+  print("[sanity][jax] version:", jax.__version__)
+  print("[sanity][jax] devices:", dev)
+  print("[sanity][jax] has_gpu:", any(getattr(d, "platform", "") == "gpu" for d in dev))
+except Exception as e:
+  print("[sanity][jax] import/devices failed:", repr(e))
+PY
+}
+
 add_env_if_nonempty() {
   local -n _arr="$1"
   local k="$2"
-  local v="${3:-}"C:\dev\study\skn18_fianl-2team\SKN18-FINAL-2TEAM\sim_tools\unified\unified_shell_script.sh
+  local v="${3:-}"
   if [[ -n "${v}" ]]; then
     _arr+=("${k}=${v}")
   fi
 }
 
-# ✅ RunPod에서 /proc/1(environ)에만 AWS/S3가 있고 현재 쉘에는 없을 때가 있음
-#    -> 그 경우 PID1의 AWS_/S3_만 안전하게 가져와서 export
 load_aws_env_from_pid1_if_missing() {
   if env | egrep -q '^(AWS_|S3_)'; then
     return 0
@@ -71,9 +233,7 @@ load_aws_env_from_pid1_if_missing() {
   fi
 }
 
-# ✅ env 로드 후, AWS_S3_* -> S3_* 매핑 + base 정리 + region 보정
 refresh_s3_mapping() {
-  # region 동기화
   AWS_REGION="${AWS_REGION:-${AWS_DEFAULT_REGION:-}}"
   if [[ -n "${AWS_REGION:-}" && -z "${AWS_DEFAULT_REGION:-}" ]]; then
     AWS_DEFAULT_REGION="$AWS_REGION"
@@ -82,22 +242,43 @@ refresh_s3_mapping() {
   AWS_S3_BUCKET="${AWS_S3_BUCKET:-}"
   AWS_S3_BASE_PATH="${AWS_S3_BASE_PATH:-}"
 
-  # AWS_S3_* -> S3_* 자동 매핑
   if [[ -z "${S3_BUCKET:-}" && -n "${AWS_S3_BUCKET:-}" ]]; then
     S3_BUCKET="${AWS_S3_BUCKET}"
   fi
 
-  # ✅ NEW: base root 매핑
-  # - S3_BASE가 비어있을 때만 AWS_S3_BASE_PATH로 채움
-  # - (주의) AWS_S3_BASE_PATH에 "simulations/sim_result" 같은 legacy 값이 들어오면
-  #         최신 구조에서는 base root로는 "simulations"만 쓰는 걸 권장.
   if [[ -z "${S3_BASE:-}" && -n "${AWS_S3_BASE_PATH:-}" ]]; then
     S3_BASE="${AWS_S3_BASE_PATH}"
   fi
 
-  # base 정리 (양끝 슬래시 제거) + 기본값 보장
   S3_BASE="$(echo "${S3_BASE:-simulations}" | sed 's#^/*##; s#/*$##')"
   [[ -n "${S3_BASE:-}" ]] || S3_BASE="simulations"
+}
+
+########################################
+# Helper: ensure ./params symlink
+########################################
+ensure_unified_params_link() {
+  local link_path="${APP_DIR}/params"
+  if [[ -L "$link_path" || -e "$link_path" ]]; then
+    rm -rf "$link_path" || true
+  fi
+  ln -s "$AF_DIR" "$link_path"
+  log "params link ensured: ${link_path} -> ${AF_DIR}"
+}
+
+########################################
+# Helper: parse --step from args
+########################################
+extract_step_arg() {
+  local step=""
+  local args=("$@")
+  for ((i=0; i<${#args[@]}; i++)); do
+    if [[ "${args[$i]}" == "--step" && $((i+1)) -lt ${#args[@]} ]]; then
+      step="${args[$((i+1))]}"
+      break
+    fi
+  done
+  echo "$step"
 }
 
 ########################################
@@ -115,11 +296,11 @@ cmd_up() {
   log "MODELS_DIR=$MODELS_DIR"
   log "RFDIFFUSION_DIR=$RFDIFFUSION_DIR"
   log "PORT=$PORT"
-  log "S3_BUCKET=${S3_BUCKET:-<empty>}"
-  log "S3_BASE=${S3_BASE:-simulations}"
-  log "AWS_REGION=${AWS_REGION:-<empty>}"
-  log "AWS_S3_BUCKET=${AWS_S3_BUCKET:-<empty>}"
-  log "AWS_S3_BASE_PATH=${AWS_S3_BASE_PATH:-<empty>}"
+  log "AF_DIR=$AF_DIR"
+  log "COLABDESIGN_DIR=$COLABDESIGN_DIR"
+  log "ENABLE_JAX_CUDA=$ENABLE_JAX_CUDA"
+  log "TORCH_VENV=$TORCH_VENV"
+  log "JAX_VENV=$JAX_VENV"
   log "========================================"
 
   cmd_install
@@ -141,7 +322,10 @@ cmd_install() {
   log "install start"
   log "PY_BIN=$PY_BIN"
   log "TORCH_VENV=$TORCH_VENV"
+  log "JAX_VENV=$JAX_VENV"
   log "RFDIFFUSION_DIR=$RFDIFFUSION_DIR"
+  log "COLABDESIGN_DIR=$COLABDESIGN_DIR"
+  log "ENABLE_JAX_CUDA=$ENABLE_JAX_CUDA"
 
   $PY_BIN --version
 
@@ -151,51 +335,57 @@ cmd_install() {
     build-essential pkg-config ca-certificates curl git unzip wget \
     python3-venv python3-dev
 
-  if [[ ! -x "$(venv_python)" ]]; then
-    log "creating venv at $TORCH_VENV"
+  # ---------- torch venv ----------
+  if [[ ! -x "$(venv_python_torch)" ]]; then
+    log "creating TORCH venv at $TORCH_VENV"
     $PY_BIN -m venv "$TORCH_VENV"
   fi
 
-  "$(venv_python)" -m pip install -U pip setuptools wheel
-  "$(venv_python)" -m pip install "numpy<2"
+  "$(venv_python_torch)" -m pip install -U pip setuptools wheel
+  "$(venv_python_torch)" -m pip install "numpy<2"
 
-  "$(venv_python)" -m pip install \
+  # PyTorch CUDA (RFdiffusion)
+  "$(venv_python_torch)" -m pip install \
     --index-url https://download.pytorch.org/whl/cu121 \
     torch==2.2.0 torchvision==0.17.0 torchaudio==2.2.0
 
-  "$(venv_python)" -m pip install \
+  # torch 2.2.0+cu121 기준 cuDNN 재고정(안전장치)
+  "$(venv_python_torch)" -m pip install -U --no-deps "nvidia-cudnn-cu12==8.9.2.26" || true
+
+  "$(venv_python_torch)" -m pip install \
     -f https://data.dgl.ai/wheels/torch-2.2/cu121/repo.html \
     dgl
 
-  "$(venv_python)" -m pip install -U opt_einsum pyrsistent e3nn
+  "$(venv_python_torch)" -m pip install -U opt_einsum pyrsistent e3nn
 
-  # API 서버용 패키지 포함
-  "$(venv_python)" -m pip install -U fastapi uvicorn
+  # API 서버용 패키지
+  "$(venv_python_torch)" -m pip install -U fastapi uvicorn
 
-  # ✅ S3 업로드용
-  "$(venv_python)" -m pip install -U boto3 botocore
+  # S3 업로드용
+  "$(venv_python_torch)" -m pip install -U boto3 botocore
 
+  # RFdiffusion clone + install
   if [[ ! -d "$RFDIFFUSION_DIR" ]]; then
     log "Cloning RFdiffusion into $RFDIFFUSION_DIR"
     git clone https://github.com/RosettaCommons/RFdiffusion.git "$RFDIFFUSION_DIR"
   fi
 
-  log "installing se3-transformer"
-  if "$(venv_python)" -c "import se3_transformer" >/dev/null 2>&1; then
+  log "installing se3-transformer (TORCH_VENV)"
+  if "$(venv_python_torch)" -c "import se3_transformer" >/dev/null 2>&1; then
     log "se3_transformer already importable. Skipping."
   else
-    "$(venv_python)" -m pip install -U opt_einsum
+    "$(venv_python_torch)" -m pip install -U opt_einsum
 
-    "$(venv_python)" -m pip install -U \
+    "$(venv_python_torch)" -m pip install -U \
       "git+https://github.com/NVIDIA/DeepLearningExamples.git#subdirectory=DGLPyTorch/DrugDiscovery/SE3Transformer" \
     || true
 
-    if ! "$(venv_python)" -c "import se3_transformer" >/dev/null 2>&1; then
+    if ! "$(venv_python_torch)" -c "import se3_transformer" >/dev/null 2>&1; then
       if [[ -d "$RFDIFFUSION_DIR/env/SE3Transformer" ]]; then
         log "fallback: installing SE3Transformer from $RFDIFFUSION_DIR/env/SE3Transformer"
         pushd "$RFDIFFUSION_DIR/env/SE3Transformer" >/dev/null
-        [[ -f requirements.txt ]] && "$(venv_python)" -m pip install -r requirements.txt
-        "$(venv_python)" -m pip install .
+        [[ -f requirements.txt ]] && "$(venv_python_torch)" -m pip install -r requirements.txt
+        "$(venv_python_torch)" -m pip install .
         popd >/dev/null
       else
         die "cannot install se3-transformer (no fallback dir found)"
@@ -203,45 +393,57 @@ cmd_install() {
     fi
   fi
 
-  # RFdiffusion deps
-  log "installing RFdiffusion requirements (if present)"
-  if [[ -f "$RFDIFFUSION_DIR/requirements.txt" ]]; then
-    "$(venv_python)" -m pip install -r "$RFDIFFUSION_DIR/requirements.txt"
-  fi
-  if [[ -f "$RFDIFFUSION_DIR/env/requirements.txt" ]]; then
-    "$(venv_python)" -m pip install -r "$RFDIFFUSION_DIR/env/requirements.txt"
-  fi
+  [[ -f "$RFDIFFUSION_DIR/requirements.txt" ]] && "$(venv_python_torch)" -m pip install -r "$RFDIFFUSION_DIR/requirements.txt" || true
+  [[ -f "$RFDIFFUSION_DIR/env/requirements.txt" ]] && "$(venv_python_torch)" -m pip install -r "$RFDIFFUSION_DIR/env/requirements.txt" || true
+  "$(venv_python_torch)" -m pip install -U omegaconf hydra-core
 
-  # ProteinMPNN / colabdesign (for MPNN step)
-  log "installing colabdesign (for ProteinMPNN)"
-  if ! "$(venv_python)" -c "import colabdesign" >/dev/null 2>&1; then
-    "$(venv_python)" -m pip install colabdesign || true
-  fi
-
-  # 안전장치
-  "$(venv_python)" -m pip install -U omegaconf hydra-core
-
-  log "installing RFdiffusion (editable)"
+  log "installing RFdiffusion (editable) (TORCH_VENV)"
   pushd "$RFDIFFUSION_DIR" >/dev/null
-  "$(venv_python)" -m pip install -e .
+  "$(venv_python_torch)" -m pip install -e .
   popd >/dev/null
 
-  log "sanity check"
-  "$(venv_python)" - <<'PY'
-import sys, numpy as np, torch, dgl, e3nn, pyrsistent, se3_transformer
-import omegaconf, hydra
-import boto3
-print("python:", sys.version.split()[0])
-print("numpy :", np.__version__)
-print("torch :", torch.__version__, "cuda:", torch.version.cuda, "avail:", torch.cuda.is_available())
-print("dgl   :", dgl.__version__)
-print("e3nn  :", getattr(e3nn, "__version__", "unknown"))
-print("pyrsistent import: OK")
-print("se3_transformer import: OK")
-print("omegaconf:", getattr(omegaconf, "__version__", "unknown"))
-print("hydra:", getattr(hydra, "__version__", "unknown"))
-print("boto3:", getattr(boto3, "__version__", "unknown"))
-PY
+  # ---------- jax venv ----------
+  if [[ ! -x "$(venv_python_jax)" ]]; then
+    log "creating JAX venv at $JAX_VENV"
+    $PY_BIN -m venv "$JAX_VENV"
+  fi
+
+  "$(venv_python_jax)" -m pip install -U pip setuptools wheel
+  "$(venv_python_jax)" -m pip install "numpy<2"
+  "$(venv_python_jax)" -m pip install -U boto3 botocore
+  "$(venv_python_jax)" -m pip install -U pandas
+
+  # ColabDesign
+  if [[ ! -d "$COLABDESIGN_DIR" ]]; then
+    log "Cloning ColabDesign into $COLABDESIGN_DIR"
+    git clone https://github.com/sokrypton/ColabDesign.git "$COLABDESIGN_DIR"
+  fi
+  log "installing ColabDesign (editable) (JAX_VENV)"
+  "$(venv_python_jax)" -m pip install -e "$COLABDESIGN_DIR"
+
+  # JAX (옵션 CUDA)
+  if [[ "$ENABLE_JAX_CUDA" == "1" ]]; then
+    log "JAX CUDA attempt: installing CUDA-enabled jaxlib (JAX_VENV)"
+    "$(venv_python_jax)" -m pip uninstall -y jax jaxlib || true
+    "$(venv_python_jax)" -m pip install -U "jax[cuda12]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html || true
+  else
+    "$(venv_python_jax)" -m pip install -U "jax" || true
+  fi
+    # ★ Alphafold 호환 버전으로 다시 고정
+  "$(venv_python_jax)" -m pip install \
+    "jax==0.4.26" \
+    "jaxlib==0.4.26" \
+    "dm-haiku==0.0.12"
+
+
+
+  log "sanity check (TORCH_VENV)"
+  set_ld_library_path_for_torch
+  sanity_torch
+
+  log "sanity check (JAX_VENV)"
+  set_ld_library_path_for_jax
+  sanity_jax
 
   log "install done"
 }
@@ -270,90 +472,84 @@ download_http() {
   [[ -s "$out" ]] || die "downloaded file is empty: $out"
 }
 
+# ✅ 핵심: RFdiffusion ckpt는 /models에 “이미 있으면” 다운로드 스킵하고,
+#         /app/RFdiffusion/models 에는 심볼릭 링크로 스테이징
+stage_rfdiffusion_ckpts() {
+  local rfd_models_dir="${RFD_MODELS_DIR:-$RFDIFFUSION_DIR/models}"
+  ensure_dir "$rfd_models_dir"
+
+  local dl_script="$RFDIFFUSION_DIR/scripts/download_models.sh"
+  local names=(
+    "Base_ckpt.pt"
+    "Complex_base_ckpt.pt"
+    "Complex_Fold_base_ckpt.pt"
+    "InpaintSeq_ckpt.pt"
+    "InpaintSeq_Fold_ckpt.pt"
+    "ActiveSite_ckpt.pt"
+    "Base_epoch8_ckpt.pt"
+  )
+
+  # 1) /models에 7개 다 있으면 다운로드 안 함
+  local missing=0
+  for n in "${names[@]}"; do
+    [[ -s "${MODELS_DIR}/${n}" ]] || missing=1
+  done
+
+  if [[ "$missing" -eq 1 ]]; then
+    # 2) 없으면 download_models.sh로 /models에 받기
+    if [[ -x "$dl_script" || -f "$dl_script" ]]; then
+      log "RFdiffusion ckpt missing in ${MODELS_DIR}. Downloading via: $dl_script ${MODELS_DIR}"
+      bash "$dl_script" "$MODELS_DIR"
+    else
+      die "RFdiffusion download script not found: $dl_script"
+    fi
+  else
+    log "RFdiffusion ckpt already present in ${MODELS_DIR}. Skipping download."
+  fi
+
+  # 3) RFdiffusion이 기본으로 보는 경로(/app/RFdiffusion/models)에 링크 걸어주기
+  for n in "${names[@]}"; do
+    local src="${MODELS_DIR}/${n}"
+    local dst="${rfd_models_dir}/${n}"
+    if [[ -s "$src" ]]; then
+      ln -sf "$src" "$dst"
+    else
+      die "RFdiffusion ckpt still missing after download: $src"
+    fi
+  done
+
+  log "RFdiffusion models staged (symlink) -> ${rfd_models_dir}"
+  ls -lh "$rfd_models_dir" || true
+}
+
 cmd_download_params() {
   log "download_params start"
+  autodetect_af_dir    
   ensure_dir "$MODELS_DIR"
 
-  AF_DIR="${AF_DIR:-$MODELS_DIR/alphafold}"
+  ########################################
+  # AlphaFold params
+  ########################################
   ensure_dir "$AF_DIR"
+  if [[ ! -s "${AF_DIR}/params_model_1_ptm.npz" ]]; then
+    log "AlphaFold params missing; downloading..."
+    local tar_path="${AF_DIR}/${AF_PARAMS_TAR_NAME}"
+    download_http "$AF_PARAMS_TAR_URL" "$tar_path"
 
-  RFD_MODELS_DIR="${RFD_MODELS_DIR:-$RFDIFFUSION_DIR/models}"
-  ensure_dir "$RFD_MODELS_DIR"
+    log "Extracting AlphaFold params (tar --no-same-owner --no-same-permissions)"
+    tar --no-same-owner --no-same-permissions -xf "$tar_path" -C "$AF_DIR"
 
-  RFD_SOURCE_DIR="${RFD_SOURCE_DIR:-$MODELS_DIR/rfdiffusion}"
-  ensure_dir "$RFD_SOURCE_DIR"
+    [[ -s "${AF_DIR}/params_model_1_ptm.npz" ]] || die "AlphaFold params extraction failed"
+    log "AlphaFold params ready: ${AF_DIR}"
+  else
+    log "AlphaFold params OK (exists): ${AF_DIR}/params_model_1_ptm.npz"
+  fi
 
-  log "MODELS_DIR=$MODELS_DIR"
-  log "AF_DIR=$AF_DIR (AlphaFold params: keep existing logic)"
-  log "RFDIFFUSION_DIR=$RFDIFFUSION_DIR"
-  log "RFD_MODELS_DIR=$RFD_MODELS_DIR"
-  log "RFD_SOURCE_DIR=$RFD_SOURCE_DIR"
+  ########################################
+  # RFdiffusion ckpts (7개) - /models 기반
+  ########################################
+  stage_rfdiffusion_ckpts
 
-  stage_from_cache() {
-    local name="$1"
-    local src="$RFD_SOURCE_DIR/$name"
-    local dst="$RFD_MODELS_DIR/$name"
-    if [[ -s "$dst" ]]; then
-      log "OK (already in target): $dst"
-      return 0
-    fi
-    if [[ -s "$src" ]]; then
-      log "STAGE: $src -> $dst"
-      cp -f "$src" "$dst"
-      return 0
-    fi
-    return 1
-  }
-
-  save_to_cache() {
-    local name="$1"
-    local src="$RFD_MODELS_DIR/$name"
-    local dst="$RFD_SOURCE_DIR/$name"
-    if [[ -s "$dst" ]]; then
-      log "CACHE OK (exists): $dst"
-      return 0
-    fi
-    if [[ -s "$src" ]]; then
-      log "CACHE SAVE: $src -> $dst"
-      cp -f "$src" "$dst"
-    fi
-  }
-
-  BASE_CKPT_URL="http://files.ipd.uw.edu/pub/RFdiffusion/6f5902ac237024bdd0c176cb93063dc4/Base_ckpt.pt"
-  COMPLEX_BASE_URL="http://files.ipd.uw.edu/pub/RFdiffusion/e29311f6f1bf1af907f9ef9f44b8328b/Complex_base_ckpt.pt"
-  COMPLEX_FOLD_BASE_URL="http://files.ipd.uw.edu/pub/RFdiffusion/60f09a193fb5e5ccdc4980417708dbab/Complex_Fold_base_ckpt.pt"
-  INPAINTSEQ_URL="http://files.ipd.uw.edu/pub/RFdiffusion/74f51cfb8b440f50d70878e05361d8f0/InpaintSeq_ckpt.pt"
-
-  need_names=("Base_ckpt.pt" "Complex_base_ckpt.pt" "Complex_Fold_base_ckpt.pt" "InpaintSeq_ckpt.pt")
-  need_urls=("$BASE_CKPT_URL" "$COMPLEX_BASE_URL" "$COMPLEX_FOLD_BASE_URL" "$INPAINTSEQ_URL")
-
-  for i in "${!need_names[@]}"; do
-    name="${need_names[$i]}"
-    url="${need_urls[$i]}"
-    out="$RFD_MODELS_DIR/$name"
-
-    if stage_from_cache "$name"; then
-      continue
-    fi
-    download_http "$url" "$out"
-    save_to_cache "$name"
-  done
-
-  missing=0
-  for name in "${need_names[@]}"; do
-    f="$RFD_MODELS_DIR/$name"
-    if [[ ! -s "$f" ]]; then
-      echo "[download_params][ERROR] missing or empty: $f" >&2
-      missing=1
-    fi
-  done
-
-  log "RFdiffusion models dir listing:"
-  ls -lh "$RFD_MODELS_DIR" || true
-  log "RFdiffusion cache dir listing:"
-  ls -lh "$RFD_SOURCE_DIR" || true
-
-  [[ "$missing" -eq 0 ]] || die "one or more RFdiffusion ckpt downloads failed"
   log "download_params done"
 }
 
@@ -363,47 +559,57 @@ cmd_download_params() {
 cmd_run() {
   load_aws_env_from_pid1_if_missing
   refresh_s3_mapping
+  autodetect_af_dir 
 
   log "run start"
-  export MODELS_DIR OUTPUTS_DIR RFDIFFUSION_DIR TORCH_VENV
-
-  log "MODELS_DIR=$MODELS_DIR"
-  log "OUTPUTS_DIR=$OUTPUTS_DIR"
-  log "SCRIPT_DIR=$SCRIPT_DIR"
-  log "RFDIFFUSION_DIR=$RFDIFFUSION_DIR"
+  export MODELS_DIR OUTPUTS_DIR RFDIFFUSION_DIR
+  export TORCH_VENV JAX_VENV
+  export AF_DIR COLABDESIGN_DIR
 
   export DGLBACKEND="${DGLBACKEND:-pytorch}"
   export DGL_DISABLE_GRAPHBOLT="${DGL_DISABLE_GRAPHBOLT:-1}"
-  log "DGLBACKEND=$DGLBACKEND"
-  log "DGL_DISABLE_GRAPHBOLT=$DGL_DISABLE_GRAPHBOLT"
 
-  # ✅ FIX: src 를 PYTHONPATH에 추가해서 `from steps...` import 가능하게
-  export PYTHONPATH="$SCRIPT_DIR/src:$RFDIFFUSION_DIR:${PYTHONPATH:-}"
-  log "PYTHONPATH=$PYTHONPATH"
+  # step 파싱
+  local step
+  step="$(extract_step_arg "$@")"
+  log "detected step=${step:-<empty>}"
 
-  export LD_LIBRARY_PATH="$TORCH_VENV/lib/python3.10/site-packages/nvidia/nvtx/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/nvjitlink/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/nccl/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/curand/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cufft/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cuda_runtime/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cuda_nvrtc/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cuda_cupti/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cublas/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cusparse/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cudnn/lib:$TORCH_VENV/lib/python3.10/site-packages/nvidia/cusolver/lib:${LD_LIBRARY_PATH:-}"
-  log "LD_LIBRARY_PATH set"
+  ensure_dir "$MODELS_DIR"
+  ensure_dir "$OUTPUTS_DIR"
+  ensure_unified_params_link
 
-  # ✅ 비어있으면 export 자체를 하지 않음 (빈 값으로 덮어쓰기 방지)
+  # step별 PYTHONPATH 분리
+  export PYTHONPATH="$SCRIPT_DIR/src:${PYTHONPATH:-}"
+
+  local py
+  if [[ "$step" == "alphafold" || "$step" == "alphafold3" ]]; then
+
+    py="$(venv_python_jax)"
+    set_ld_library_path_for_jax
+    sanity_jax
+    log "Using JAX_VENV python: $py"
+    log "PYTHONPATH(jax)=$PYTHONPATH"
+  else
+    py="$(venv_python_torch)"
+    set_ld_library_path_for_torch
+    # torch step에서만 RFdiffusion 경로 추가
+    export PYTHONPATH="$SCRIPT_DIR/src:$RFDIFFUSION_DIR:${PYTHONPATH:-}"
+    sanity_torch
+    log "Using TORCH_VENV python: $py"
+    log "PYTHONPATH(torch)=$PYTHONPATH"
+  fi
+
   if [[ -n "${AWS_REGION:-}" ]]; then
     export AWS_REGION
     export AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION:-$AWS_REGION}"
   fi
   [[ -n "${AWS_S3_BUCKET:-}" ]] && export AWS_S3_BUCKET
   [[ -n "${AWS_S3_BASE_PATH:-}" ]] && export AWS_S3_BASE_PATH
-
   [[ -n "${S3_BUCKET:-}" ]] && export S3_BUCKET
   [[ -n "${S3_BASE:-}" ]] && export S3_BASE
 
-  log "S3_BUCKET=${S3_BUCKET:-<empty>}"
-  log "S3_BASE=${S3_BASE:-<empty>}"
-  log "AWS_REGION=${AWS_REGION:-<empty>}"
-
-  ensure_dir "$MODELS_DIR"
-  ensure_dir "$OUTPUTS_DIR"
-
-  cmd_download_params
-  "$(venv_python)" "$SCRIPT_DIR/src/main.py" "$@"
+  cd "$APP_DIR"
+  "$py" "$SCRIPT_DIR/src/main.py" "$@"
 }
 
 ########################################
@@ -412,13 +618,15 @@ cmd_run() {
 cmd_serve() {
   load_aws_env_from_pid1_if_missing
   refresh_s3_mapping
+  autodetect_af_dir 
 
   log "serve start"
   ensure_dir "$APP_DIR"
   ensure_dir "$OUTPUTS_DIR"
 
-  "$(venv_python)" -c "import uvicorn, fastapi" >/dev/null 2>&1 || \
-    "$(venv_python)" -m pip install -U uvicorn fastapi
+  # API 서버는 torch venv 기반
+  "$(venv_python_torch)" -c "import uvicorn, fastapi" >/dev/null 2>&1 || \
+    "$(venv_python_torch)" -m pip install -U uvicorn fastapi
 
   if [[ -f "$UVICORN_PID" ]] && ps -p "$(cat "$UVICORN_PID")" >/dev/null 2>&1; then
     log "Already running: PID=$(cat "$UVICORN_PID")"
@@ -426,38 +634,35 @@ cmd_serve() {
   fi
 
   cd "$APP_DIR"
+  ensure_unified_params_link
 
-  # ✅ "값이 있을 때만" env로 넘기기
   local env_kv=()
   env_kv+=("SCRIPT_DIR=$SCRIPT_DIR")
   env_kv+=("OPS_SH=$SCRIPT_DIR/unified_shell_script.sh")
   env_kv+=("OUTPUTS_DIR=$OUTPUTS_DIR")
   env_kv+=("TORCH_VENV=$TORCH_VENV")
+  env_kv+=("JAX_VENV=$JAX_VENV")
+  env_kv+=("PYTHONPATH=$RFDIFFUSION_DIR")
+  env_kv+=("MODELS_DIR=$MODELS_DIR")
+  env_kv+=("AF_DIR=$AF_DIR")
+  env_kv+=("COLABDESIGN_DIR=$COLABDESIGN_DIR")
 
-  # ✅ FIX: API 서버도 src + rfdiffusion 둘 다 PYTHONPATH에 포함
-  env_kv+=("PYTHONPATH=$SCRIPT_DIR/src:$RFDIFFUSION_DIR")
-
-  # S3/AWS는 값이 있을 때만 넘김 (빈 값 전달 금지)
   add_env_if_nonempty env_kv "S3_BUCKET" "${S3_BUCKET:-}"
   add_env_if_nonempty env_kv "S3_BASE" "${S3_BASE:-}"
-
   add_env_if_nonempty env_kv "AWS_REGION" "${AWS_REGION:-}"
   if [[ -n "${AWS_REGION:-}" ]]; then
     add_env_if_nonempty env_kv "AWS_DEFAULT_REGION" "${AWS_DEFAULT_REGION:-$AWS_REGION}"
   else
     add_env_if_nonempty env_kv "AWS_DEFAULT_REGION" "${AWS_DEFAULT_REGION:-}"
   fi
-
   add_env_if_nonempty env_kv "AWS_S3_BUCKET" "${AWS_S3_BUCKET:-}"
   add_env_if_nonempty env_kv "AWS_S3_BASE_PATH" "${AWS_S3_BASE_PATH:-}"
-
-  # (옵션) creds도 같이 넘기고 싶으면 여기도 nonempty로 추가 가능
   add_env_if_nonempty env_kv "AWS_ACCESS_KEY_ID" "${AWS_ACCESS_KEY_ID:-}"
   add_env_if_nonempty env_kv "AWS_SECRET_ACCESS_KEY" "${AWS_SECRET_ACCESS_KEY:-}"
   add_env_if_nonempty env_kv "AWS_SESSION_TOKEN" "${AWS_SESSION_TOKEN:-}"
 
   nohup env "${env_kv[@]}" \
-    "$(venv_python)" -m uvicorn api_server:app --host 0.0.0.0 --port "$PORT" \
+    "$(venv_python_torch)" -m uvicorn api_server:app --host 0.0.0.0 --port "$PORT" \
     > "$UVICORN_LOG" 2>&1 &
 
   echo $! > "$UVICORN_PID"
@@ -476,22 +681,9 @@ cmd_stop() {
     fi
     rm -f "$UVICORN_PID"
   fi
-
-  if command -v pgrep >/dev/null 2>&1; then
-    local pids
-    pids="$(pgrep -f "uvicorn api_server:app" || true)"
-    if [[ -n "$pids" ]]; then
-      log "Stopping uvicorn (pgrep): $pids"
-      kill $pids || true
-    fi
-  fi
-
   log "stop done"
 }
 
-########################################
-# 5) Logs
-########################################
 cmd_logs_api() { tail -f "$UVICORN_LOG"; }
 
 cmd_logs_job() {
@@ -500,13 +692,9 @@ cmd_logs_job() {
   tail -f "${OUTPUTS_DIR}/_logs/${name}.log"
 }
 
-########################################
-# Help / Router
-########################################
 usage() {
   cat <<EOF
 Usage:
-  ./unified_shell_script.sh
   ./unified_shell_script.sh up
   ./unified_shell_script.sh install
   ./unified_shell_script.sh download-params
@@ -518,23 +706,23 @@ Usage:
 
 Env overrides:
   TORCH_VENV=/opt/venv_torch
+  JAX_VENV=/opt/venv_jax
   APP_DIR=/workspace/unified
   SCRIPT_DIR=/workspace/unified
   OUTPUTS_DIR=/workspace/unified/outputs
   MODELS_DIR=/models
   PORT=8000
+  OPS_DEBUG=0|1
+
+AlphaFold/ColabDesign:
+  AF_DIR=/models/alphafold
+  COLABDESIGN_DIR=/workspace/colabdesign
+  ENABLE_JAX_CUDA=0|1
 
 S3 upload env (optional):
-  # Preferred
   S3_BUCKET=my-bucket
   S3_BASE=simulations
   AWS_REGION=ap-northeast-2
-
-  # Also supported (AWS-style)
-  AWS_S3_BUCKET=my-bucket
-  AWS_S3_BASE_PATH=simulations
-  AWS_ACCESS_KEY_ID=...
-  AWS_SECRET_ACCESS_KEY=...
 EOF
 }
 
