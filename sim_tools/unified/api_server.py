@@ -73,25 +73,74 @@ def _job_paths(name: str):
     pid_path = logs_dir / f"{name}.pid"
     return log_path, pid_path
 
+def _has_s3_uploaded(log_path: Path) -> bool:
+    """
+    main.py 로그 안에 '[s3] uploaded:' 라인이 있으면
+    S3 업로드까지 정상 종료된 것으로 본다.
+    """
+    if not log_path.exists():
+        return False
+    try:
+        text = log_path.read_text(errors="ignore")
+    except Exception:
+        return False
+    return "[s3] uploaded:" in text
+
 
 def _status_from_files(name: str) -> str:
-    pdb0 = Path(OUTPUTS_DIR) / f"{name}_0.pdb"
-    _log_path, pid_path = _job_paths(name)
+    log_path, pid_path = _job_paths(name)
 
-    if pdb0.exists():
-        return "done"
-
+    # 1) PID 살아 있는지 먼저 확인
+    pid_alive = False
     if pid_path.exists():
         try:
             pid = int(pid_path.read_text().strip())
             if Path(f"/proc/{pid}").exists():
-                return "running"
-            else:
-                return "failed"
+                pid_alive = True
         except Exception:
-            return "unknown"
+            pid_alive = False
+
+    # 2) 기대하는 결과 파일들 모으기
+    parts = name.split("__", 1)
+    exp_id = parts[0]
+    step_cli = parts[1] if len(parts) > 1 else ""
+    outputs_root = Path(OUTPUTS_DIR) / "simulations"
+    pipeline_dirs = list(outputs_root.rglob(f"pipeline-{exp_id}"))
+
+    expected_paths: list[Path] = []
+    for pipeline_dir in pipeline_dirs:
+        if step_cli == "rfdiffusion":
+            expected_paths.append(pipeline_dir / "step-rfdiffusion" / f"{exp_id}_0.pdb")
+        elif step_cli == "proteinMPNN":
+            expected_paths.append(pipeline_dir / "step-proteinMPNN" / f"{exp_id}_mpnn.fasta")
+        elif step_cli == "alphafold":
+            expected_paths.append(pipeline_dir / "step-alphafold" / f"{exp_id}_af_best.pdb")
+
+    any_file = any(p.exists() for p in expected_paths)
+
+    # 3) S3 업로드 로그 확인
+    s3_done = _has_s3_uploaded(log_path)
+
+    # 4) 최종 상태 판정
+
+    # (1) 결과 파일도 있고, [s3] uploaded: 로그도 있으면 → 완전히 끝난 상태
+    if any_file and s3_done:
+        return "done"
+
+    # (2) 그 전에는, PID가 살아 있으면 중간에 파일이 있어도 계속 running
+    if pid_alive:
+        return "running"
+
+    # (3) PID는 끝났는데 파일만 있고 S3 로그가 없으면 → 업로드 실패로 간주
+    if any_file and not s3_done:
+        return "failed"
+
+    # (4) PID 끝났고 파일도 없으면 그냥 실패
+    if pid_path.exists() and not pid_alive:
+        return "failed"
 
     return "unknown"
+
 
 
 # ---------------- Routes ----------------
@@ -125,9 +174,7 @@ def run(req: RunRequest, x_api_key: Optional[str] = None):
 
     step_api = req.step
     opts = req.options or {}
-    step_cli = STEP_FOR_CLI[step_api] 
-
-    # job_name = f"{exp_id}__{step}"  
+    step_cli = STEP_FOR_CLI[step_api]  
 
     contigs = req.contigs or "100"
     iterations = req.iterations or 1
@@ -150,14 +197,20 @@ def run(req: RunRequest, x_api_key: Optional[str] = None):
     protein_seq = (opts.get("protein_sequence") or "").strip()
     af_sequence_only = bool(opts.get("af_sequence_only"))
 
+
+    job_name = f"{experiment_id}__{step_cli}"
+    job_id = experiment_id   
+
+    log_path, pid_path = _job_paths(job_name)
+
     # ✅ main.py에 experiment_id / step 전달
     args = [
         "run",
         "--mode", req.mode,
-        "--contigs", req.contigs,
-        "--iterations", str(req.iterations),
+        "--contigs", contigs,
+        "--iterations", str(iterations),
         "--experiment_id", experiment_id,
-        "--step", req.step
+        "--step", step_api
     ]
     if protein_seq:
         args.extend(["--protein_sequence", protein_seq])
@@ -183,23 +236,24 @@ def run(req: RunRequest, x_api_key: Optional[str] = None):
     env["AWS_S3_BUCKET"] = os.environ.get("AWS_S3_BUCKET", "")
     env["AWS_S3_BASE_PATH"] = os.environ.get("AWS_S3_BASE_PATH", "")
 
-    # with open(log_path, "ab") as f:
-    #     p = subprocess.Popen(
-    #         ["bash", OPS_SH, *args],
-    #         env=env,
-    #         stdout=f,
-    #         stderr=subprocess.STDOUT,
-    #         cwd=SCRIPT_DIR,
-    #     )
+    with open(log_path, "ab") as f:
+        p = subprocess.Popen(
+            ["bash", OPS_SH, *args],
+            env=env,
+            stdout=f,
+            stderr=subprocess.STDOUT,
+            cwd=SCRIPT_DIR,
+        )
 
-    # pid_path.write_text(str(p.pid))
+    pid_path.write_text(str(p.pid))
 
-    # return RunResponse(
-    #     ok=True,
-    #     job_id=job_id,
-    #     outputs_dir=OUTPUTS_DIR,
-    #     cmd=["bash", OPS_SH, *args],
-    # )
+    return RunResponse(
+        ok=True,
+        job_id=job_id,   
+        name=job_name,  
+        outputs_dir=OUTPUTS_DIR,
+        cmd=["bash", OPS_SH, *args],
+    )
 
 
 @app.get("/status/{name}", response_model=StatusResponse)
@@ -210,11 +264,32 @@ def status(name: str, x_api_key: Optional[str] = None):
     log_path, _ = _job_paths(name)
     st = _status_from_files(name)
 
+    # 참고용 expected_pdb: 위 유틸과 같은 규칙으로 첫 번째 매치만 잡아줌
+    parts = name.split("__", 1)
+    exp_id = parts[0]
+    step_cli = parts[1] if len(parts) > 1 else ""
+    outputs_root = Path(OUTPUTS_DIR) / "simulations"
+    pipeline_dirs = list(outputs_root.rglob(f"pipeline-{exp_id}"))
+
+    expected = Path(OUTPUTS_DIR) / f"{name}_0.pdb"
+    for pipeline_dir in pipeline_dirs:
+        if step_cli == "rfdiffusion":
+            cand = pipeline_dir / "step-rfdiffusion" / f"{exp_id}_0.pdb"
+        elif step_cli == "proteinMPNN":
+            cand = pipeline_dir / "step-proteinMPNN" / f"{exp_id}_mpnn.fasta"
+        elif step_cli == "alphafold":
+            cand = pipeline_dir / "step-alphafold" / f"{exp_id}_af_best.pdb"
+        else:
+            continue
+        if cand.exists():
+            expected = cand
+            break
+
     return StatusResponse(
         ok=True,
         job_id="(use name)",
         name=name,
         status=st,
         log_path=str(log_path),
-        expected_pdb=str(Path(OUTPUTS_DIR) / f"{name}_0.pdb"),
+        expected_pdb=str(expected),
     )

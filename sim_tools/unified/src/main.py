@@ -6,8 +6,6 @@ import subprocess
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
 from steps.rfdiffusion_step import run_rfdiffusion_step
-from steps.proteinmpnn_step import MPNNStepConfig, run_mpnn_only
-from steps.alphafold_step import AlphaFoldStepConfig, run_alphafold_only, run_alphafold_from_sequence
 from datetime import datetime, timezone, timedelta
 
 
@@ -89,27 +87,23 @@ def parse_args():
     p.add_argument("--outputs_dir", default=os.environ.get("OUTPUTS_DIR", "/outputs"))
     p.add_argument("--protein_sequence", default="")
     p.add_argument("--af_sequence_only", action="store_true")
+    p.add_argument("--experiment_id", required=True)
+    p.add_argument(
+        "--step",
+        required=True,
+        choices=["rfdiffusion", "protein_mpnn", "alphafold3"],
+    )
+    p.add_argument("--num_designs", type=int, default=1)
+
 
 
     # ✅ S3 업로드 옵션 (S3_*가 없으면 AWS_S3_* fallback 지원)
-    p.add_argument(
-        "--s3_bucket",
-        default=_get_s3_bucket_default(),
-        help="If set, upload outputs to S3",
-    )
-    p.add_argument(
-        "--s3_prefix",
-        default=_get_s3_prefix_default(),
-        help="S3 key prefix (folder path). Default uses S3_PREFIX or AWS_S3_BASE_PATH or 'rfdiffusion'",
-    )
-    p.add_argument("--s3_upload_logs", action="store_true", default=True, help="Also upload job log if exists")
-    p.add_argument("--fail_on_s3_error", action="store_true", help="If upload fails, exit non-zero")
-
-    # ✅ S3 업로드 옵션
+    # S3 업로드 옵션
     p.add_argument("--s3_bucket", default=_get_s3_bucket_default())
     p.add_argument("--s3_base", default=_get_s3_base_default())
     p.add_argument("--s3_upload_logs", action="store_true")
     p.add_argument("--fail_on_s3_error", action="store_true")
+
 
     # (옵션) 이후 확장용: MPNN/AF 세부파라미터를 CLI로 받게 하고 싶으면 여기에 추가하면 됨
     return p.parse_args()
@@ -130,8 +124,13 @@ def main():
     exp_id = args.experiment_id.strip()
     args.name = exp_id
 
-    root = Path(args.outputs_dir) / "simulations" / f"dt={_kst_today()}"
-    pipeline_dir = root / f"pipeline={exp_id}"
+    # 🔹 S3와 동일한 루트: .../outputs/simulations/dt=YYYY-MM-DD/pipeline=exp_id
+    outputs_root = Path(args.outputs_dir) / "simulations"
+    outputs_root.mkdir(parents=True, exist_ok=True)
+
+    dt = _kst_today()
+    root = outputs_root / f"dt-{dt}"
+    pipeline_dir = root / f"pipeline-{exp_id}"
     pipeline_dir.mkdir(parents=True, exist_ok=True)
 
     env = os.environ.copy()
@@ -142,7 +141,7 @@ def main():
 
 
     if step == "rfdiffusion":
-            step_dir = pipeline_dir / "step=rfdiffusion"
+            step_dir = pipeline_dir / "step-rfdiffusion"
             step_dir.mkdir(parents=True, exist_ok=True)
             result = run_rfdiffusion_step(
                 experiment_id=exp_id,
@@ -155,7 +154,8 @@ def main():
             produced = result["produced"]
 
     elif step == "protein_mpnn":
-        step_dir = pipeline_dir / "step=proteinMPNN"
+        from steps.proteinmpnn_step import MPNNStepConfig, run_mpnn_only
+        step_dir = pipeline_dir / "step-proteinMPNN"
         step_dir.mkdir(parents=True, exist_ok=True)
 
         cfg = MPNNStepConfig(
@@ -174,24 +174,24 @@ def main():
         ]
 
     elif step == "alphafold3":
-        step_dir = pipeline_dir / "step=alphafold"
+        from steps.alphafold_step import AlphaFoldStepConfig, run_alphafold_only
+        step_dir = pipeline_dir / "step-alphafold"
         step_dir.mkdir(parents=True, exist_ok=True)
         max_seqs = int(os.environ.get("AF_MAX_SEQS", "0")) or None
-
-        cfg = AlphaFoldStepConfig(
-            experiment_id=exp_id,
-            outputs_dir=step_dir,
-            num_recycles=int(args.iterations),
-            use_multimer=False,
-            initial_guess=False,
-            max_seqs=max_seqs,
-            top_k=int(os.environ.get("AF_TOP_K", "3")),
-        )
         seq = (args.protein_sequence or "").strip()
-        if args.af_sequence_only and seq:
-            result = run_alphafold_from_sequence(cfg, seq)
-        else:
-            result = run_alphafold_only(cfg)
+        
+        cfg = AlphaFoldStepConfig(
+                experiment_id=exp_id,
+                outputs_dir=step_dir,
+                num_recycles=int(args.iterations),
+                use_multimer=False,
+                initial_guess=False,
+                max_seqs=max_seqs,
+                protein_sequence=seq if args.af_sequence_only else None,
+        )
+
+        # MPNN FASTA 가 있으면 그 서열들을, 없으면 cfg.protein_sequence 하나를 사용
+        result = run_alphafold_only(cfg)
 
         produced = [
             step_dir / f"{args.name}_af_best.pdb",
@@ -220,11 +220,18 @@ def main():
         print("[s3] S3_BUCKET/AWS_S3_BUCKET not set; skip upload")
         return
 
+    if step == "protein_mpnn":
+        s3_step = "proteinMPNN"
+    elif step == "alphafold3":
+        s3_step = "alphafold"
+    else:
+        s3_step = step
+
     prefix = build_s3_prefix(
         base=args.s3_base,
-        dt=args.dt,
-        experiment_id=args.experiment_id,
-        step=args.step,
+        dt=dt,
+        experiment_id=exp_id,
+        step=s3_step,
     )
 
     print(f"[s3] bucket={bucket}")
@@ -240,9 +247,9 @@ def main():
 
     try:
         uploaded = upload_job_outputs(
-            outputs_dir=str(outputs_dir),
+            outputs_dir=str(step_dir),
             job_name=exp_id,
-            step=step,
+            step=s3_step,
             bucket=bucket,
             prefix="simulations",
             upload_logs=args.s3_upload_logs,
