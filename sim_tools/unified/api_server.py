@@ -10,12 +10,13 @@ from pydantic import BaseModel, Field
 # ---- Config ----
 SCRIPT_DIR = os.environ.get("SCRIPT_DIR", "/workspace/unified")
 OPS_SH = os.environ.get("OPS_SH", f"{SCRIPT_DIR}/unified_shell_script.sh")
-
 OUTPUTS_DIR = os.environ.get("OUTPUTS_DIR", f"{SCRIPT_DIR}/outputs")
-TORCH_VENV = os.environ.get("TORCH_VENV", "/opt/venv_torch")
-PYTHONPATH = os.environ.get("PYTHONPATH", "/app/RFdiffusion")
 
-API_KEY = os.environ.get("API_KEY")  # 설정 안 하면 인증 없이 동작
+TORCH_VENV = os.environ.get("TORCH_VENV", "/opt/venv_torch")
+JAX_VENV = os.environ.get("JAX_VENV", "/opt/venv_jax")
+
+# unified_shell_script.sh 내부에서 PYTHONPATH도 세팅하지만, 안전하게 기본값 유지
+PYTHONPATH = os.environ.get("PYTHONPATH", "/app/RFdiffusion")
 
 app = FastAPI(title="Unified Runner API")
 
@@ -61,11 +62,6 @@ def _ensure_paths():
     Path(OUTPUTS_DIR).mkdir(parents=True, exist_ok=True)
 
 
-def _auth_or_throw(x_api_key: Optional[str]):
-    if API_KEY and x_api_key != API_KEY:
-        raise HTTPException(status_code=401, detail="Invalid API key")
-
-
 def _job_paths(name: str):
     logs_dir = Path(OUTPUTS_DIR) / "_logs"
     logs_dir.mkdir(parents=True, exist_ok=True)
@@ -103,7 +99,12 @@ def health():
         "ops_sh": OPS_SH,
         "outputs_dir": OUTPUTS_DIR,
         "torch_venv": TORCH_VENV,
+        "jax_venv": JAX_VENV,
         "pythonpath": PYTHONPATH,
+
+        # 디버깅용 환경 변수 노출
+        "enable_jax_cuda": os.environ.get("ENABLE_JAX_CUDA", ""),
+        "ld_library_path": os.environ.get("LD_LIBRARY_PATH", ""),
 
         "s3_bucket": os.environ.get("S3_BUCKET", ""),
         "s3_base": os.environ.get("S3_BASE", "simulations"),
@@ -115,8 +116,7 @@ def health():
 
 
 @app.post("/run", response_model=RunResponse)
-def run(req: RunRequest, x_api_key: Optional[str] = None):
-    _auth_or_throw(x_api_key)
+def run(req: RunRequest):
     _ensure_paths()
 
     experiment_id = req.experiment_id.strip()
@@ -144,7 +144,6 @@ def run(req: RunRequest, x_api_key: Optional[str] = None):
         iterations = int(opts.get("maxRecycles") or iterations)
 
 
-    # ✅ main.py에 experiment_id / step 전달
     args = [
         "run",
         "--mode", req.mode,
@@ -159,19 +158,25 @@ def run(req: RunRequest, x_api_key: Optional[str] = None):
         args.append("--cautious")
 
     env = os.environ.copy()
+
+    # ✅ venv / 경로 전달
     env["TORCH_VENV"] = TORCH_VENV
+    env["JAX_VENV"] = JAX_VENV
     env["PYTHONPATH"] = PYTHONPATH
     env["OUTPUTS_DIR"] = OUTPUTS_DIR
     env["SCRIPT_DIR"] = SCRIPT_DIR
 
-    # S3/AWS env 전달
-    env["S3_BUCKET"] = os.environ.get("S3_BUCKET", "")
-    env["S3_BASE"] = os.environ.get("S3_BASE", "simulations")
-    env["AWS_REGION"] = os.environ.get("AWS_REGION", os.environ.get("AWS_DEFAULT_REGION", ""))
-    env["AWS_DEFAULT_REGION"] = os.environ.get("AWS_DEFAULT_REGION", env["AWS_REGION"])
+    # ✅ GPU/JAX 이슈 재발 방지: 기본으로 세팅
+    env["ENABLE_JAX_CUDA"] = env.get("ENABLE_JAX_CUDA", "1")
+    env["LD_LIBRARY_PATH"] = ""  # 외부 LD_LIBRARY_PATH 오염 차단 (unified_shell_script.sh가 step별로 재설정)
 
-    env["AWS_S3_BUCKET"] = os.environ.get("AWS_S3_BUCKET", "")
-    env["AWS_S3_BASE_PATH"] = os.environ.get("AWS_S3_BASE_PATH", "")
+    # ✅ S3/AWS env 전달
+    env["S3_BUCKET"] = env.get("S3_BUCKET", "")
+    env["S3_BASE"] = env.get("S3_BASE", "simulations")
+    env["AWS_REGION"] = env.get("AWS_REGION", env.get("AWS_DEFAULT_REGION", ""))
+    env["AWS_DEFAULT_REGION"] = env.get("AWS_DEFAULT_REGION", env["AWS_REGION"])
+    env["AWS_S3_BUCKET"] = env.get("AWS_S3_BUCKET", "")
+    env["AWS_S3_BASE_PATH"] = env.get("AWS_S3_BASE_PATH", "")
 
     # with open(log_path, "ab") as f:
     #     p = subprocess.Popen(
@@ -193,8 +198,7 @@ def run(req: RunRequest, x_api_key: Optional[str] = None):
 
 
 @app.get("/status/{name}", response_model=StatusResponse)
-def status(name: str, x_api_key: Optional[str] = None):
-    _auth_or_throw(x_api_key)
+def status(name: str):
     _ensure_paths()
 
     log_path, _ = _job_paths(name)
