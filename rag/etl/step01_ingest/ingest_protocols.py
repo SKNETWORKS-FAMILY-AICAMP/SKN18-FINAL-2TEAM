@@ -55,54 +55,26 @@ def parse_table_to_text(html):
         table_text = "\n".join(rows)
         table.replace_with("\n" + table_text + "\n")
 
-    # pseudo-table 감지 (html 내에 table 태그가 없지만, 표 형식의 클래스나 스타일이 있는 경우)
-    blocks = soup.find_all(lambda tag: tag.name in ["p", "div", "pre", "li"] and tag.get_text(strip=True))
-
-    segments = []
-    current = []
-
-    for block in blocks:
-        text = block.get_text(strip=True)
-
-        # segment 분리 기준
-        if not text or len(text) > 500:
-            if current:
-                segments.append(current)
-                current = []
-            continue
-
-        current.append(block)
-
-    if current:
-        segments.append(current)
-
-    for segment in segments:
-        lines = [
-            b.get_text("\n", strip=True)
-            for b in segment
-            if b.get_text(strip=True)
-        ]
-
-        if is_pseudo_table(lines):
-            pseudo_html = (
-                "<PSEUDO_TABLE>\n"
-                + "\n".join(lines)
-                + "\n</PSEUDO_TABLE>"
-            )
-
-            anchor = segment[0]
-
-            anchor.insert_before(
-                BeautifulSoup(pseudo_html, "html.parser")
-            )
-
-            for b in segment:
-                b.decompose()
-
     return str(soup)
+
+def find_header_candidates(lines: list[str]) -> set[int]:
+    candidates = set()
+
+    for i in range(len(lines) - 1):
+        if looks_like_table_header(lines[i], lines[i+1]):
+            candidates.add(i)
+    return candidates
 
 def is_pseudo_table(lines: list[str]) -> bool:
     if len(lines) < 2:
+        return False
+    
+    # ❌ STEP / 리스트형 row 방지
+    step_like = 0
+    for ln in lines:
+        if re.match(r"^\(?STEP\s*\d+", ln, re.I):
+            step_like += 1
+    if step_like >= len(lines) * 0.6:
         return False
 
     def split_line(line: str) -> list[str]:
@@ -153,6 +125,64 @@ def is_pseudo_table(lines: list[str]) -> bool:
         return False
 
     return True
+
+def looks_like_table_header(header: str, first_body_row: str) -> bool:
+    """
+    pseudo-table body 바로 위의 header 후보가
+    column 구조상 header인지 판단
+    """
+    def split_cols(line: str) -> list[str]:
+        if "\t" in line:
+            return [c.strip() for c in line.split("\t")]
+        if "|" in line:
+            return [c.strip() for c in line.strip("|").split("|")]
+        return [c.strip() for c in re.split(r"\s{2,}", line)]
+
+    h_cols = split_cols(header)
+    b_cols = split_cols(first_body_row)
+
+    # column 수 동일 + header는 숫자 위주가 아니어야 함
+    if len(h_cols) != len(b_cols):
+        return False
+
+    numeric_ratio = sum(bool(re.search(r"\d", c)) for c in h_cols) / len(h_cols)
+    if numeric_ratio > 0.3:
+        return False
+
+    return True
+
+def detect_pseudo_table_from_text(text: str) -> str:
+    lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+    if len(lines) < 3:
+        return text
+    
+    header_candidates = set(find_header_candidates(lines))
+
+    i = 0
+    while i < len(lines):
+        if lines[i] in ("<PSEUDO_TABLE>", "</PSEUDO_TABLE>"):
+            i += 1
+            continue
+        if i in header_candidates:
+            for size in range(15, 2, -1):
+                chunk = lines[i:i+size]
+                if not is_pseudo_table(chunk):
+                    continue
+
+                start = i
+                full_chunk = chunk
+
+                lines = (lines[:start]
+                         + ["<PSEUDO_TABLE>"]
+                         + full_chunk
+                         + ["</PSEUDO_TABLE>"]
+                         + lines[start + len(full_chunk):])
+                
+                i = start + len(full_chunk) + 1  # 태그 뒤로 이동
+                break
+        i += 1
+
+    return "\n".join(lines)
 
 # -------------------------
 # (2) API 데이터 수집
@@ -421,6 +451,7 @@ def ingest_keyword(search_keyword: str, raw_dir: Path | None = None) -> None:
             abstract_html = proto.get("description") or ""
             abstract_html = parse_table_to_text(abstract_html)
             abstract_str = html_to_text_with_superscript(abstract_html)
+            abstract_str = detect_pseudo_table_from_text(abstract_str)
             if not abstract_str.strip():
                 abstract_str = "<no data>"
             print(f"abstract: {abstract_str}")
@@ -462,12 +493,15 @@ def ingest_keyword(search_keyword: str, raw_dir: Path | None = None) -> None:
                 step_str += step_text
             if not step_str.strip():
                 step_str = "<no data>"
+
+            step_str = detect_pseudo_table_from_text(step_str)
             print(f"step_content: {step_str}")
 
 
             reference_html = proto.get("protocol_references") or ""
             reference_html = parse_table_to_text(reference_html)
             reference_str = html_to_text_with_superscript(reference_html)
+            reference_str = detect_pseudo_table_from_text(reference_str)
             if not reference_str.strip():
                 reference_str = "<no data>"
             print(f"reference: {reference_str}")
@@ -475,6 +509,7 @@ def ingest_keyword(search_keyword: str, raw_dir: Path | None = None) -> None:
             guidelines_html = proto.get("guidelines") or ""
             guidelines_html = parse_table_to_text(guidelines_html)
             guidelines_str = html_to_text_with_superscript(guidelines_html)
+            guidelines_str = detect_pseudo_table_from_text(guidelines_str)
             if not guidelines_str.strip():
                 guidelines_str = "<no data>"
             print(f"guidelines: {guidelines_str}")
@@ -482,6 +517,7 @@ def ingest_keyword(search_keyword: str, raw_dir: Path | None = None) -> None:
             materials_html = proto.get("materials_text") or ""
             materials_html = parse_table_to_text(materials_html)
             materials_str = html_to_text_with_superscript(materials_html)
+            materials_str = detect_pseudo_table_from_text(materials_str)
             if not materials_str.strip():
                 materials_str = "<no data>"
             print(f"materials: {materials_str}")
