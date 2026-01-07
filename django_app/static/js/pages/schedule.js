@@ -856,13 +856,55 @@ function attachStatusChangeHandlers() {
     });
 }
 
+function waitForScheduleDetailModal(timeout = 2000) {
+    return new Promise((resolve, reject) => {
+        if (window.ScheduleDetailModal?.open) {
+            resolve(window.ScheduleDetailModal);
+            return;
+        }
+
+        let settled = false;
+        let intervalId = null;
+        let timeoutId = null;
+
+        const handleReady = () => {
+            if (settled || !window.ScheduleDetailModal?.open) return;
+            settled = true;
+            cleanup();
+            resolve(window.ScheduleDetailModal);
+        };
+
+        const cleanup = () => {
+            document.removeEventListener('schedule-detail-modal:ready', handleReady);
+            if (intervalId) clearInterval(intervalId);
+            if (timeoutId) clearTimeout(timeoutId);
+        };
+
+        document.addEventListener('schedule-detail-modal:ready', handleReady);
+        intervalId = setInterval(handleReady, 50);
+        timeoutId = setTimeout(() => {
+            if (settled) return;
+            settled = true;
+            cleanup();
+            reject(new Error('ScheduleDetailModal not ready'));
+        }, timeout);
+    });
+}
+
 // Handle schedule click
 function handleScheduleClick(scheduleId) {
-    if (window.ScheduleDetailModal && window.ScheduleDetailModal.open) {
-        window.ScheduleDetailModal.open(scheduleId);
-    } else {
-        window.location.href = `${API_BASE}/${scheduleId}/`;
-    }
+    if (!scheduleId) return;
+
+    waitForScheduleDetailModal()
+        .then((modal) => {
+            modal.open(scheduleId);
+        })
+        .catch((error) => {
+            console.error('Failed to open schedule detail modal:', error);
+            if (window.notyf) {
+                window.notyf.error('일정 상세를 열 수 없습니다. 잠시 후 다시 시도해주세요.');
+            }
+        });
 }
 
 // Handle day click

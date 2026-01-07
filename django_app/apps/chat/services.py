@@ -270,7 +270,7 @@ def _build_history(conversation: Chat) -> list:
     return messages
 
 
-def generate_ai_response(conversation: Chat, prompt: str, return_state: bool = False, filter_type: str = None) -> tuple:
+def generate_ai_response(conversation: Chat, prompt: str, return_state: bool = False, filter_type: str = None, attached_images: list = None) -> tuple:
     """
     LangGraph RAG 워크플로우를 호출하여 답변과 참고문헌 정보를 생성한다.
 
@@ -279,6 +279,7 @@ def generate_ai_response(conversation: Chat, prompt: str, return_state: bool = F
         prompt: 사용자 질문
         return_state: result_state도 반환할지 여부 (논문 네트워크 생성용)
         filter_type: 필터 타입 (paper, clinical, protocol, simulation, interpretation)
+        attached_images: 첨부된 이미지 리스트 (선택적)
 
     Returns:
         return_state=False: (content, citations, scores, reference_type, chat_title)
@@ -295,6 +296,15 @@ def generate_ai_response(conversation: Chat, prompt: str, return_state: bool = F
     # 필터 타입이 있으면 payload에 추가
     if filter_type:
         payload["filter_type"] = filter_type
+    
+    # 첨부된 이미지가 있으면 payload에 추가
+    if attached_images:
+        print(f"[DEBUG] generate_ai_response - attached_images 전달: {len(attached_images)}개")
+        print(f"[DEBUG] generate_ai_response - attached_images[0] keys: {list(attached_images[0].keys()) if attached_images else []}")
+        payload["attached_images"] = attached_images
+    else:
+        print(f"[DEBUG] generate_ai_response - attached_images 없음")
+    
     result_state = app.invoke(payload) # ⭐ 워크플로우 시작!
     structured = result_state.get("structured_answer") or {}
     content = (

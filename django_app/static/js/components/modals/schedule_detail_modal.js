@@ -1,5 +1,8 @@
 // Schedule Detail Modal Component JavaScript Logic
 
+(function () {
+    'use strict';
+
 // State variables
 let selectedScheduleData = null;
 
@@ -883,4 +886,10 @@ if (typeof window !== 'undefined') {
         open: openScheduleDetailModal,
         init: initScheduleDetailModal,
     };
+
+    if (typeof document !== 'undefined') {
+        document.dispatchEvent(new CustomEvent('schedule-detail-modal:ready'));
+    }
 }
+
+})();
