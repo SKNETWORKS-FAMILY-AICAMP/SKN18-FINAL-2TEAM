@@ -15,6 +15,9 @@ import uuid
 from pathlib import Path
 from datetime import datetime
 from graph.llm_config import get_model_name
+from graph.logger_config import get_logger
+
+logger = get_logger(__name__)
 
 # boto3 import (선택적)
 try:
@@ -60,7 +63,7 @@ def upload_image_to_s3(image_data: Dict[str, Any], user_id: str) -> str | None:
         S3 URL 또는 None (실패 시)
     """
     if not HAS_BOTO3:
-        print("[ImageProcessor] boto3 없음, S3 업로드 건너뜀")
+        logger.warning("boto3 없음, S3 업로드 건너뜀")
         return None
     
     try:
@@ -113,11 +116,11 @@ def upload_image_to_s3(image_data: Dict[str, Any], user_id: str) -> str | None:
         region = os.getenv('AWS_REGION', 'ap-northeast-2')
         s3_url = f'https://{bucket}.s3.{region}.amazonaws.com/{s3_key}'
         
-        print(f"[ImageProcessor] S3 업로드 성공: {s3_url}")
+        logger.info(f"S3 업로드 성공: {s3_url}")
         return s3_url
         
     except Exception as e:
-        print(f"[ImageProcessor] S3 업로드 실패: {e}")
+        logger.error(f"S3 업로드 실패: {e}", exc_info=True)
         return None
 
 
@@ -175,26 +178,15 @@ def analyze_image_with_vision(image_url: str, prompt_template: str) -> Dict[str,
         # JSON 파싱
         try:
             result_json = json.loads(result_text)
-            print(f"[ImageProcessor] 이미지 분석 성공: {len(result_text)} chars")
+            logger.info(f"이미지 분석 성공: {len(result_text)} chars")
             
-            # 추출된 JSON 전체 로그 출력
-            print(f"\n{'='*60}")
-            print(f"[ImageProcessor] 추출된 이미지 JSON 데이터 (사실만 추출, 의견 없음)")
-            print(f"{'='*60}")
-            # print(json.dumps(result_json, ensure_ascii=False, indent=2))
-            print(json.dumps(result_json, ensure_ascii=False, indent=2))
-            print(f"{'='*60}\n")
+            # 추출된 JSON 전체 로그 출력 (DEBUG 레벨)
+            logger.debug(f"추출된 이미지 JSON 데이터 (사실만 추출, 의견 없음):\n{json.dumps(result_json, ensure_ascii=False, indent=2)}")
             
             return result_json
         except json.JSONDecodeError as e:
-            print(f"\n{'='*60}")
-            print(f"[ImageProcessor] JSON 파싱 실패")
-            print(f"에러: {e}")
-            print(f"{'='*60}")
-            print(f"[ImageProcessor] 원본 응답 텍스트 전체:")
-            print(f"{'='*60}")
-            print(result_text)
-            print(f"{'='*60}\n")
+            logger.error(f"JSON 파싱 실패: {e}")
+            logger.debug(f"원본 응답 텍스트 전체:\n{result_text}")
             # JSON 파싱 실패 시 원본 텍스트를 observation에 저장
             return {
                 "analysis_error": True,
@@ -202,7 +194,7 @@ def analyze_image_with_vision(image_url: str, prompt_template: str) -> Dict[str,
             }
             
     except Exception as e:
-        print(f"[ImageProcessor] Vision API 호출 실패: {e}")
+        logger.error(f"Vision API 호출 실패: {e}", exc_info=True)
         return None
 
 
@@ -322,31 +314,28 @@ def image_processing_node(state: Dict[str, Any]) -> Dict[str, Any]:
         - state["image_analysis_result"]: 이미지 분석 결과 (JSON)
         - state["question"]: 보강된 질문 (이미지 분석 결과 포함)
     """
-    print(f"\n{'='*60}")
-    print(f"[IMAGE_PROCESSING NODE] 시작")
-    print(f"{'='*60}\n")
+    logger.info("[IMAGE_PROCESSING NODE] 시작")
     
     # 디버깅: state 키 확인
-    print(f"[ImageProcessor] State keys: {list(state.keys())}")
+    logger.debug(f"State keys: {list(state.keys())}")
     
     attached_images = state.get("attached_images", [])
     question = state.get("question", "")
     user_id = state.get("user_id", "")
     
     # 디버깅: attached_images 값 확인
-    print(f"[ImageProcessor] attached_images 타입: {type(attached_images)}, 값: {attached_images}")
-    print(f"[ImageProcessor] attached_images 길이: {len(attached_images) if attached_images else 0}")
+    logger.debug(f"attached_images 타입: {type(attached_images)}, 값: {attached_images}, 길이: {len(attached_images) if attached_images else 0}")
     
     # 이미지가 없으면 스킵
     if not attached_images:
-        print("[ImageProcessor] 첨부된 이미지 없음, 스킵")
+        logger.info("첨부된 이미지 없음, 스킵")
         return state
     
-    print(f"[ImageProcessor] {len(attached_images)}개 이미지 처리 시작")
+    logger.info(f"{len(attached_images)}개 이미지 처리 시작")
     
     # 프롬프트 템플릿 사용 (파일 대신 상수로 정의된 프롬프트 사용)
     prompt_template = IMAGE_ANALYSIS_PROMPT
-    print(f"[ImageProcessor] 프롬프트 템플릿 사용: {len(prompt_template)} chars")
+    logger.debug(f"프롬프트 템플릿 사용: {len(prompt_template)} chars")
     
     # 첫 번째 이미지만 분석 (여러 이미지가 있어도 첫 번째만)
     first_image = attached_images[0]
@@ -359,10 +348,10 @@ def image_processing_node(state: Dict[str, Any]) -> Dict[str, Any]:
     if image_file:
         # base64 문자열이든 File 객체든 모두 S3에 업로드
         if HAS_BOTO3:
-            print("[ImageProcessor] 이미지를 S3에 업로드 중...")
+            logger.info("이미지를 S3에 업로드 중...")
             image_url = upload_image_to_s3(first_image, user_id)
         else:
-            print("[ImageProcessor] boto3 없음, S3 업로드 불가")
+            logger.warning("boto3 없음, S3 업로드 불가")
     
     # file 필드가 없거나 S3 업로드 실패 시 url 필드 확인
     if not image_url:
@@ -370,24 +359,24 @@ def image_processing_node(state: Dict[str, Any]) -> Dict[str, Any]:
         if existing_url and existing_url.startswith('http'):
             # 이미 HTTP URL인 경우 그대로 사용
             image_url = existing_url
-            print(f"[ImageProcessor] 기존 URL 사용: {image_url}")
+            logger.info(f"기존 URL 사용: {image_url}")
     
     if not image_url:
-        print("[ImageProcessor] 이미지 URL을 얻을 수 없음 (S3 업로드 실패 또는 URL 없음), 스킵")
+        logger.warning("이미지 URL을 얻을 수 없음 (S3 업로드 실패 또는 URL 없음), 스킵")
         return state
     
     # 업로드된 이미지 URL을 state에 저장 (DB 저장용)
     if "uploaded_image_urls" not in state:
         state["uploaded_image_urls"] = []
     state["uploaded_image_urls"].append(image_url)
-    print(f"[ImageProcessor] 업로드된 이미지 URL을 state에 저장: {image_url}")
+    logger.info(f"업로드된 이미지 URL을 state에 저장: {image_url}")
     
     # 2. Vision API로 이미지 분석 (S3 URL 사용)
-    print(f"[ImageProcessor] Vision API 호출 중... (이미지 URL: {image_url[:100]}...)")
+    logger.info(f"Vision API 호출 중... (이미지 URL: {image_url[:100]}...)")
     analysis_result = analyze_image_with_vision(image_url, prompt_template)
     
     if not analysis_result:
-        print("[ImageProcessor] 이미지 분석 실패, 원본 질문 유지")
+        logger.warning("이미지 분석 실패, 원본 질문 유지")
         # 이미지 URL은 저장했으므로 state 반환
         return state
     
@@ -405,15 +394,13 @@ def image_processing_node(state: Dict[str, Any]) -> Dict[str, Any]:
         # State 업데이트
         state["question"] = enhanced_question
         
-        print(f"[ImageProcessor] 질의 보강 완료")
-        print(f"[ImageProcessor] 분석 결과 키: {list(analysis_result.keys())}")
-        print(f"[ImageProcessor] 추출된 JSON이 state['image_analysis_result']에 저장됨")
+        logger.info(f"질의 보강 완료 - 분석 결과 키: {list(analysis_result.keys())}")
+        logger.debug("추출된 JSON이 state['image_analysis_result']에 저장됨")
         
     except Exception as e:
-        print(f"[ImageProcessor] 질의 보강 실패: {e}, 원본 질문 유지")
+        logger.error(f"질의 보강 실패: {e}, 원본 질문 유지", exc_info=True)
     
-    print(f"\n[IMAGE_PROCESSING NODE] 종료")
-    print(f"{'='*60}\n")
+    logger.info("[IMAGE_PROCESSING NODE] 종료")
     
     return state
 

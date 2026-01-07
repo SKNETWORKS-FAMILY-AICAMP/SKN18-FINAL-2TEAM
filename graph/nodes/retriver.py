@@ -11,11 +11,14 @@ from typing import Any, Dict, List
 
 from graph.nodes.rag_retriever_bridge import run_rag_retrieval_pipeline
 from graph.nodes.rerank import rerank_with_cross_encoder
+from graph.logger_config import get_logger
+
+logger = get_logger(__name__)
 
 
 def _log_contexts_brief(contexts: List[Dict[str, Any]], label: str) -> None:
     """검색된 컨텍스트 개수만 간단히 로깅."""
-    print(f"[{label}] contexts: {len(contexts)}개")
+    logger.info(f"{label} contexts: {len(contexts)}개")
 
 
 def _extract_entities_from_rewrite(rewrite: Dict[str, Any]) -> List[str]:
@@ -53,7 +56,7 @@ def retriever_bio_node(state: Dict[str, Any]) -> Dict[str, Any]:
     try:
         rag_state = run_rag_retrieval_pipeline(question)
     except Exception as e:
-        print(f"[BIO Retriever] RAG 파이프라인 실행 중 오류 발생: {e}")
+        logger.error(f"RAG 파이프라인 실행 중 오류 발생: {e}", exc_info=True)
         state.setdefault("retrieval_results", [])
         state.setdefault("entities", [])
         state.setdefault("used_search_db", "graph_rag_error")
@@ -80,49 +83,42 @@ def retriever_bio_node(state: Dict[str, Any]) -> Dict[str, Any]:
 
     # 🔍 DEBUG: RAG 파이프라인에서 받은 contexts 구조 확인
     import json
-    print(f"\n{'='*60}")
-    print(f"[DEBUG RAG Contexts] contexts 개수: {len(contexts)}")
+    logger.debug(f"contexts 개수: {len(contexts)}")
     if contexts and len(contexts) > 0:
         first_context = contexts[0]
-        print(f"[DEBUG RAG Contexts] 첫 번째 context 타입: {type(first_context)}")
-        print(f"[DEBUG RAG Contexts] 첫 번째 context keys: {list(first_context.keys()) if isinstance(first_context, dict) else 'Not a dict'}")
+        logger.debug(f"첫 번째 context 타입: {type(first_context)}, keys: {list(first_context.keys()) if isinstance(first_context, dict) else 'Not a dict'}")
         
         try:
             if isinstance(first_context, dict):
-                print(f"[DEBUG RAG Contexts] 첫 번째 context 전체 구조:")
-                print(json.dumps(first_context, indent=2, default=str, ensure_ascii=False))
+                logger.debug(f"첫 번째 context 전체 구조:\n{json.dumps(first_context, indent=2, default=str, ensure_ascii=False)}")
             else:
-                print(f"[DEBUG RAG Contexts] 첫 번째 context (직렬화 불가): {first_context}")
+                logger.debug(f"첫 번째 context (직렬화 불가): {first_context}")
         except Exception as json_err:
-            print(f"[DEBUG RAG Contexts] JSON 직렬화 실패: {json_err}")
-            print(f"[DEBUG RAG Contexts] 첫 번째 context (raw): {first_context}")
+            logger.debug(f"JSON 직렬화 실패: {json_err}, 첫 번째 context (raw): {first_context}")
         
         # metadata 구조 상세 확인
         if isinstance(first_context, dict):
             metadata = first_context.get("metadata", {})
-            print(f"[DEBUG RAG Contexts] metadata 타입: {type(metadata)}")
-            print(f"[DEBUG RAG Contexts] metadata keys: {list(metadata.keys()) if isinstance(metadata, dict) else 'Not a dict'}")
+            logger.debug(f"metadata 타입: {type(metadata)}, keys: {list(metadata.keys()) if isinstance(metadata, dict) else 'Not a dict'}")
             if isinstance(metadata, dict):
-                print(f"[DEBUG RAG Contexts] metadata 내용:")
-                print(json.dumps(metadata, indent=2, default=str, ensure_ascii=False))
+                logger.debug(f"metadata 내용:\n{json.dumps(metadata, indent=2, default=str, ensure_ascii=False)}")
                 
                 # title 관련 필드 확인
                 title_fields = [k for k in metadata.keys() if 'title' in k.lower() or 'Title' in k]
                 if title_fields:
-                    print(f"[DEBUG RAG Contexts] metadata에 title 관련 필드: {title_fields}")
+                    logger.debug(f"metadata에 title 관련 필드: {title_fields}")
                     for field in title_fields:
-                        print(f"[DEBUG RAG Contexts]   {field}: {metadata.get(field)}")
+                        logger.debug(f"  {field}: {metadata.get(field)}")
                 else:
-                    print(f"[DEBUG RAG Contexts] ⚠️ metadata에 title 관련 필드 없음")
+                    logger.debug("⚠️ metadata에 title 관련 필드 없음")
         
         # content/text 필드 확인
         if isinstance(first_context, dict):
             content_fields = [k for k in first_context.keys() if k in ['content', 'text', 'chunk', 'document']]
             if content_fields:
-                print(f"[DEBUG RAG Contexts] content 관련 필드: {content_fields}")
+                logger.debug(f"content 관련 필드: {content_fields}")
             else:
-                print(f"[DEBUG RAG Contexts] ⚠️ content/text 필드를 찾을 수 없음")
-    print(f"{'='*60}\n")
+                logger.debug("⚠️ content/text 필드를 찾을 수 없음")
 
     # 3) Cross-Encoder 기반 rerank (retrieval 단계에서 수행)
     try:
@@ -133,20 +129,16 @@ def retriever_bio_node(state: Dict[str, Any]) -> Dict[str, Any]:
         )
         
         # 🔍 DEBUG: rerank 후 결과 구조 확인
-        print(f"\n{'='*60}")
-        print(f"[DEBUG RAG Reranked] reranked 개수: {len(reranked)}")
+        logger.debug(f"reranked 개수: {len(reranked)}")
         if reranked and len(reranked) > 0:
             first_reranked = reranked[0]
-            print(f"[DEBUG RAG Reranked] 첫 번째 reranked 타입: {type(first_reranked)}")
-            print(f"[DEBUG RAG Reranked] 첫 번째 reranked keys: {list(first_reranked.keys()) if isinstance(first_reranked, dict) else 'Not a dict'}")
+            logger.debug(f"첫 번째 reranked 타입: {type(first_reranked)}, keys: {list(first_reranked.keys()) if isinstance(first_reranked, dict) else 'Not a dict'}")
             
             try:
                 if isinstance(first_reranked, dict):
-                    print(f"[DEBUG RAG Reranked] 첫 번째 reranked 전체 구조:")
-                    print(json.dumps(first_reranked, indent=2, default=str, ensure_ascii=False))
+                    logger.debug(f"첫 번째 reranked 전체 구조:\n{json.dumps(first_reranked, indent=2, default=str, ensure_ascii=False)}")
             except Exception as json_err:
-                print(f"[DEBUG RAG Reranked] JSON 직렬화 실패: {json_err}")
-        print(f"{'='*60}\n")
+                logger.debug(f"JSON 직렬화 실패: {json_err}")
         
         state["retrieval_results"] = reranked
         state["retrieval_score"] = (
@@ -190,7 +182,7 @@ def retriever_protocol_node(state: Dict[str, Any]) -> Dict[str, Any]:
     try:
         rag_state = run_rag_retrieval_pipeline(question)
     except Exception as e:
-        print(f"[PROTOCOL Retriever] RAG 파이프라인 실행 중 오류 발생: {e}")
+        logger.error(f"RAG 파이프라인 실행 중 오류 발생: {e}", exc_info=True)
         state.setdefault("retrieval_results", [])
         state.setdefault("entities", [])
         state.setdefault("used_search_db", "graph_rag_error")

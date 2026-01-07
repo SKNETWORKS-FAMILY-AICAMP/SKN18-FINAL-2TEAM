@@ -5,6 +5,9 @@ import sys
 import threading
 from dotenv import load_dotenv
 from neo4j import GraphDatabase
+from graph.logger_config import get_logger
+
+logger = get_logger(__name__)
 
 # 전역 Neo4j 드라이버 인스턴스 (연결 풀링을 위해 재사용)
 _neo4j_driver: Optional[Any] = None
@@ -96,7 +99,7 @@ def _get_neo4j_driver_config() -> tuple[str, str, str]:
                 except:
                     pass
         except Exception as e:
-            print(f"[Debug] Failed to load from Parameter Store: {e}")
+            logger.debug(f"Failed to load from Parameter Store: {e}", exc_info=True)
     
     if not uri or not user or not password:
         raise RuntimeError("NEO4J_URI / NEO4J_USERNAME / NEO4J_PASSWORD 환경 변수가 설정되어 있어야 합니다.")
@@ -128,9 +131,9 @@ def _get_neo4j_driver():
             # 연결 즉시 검증
             try:
                 _neo4j_driver.verify_connectivity()
-                print("✅ [Bridge] Neo4j Driver connected successfully (connection pool initialized).")
+                logger.info("✅ Neo4j Driver connected successfully (connection pool initialized).")
             except Exception as e:
-                print(f"❌ [Bridge] Connection failed: {e}")
+                logger.error(f"❌ Connection failed: {e}", exc_info=True)
                 _neo4j_driver.close()
                 _neo4j_driver = None
                 raise e

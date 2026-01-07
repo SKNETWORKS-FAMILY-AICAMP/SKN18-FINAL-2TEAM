@@ -18,6 +18,9 @@ from graph.llm_config import (
     rewrite_query_node_llm,
     get_model_name
 )
+from graph.logger_config import get_logger
+
+logger = get_logger(__name__)
 
 
 # ============================================
@@ -141,14 +144,14 @@ def change_date_tool(query: str) -> str:
         
         # 변환이 발생했는지 확인
         if normalized != query:
-            print(f"[change_date_tool] '{query}' → '{normalized}'")
+            logger.debug(f"'{query}' → '{normalized}'")
         else:
-            print(f"[change_date_tool] 날짜 표현 없음, 원본 유지")
+            logger.debug("날짜 표현 없음, 원본 유지")
         
         return normalized
         
     except Exception as e:
-        print(f"[change_date_tool] 오류: {e}, 원본 반환")
+        logger.warning(f"오류: {e}, 원본 반환", exc_info=True)
         return query
 
 
@@ -184,13 +187,13 @@ def query_simplifier_tool(question: str) -> str:
 
     try:
         model_name = get_model_name(rewrite_query_simplifier_tool_llm)
-        print(f"[QuerySimplifier] 사용 모델: {model_name}")
+        logger.debug(f"사용 모델: {model_name}")
         simplified = rewrite_query_simplifier_tool_llm(prompt).strip()
-        print(f"[query_simplifier_tool] '{question[:30]}...' → '{simplified}'")
+        logger.debug(f"'{question[:30]}...' → '{simplified}'")
         return simplified
         
     except Exception as e:
-        print(f"[query_simplifier_tool] 오류: {e}, 원본 반환")
+        logger.warning(f"오류: {e}, 원본 반환", exc_info=True)
         return question
 
 
@@ -217,10 +220,8 @@ def query_rewrite_agent_node(state: Dict[str, Any]) -> Dict[str, Any]:
     """
     
     # 노드 진입 로그
-    print(f"\n{'='*60}")
-    print(f"[QUERY_REWRITE_AGENT NODE] 시작")
-    print(f"  question: {str(state.get('question', ''))[:30]}...")
-    print(f"{'='*60}\n")
+    question_preview = str(state.get('question', ''))[:30]
+    logger.info(f"[QUERY_REWRITE_AGENT NODE] 시작 - question: {question_preview}...")
     
     question = state.get("question", "")
     memory_slot = state.get("memory_slot", {})
@@ -259,37 +260,36 @@ JSON만 출력하세요:"""
     try:
         # LLM이 tool 사용 결정
         model_name = get_model_name(rewrite_query_node_llm)
-        print(f"[QueryRewrite] 사용 모델: {model_name}")
+        logger.info(f"사용 모델: {model_name}")
         decision_response = rewrite_query_node_llm(tool_decision_prompt).strip()
         decision = json.loads(decision_response)
         
-        print(f"[Agent] Tool 사용 결정: {decision}")
+        logger.debug(f"Tool 사용 결정: {decision}")
         
         # 날짜 정규화 (필요시)
         processed_query = question
         if decision.get("use_change_date", False):
-            print("[Agent] Step 1: 날짜 정규화 실행")
+            logger.info("Step 1: 날짜 정규화 실행")
             processed_query = change_date_tool(processed_query)
         
         # 질문 단순화 (필요시)
         if decision.get("use_simplifier", False):
-            print("[Agent] Step 2: 질문 단순화 실행")
+            logger.info("Step 2: 질문 단순화 실행")
             processed_query = query_simplifier_tool(processed_query)
         
         # 최종 재작성 쿼리
         state["rewritten_query"] = processed_query
         
-        print(f"[Agent] 최종 쿼리: '{processed_query[:50]}...'")
+        logger.info(f"최종 쿼리: '{processed_query[:50]}...'")
         
     except Exception as e:
-        print(f"[Agent] 오류 발생: {e}")
+        logger.error(f"오류 발생: {e}", exc_info=True)
         # 오류 시 원본 질문 사용
         state["rewritten_query"] = question
     
     # 노드 종료 로그
-    print(f"\n[QUERY_REWRITE_AGENT NODE] 종료")
-    print(f"  rewritten_query: {str(state.get('rewritten_query', ''))[:30]}...")
-    print(f"{'='*60}\n")
+    rewritten_preview = str(state.get('rewritten_query', ''))[:30]
+    logger.info(f"[QUERY_REWRITE_AGENT NODE] 종료 - rewritten_query: {rewritten_preview}...")
     
     return state
 

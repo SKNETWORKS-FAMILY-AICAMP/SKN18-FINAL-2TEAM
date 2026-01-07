@@ -24,6 +24,9 @@ from graph.llm_config import (
     evaluate_chunk_protocol_node_llm,
     get_model_name,
 )
+from graph.logger_config import get_logger
+
+logger = get_logger(__name__)
 
 # ============================================
 # JSON 파서(안전)
@@ -338,14 +341,11 @@ def _run_evaluate_node(
 ) -> Dict[str, Any]:
     llm_model_name = llm_call.__name__
 
-    print("\n" + "=" * 60)
-    print(f"[{tag}] 시작")
-    print(f"  LLM 모델: {llm_model_name}")
-    print(f"  question: {str(state.get('question', ''))[:30]}...")
-    print(f"  rewritten_query: {str(state.get('rewritten_query', ''))[:30]}...")
-    print(f"  retrieval_results: {len(state.get('retrieval_results', []))}개")
-    print(f"  reranked_results: {len(state.get('reranked_results', []))}개")
-    print("=" * 60 + "\n")
+    question_preview = str(state.get('question', ''))[:30]
+    rewritten_preview = str(state.get('rewritten_query', ''))[:30]
+    retrieval_count = len(state.get('retrieval_results', []))
+    reranked_count = len(state.get('reranked_results', []))
+    logger.info(f"[{tag}] 시작 - LLM 모델: {llm_model_name}, question: {question_preview}..., rewritten_query: {rewritten_preview}..., retrieval_results: {retrieval_count}개, reranked_results: {reranked_count}개")
 
     search_query = (state.get("rewritten_query") or state.get("question") or "").strip()
     question = (state.get("question") or "").strip()
@@ -356,14 +356,14 @@ def _run_evaluate_node(
         state["chunk_is_relevant"] = False
         state["chunk_relevance_score"] = 0.0
         state["selected_chunks"] = []
-        print(f"[{tag}] 검색 결과 없음 → 웹 검색으로 이동")
+        logger.info(f"검색 결과 없음 → 웹 검색으로 이동")
         return state
 
     entities = state.get("entities") or []
 
     # Stage 1: Coarse Filter (참고용만)
     if entities:
-        print(f"[{tag}] Stage 1: Coarse Filter (엔티티 등장 여부 체크)...")
+        logger.debug("Stage 1: Coarse Filter (엔티티 등장 여부 체크)...")
         context_preview = "\n\n".join(
             [
                 f"[문서 {i}] "
@@ -376,16 +376,16 @@ def _run_evaluate_node(
 
         try:
             coarse_result = llm_call(coarse_prompt)
-            print(f"[{tag}] Coarse Filter 결과: {str(coarse_result)[:120]}")
+            logger.debug(f"Coarse Filter 결과: {str(coarse_result)[:120]}")
             if "no" in str(coarse_result).lower():
-                print(f"[{tag}] Stage 1: 엔티티 미등장 → 그래도 Stage 2로 계속 진행")
+                logger.debug("Stage 1: 엔티티 미등장 → 그래도 Stage 2로 계속 진행")
             else:
-                print(f"[{tag}] Stage 1: 엔티티 등장/부분 관련 → Stage 2로 진행")
+                logger.debug("Stage 1: 엔티티 등장/부분 관련 → Stage 2로 진행")
         except Exception as e:
-            print(f"[{tag}] Coarse Filter 예외 (계속 진행): {e}")
+            logger.warning(f"Coarse Filter 예외 (계속 진행): {e}", exc_info=True)
 
     # Stage 2: Graph-Grounded 평가
-    print(f"[{tag}] Stage 2: Graph-Grounded Relevance 평가...")
+    logger.info("Stage 2: Graph-Grounded Relevance 평가...")
 
     # 후보 블록 생성(그래프 근거 포함)
     id_to_text: Dict[str, str] = {}
@@ -400,16 +400,13 @@ def _run_evaluate_node(
 
     try:
         model_name = get_model_name(llm_call)
-        print(f"[{tag}] 사용 모델: {model_name}")
+        logger.info(f"사용 모델: {model_name}")
 
         result = llm_call(prompt)
 
         is_relevant, top_score, kept_ids_sorted, reason_short = _parse_stage2_json(result)
 
-        print(f"\n[{tag}] LLM 평가 결과(JSON 기반):")
-        print(f"  관련성: {'높음' if is_relevant else '낮음'}")
-        print(f"  점수(top): {top_score}")
-        print(f"  이유: {reason_short}\n")
+        logger.info(f"LLM 평가 결과(JSON 기반) - 관련성: {'높음' if is_relevant else '낮음'}, 점수(top): {top_score}, 이유: {reason_short}")
 
         selected_chunks: List[str] = []
         if kept_ids_sorted:
@@ -424,16 +421,15 @@ def _run_evaluate_node(
         state["selected_chunks"] = selected_chunks
 
     except Exception as e:
-        print(f"[{tag}] Stage 2 평가 중 예외: {e}")
+        logger.error(f"Stage 2 평가 중 예외: {e}", exc_info=True)
         state["chunk_is_relevant"] = False
         state["chunk_relevance_score"] = 0.0
         state["selected_chunks"] = []
 
-    print(f"\n[{tag}] 종료")
-    print(f"  chunk_is_relevant: {state.get('chunk_is_relevant')}")
-    print(f"  chunk_relevance_score: {state.get('chunk_relevance_score')}")
-    print(f"  selected_chunks: {len(state.get('selected_chunks', []))}개")
-    print("=" * 60 + "\n")
+    chunk_is_relevant = state.get('chunk_is_relevant')
+    chunk_relevance_score = state.get('chunk_relevance_score')
+    selected_chunks_count = len(state.get('selected_chunks', []))
+    logger.info(f"[{tag}] 종료 - chunk_is_relevant: {chunk_is_relevant}, chunk_relevance_score: {chunk_relevance_score}, selected_chunks: {selected_chunks_count}개")
 
     return state
 
