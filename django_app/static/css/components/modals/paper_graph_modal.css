@@ -74,11 +74,17 @@
 .graph-container {
     width: 100%;
     height: 100%;
-    background: #f9fafb; /* bg-gray-50 */
+    background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%); /* 세련된 그라데이션 배경 */
     border-radius: 0.5rem; /* rounded-lg */
     border: 1px solid #e5e7eb; /* border border-gray-200 */
     position: relative;
     overflow: hidden;
+    transition: box-shadow 0.3s ease;
+}
+
+/* Sigma canvas가 투명 배경을 사용하도록 */
+.graph-container canvas {
+    background: transparent !important;
 }
 
 .graph-loading {
@@ -101,10 +107,22 @@
     margin: 0;
 }
 
-/* Sigma.js graph container */
+/* Sigma.js graph container canvas */
 .graph-container canvas {
     width: 100% !important;
     height: 100% !important;
+    border-radius: 0.5rem;
+}
+
+/* Sigma 노드 커스텀 스타일 (간접적 효과) */
+.graph-container .sigma-mouse {
+    cursor: pointer;
+}
+
+/* 그래프 인터랙션 개선 */
+.graph-container:hover {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    transition: box-shadow 0.3s ease;
 }
 
 /* Graph controls */
@@ -175,15 +193,15 @@
 }
 
 .legend-dot-center {
-    background: #9E7B9E; /* bg-[#9E7B9E] */
+    background: #E63946; /* 중심 논문 - 빨간색 (Sigma 노드 색상과 일치) */
 }
 
 .legend-dot-related {
-    background: #7B9E9E; /* bg-[#7B9E9E] */
+    background: #457B9D; /* 관련 논문 - 파란색 (Sigma 노드 색상과 일치) */
 }
 
 .legend-dot-derived {
-    background: #5B8E7E; /* bg-[#5B8E7E] */
+    background: #A8DADC; /* 파생 논문 - 연한 청록색 (Sigma 노드 색상과 일치) */
 }
 
 #paperGraphModal .modal-btn-primary {

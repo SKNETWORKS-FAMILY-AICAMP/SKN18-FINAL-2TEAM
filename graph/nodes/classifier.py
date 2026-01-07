@@ -5,6 +5,9 @@ from graph.llm_config import (
     get_model_name
 )
 from graph.nodes.memory import memory_read_basic_tool
+from graph.logger_config import get_logger
+
+logger = get_logger(__name__)
 
 
 def _check_needs_previous_context(q: str) -> bool:
@@ -31,11 +34,11 @@ def _check_needs_previous_context(q: str) -> bool:
 
     try:
         model_name = get_model_name(classifier_is_bio_related_simple_check_llm)
-        print(f"[Classifier] 이전 대화 참조 판단 모델: {model_name}")
+        logger.info(f"이전 대화 참조 판단 모델: {model_name}")
         response = classifier_is_bio_related_simple_check_llm(prompt).strip().upper()
         return response == "YES"
     except Exception as e:
-        print(f"[Check previous context error] {e}")
+        logger.error(f"이전 대화 참조 판단 실패: {e}", exc_info=True)
         # 오류 시 안전하게 False 반환 (메모리 없이 진행)
         return False
 
@@ -53,7 +56,7 @@ def _classify_with_llm(q: str, chat_room_id: str = None, user_id: str = "default
     previous_context = ""
     needs_previous = _check_needs_previous_context(q)
     
-    print(f"[Classifier] 이전 대화 참조 필요: {needs_previous}")
+    logger.info(f"이전 대화 참조 필요: {needs_previous}")
     
     if needs_previous and chat_room_id:
         try:
@@ -66,9 +69,9 @@ def _classify_with_llm(q: str, chat_room_id: str = None, user_id: str = "default
 - 이전 케이스 타입: {prev_data['last_case_type']}
 - 이전 주제: {prev_data['last_topic']}
 """
-                print(f"[Classifier] 이전 대화 로드 완료")
+                logger.info("이전 대화 로드 완료")
         except Exception as e:
-            print(f"[Previous context error] {e}")
+            logger.error(f"이전 대화 로드 실패: {e}", exc_info=True)
     
     # AI에게 보낼 프롬프트(Prompt)를 만듭니다
     system_prompt = (
@@ -145,7 +148,7 @@ def _classify_with_llm(q: str, chat_room_id: str = None, user_id: str = "default
     try:
         # 사용 모델 확인
         model_name = get_model_name(classifier_classify_question_node_llm)
-        print(f"[Classifier] 질문 분류 모델: {model_name}")
+        logger.info(f"질문 분류 모델: {model_name}")
         
         # LLM을 사용하여 질문을 분류합니다
         # 전체 프롬프트를 하나로 합쳐서 전달합니다
@@ -169,27 +172,67 @@ def _classify_with_llm(q: str, chat_room_id: str = None, user_id: str = "default
         # AI가 반환한 답변이 허용된 카테고리 중 하나인지 확인합니다
         # 만약 정확한 카테고리 이름이면 그대로 반환합니다
         if label in valid_categories:
+            logger.info(f"질문 분류 결과: {label}")
             return label
 
         # AI가 예상치 못한 답변을 했을 경우 (오타나 잘못된 형식 등)
         # 안전하게 기본값인 "NO_RELATION"을 반환합니다
+        logger.warning(f"예상치 못한 분류 결과: {label}, 기본값 NO_RELATION 반환")
         return "NO_RELATION"
 
     except Exception as e:
         # 오류가 발생했을 때 (예: 인터넷 연결 문제, API 오류 등)
-        # 오류 메시지를 출력하고 기본값을 반환합니다
-        print(f"[Classifier Error] {e}")
+        # 오류 메시지를 로깅하고 기본값을 반환합니다
+        logger.error(f"질문 분류 중 오류 발생: {e}", exc_info=True)
         return "NO_RELATION"
 
 
 def classify_agent_node(state: Dict[str, Any]) -> Dict[str, Any]:
     
     # 노드 진입 로그
-    print(f"\n{'='*60}")
-    print(f"[CLASSIFIER NODE] 시작")
-    print(f"  question: {str(state.get('question', ''))[:30]}...")
-    print(f"  conversation_id: {state.get('conversation_id', '')}")
-    print(f"{'='*60}\n")
+    question = str(state.get('question', ''))[:30]
+    conversation_id = state.get('conversation_id', '')
+    logger.info(f"[CLASSIFIER NODE] 시작 - question: {question}..., conversation_id: {conversation_id}")
+
+    # case_type이 이미 지정되어 있으면 LLM 호출 없이 바로 다음 노드로 이동
+    existing_case_type = state.get("case_type")
+    if existing_case_type and existing_case_type != "N/A":
+        logger.info(f"case_type이 이미 지정됨: '{existing_case_type}' (LLM 호출 건너뜀)")
+        # is_follow_up만 설정하고 바로 반환
+        q = (state.get("question") or "").strip()
+        if q:
+            needs_previous = _check_needs_previous_context(q)
+            state["is_follow_up"] = needs_previous
+        else:
+            state["is_follow_up"] = False
+        
+        # 노드 종료 로그
+        logger.info(f"[CLASSIFIER NODE] 종료 (기존 case_type 사용) - case_type: {state.get('case_type', '')}, is_follow_up: {state.get('is_follow_up', False)}")
+        
+        return state
+
+    # 필터 타입이 있으면 LLM 호출 없이 직접 case_type 설정
+    filter_type = state.get("filter_type")
+    if filter_type:
+        # 필터 타입을 case_type으로 매핑
+        filter_to_case_type = {
+            "paper": "BIO_Q",  # 논문/임상
+            "clinical": "BIO_Q",  # 임상 (하위 호환성)
+            "protocol": "PROTOCOL_Q",
+            "simulation": "SIMULATION_Q",
+            "interpretation": "INFERENCE_Q",  # 결과 해석
+        }
+        
+        case_label = filter_to_case_type.get(filter_type)
+        if case_label:
+            logger.info(f"필터 타입 '{filter_type}' → case_type '{case_label}' (LLM 호출 건너뜀)")
+            state["case_type"] = case_label
+            state["is_follow_up"] = False
+            
+            # 노드 종료 로그
+            logger.info(f"[CLASSIFIER NODE] 종료 (필터 기반) - case_type: {state.get('case_type', '')}, is_follow_up: {state.get('is_follow_up', False)}")
+            
+            return state
 
     # state 딕셔너리에서 'question' 키의 값을 가져옵니다
     # 만약 값이 없으면 빈 문자열("")을 사용합니다
@@ -218,9 +261,9 @@ def classify_agent_node(state: Dict[str, Any]) -> Dict[str, Any]:
             prev_data = memory_read_basic_tool(chat_room_id, user_id)
             if prev_data["has_previous"] and prev_data["last_case_type"]:
                 state["reference_case_type"] = prev_data["last_case_type"]
-                print(f"[Classifier] 꼬리질문 감지: 참조 케이스 타입 = {prev_data['last_case_type']}")
+                logger.info(f"꼬리질문 감지: 참조 케이스 타입 = {prev_data['last_case_type']}")
         except Exception as e:
-            print(f"[Classifier] 참조 케이스 타입 가져오기 실패: {e}")
+            logger.error(f"참조 케이스 타입 가져오기 실패: {e}", exc_info=True)
     
     case_label = _classify_with_llm(q, chat_room_id, user_id)
     
@@ -236,12 +279,13 @@ def classify_agent_node(state: Dict[str, Any]) -> Dict[str, Any]:
         )
 
     # 노드 종료 로그
-    print(f"\n[CLASSIFIER NODE] 종료")
-    print(f"  case_type: {state.get('case_type', '')}")
-    print(f"  is_follow_up: {state.get('is_follow_up', False)}")
-    print(f"  reference_case_type: {state.get('reference_case_type', 'N/A')}")
-    print(f"  final_answer: {str(state.get('final_answer', ''))[:30]}...")
-    print(f"{'='*60}\n")
+    final_answer_preview = str(state.get('final_answer', ''))[:30]
+    logger.info(
+        f"[CLASSIFIER NODE] 종료 - case_type: {state.get('case_type', '')}, "
+        f"is_follow_up: {state.get('is_follow_up', False)}, "
+        f"reference_case_type: {state.get('reference_case_type', 'N/A')}, "
+        f"final_answer: {final_answer_preview}..."
+    )
     
     # 분류 결과가 저장된 state를 반환합니다
     return state

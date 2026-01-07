@@ -6,7 +6,11 @@ LangGraph의 StateGraph를 사용해 전체 BioRAG 파이프라인을 구성한�
 from langgraph.graph import END, StateGraph
 
 from graph.state_origin import BioRAGState
+from graph.logger_config import get_logger
+
+logger = get_logger(__name__)
 from graph.nodes.guardrail import guardrail_input_node
+from graph.nodes.image_processor import image_processing_node
 from graph.nodes.memory import memory_read_node, memory_write_node
 from graph.nodes.classifier import classify_agent_node
 from graph.nodes.rewrite_query import query_rewrite_agent_node
@@ -50,14 +54,13 @@ def route_after_evaluate_web(state: BioRAGState) -> str:
     memory_write 로 바로 갈지(generate 생략) 여부를 결정.
     """
     should_skip = state.get("should_skip_generation", False)
-    print(f"\n[ROUTE] route_after_evaluate_web 호출")
-    print(f"[ROUTE] should_skip_generation: {should_skip}")
+    logger.debug(f"route_after_evaluate_web 호출 - should_skip_generation: {should_skip}")
 
     if should_skip:
-        print("[ROUTE] GENERATE_ANSWER 건너뛰고 MEMORY_WRITE로 이동")
+        logger.info("GENERATE_ANSWER 건너뛰고 MEMORY_WRITE로 이동")
         return "skip_generation"
 
-    print("[ROUTE] GENERATE_ANSWER로 이동")
+    logger.info("GENERATE_ANSWER로 이동")
     return "generate_answer"
 
 
@@ -70,6 +73,9 @@ def create_workflow():
 
     # 0단계: 입력 guardrail
     graph.add_node("guardrail_input", guardrail_input_node)
+
+    # 0.5단계: 이미지 처리 (이미지가 있을 때만)
+    graph.add_node("image_processing", image_processing_node)
 
     # 1단계: 공통 처리 (분류, 메모리, 쿼리 리라이트)
     graph.add_node("classify_agent", classify_agent_node)
@@ -97,9 +103,12 @@ def create_workflow():
         route_guardrail,
         {
             "blocked": END,
-            "continue": "classify_agent",
+            "continue": "image_processing",
         },
     )
+    
+    # 이미지 처리 후 항상 classify_agent로 이동 (이미지가 없어도 스킵됨)
+    graph.add_edge("image_processing", "classify_agent")
 
     # 분류 결과에 따른 1차 라우팅
     graph.add_conditional_edges(

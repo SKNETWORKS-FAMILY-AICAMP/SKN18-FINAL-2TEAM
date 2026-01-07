@@ -4,9 +4,18 @@ from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
 import json
+import logging
 from .models import RecommendedQuestion, Chat, ChatMessage, ChatReference, ChatMessageFeedback
 from .models.papers_models import PaperGraph, PaperNode, PaperEdge, ChatMessagePaperGraph
-from .services import generate_concept_graph, generate_ai_response, summarize_conversation_title
+from .services import (
+    generate_concept_graph, 
+    generate_ai_response, 
+    summarize_conversation_title,
+    generate_paper_graph_background
+)
+import threading
+
+logger = logging.getLogger('apps.chat')
 
 
 @login_required
@@ -151,6 +160,107 @@ def chat_references_api(request, chat_id):
 
 @login_required
 @require_http_methods(["GET"])
+def message_paper_graphs_api(request, message_id):
+    """
+    특정 메시지의 논문 네트워크 그래프를 조회하는 API 엔드포인트
+    
+    - 로그인한 사용자의 메시지만 조회
+    - 실시간으로 논문 네트워크 데이터를 가져올 수 있음
+    """
+    user = request.user
+    user_id = user.user_id
+    
+    try:
+        # 메시지 조회 (로그인한 사용자의 채팅만)
+        message = ChatMessage.objects.select_related('chat').get(
+            message_sid=message_id,
+            chat__created_id=user_id,
+            chat__status='E'
+        )
+    except ChatMessage.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'error': 'Message not found'
+        }, status=404)
+    
+    # 논문 그래프 조회
+    message_graphs = []
+    
+    try:
+        chat_message_graphs = ChatMessagePaperGraph.objects.filter(
+            message=message
+        ).select_related('graph').order_by('sort_order', 'created_at')
+        
+        for msg_graph in chat_message_graphs:
+            graph = msg_graph.graph
+            
+            # 노드 조회
+            nodes = PaperNode.objects.filter(graph=graph).values(
+                'paper_id', 'paper_label', 'node_size', 'node_color', 
+                'x_position', 'y_position'
+            )
+            
+            # 엣지 조회
+            edges = PaperEdge.objects.filter(graph=graph).values(
+                'source_paper_id', 'target_paper_id'
+            )
+            
+            # 노드 포맷팅
+            # 색상으로부터 논문 타입 추론 (업데이트된 색상 팔레트)
+            color_to_type = {
+                '#E63946': 'central',  # 빨간색 - 중심 논문
+                '#FF6B6B': 'central',  # 이전 색상도 지원 (하위 호환성)
+                '#457B9D': 'related',  # 파란색 - 관련 논문
+                '#4ECDC4': 'related',  # 이전 색상도 지원 (하위 호환성)
+                '#A8DADC': 'derived',   # 연한 청록색 - 파생 논문
+                '#95E1D3': 'derived',   # 이전 색상도 지원 (하위 호환성)
+            }
+            
+            formatted_nodes = []
+            for node in nodes:
+                node_color = node['node_color'] or ''
+                paper_type = color_to_type.get(node_color, 'related')  # 기본값: related
+                
+                formatted_nodes.append({
+                    'id': node['paper_id'],
+                    'label': node['paper_label'],
+                    'size': node['node_size'],
+                    'x': float(node['x_position']) if node['x_position'] is not None else 0.0,
+                    'y': float(node['y_position']) if node['y_position'] is not None else 0.0,
+                    'color': node_color,
+                    'paper_type': paper_type,  # 논문 타입 추가
+                })
+            
+            # 엣지 포맷팅
+            formatted_edges = []
+            for edge in edges:
+                formatted_edges.append([
+                    edge['source_paper_id'],
+                    edge['target_paper_id']
+                ])
+            
+            message_graphs.append({
+                'id': graph.graph_sid,
+                'title': graph.graph_title or '',
+                'description': graph.graph_description or '',
+                'nodes': formatted_nodes,
+                'edges': formatted_edges,
+            })
+        
+        logger.info(f"PaperGraph API: Message {message_id} has {len(message_graphs)} graph(s)")
+        
+    except Exception as e:
+        logger.error(f"PaperGraph API: Error loading paper graphs: {e}", exc_info=True)
+    
+    return JsonResponse({
+        'status': 'success',
+        'message_id': message_id,
+        'paper_graphs': message_graphs,
+    })
+
+
+@login_required
+@require_http_methods(["GET"])
 def chat_detail(request, chat_id):
     """채팅 상세 정보 API 엔드포인트 (메시지 + 참고 문헌) - 로그인한 사용자의 채팅만 조회"""
     user = request.user
@@ -159,9 +269,10 @@ def chat_detail(request, chat_id):
     chat = get_object_or_404(Chat, chat_sid=chat_id, created_id=user_id, status='E')
     
     # 메시지 조회
-    messages = chat.messages.all().order_by('sort_order', 'created_at').values(
-        'message_sid', 'role', 'content', 'sort_order', 'created_at'
-    )
+    messages = list(chat.messages.all().order_by('sort_order', 'created_at').values(
+        'message_sid', 'role', 'content', 'sort_order', 'created_at', 'case_type', 'used_web_search',
+        'image_urls', 'image_analysis_result'
+    ))
     
     # 참고 문헌 조회 (채팅 전체 또는 특정 메시지에 연결된 것)
     # _serialize_reference 함수를 사용하기 위해 객체로 조회
@@ -169,31 +280,31 @@ def chat_detail(request, chat_id):
     
     # 논문 그래프 조회 (메시지별로 연결된 그래프)
     message_graphs = {}
-    print(f"[DEBUG] Starting paper graphs query for chat {chat.chat_sid}")
+    logger.debug(f"Starting paper graphs query for chat {chat.chat_sid}")
     
     # Debug: Check all ChatMessagePaperGraph records
     all_graphs = ChatMessagePaperGraph.objects.all().select_related('message', 'graph', 'message__chat')
-    print(f"[DEBUG] Total ChatMessagePaperGraph records in DB: {all_graphs.count()}")
+    logger.debug(f"Total ChatMessagePaperGraph records in DB: {all_graphs.count()}")
     for g in all_graphs[:10]:  # Show first 10 for debugging
         msg_sid = g.message.message_sid if g.message else 'None'
         graph_sid = g.graph.graph_sid if g.graph else 'None'
         chat_sid = g.message.chat.chat_sid if g.message and g.message.chat else 'None'
-        print(f"[DEBUG]   - Record: message_sid={msg_sid}, graph_sid={graph_sid}, message.chat.chat_sid={chat_sid}")
+        logger.debug(f"  - Record: message_sid={msg_sid}, graph_sid={graph_sid}, message.chat.chat_sid={chat_sid}")
         
         # Check if this message belongs to the current chat
         if g.message and g.message.chat and g.message.chat.chat_sid == chat.chat_sid:
-            print(f"[DEBUG]     -> This graph belongs to the current chat {chat.chat_sid}!")
+            logger.debug(f"    -> This graph belongs to the current chat {chat.chat_sid}!")
         else:
-            print(f"[DEBUG]     -> This graph belongs to a different chat")
+            logger.debug(f"    -> This graph belongs to a different chat")
     
     # Debug: Check messages in this chat
     chat_messages = chat.messages.all()
-    print(f"[DEBUG] Messages in chat {chat.chat_sid}: {[m.message_sid for m in chat_messages]}")
+    logger.debug(f"Messages in chat {chat.chat_sid}: {[m.message_sid for m in chat_messages]}")
     
     try:
         # Get message IDs first - use this for more reliable querying
         message_ids = [m.message_sid for m in chat_messages]
-        print(f"[DEBUG] Message IDs in chat {chat.chat_sid}: {message_ids}")
+        logger.debug(f"Message IDs in chat {chat.chat_sid}: {message_ids}")
         
         # ChatMessagePaperGraph.message is ForeignKey with db_column='message_sid'
         # Django automatically creates message_id field for ForeignKey, but since db_column is set,
@@ -209,7 +320,7 @@ def chat_detail(request, chat_id):
                 message__message_sid__in=message_ids
             )
             alt_count1 = alt_query1.count()
-            print(f"[DEBUG] Query method 1 (message__message_sid__in): Found {alt_count1} records")
+            logger.debug(f"Query method 1 (message__message_sid__in): Found {alt_count1} records")
             
             # Method 2: Use raw SQL-like approach with message_id (if Django creates it)
             try:
@@ -217,18 +328,18 @@ def chat_detail(request, chat_id):
                     message_id__in=message_ids
                 )
                 alt_count2 = alt_query2.count()
-                print(f"[DEBUG] Query method 2 (message_id__in): Found {alt_count2} records")
+                logger.debug(f"Query method 2 (message_id__in): Found {alt_count2} records")
                 if alt_count2 > alt_count1:
                     chat_message_graphs = alt_query2.select_related('graph', 'message').order_by('message_id', 'sort_order', 'created_at')
             except Exception as e:
-                print(f"[DEBUG] Query method 2 failed: {e}")
+                logger.debug(f"Query method 2 failed: {e}", exc_info=True)
             
             # Method 3: Use message__pk
             alt_query3 = ChatMessagePaperGraph.objects.filter(
                 message__pk__in=message_ids
             )
             alt_count3 = alt_query3.count()
-            print(f"[DEBUG] Query method 3 (message__pk__in): Found {alt_count3} records")
+            logger.debug(f"Query method 3 (message__pk__in): Found {alt_count3} records")
             if alt_count3 > 0:
                 chat_message_graphs = alt_query3.select_related('graph', 'message').order_by('message__message_sid', 'sort_order', 'created_at')
         else:
@@ -239,7 +350,7 @@ def chat_detail(request, chat_id):
         
         # Debug: Check if any graphs exist
         graph_count = chat_message_graphs.count()
-        print(f"[DEBUG] Found {graph_count} ChatMessagePaperGraph records for chat {chat.chat_sid} (using message_id__in={message_ids})")
+        logger.debug(f"Found {graph_count} ChatMessagePaperGraph records for chat {chat.chat_sid} (using message_id__in={message_ids})")
         
         # Additional debug: Check each message individually with different approaches
         for msg_id in message_ids:
@@ -257,19 +368,19 @@ def chat_detail(request, chat_id):
             except:
                 direct_count3 = -1
             
-            print(f"[DEBUG] Message {msg_id}: message_id={direct_count1}, message__message_sid={direct_count2}, message__pk={direct_count3}")
+            logger.debug(f"Message {msg_id}: message_id={direct_count1}, message__message_sid={direct_count2}, message__pk={direct_count3}")
             
             if direct_count1 > 0 or direct_count2 > 0 or direct_count3 > 0:
-                print(f"[DEBUG] Message {msg_id} has paper graph(s) - found via one of the query methods")
+                logger.debug(f"Message {msg_id} has paper graph(s) - found via one of the query methods")
         
         if graph_count > 0:
-            print(f"[DEBUG] Processing {graph_count} paper graphs...")
+            logger.debug(f"Processing {graph_count} paper graphs...")
         
         for msg_graph in chat_message_graphs:
             # Get message_id from the ForeignKey field directly
             message_id = msg_graph.message_id if hasattr(msg_graph, 'message_id') else msg_graph.message.message_sid
             graph_id = msg_graph.graph.graph_sid
-            print(f"[DEBUG] Processing graph {graph_id} for message {message_id}")
+            logger.debug(f"Processing graph {graph_id} for message {message_id}")
             
             if message_id not in message_graphs:
                 message_graphs[message_id] = []
@@ -281,14 +392,14 @@ def chat_detail(request, chat_id):
                 'x_position', 'y_position'
             )
             node_count = nodes.count()
-            print(f"[DEBUG] Graph {graph_id} has {node_count} nodes")
+            logger.debug(f"Graph {graph_id} has {node_count} nodes")
             
             # 엣지 조회
             edges = PaperEdge.objects.filter(graph=graph).values(
                 'source_paper_id', 'target_paper_id'
             )
             edge_count = edges.count()
-            print(f"[DEBUG] Graph {graph_id} has {edge_count} edges")
+            logger.debug(f"Graph {graph_id} has {edge_count} edges")
             
             # 노드 포맷팅
             formatted_nodes = []
@@ -317,34 +428,56 @@ def chat_detail(request, chat_id):
                 'nodes': formatted_nodes,
                 'edges': formatted_edges,
             })
-            print(f"[DEBUG] Added graph {graph_id} to message {message_id}. Total graphs for this message: {len(message_graphs[message_id])}")
+            logger.debug(f"Added graph {graph_id} to message {message_id}. Total graphs for this message: {len(message_graphs[message_id])}")
         
-        print(f"[DEBUG] Final message_graphs keys: {list(message_graphs.keys())}")
-        print(f"[DEBUG] Total messages with graphs: {len(message_graphs)}")
+        logger.debug(f"Final message_graphs keys: {list(message_graphs.keys())}")
+        logger.debug(f"Total messages with graphs: {len(message_graphs)}")
         for msg_id, graphs in message_graphs.items():
-            print(f"[DEBUG] Message {msg_id} has {len(graphs)} graph(s)")
+            logger.debug(f"Message {msg_id} has {len(graphs)} graph(s)")
     except Exception as e:
-        print(f"[ERROR] Error loading paper graphs: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"Error loading paper graphs: {e}", exc_info=True)
+    
+    # 사용자 피드백 조회 (현재 로그인한 사용자가 남긴 좋아요/싫어요)
+    message_ids = [msg['message_sid'] for msg in messages]
+    feedback_map = {}
+    if message_ids:
+        user_feedbacks = ChatMessageFeedback.objects.filter(
+            message_id__in=message_ids,
+            created_id=str(user_id)
+        ).values('message_id', 'feedback_type', 'feedback_reason', 'feedback_comment')
+        for feedback in user_feedbacks:
+            feedback_map[feedback['message_id']] = {
+                'feedback_type': feedback.get('feedback_type'),
+                'feedback_reason': feedback.get('feedback_reason'),
+                'feedback_comment': feedback.get('feedback_comment') or ''
+            }
     
     # 메시지 포맷팅
     formatted_messages = []
     for msg in messages:
         message_id = msg['message_sid']
         paper_graphs_for_msg = message_graphs.get(message_id, [])
-        print(f"[DEBUG] Message {message_id} will have {len(paper_graphs_for_msg)} paper_graphs")
+        image_urls = msg.get('image_urls', []) or []
+        logger.debug(f"Message {message_id} - paper_graphs: {len(paper_graphs_for_msg)}, image_urls: {len(image_urls)}")
+        user_feedback_data = feedback_map.get(message_id)
         formatted_messages.append({
             'id': message_id,
             'role': 'user' if msg['role'] == 'U' else 'assistant',
             'content': msg['content'],
             'sort_order': msg['sort_order'],
             'created_at': msg['created_at'].isoformat() if msg['created_at'] else None,
+            'case_type': msg.get('case_type'),
+            'used_web_search': msg.get('used_web_search', False),
             'paper_graphs': paper_graphs_for_msg,
+            'image_urls': image_urls,  # 이미지 URL 배열
+            'image_analysis_result': msg.get('image_analysis_result'),  # 이미지 분석 결과
+            'user_feedback': user_feedback_data['feedback_type'] if user_feedback_data else None,
+            'feedback_reason': user_feedback_data['feedback_reason'] if user_feedback_data else None,
+            'feedback_comment': user_feedback_data['feedback_comment'] if user_feedback_data else '',
         })
     
-    print(f"[DEBUG] Total formatted messages: {len(formatted_messages)}")
-    print(f"[DEBUG] Messages with paper_graphs: {[msg['id'] for msg in formatted_messages if len(msg['paper_graphs']) > 0]}")
+    logger.debug(f"Total formatted messages: {len(formatted_messages)}")
+    logger.debug(f"Messages with paper_graphs: {[msg['id'] for msg in formatted_messages if len(msg['paper_graphs']) > 0]}")
     
     # 참고 문헌 포맷팅
     # _serialize_reference 함수를 사용하여 일관된 포맷팅 적용
@@ -409,16 +542,14 @@ def graph_summary(request):
     """
     채팅 메시지 내용을 기반으로 Mermaid 그래프 코드를 생성하는 API 엔드포인트
     """
-    print(f"[DEBUG] graph_summary() 호출됨")
-    print(f"[DEBUG] Request method: {request.method}")
-    print(f"[DEBUG] Request body: {request.body.decode('utf-8')[:200] if request.body else 'None'}...")
+    logger.debug(f"graph_summary() 호출됨 - Request method: {request.method}, Request body: {request.body.decode('utf-8')[:200] if request.body else 'None'}...")
     
     try:
         data = json.loads(request.body)
         message_content = data.get('message_content', '')
         message_id = data.get('message_id', None)
         
-        print(f"[DEBUG] 파싱된 데이터 - message_id: {message_id}, message_content 길이: {len(message_content) if message_content else 0}")
+        logger.debug(f"파싱된 데이터 - message_id: {message_id}, message_content 길이: {len(message_content) if message_content else 0}")
         
         # 메시지 ID가 제공된 경우, DB에서 메시지 조회 및 concept_graph 확인
         message = None
@@ -427,26 +558,26 @@ def graph_summary(request):
                 message = ChatMessage.objects.get(message_sid=message_id)
                 # DB 메시지의 content를 사용 (더 정확한 데이터)
                 message_content = message.content
-                print(f"[DEBUG] DB에서 메시지 조회 성공, message_content 길이: {len(message_content) if message_content else 0}")
+                logger.debug(f"DB에서 메시지 조회 성공, message_content 길이: {len(message_content) if message_content else 0}")
                 
                 # DB에 concept_graph가 이미 있으면 바로 반환
                 if message.concept_graph:
-                    print(f"[DEBUG] DB에 concept_graph 존재, 바로 반환 (길이: {len(message.concept_graph)})")
+                    logger.debug(f"DB에 concept_graph 존재, 바로 반환 (길이: {len(message.concept_graph)})")
                     return JsonResponse({
                         'graph': message.concept_graph,
                         'message_id': message_id,
                         'from_cache': True  # DB에서 가져온 것임을 표시
                     })
                 else:
-                    print(f"[DEBUG] DB에 concept_graph 없음, LLM으로 생성 시작...")
+                    logger.debug("DB에 concept_graph 없음, LLM으로 생성 시작...")
             except ChatMessage.DoesNotExist:
-                print(f"[DEBUG] DB에서 메시지 조회 실패 (message_sid={message_id}), 전달된 content 사용")
+                logger.debug(f"DB에서 메시지 조회 실패 (message_sid={message_id}), 전달된 content 사용")
                 # 메시지가 없어도 전달된 content로 진행
                 pass
         
         # message_content가 여전히 비어있으면 에러
         if not message_content:
-            print(f"[DEBUG] message_content가 비어있음, 400 에러 반환")
+            logger.debug("message_content가 비어있음, 400 에러 반환")
             return JsonResponse({
                 'error': 'message_content is required'
             }, status=400)
@@ -460,7 +591,7 @@ def graph_summary(request):
         
         # Mermaid 그래프 코드 생성 (DB에 없을 때만)
         try:
-            print(f"[DEBUG] generate_concept_graph() 호출 시작")
+            logger.debug("generate_concept_graph() 호출 시작")
             graph_code = generate_concept_graph(message)
             
             # Mermaid 코드에서 ```mermaid 또는 ``` 제거
@@ -476,10 +607,10 @@ def graph_summary(request):
             
             # 실제 ChatMessage 객체인 경우 DB에 저장
             if isinstance(message, ChatMessage) and message_id:
-                print(f"[DEBUG] concept_graph를 DB에 저장 중...")
+                logger.debug("concept_graph를 DB에 저장 중...")
                 message.concept_graph = graph_code
                 message.save(update_fields=["concept_graph"])
-                print(f"[DEBUG] concept_graph DB 저장 완료")
+                logger.debug("concept_graph DB 저장 완료")
             
             return JsonResponse({
                 'graph': graph_code,
@@ -487,9 +618,7 @@ def graph_summary(request):
                 'from_cache': False  # 새로 생성한 것임을 표시
             })
         except Exception as e:
-            print(f"[ERROR] Error generating graph: {e}")
-            import traceback
-            traceback.print_exc()
+            logger.error(f"Error generating graph: {e}", exc_info=True)
             return JsonResponse({
                 'error': f'Failed to generate graph: {str(e)}',
                 'graph': ''  # 빈 그래프 반환
@@ -500,9 +629,7 @@ def graph_summary(request):
             'error': 'Invalid JSON in request body'
         }, status=400)
     except Exception as e:
-        print(f"[ERROR] Error in graph_summary: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"Error in graph_summary: {e}", exc_info=True)
         return JsonResponse({
             'error': f'Internal server error: {str(e)}'
         }, status=500)
@@ -595,11 +722,37 @@ def message_feedback(request, message_id):
     try:
         data = json.loads(request.body)
         feedback_type = data.get('feedback_type')  # 'L' for like, 'D' for dislike
+        feedback_reason = data.get('feedback_reason')
+        feedback_comment = (data.get('feedback_comment') or '').strip()
+        remove_feedback = data.get('remove_feedback', False)
+        
+        valid_dislike_reasons = {
+            'incorrect_fact',
+            'wrong_reference',
+            'too_vague',
+            'misunderstood',
+            'other',
+        }
         
         if feedback_type not in ['L', 'D']:
             return JsonResponse({
                 'error': 'Invalid feedback_type. Must be "L" or "D".'
             }, status=400)
+        
+        if feedback_type == 'D' and not remove_feedback:
+            if feedback_reason not in valid_dislike_reasons:
+                return JsonResponse({
+                    'error': 'Invalid feedback_reason.'
+                }, status=400)
+            if feedback_reason == 'other' and not feedback_comment:
+                return JsonResponse({
+                    'error': '기타 사유를 입력해주세요.'
+                }, status=400)
+            if feedback_reason != 'other':
+                feedback_comment = ''
+        else:
+            feedback_reason = None
+            feedback_comment = ''
         
         # 메시지 조회
         message = get_object_or_404(ChatMessage, message_sid=message_id)
@@ -615,30 +768,67 @@ def message_feedback(request, message_id):
         ).first()
         
         if existing_feedback:
-            # 같은 타입의 피드백이면 취소 (삭제)
-            if existing_feedback.feedback_type == feedback_type:
+            # remove flag overrides toggle behavior
+            if remove_feedback:
                 existing_feedback.delete()
                 return JsonResponse({
                     'success': True,
                     'action': 'removed',
                     'message': '피드백이 취소되었습니다.'
                 })
+            
+            # 같은 타입의 피드백 처리
+            if existing_feedback.feedback_type == feedback_type:
+                if feedback_type == 'D':
+                    existing_feedback.feedback_reason = feedback_reason
+                    existing_feedback.feedback_comment = feedback_comment
+                    existing_feedback.updated_id = user_id
+                    existing_feedback.save()
+                    return JsonResponse({
+                        'success': True,
+                        'action': 'updated',
+                        'message': '피드백이 업데이트되었습니다.',
+                        'feedback_type': feedback_type,
+                        'feedback_reason': existing_feedback.feedback_reason,
+                        'feedback_comment': existing_feedback.feedback_comment or ''
+                    })
+                else:
+                    existing_feedback.delete()
+                    return JsonResponse({
+                        'success': True,
+                        'action': 'removed',
+                        'message': '피드백이 취소되었습니다.'
+                    })
             else:
                 # 다른 타입의 피드백이면 업데이트
                 existing_feedback.feedback_type = feedback_type
                 existing_feedback.updated_id = user_id
+                if feedback_type == 'D':
+                    existing_feedback.feedback_reason = feedback_reason
+                    existing_feedback.feedback_comment = feedback_comment
+                else:
+                    existing_feedback.feedback_reason = None
+                    existing_feedback.feedback_comment = ''
                 existing_feedback.save()
                 return JsonResponse({
                     'success': True,
                     'action': 'updated',
                     'message': '피드백이 업데이트되었습니다.',
-                    'feedback_type': feedback_type
+                    'feedback_type': feedback_type,
+                    'feedback_reason': existing_feedback.feedback_reason,
+                    'feedback_comment': existing_feedback.feedback_comment or ''
                 })
         else:
+            if remove_feedback:
+                return JsonResponse({
+                    'error': '제거할 피드백이 없습니다.'
+                }, status=404)
             # 새로운 피드백 생성
             feedback = ChatMessageFeedback.objects.create(
                 message=message,
                 feedback_type=feedback_type,
+                feedback_reason=feedback_reason if feedback_type == 'D' else None,
+                feedback_comment=feedback_comment if feedback_type == 'D' else '',
                 created_id=user_id,
                 updated_id=user_id
             )
@@ -648,7 +838,9 @@ def message_feedback(request, message_id):
                 'action': 'created',
                 'message': '피드백이 저장되었습니다.',
                 'feedback_id': feedback.feedback_sid,
-                'feedback_type': feedback_type
+                'feedback_type': feedback_type,
+                'feedback_reason': feedback.feedback_reason,
+                'feedback_comment': feedback.feedback_comment or ''
             })
             
     except json.JSONDecodeError:
@@ -656,9 +848,7 @@ def message_feedback(request, message_id):
             'error': 'Invalid JSON in request body'
         }, status=400)
     except Exception as e:
-        print(f"[ERROR] Error in message_feedback: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"Error in message_feedback: {e}", exc_info=True)
         return JsonResponse({
             'error': f'Internal server error: {str(e)}'
         }, status=500)
@@ -704,9 +894,7 @@ def toggle_favorite(request, chat_id):
             'error': 'Chat not found'
         }, status=404)
     except Exception as e:
-        print(f"[ERROR] Error in toggle_favorite: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"Error in toggle_favorite: {e}", exc_info=True)
         return JsonResponse({
             'error': f'Internal server error: {str(e)}'
         }, status=500)
@@ -752,9 +940,7 @@ def toggle_archive(request, chat_id):
             'error': 'Chat not found'
         }, status=404)
     except Exception as e:
-        print(f"[ERROR] Error in toggle_archive: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"Error in toggle_archive: {e}", exc_info=True)
         return JsonResponse({
             'error': f'Internal server error: {str(e)}'
         }, status=500)
@@ -800,9 +986,7 @@ def delete_chat(request, chat_id):
             'error': 'Chat not found'
         }, status=404)
     except Exception as e:
-        print(f"[ERROR] Error in delete_chat: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"Error in delete_chat: {e}", exc_info=True)
         return JsonResponse({
             'error': f'Internal server error: {str(e)}'
         }, status=500)
@@ -816,6 +1000,10 @@ def _serialize_message(message):
         'content': message.content,
         'sort_order': message.sort_order,
         'created_at': message.created_at.isoformat() if message.created_at else None,
+        'case_type': message.case_type if hasattr(message, 'case_type') else None,
+        'used_web_search': message.used_web_search if hasattr(message, 'used_web_search') else False,
+        'image_urls': message.image_urls if hasattr(message, 'image_urls') else [],
+        'image_analysis_result': message.image_analysis_result if hasattr(message, 'image_analysis_result') else None,
     }
 
 
@@ -842,13 +1030,14 @@ def _serialize_reference(ref):
             citation_metadata = json.loads(ref.description)
             journal_name = citation_metadata.get('journal_name', '')
             doi = citation_metadata.get('doi', '')
-            # 디버그: doi 추출 확인
-            if doi:
-                print(f"[DEBUG _serialize_reference] doi 추출 성공: {doi}")
-            else:
-                print(f"[DEBUG _serialize_reference] doi가 없음. description: {ref.description[:100]}")
+            # 디버그 로그 제거 (필요시 주석 해제)
+            # if doi:
+            #     print(f"[DEBUG _serialize_reference] doi 추출 성공: {doi}")
+            # else:
+            #     print(f"[DEBUG _serialize_reference] doi가 없음. description: {ref.description[:100]}")
         except (json.JSONDecodeError, TypeError) as e:
-            print(f"[DEBUG _serialize_reference] JSON 파싱 실패: {e}, description: {ref.description[:100] if ref.description else 'None'}")
+            # 디버그 로그 제거 (필요시 주석 해제)
+            # print(f"[DEBUG _serialize_reference] JSON 파싱 실패: {e}, description: {ref.description[:100] if ref.description else 'None'}")
             pass
 
     # journal: description에서 가져온 실제 저널명이 있으면 사용, 없으면 DB 코드 변환
@@ -909,13 +1098,68 @@ def chat_messages(request, chat_id=None):
 
     # 2. 요청 본문 파싱
     try:
-        payload = json.loads(request.body or "{}")
+        # Content-Type이 multipart/form-data인 경우와 application/json인 경우 모두 처리
+        if request.content_type and 'multipart/form-data' in request.content_type:
+            # FormData로 이미지가 전송된 경우
+            payload = {
+                "content": request.POST.get("content", ""),
+                "filter": request.POST.get("filter"),
+                "images": request.FILES.getlist("images") if hasattr(request, 'FILES') else []
+            }
+        else:
+            # JSON으로 전송된 경우
+            payload = json.loads(request.body or "{}")
     except json.JSONDecodeError:
         return JsonResponse({"error": "invalid_json"}, status=400)
 
     content = (payload.get("content") or "").strip()
     if not content:
         return JsonResponse({"error": "content_required"}, status=400)
+
+    # 필터 정보 추출 (선택적)
+    filter_type = payload.get("filter") or None
+
+    # 이미지 정보 추출 및 처리
+    attached_images = []
+    images_data = payload.get("images", [])
+    logger.debug(f"chat_messages - images_data 타입: {type(images_data)}, 길이: {len(images_data) if images_data else 0}")
+    if images_data:
+        import base64
+        for idx, img_data in enumerate(images_data):
+            logger.debug(f"chat_messages - 이미지 {idx}: 타입={type(img_data)}, 길이={len(img_data) if isinstance(img_data, str) else 'N/A'}")
+            if isinstance(img_data, str):
+                # base64 문자열인 경우
+                img_dict = {
+                    "file": img_data,  # base64 문자열
+                    "name": "image.png",
+                    "type": "image/png"
+                }
+                # data:image 형식에서 타입 추출
+                if img_data.startswith('data:image'):
+                    parts = img_data.split(';base64,')
+                    if len(parts) == 2:
+                        mime_type = parts[0].replace('data:', '')
+                        img_dict["type"] = mime_type
+                        # 확장자 추출
+                        if 'png' in mime_type:
+                            img_dict["name"] = "image.png"
+                        elif 'jpeg' in mime_type or 'jpg' in mime_type:
+                            img_dict["name"] = "image.jpg"
+                        elif 'gif' in mime_type:
+                            img_dict["name"] = "image.gif"
+                        elif 'webp' in mime_type:
+                            img_dict["name"] = "image.webp"
+            else:
+                # File 객체인 경우
+                img_dict = {
+                    "file": img_data,
+                    "name": img_data.name,
+                    "type": img_data.content_type or "image/png"
+                }
+            attached_images.append(img_dict)
+            logger.debug(f"chat_messages - 이미지 {idx} 처리 완료: {list(img_dict.keys())}")
+    
+    logger.debug(f"chat_messages - 최종 attached_images: {len(attached_images)}개")
 
     user_id = str(request.user.user_id) if request.user.is_authenticated else 'anonymous'
 
@@ -946,13 +1190,14 @@ def chat_messages(request, chat_id=None):
         )
         next_sort_order = 1
 
-    # 4. 사용자 메시지 생성
+    # 4. 사용자 메시지 생성 (이미지 URL은 아직 모르므로 일단 빈 배열)
     user_message = ChatMessage.objects.create(
         chat=chat,
         role='U',
         content=content,
         sort_order=next_sort_order,
         created_id=user_id,
+        image_urls=[],  # 초기값, AI 응답 후 업데이트
     )
 
     # 6. Chat.preview 업데이트
@@ -960,13 +1205,28 @@ def chat_messages(request, chat_id=None):
     chat.updated_id = user_id
     chat.save(update_fields=['preview', 'updated_id', 'updated_at'])
 
-    # 7. AI 응답 생성
+    # 7. AI 응답 생성 (result_state도 함께 받기 위해 return_state=True)
     try:
-        ai_text, citations, scores, reference_type, chat_title = generate_ai_response(chat, content)
+        ai_text, citations, scores, reference_type, chat_title, result_state = generate_ai_response(
+            chat, content, return_state=True, filter_type=filter_type, attached_images=attached_images if attached_images else None
+        )
+        
+        # 7-1. 사용자 메시지에 이미지 URL 및 분석 결과 업데이트
+        uploaded_image_urls = result_state.get("uploaded_image_urls", [])
+        image_analysis_result = result_state.get("image_analysis_result")
+        
+        if uploaded_image_urls:
+            user_message.image_urls = uploaded_image_urls
+            logger.debug(f"사용자 메시지에 이미지 URL 저장: {len(uploaded_image_urls)}개")
+        
+        if image_analysis_result:
+            user_message.image_analysis_result = image_analysis_result
+            logger.debug("사용자 메시지에 이미지 분석 결과 저장")
+        
+        if uploaded_image_urls or image_analysis_result:
+            user_message.save(update_fields=['image_urls', 'image_analysis_result'])
     except Exception as exc:
-        print(f"[ERROR] AI response generation failed: {exc}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"AI response generation failed: {exc}", exc_info=True)
         return JsonResponse(
             {
                 "messages": [_serialize_message(user_message)],
@@ -975,24 +1235,41 @@ def chat_messages(request, chat_id=None):
             status=201,
         )
 
-    # 8. AI 메시지 생성
+    # 8. AI 메시지 생성 (case_type, used_web_search 포함)
+    case_type = result_state.get("case_type") or "NO_RELATION"
+    used_web_search = result_state.get("used_web_search", False)
     assistant_message = ChatMessage.objects.create(
         chat=chat,
         role='A',
         content=ai_text,
         sort_order=next_sort_order + 1,
         created_id='system',
+        case_type=case_type,
+        used_web_search=used_web_search,
     )
+    
+    # 8-1. 백그라운드에서 논문 네트워크 생성 (비동기 처리)
+    try:
+        thread = threading.Thread(
+            target=generate_paper_graph_background,
+            args=(assistant_message, result_state, content),
+            daemon=True
+        )
+        thread.start()
+        logger.info(f"PaperGraph 백그라운드 스레드 시작: message_id={assistant_message.message_sid}")
+    except Exception as e:
+        logger.error(f"PaperGraph 백그라운드 스레드 시작 실패: {e}", exc_info=True)
+        # 논문 네트워크 생성 실패해도 메시지는 정상 반환
 
     # Chat.preview를 AI 응답으로 업데이트
     chat.preview = ai_text[:200]
     chat.save(update_fields=['preview', 'updated_at'])
 
     # 9. citations를 ChatReference로 저장
-    print(f"[DEBUG views.py] citations 개수: {len(citations)}")
+    logger.debug(f"citations 개수: {len(citations)}")
     if citations:
         for i, citation in enumerate(citations[:5], 1):
-            print(f"[DEBUG views.py citation {i}] title: {citation.get('title', 'N/A')[:50]}, url: {citation.get('url', 'N/A')[:50]}")
+            logger.debug(f"citation {i}: title: {citation.get('title', 'N/A')[:50]}, url: {citation.get('url', 'N/A')[:50]}")
 
     for citation in citations:
         # ref_id는 citation의 'id' 필드 사용 (services.py에서 1부터 생성됨)
@@ -1045,7 +1322,7 @@ def chat_messages(request, chat_id=None):
         description_json = json.dumps(citation_metadata, ensure_ascii=False) if any(citation_metadata.values()) else ''
         
         # 디버그: citation에서 doi 확인
-        print(f"[DEBUG ChatReference.create] citation doi: {citation.get('doi', 'N/A')}, description_json: {description_json[:100] if description_json else 'empty'}")
+        logger.debug(f"ChatReference.create - citation doi: {citation.get('doi', 'N/A')}, description_json: {description_json[:100] if description_json else 'empty'}")
 
         ChatReference.objects.create(
             chat=chat,
@@ -1073,9 +1350,9 @@ def chat_messages(request, chat_id=None):
             summary = summarize_conversation_title(content)  # GPT-4o-mini 사용
             chat.title = summary
             chat.save(update_fields=['title', 'updated_at'])
-            print(f"[INFO] 채팅방 제목 생성: {summary}")
+            logger.info(f"채팅방 제목 생성: {summary}")
         except Exception as exc:
-            print(f"[ERROR] Title summarization failed: {exc}")
+            logger.error(f"Title summarization failed: {exc}", exc_info=True)
             chat.title = "새로운 대화"
             chat.save(update_fields=['title'])
     # LangGraph chat_title은 무시 (첫 메시지 이후에는 제목 변경하지 않음)

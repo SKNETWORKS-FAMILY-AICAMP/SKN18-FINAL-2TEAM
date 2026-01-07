@@ -26,6 +26,9 @@ import os
 from typing import Dict, Any, List
 
 import huggingface_hub
+from graph.logger_config import get_logger
+
+logger = get_logger(__name__)
 
 # Compatibility shim for newer huggingface_hub versions missing cached_download
 if not hasattr(huggingface_hub, "cached_download"):
@@ -94,13 +97,12 @@ def get_cross_encoder_model():
 
     if _cross_encoder_model is None:
         try:
-            print(f"[CrossEncoder] 모델 로딩 중: {CROSS_ENCODER_MODEL}")
-            print(f"[CrossEncoder] 저장 경로: {MODELS_DIR}")
-            print(f"[CrossEncoder] 환경: {'EC2' if os.path.exists('/app') else '로컬 개발'}")
+            env_type = 'EC2' if os.path.exists('/app') else '로컬 개발'
+            logger.info(f"모델 로딩 중: {CROSS_ENCODER_MODEL}, 저장 경로: {MODELS_DIR}, 환경: {env_type}")
             _cross_encoder_model = CrossEncoder(CROSS_ENCODER_MODEL, cache_folder=MODELS_DIR)
-            print(f"[CrossEncoder] {CROSS_ENCODER_MODEL} 모델 로드 완료")
+            logger.info(f"{CROSS_ENCODER_MODEL} 모델 로드 완료")
         except Exception as e:
-            print(f"[CrossEncoder] 모델 로드 실패: {e}")
+            logger.error(f"모델 로드 실패: {e}", exc_info=True)
             _cross_encoder_model = None
 
     return _cross_encoder_model
@@ -121,7 +123,7 @@ def rerank_with_cross_encoder(query: str, documents: List[Dict[str, Any]], top_k
     model = get_cross_encoder_model()
     
     if model is None or not documents:
-        print("[CrossEncoder] 모델 없음 또는 문서 없음, 원본 반환")
+        logger.warning("모델 없음 또는 문서 없음, 원본 반환")
         return documents[:top_k]
     
     try:
@@ -135,7 +137,7 @@ def rerank_with_cross_encoder(query: str, documents: List[Dict[str, Any]], top_k
             pairs.append([query, content])
         
         # Cross-Encoder로 점수 계산
-        print(f"[CrossEncoder] {len(pairs)}개 문서 재점수화 중...")
+        logger.info(f"{len(pairs)}개 문서 재점수화 중...")
         scores = model.predict(pairs)
         
         # 점수를 문서에 추가
@@ -152,13 +154,15 @@ def rerank_with_cross_encoder(query: str, documents: List[Dict[str, Any]], top_k
         # 상위 K개 선택
         top_results = reranked[:top_k]
         
-        print(f"[CrossEncoder] 재순위화 완료: 상위 {len(top_results)}개 선택")
-        print(f"[CrossEncoder] 최고 점수: {top_results[0]['rerank_score']:.4f}" if top_results else "")
+        if top_results:
+            logger.info(f"재순위화 완료: 상위 {len(top_results)}개 선택, 최고 점수: {top_results[0]['rerank_score']:.4f}")
+        else:
+            logger.info("재순위화 완료: 결과 없음")
         
         return top_results
         
     except Exception as e:
-        print(f"[CrossEncoder] 오류 발생: {e}")
+        logger.error(f"오류 발생: {e}", exc_info=True)
         return documents[:top_k]
 
 
@@ -180,27 +184,24 @@ def rerank_node(state: Dict[str, Any]) -> Dict[str, Any]:
     """
     
     # 노드 진입 로그
-    print(f"\n{'='*60}")
-    print(f"[RERANK NODE] 시작")
-    print(f"  question: {str(state.get('question', ''))[:30]}...")
-    print(f"  retrieval_results: {len(state.get('retrieval_results', []))}개")
-    print(f"{'='*60}\n")
+    question_preview = str(state.get('question', ''))[:30]
+    retrieval_count = len(state.get('retrieval_results', []))
+    logger.info(f"[RERANK NODE] 시작 - question: {question_preview}..., retrieval_results: {retrieval_count}개")
     
     retrieval_results = state.get("retrieval_results", [])
     query = state.get("rewritten_query", state.get("question", ""))
     
     # 검색 결과가 없는 경우
     if not retrieval_results:
-        print("[Rerank] 재순위화할 결과가 없습니다.")
+        logger.warning("재순위화할 결과가 없습니다.")
         state["reranked_results"] = []
         state["retrieval_score"] = 0.0
         
-        print(f"\n[RERANK NODE] 종료 (결과 없음)")
-        print(f"{'='*60}\n")
+        logger.info("[RERANK NODE] 종료 (결과 없음)")
         return state
     
     # Cross-Encoder로 재순위화
-    print(f"[Rerank] Cross-Encoder 재순위화 시작 - {len(retrieval_results)}개 문서")
+    logger.info(f"Cross-Encoder 재순위화 시작 - {len(retrieval_results)}개 문서")
     reranked_results = rerank_with_cross_encoder(
         query=query,
         documents=retrieval_results,
@@ -215,9 +216,6 @@ def rerank_node(state: Dict[str, Any]) -> Dict[str, Any]:
     state["retrieval_score"] = best_score
     
     # 노드 종료 로그
-    print(f"\n[RERANK NODE] 종료")
-    print(f"  reranked_results: {len(reranked_results)}개")
-    print(f"  retrieval_score: {best_score:.4f}")
-    print(f"{'='*60}\n")
+    logger.info(f"[RERANK NODE] 종료 - reranked_results: {len(reranked_results)}개, retrieval_score: {best_score:.4f}")
     
     return state

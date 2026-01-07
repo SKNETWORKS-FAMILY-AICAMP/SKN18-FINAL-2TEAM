@@ -9,6 +9,9 @@ import os
 import requests
 from typing import Dict, Any, List, Tuple
 from pathlib import Path
+from graph.logger_config import get_logger
+
+logger = get_logger(__name__)
 
 # Django 환경 변수 로딩 지원
 try:
@@ -58,7 +61,7 @@ def tavily_search(query: str, top_k: int = 5) -> Tuple[List[Dict[str, str]], str
         api_key = os.getenv("TAVILY_API_KEY")
     
     if not api_key or not api_key.strip():
-        print("[WebSearch] TAVILY_API_KEY가 설정되지 않았습니다.")
+        logger.warning("TAVILY_API_KEY가 설정되지 않았습니다.")
         return [], "none"
     
     api_key = api_key.strip()
@@ -83,23 +86,24 @@ def tavily_search(query: str, top_k: int = 5) -> Tuple[List[Dict[str, str]], str
             response = requests.post(url, json=payload, timeout=10)
         
         if response.status_code == 401:
-            print(f"[WebSearch Error] Tavily 인증 실패: {response.json().get('error', 'Invalid API key')}")
+            error_msg = response.json().get('error', 'Invalid API key')
+            logger.error(f"Tavily 인증 실패: {error_msg}")
             return [], "none"
         
         response.raise_for_status()
         data = response.json()
         
     except requests.exceptions.Timeout:
-        print(f"[WebSearch Error] Tavily 요청 시간 초과")
+        logger.error("Tavily 요청 시간 초과")
         return [], "none"
     except requests.exceptions.HTTPError as e:
-        print(f"[WebSearch Error] Tavily HTTP 오류: {e}")
+        logger.error(f"Tavily HTTP 오류: {e}", exc_info=True)
         return [], "none"
     except requests.exceptions.RequestException as e:
-        print(f"[WebSearch Error] Tavily 요청 실패: {e}")
+        logger.error(f"Tavily 요청 실패: {e}", exc_info=True)
         return [], "none"
     except Exception as e:
-        print(f"[WebSearch Error] Tavily 오류: {e}")
+        logger.error(f"Tavily 오류: {e}", exc_info=True)
         return [], "none"
 
     results_data = data.get("results", [])
@@ -177,7 +181,7 @@ def web_search_node(state: Dict[str, Any]) -> Dict[str, Any]:
             state["used_web_search"] = True
 
     except Exception as e:
-        print(f"[WebSearch] 오류: {e}")
+        logger.error(f"오류: {e}", exc_info=True)
         state["web_results"] = []
         state["used_web_search"] = False
 

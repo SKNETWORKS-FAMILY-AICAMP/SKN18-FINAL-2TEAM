@@ -148,6 +148,31 @@ class ChatMessage(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, db_column='created_at')
     created_id = models.CharField(max_length=60, db_column='created_id')
     concept_graph = models.TextField(blank=True, null=True, db_column='concept_graph')  # blank=True, null=True 둘 다 있어야 DB에 NULL을 저장할 수 있음
+    case_type = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True,
+        db_column='case_type',
+        help_text='LangGraph에서 분류한 질의 타입 (NO_RELATION, BIO_Q, SIMULATION_Q, PROTOCOL_Q, INFERENCE_Q, USER_INFO)'
+    )
+    used_web_search = models.BooleanField(
+        default=False,
+        db_column='used_web_search',
+        help_text='웹 검색을 사용했는지 여부 (RAG 실패 시 fallback)'
+    )
+    image_urls = models.JSONField(
+        default=list,
+        blank=True,
+        db_column='image_urls',
+        help_text='사용자가 첨부한 이미지의 S3 URL 리스트'
+    )
+    image_analysis_result = models.JSONField(
+        default=dict,
+        blank=True,
+        null=True,
+        db_column='image_analysis_result',
+        help_text='Vision API로 추출한 이미지 분석 결과 (JSON)'
+    )
     
     class Meta:
         db_table = 't_chat_message'
@@ -277,6 +302,19 @@ class ChatMessageFeedback(models.Model):
     created_id = models.CharField(max_length=60, db_column='created_id')
     updated_at = models.DateTimeField(auto_now=True, db_column='updated_at')
     updated_id = models.CharField(max_length=60, db_column='updated_id')
+    feedback_reason = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True,
+        db_column='feedback_reason',
+        help_text='싫어요 선택 시 사용자 피드백 사유 코드'
+    )
+    feedback_comment = models.TextField(
+        blank=True,
+        null=True,
+        db_column='feedback_comment',
+        help_text='싫어요 선택 시 추가 코멘트 (기타 사유)'
+    )
     
     class Meta:
         db_table = 't_chat_message_feedback'

@@ -30,8 +30,10 @@ let attachedExperiments = [];
 let fileInputRef = null;
 let isComposing = false; // IME 조합 상태 (macOS 한글 입력 중복 전송 방지)
 let currentTypingAnimation = null; // 현재 실행 중인 타이핑 애니메이션 제어
+let showEmptyReferencesState = false; // API 응답 직후 빈 참고 문헌 상태 표시 플래그
 
 let chatList = [];
+let dislikeModalHandlersInitialized = false;
 
 // Chat messages for each chat
 const chatMessagesData = {};
@@ -40,13 +42,21 @@ const chatMessagesData = {};
 const mockReferences = [];
 
 // Recommended questions - 카테고리별로 저장
-let recommendedQuestionsByCategory = {
-    'P': [], // 논문
-    'C': [], // 임상
-    'T': [], // 프로토콜
-    'S': [], // 시뮬레이션
-    'R': []  // 결과 해석
-};
+// let recommendedQuestionsByCategory = {
+//     'P': [], // 논문
+//     'C': [], // 임상
+//     'T': [], // 프로토콜
+//     'S': [], // 시뮬레이션
+//     'R': []  // 결과 해석
+// };
+// Recommended questions - dashboard와 동일한 구조로 단일 배열 사용
+let recommendedQuestions = [
+    "BRCA1 유전자의 돌연변이와 유방암 위험도 관계는?",
+    "CRISPR-Cas9의 off-target 효과를 최소화하는 방법은?",
+    "mRNA 백신의 면역 반응 메커니즘을 설명해주세요",
+    "단백질 정제 프로토콜 최적화 조건은?",
+    "AlphaFold2와 RoseTTAFold의 정확도 비교",
+];
 
 // DOM elements
 const chatMessagesList = document.getElementById('chatMessages');
@@ -78,6 +88,7 @@ const fileInputBottom = document.getElementById('fileInputBottom');
 
 // Initialize chat page
 function initChatAI() {
+    setupChatDislikeModalIntegration();
     // Initialize filter buttons state
     updateFilterButtonsState();
 
@@ -174,6 +185,20 @@ function initChatAI() {
             await autoModeToggleEl.updateComplete;
             autoModeToggleEl.checked = isAutoMode;
             
+            // 초기 상태에 맞춰 필터 설정 (스위치 OFF면 "paper" 기본값)
+            if (!isAutoMode) {
+                selectedFilter = "paper";
+                const filterBtnsEls = document.querySelectorAll('.filter-btn');
+                filterBtnsEls.forEach(btn => {
+                    const btnFilter = btn.getAttribute('data-filter');
+                    if (btnFilter === "paper") {
+                        btn.classList.add('active');
+                    } else {
+                        btn.classList.remove('active');
+                    }
+                });
+            }
+            
             // 초기 상태에 맞춰 filter-btn 상태 업데이트
             updateFilterButtonsState();
             
@@ -250,11 +275,32 @@ function initChatAI() {
 
     // Click outside handlers
     attachClickOutsideHandlers();
+    
+    // Initialize attach button visibility (기본: 숨김)
+    updateAttachButtonVisibility();
+}
+
+// Auto-resize textarea
+function autoResizeTextarea(textarea) {
+    if (!textarea) return;
+    
+    // 높이를 초기화하여 정확한 scrollHeight 계산
+    textarea.style.height = 'auto';
+    
+    // scrollHeight를 사용하여 내용에 맞는 높이 계산
+    const newHeight = Math.min(
+        textarea.scrollHeight,
+        parseFloat(getComputedStyle(textarea).maxHeight) || Infinity
+    );
+    
+    textarea.style.height = newHeight + 'px';
 }
 
 // Handle input change
 function handleInputChange(e) {
     message = e.target.value;
+    // textarea 높이 자동 조절
+    autoResizeTextarea(e.target);
 }
 
 // Handle input focus
@@ -315,9 +361,35 @@ async function handleSend() {
     renderMessages();
 
     // Clear input
-    if (chatInputField) chatInputField.value = "";
-    if (chatInputFieldBottom) chatInputFieldBottom.value = "";
+    if (chatInputField) {
+        chatInputField.value = "";
+        autoResizeTextarea(chatInputField);
+    }
+    if (chatInputFieldBottom) {
+        chatInputFieldBottom.value = "";
+        autoResizeTextarea(chatInputFieldBottom);
+    }
     message = "";
+    
+    // 이미지 데이터를 먼저 백업 (API 요청 전에, 정리하기 전에)
+    const imagesToSend = [];
+    if (attachedImages && attachedImages.length > 0) {
+        for (const img of attachedImages) {
+            if (img.file && typeof img.file === 'string') {
+                // base64 문자열
+                imagesToSend.push(img.file);
+            }
+        }
+    }
+    
+    // 첨부된 이미지 정리 (UI에서만 제거, 실제 데이터는 이미 백업됨)
+    attachedImages.forEach(img => {
+        if (img.url) {
+            URL.revokeObjectURL(img.url);
+        }
+    });
+    attachedImages = [];
+    renderAttachedItems();
 
     // Close recommendations
     closeRecommendations();
@@ -348,15 +420,29 @@ async function handleSend() {
             ? `/chat/api/chats/${activeChatId}/messages/`  // 기존 채팅에 메시지 추가
             : '/chat/api/chats/messages/';  // 새 채팅 생성
 
+        // 스위치 ON (isAutoMode = true): filter_type을 null로 보내기 (LLM 동작)
+        // 스위치 OFF (isAutoMode = false): selectedFilter 전달 (기본값 "paper")
+        const filterToSend = isAutoMode ? null : (selectedFilter || null);
+        
+        // JSON으로 전송 (백업한 이미지 사용)
+        const requestBody = {
+            content: input,
+            filter: filterToSend,
+        };
+        
+        if (imagesToSend.length > 0) {
+            requestBody.images = imagesToSend;
+        }
+        
+        console.log('[DEBUG] API 요청 - isAutoMode:', isAutoMode, 'selectedFilter:', selectedFilter, 'filter:', filterToSend, 'imagesCount:', imagesToSend.length);
+        
         const response = await fetch(apiUrl, {
             method: 'POST',
             headers: {
                 'X-CSRFToken': getCsrfToken(),
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-                content: input,
-            }),
+            body: JSON.stringify(requestBody),
         });
 
         if (response.ok) {
@@ -382,6 +468,8 @@ async function handleSend() {
                     content: data.messages[0].content,
                     message_id: data.messages[0].id,
                     timestamp: data.messages[0].created_at,
+                    image_urls: data.messages[0].image_urls || [],
+                    image_analysis_result: data.messages[0].image_analysis_result || null,
                 };
 
                 // AI 응답 메시지 추가 (타이핑 애니메이션용으로 빈 상태로 시작)
@@ -391,15 +479,20 @@ async function handleSend() {
                     content: '',  // 타이핑 애니메이션으로 채워질 예정
                     message_id: data.messages[1].id,
                     timestamp: data.messages[1].created_at,
+                    case_type: data.messages[1].case_type || null, // Include case_type
+                    used_web_search: data.messages[1].used_web_search || false, // Include used_web_search
+                    user_feedback: null,
+                    feedback_reason: null,
+                    feedback_comment: '',
                 };
                 messages.push(assistantMessage);
                 
                 // 참고문헌을 먼저 추가 (타이핑 애니메이션 중에도 보이도록)
                 console.log('[DEBUG] Received references:', data.references);
                 console.log('[DEBUG] AI message ID:', data.messages[1].id, 'type:', typeof data.messages[1].id);
+                const messageId = data.messages[1].id;
+                
                 if (data.references && Array.isArray(data.references)) {
-                    const messageId = data.messages[1].id;
-
                     // 이 메시지에 대한 기존 레퍼런스 제거 (중복 방지)
                     allReferences = allReferences.filter(ref => ref.message_id !== messageId);
 
@@ -432,13 +525,24 @@ async function handleSend() {
                     console.log('[DEBUG] New references to add (after dedup):', newRefs.length, '개');
                     allReferences = [...allReferences, ...newRefs];
                     console.log('[DEBUG] Total allReferences:', allReferences.length);
+                    
+                    // API 응답을 받은 직후 해당 메시지의 참고 문헌을 표시
+                    references = newRefs;
+                } else {
+                    // 참고 문헌이 없는 경우에도 빈 상태로 표시하기 위해 빈 배열 설정
+                    references = [];
                 }
+                
+                // API 응답 직후 빈 상태 플래그 설정 (참고 문헌이 없어도 사이드바 표시)
+                showEmptyReferencesState = true;
+                renderReferences(); // 참고 문헌 사이드바 즉시 렌더링 (빈 상태일 수도 있음)
 
                 // 타이핑 애니메이션 시작 (비동기)
                 const messageIndex = messages.length - 1;
                 typeWriterEffect(aiContent, messageIndex, 3).then(() => {
                     console.log('[DEBUG] Typing animation completed, updating references');
-                    // 타이핑 완료 후 참고문헌 업데이트
+                    // 타이핑 완료 후 빈 상태 플래그 해제 및 참고문헌 업데이트
+                    showEmptyReferencesState = false;
                     updateVisibleReferences();
                 });
 
@@ -510,14 +614,27 @@ async function loadChat(chatId) {
             activeChatId = chatId;
             
             // Format messages
-            messages = (data.messages || []).map(msg => ({
-                role: msg.role,
-                content: msg.content,
-                message_id: msg.id,
-                sort_order: msg.sort_order,
-                created_at: msg.created_at,
-                paper_graphs: msg.paper_graphs || [], // Include paper_graphs data
-            }));
+            messages = (data.messages || []).map(msg => {
+                const imageUrls = msg.image_urls || [];
+                if (imageUrls.length > 0) {
+                    console.log(`[DEBUG loadChat] Message ${msg.id} has ${imageUrls.length} image(s):`, imageUrls);
+                }
+                return {
+                    role: msg.role,
+                    content: msg.content,
+                    message_id: msg.id,
+                    sort_order: msg.sort_order,
+                    created_at: msg.created_at,
+                    case_type: msg.case_type || null, // Include case_type
+                    used_web_search: msg.used_web_search || false, // Include used_web_search
+                    paper_graphs: msg.paper_graphs || [], // Include paper_graphs data
+                    image_urls: imageUrls, // Include image URLs
+                    image_analysis_result: msg.image_analysis_result || null, // Include image analysis result
+                    user_feedback: Object.prototype.hasOwnProperty.call(msg, 'user_feedback') ? msg.user_feedback : null,
+                    feedback_reason: Object.prototype.hasOwnProperty.call(msg, 'feedback_reason') ? msg.feedback_reason : null,
+                    feedback_comment: Object.prototype.hasOwnProperty.call(msg, 'feedback_comment') ? (msg.feedback_comment || '') : '',
+                };
+            });
             
             // Format references (전체 참고문헌 저장)
             allReferences = (data.references || []).map(ref => ({
@@ -653,11 +770,30 @@ function renderMessages() {
 
     messagesView.innerHTML = messages.map((msg, index) => {
         if (msg.role === 'user') {
+            // 이미지 표시 부분
+            let imagesHtml = '';
+            if (msg.image_urls && msg.image_urls.length > 0) {
+                console.log(`[DEBUG renderMessages] Rendering ${msg.image_urls.length} image(s) for user message:`, msg.image_urls);
+                imagesHtml = `
+                    <div class="message-images">
+                        ${msg.image_urls.map(url => `
+                            <div class="message-image-item">
+                                <img src="${escapeHtml(url)}" alt="첨부 이미지" loading="lazy" />
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            } else if (msg.role === 'user') {
+                // 디버그: 이미지가 없는 경우 로그
+                console.log(`[DEBUG renderMessages] User message ${msg.message_id} has no images`, msg);
+            }
+            
             return `
                 <div class="message-item" data-message-id="${msg.message_id || ''}">
                     <div class="message-user">
                         <div class="message-content-user">
                             <div class="message-bubble-user">
+                                ${imagesHtml}
                                 <p>${escapeHtml(msg.content)}</p>
                             </div>
                         </div>
@@ -699,13 +835,16 @@ function renderMessages() {
                 `;
             }
 
-            // Check if this message has paper_graphs
-            const hasPaperGraphs = msg.paper_graphs && Array.isArray(msg.paper_graphs) && msg.paper_graphs.length > 0;
-            const showPaperGraphBtn = hasPaperGraphs;
+            // case_type이 BIO_Q이면서 used_web_search가 false일 때만 버튼 표시 (RAG 사용한 경우만)
+            const caseType = msg.case_type || null;
+            const usedWebSearch = msg.used_web_search || false;
+            const showPaperGraphBtn = caseType === 'BIO_Q' && !usedWebSearch;
 
-            // Check if this is the last message for experiment button
-            const isLastMessage = index === messages.length - 1;
-            const showExperimentBtn = activeChatId === 2 && isLastMessage;
+            // case_type이 SIMULATION_Q일 때만 실험하기 버튼 표시
+            const showExperimentBtn = caseType === 'SIMULATION_Q';
+            const userFeedback = msg.user_feedback || msg.feedback_type || null;
+            const likeBtnClass = `action-btn${userFeedback === 'L' ? ' selected selected-like' : ''}`;
+            const dislikeBtnClass = `action-btn${userFeedback === 'D' ? ' selected selected-dislike' : ''}`;
 
             return `
                 <div class="message-item" data-message-id="${msg.message_id || ''}">
@@ -720,7 +859,7 @@ function renderMessages() {
                             <div class="message-special-actions">
                                 <button class="special-action-btn" data-action="paper-graph" data-message-id="${msg.message_id || index}">
                                     <i class="fas fa-chart-bar"></i>
-                                    관련 논문 상세 보기
+                                    관련 논문 네트워크
                                 </button>
                             </div>
                             ` : ''}
@@ -737,10 +876,10 @@ function renderMessages() {
                                     <button class="action-btn" title="복사" data-action="copy" data-message-index="${index}">
                                         <i class="fas fa-copy"></i>
                                     </button>
-                                    <button class="action-btn" title="좋아요" data-action="like" data-message-id="${msg.message_id || index}">
+                                    <button class="${likeBtnClass}" title="좋아요" data-action="like" data-message-id="${msg.message_id || index}">
                                         <i class="fas fa-thumbs-up"></i>
                                     </button>
-                                    <button class="action-btn" title="싫어요" data-action="dislike" data-message-id="${msg.message_id || index}">
+                                    <button class="${dislikeBtnClass}" title="싫어요" data-action="dislike" data-message-id="${msg.message_id || index}">
                                         <i class="fas fa-thumbs-down"></i>
                                     </button>
                                 </div>
@@ -775,18 +914,8 @@ function renderMessages() {
         });
     }
 
-    // Show/hide references sidebar based on messages and references
-    // 스트리밍 중일 때는 레퍼런스 사이드바 숨기기
-    if (referencesSidebar) {
-        // 스트리밍 중이면 레퍼런스 숨김
-        if (currentTypingAnimation) {
-            referencesSidebar.style.display = 'none';
-        } else if (messages.length > 0 && references.length > 0) {
-            referencesSidebar.style.display = 'flex';
-        } else {
-            referencesSidebar.style.display = 'none';
-        }
-    }
+    // Show/hide references sidebar is handled in renderReferences()
+    // (참고 문헌 표시/숨김은 renderReferences()에서 일괄 처리)
 
     // Re-attach handlers
     attachMessageActionHandlers();
@@ -808,8 +937,8 @@ async function loadRecommendedQuestions() {
         }
         const data = await response.json();
         
-        // 카테고리별로 질문 저장
-        recommendedQuestionsByCategory = data.questions_by_category || {
+        // 모든 카테고리의 질문을 하나의 배열로 합치기
+        const questionsByCategory = data.questions_by_category || {
             'P': [],
             'C': [],
             'T': [],
@@ -817,92 +946,121 @@ async function loadRecommendedQuestions() {
             'R': []
         };
         
-        // 각 카테고리별로 렌더링
-        renderRecommendationsByCategory();
+        // 모든 카테고리의 질문을 하나의 배열로 합치기
+        const apiQuestions = [];
+        Object.keys(questionsByCategory).forEach(category => {
+            const questions = questionsByCategory[category] || [];
+            questions.forEach(question => {
+                apiQuestions.push(question.text || question);
+            });
+        });
+        
+        // API에서 데이터를 성공적으로 로드했고 질문이 있으면 업데이트
+        if (apiQuestions.length > 0) {
+            recommendedQuestions = apiQuestions;
+        }
+        // API 데이터가 없으면 기본 하드코딩된 데이터 유지
+        
+        // 렌더링
+        renderRecommendations();
     } catch (error) {
         console.error('Error loading recommended questions:', error);
-        // 에러 발생 시 빈 배열로 초기화
-        recommendedQuestionsByCategory = {
-            'P': [],
-            'C': [],
-            'T': [],
-            'S': [],
-            'R': []
-        };
-        renderRecommendationsByCategory();
+        // 에러 발생 시 기본 하드코딩된 데이터 유지 (이미 초기화되어 있음)
+        renderRecommendations();
     }
 }
 
-// Render recommendations by category
-function renderRecommendationsByCategory() {
-    const categoryMap = {
-        'P': 'recommendationsListP',
-        'C': 'recommendationsListC',
-        'T': 'recommendationsListT',
-        'S': 'recommendationsListS',
-        'R': 'recommendationsListR'
-    };
-    
-    // 각 카테고리별로 렌더링
-    Object.keys(categoryMap).forEach(category => {
-        const listEl = document.getElementById(categoryMap[category]);
-        if (!listEl) {
-            console.warn(`Recommendations list element not found for category ${category}`);
-            return;
-        }
-        
-        const questions = recommendedQuestionsByCategory[category] || [];
-        
-        if (questions.length === 0) {
-            listEl.innerHTML = '<div class="recommendation-empty">추천 질문이 없습니다.</div>';
-            return;
-        }
-        
-        listEl.innerHTML = questions.map((question, index) => {
-            return `
-                <div class="recommendation-item" data-question-id="${question.id}" data-category="${category}">
-                    ${escapeHtml(question.text)}
-                </div>
-            `;
-        }).join('');
-        
-        // Attach click handlers
-        const recommendationItems = listEl.querySelectorAll('.recommendation-item');
-        recommendationItems.forEach(item => {
-            item.addEventListener('click', (e) => {
-                const questionId = e.currentTarget.getAttribute('data-question-id');
-                const category = e.currentTarget.getAttribute('data-category');
-                selectRecommendation(questionId, category);
-            });
+// Render recommendations by category (보류: 추후 구현 예정)
+// function renderRecommendationsByCategory() {
+//     const categoryMap = {
+//         'P': 'recommendationsListP',
+//         'C': 'recommendationsListC',
+//         'T': 'recommendationsListT',
+//         'S': 'recommendationsListS',
+//         'R': 'recommendationsListR'
+//     };
+//     
+//     // 각 카테고리별로 렌더링
+//     Object.keys(categoryMap).forEach(category => {
+//         const listEl = document.getElementById(categoryMap[category]);
+//         if (!listEl) {
+//             console.warn(`Recommendations list element not found for category ${category}`);
+//             return;
+//         }
+//         
+//         const questions = recommendedQuestionsByCategory[category] || [];
+//         
+//         if (questions.length === 0) {
+//             listEl.innerHTML = '<div class="recommendation-empty">추천 질문이 없습니다.</div>';
+//             return;
+//         }
+//         
+//         listEl.innerHTML = questions.map((question, index) => {
+//             return `
+//                 <div class="recommendation-item" data-question-id="${question.id}" data-category="${category}">
+//                     ${escapeHtml(question.text)}
+//                 </div>
+//             `;
+//         }).join('');
+//         
+//         // Attach click handlers
+//         const recommendationItems = listEl.querySelectorAll('.recommendation-item');
+//         recommendationItems.forEach(item => {
+//             item.addEventListener('click', (e) => {
+//                 const questionId = e.currentTarget.getAttribute('data-question-id');
+//                 const category = e.currentTarget.getAttribute('data-category');
+//                 selectRecommendation(questionId, category);
+//             });
+//         });
+//     });
+// }
+
+// Render recommendations (dashboard와 동일한 구조)
+function renderRecommendations() {
+    if (!recommendationsList) return;
+
+    if (recommendedQuestions.length === 0) {
+        recommendationsList.innerHTML = '<div class="recommendation-empty">추천 질문이 없습니다.</div>';
+        return;
+    }
+
+    recommendationsList.innerHTML = recommendedQuestions.map((question, index) => {
+        return `
+            <div class="recommendation-item" data-question-index="${index}">
+                ${escapeHtml(question)}
+            </div>
+        `;
+    }).join('');
+
+    // Attach click handlers to recommendation items
+    const recommendationItems = recommendationsList.querySelectorAll('.recommendation-item');
+    recommendationItems.forEach(item => {
+        item.addEventListener('click', (e) => {
+            const index = parseInt(e.currentTarget.getAttribute('data-question-index'));
+            selectRecommendation(index);
         });
     });
 }
 
-// Render recommendations (legacy function for backward compatibility)
-function renderRecommendations() {
-    // API에서 데이터를 로드하고 렌더링
-    loadRecommendedQuestions();
-}
-
-// Select recommendation
-function selectRecommendation(questionId, category) {
-    const questions = recommendedQuestionsByCategory[category] || [];
-    const question = questions.find(q => q.id == questionId);
-    
-    if (question) {
-        const questionText = question.text;
+// Select recommendation (dashboard와 동일한 구조)
+function selectRecommendation(index) {
+    if (index >= 0 && index < recommendedQuestions.length) {
+        const question = recommendedQuestions[index];
         if (chatInputField) {
-            chatInputField.value = questionText;
+            chatInputField.value = question;
         }
         if (chatInputFieldBottom) {
-            chatInputFieldBottom.value = questionText;
+            chatInputFieldBottom.value = question;
         }
-        message = questionText;
+        message = question;
         closeRecommendations();
-        // Auto send after a short delay
-        setTimeout(() => {
-            handleSend();
-        }, 100);
+        // Focus on input field after setting value
+        if (chatInputField) {
+            chatInputField.focus();
+        } else if (chatInputFieldBottom) {
+            chatInputFieldBottom.focus();
+        }
+        // No auto send - user must press Enter or click send button
     }
 }
 
@@ -911,8 +1069,7 @@ function showRecommendationsDropdown() {
     const recommendationsDropdownEl = document.getElementById('recommendationsDropdown');
     if (recommendationsDropdownEl) {
         // 추천 질문이 로드되지 않았다면 API에서 로드
-        const hasData = Object.values(recommendedQuestionsByCategory).some(questions => questions.length > 0);
-        if (!hasData) {
+        if (recommendedQuestions.length === 0) {
             loadRecommendedQuestions();
         }
         recommendationsDropdownEl.style.display = 'block';
@@ -946,14 +1103,34 @@ function toggleAutoMode(checked) {
         }
     });
 
+    // 스위치 OFF (isAutoMode = false): 기본값으로 "paper" (BIO_Q) 설정
+    if (!isAutoMode) {
+        selectedFilter = "paper";
+        // "논문/임상" 버튼을 active 상태로
+        const filterBtnsEls = document.querySelectorAll('.filter-btn');
+        filterBtnsEls.forEach(btn => {
+            const btnFilter = btn.getAttribute('data-filter');
+            if (btnFilter === "paper") {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+    } else {
+        // 스위치 ON (isAutoMode = true): filter_type 비우기
+        selectedFilter = "";
+        // 모든 필터 버튼 비활성화
+        const filterBtnsEls = document.querySelectorAll('.filter-btn');
+        filterBtnsEls.forEach(btn => {
+            btn.classList.remove('active');
+        });
+    }
+
     // Update filter buttons state
     updateFilterButtonsState();
     
-    // Update selected filter
-    if (isAutoMode) {
-        selectedFilter = '';
-        handleFilterSelect('');
-    }
+    // Update attach button visibility
+    updateAttachButtonVisibility();
 }
 
 // Update filter buttons state based on auto mode
@@ -971,13 +1148,38 @@ function updateFilterButtonsState() {
     });
 }
 
+// Update attach button visibility based on filter and auto mode
+function updateAttachButtonVisibility() {
+    // 자동 모드이거나 interpretation이 선택되지 않았으면 숨김
+    const shouldShow = !isAutoMode && selectedFilter === 'interpretation';
+    
+    if (attachBtn) {
+        attachBtn.style.display = shouldShow ? 'block' : 'none';
+    }
+    if (attachBtnBottom) {
+        attachBtnBottom.style.display = shouldShow ? 'block' : 'none';
+    }
+}
+
 // Handle filter select
 function handleFilterSelect(filter) {
-    if (isAutoMode) {
-        return; // Don't allow filter selection in auto mode
+    console.log('[DEBUG] handleFilterSelect 호출 - filter:', filter, 'isAutoMode:', isAutoMode);
+    
+    // 필터 선택 시 자동 모드를 자동으로 끔
+    if (isAutoMode && filter) {
+        console.log('[DEBUG] 필터 선택 감지 - 자동 모드 자동 해제');
+        toggleAutoMode(false);
     }
     
-    selectedFilter = selectedFilter === filter ? "" : filter;
+    // 필터 선택/해제 처리
+    if (isAutoMode && !filter) {
+        // 필터 해제는 자동 모드에서도 허용 (빈 문자열로 설정)
+        selectedFilter = "";
+    } else {
+        selectedFilter = selectedFilter === filter ? "" : filter;
+    }
+    
+    console.log('[DEBUG] selectedFilter 업데이트:', selectedFilter);
     
     // DOM 요소를 함수 내부에서 다시 가져와서 확실히 존재하는지 확인
     const filterBtnsEls = document.querySelectorAll('.filter-btn');
@@ -989,6 +1191,9 @@ function handleFilterSelect(filter) {
             btn.classList.remove('active');
         }
     });
+    
+    // Update attach button visibility
+    updateAttachButtonVisibility();
 }
 
 // Handle section select (Favorites, Archived) - with toggle
@@ -1080,8 +1285,14 @@ function handleNewChat() {
     if (inputArea) inputArea.style.display = 'none';
 
     // Clear input
-    if (chatInputField) chatInputField.value = "";
-    if (chatInputFieldBottom) chatInputFieldBottom.value = "";
+    if (chatInputField) {
+        chatInputField.value = "";
+        autoResizeTextarea(chatInputField);
+    }
+    if (chatInputFieldBottom) {
+        chatInputFieldBottom.value = "";
+        autoResizeTextarea(chatInputFieldBottom);
+    }
 
     // Clear references
     references = [];
@@ -1552,17 +1763,26 @@ function renderReferences() {
         return;
     }
 
-    // Show references sidebar if references exist and messages exist
-    if (references.length > 0 && messages.length > 0 && referencesSidebar) {
-        referencesSidebar.style.display = 'flex';
+    // Show references sidebar
+    // - API 응답 직후(showEmptyReferencesState=true): 참고 문헌이 없어도 빈 상태로 표시
+    // - 그 외: 참고 문헌이 있을 때만 표시
+    if (messages.length > 0 && referencesSidebar) {
+        if (showEmptyReferencesState || references.length > 0) {
+            referencesSidebar.style.display = 'flex';
+        } else {
+            referencesSidebar.style.display = 'none';
+        }
     } else if (referencesSidebar) {
         referencesSidebar.style.display = 'none';
     }
 
     if (references.length === 0) {
-        referencesList.innerHTML = '<div class="empty-state"><p>참고 문헌이 없습니다.</p></div>';
-        if (referencesCount) {
-            referencesCount.textContent = '0';
+        if (showEmptyReferencesState) {
+            // 빈 상태 메시지 표시
+            referencesList.innerHTML = '<div class="empty-state"><p>참고 문헌이 없습니다.</p></div>';
+            if (referencesCount) {
+                referencesCount.textContent = '0';
+            }
         }
         return;
     }
@@ -1617,7 +1837,7 @@ function renderReferences() {
                                 <a href="https://doi.org/${escapeHtml(ref.doi)}" target="_blank" rel="noopener noreferrer" class="reference-link">DOI: ${escapeHtml(ref.doi)}</a>
                             </div>
                             ` : ''}
-                            ${ref.journal ? `
+                            ${ref.journal && !isWebSource ? `
                             <div class="reference-info-item">
                                 <i class="fas fa-file-lines"></i>
                                 <span>${escapeHtml(ref.journal)}</span>
@@ -1674,7 +1894,7 @@ function handleMessageAction(action, messageId) {
             likeMessage(messageId);
             break;
         case 'dislike':
-            dislikeMessage(messageId);
+            openDislikeFeedbackModal(messageId);
             break;
         case 'save-to-note':
             saveToNote(messageId);
@@ -1684,10 +1904,103 @@ function handleMessageAction(action, messageId) {
             break;
         case 'paper-graph':
             showPaperGraphModal = true;
-            if (window.PaperGraphModal && window.PaperGraphModal.open) {
-                window.PaperGraphModal.open();
-            } else if (window.Modal && window.Modal.open) {
-                window.Modal.open('paperGraphModal');
+            // Find message by messageId (could be index or actual message_id)
+            const targetMsg = messages.find(msg => 
+                msg.message_id === messageId || msg.message_id === parseInt(messageId) || 
+                messages.indexOf(msg) === parseInt(messageId)
+            );
+            
+            // Extract paper_graphs data from message (캐시된 데이터)
+            let graphData = null;
+            if (targetMsg && targetMsg.paper_graphs && Array.isArray(targetMsg.paper_graphs) && targetMsg.paper_graphs.length > 0) {
+                // Use the first graph (or could allow selection if multiple)
+                const graph = targetMsg.paper_graphs[0];
+                graphData = {
+                    nodes: graph.nodes || [],
+                    edges: graph.edges || [],
+                    title: graph.title || '관련 논문 네트워크',
+                    description: graph.description || ''
+                };
+            }
+            
+            // API를 호출하여 최신 논문 네트워크 데이터 가져오기
+            const actualMessageId = targetMsg?.message_id || messageId;
+            if (actualMessageId) {
+                fetch(`/chat/api/messages/${actualMessageId}/paper-graphs/`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'include',
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.status === 'success' && data.paper_graphs && data.paper_graphs.length > 0) {
+                        // API에서 가져온 최신 데이터 사용
+                        const graph = data.paper_graphs[0];
+                        graphData = {
+                            nodes: graph.nodes || [],
+                            edges: graph.edges || [],
+                            title: graph.title || '관련 논문 네트워크',
+                            description: graph.description || ''
+                        };
+                        
+                        // 메시지 데이터도 업데이트 (다음 클릭 시 캐시 사용)
+                        if (targetMsg) {
+                            targetMsg.paper_graphs = data.paper_graphs;
+                        }
+                    }
+                    
+                    // 모달 열기
+                    if (window.PaperGraphModal && window.PaperGraphModal.open) {
+                        window.PaperGraphModal.open(graphData);
+                    } else if (window.Modal && window.Modal.open) {
+                        window.Modal.open('paperGraphModal');
+                        setTimeout(() => {
+                            const container = document.getElementById('paperGraphContainer');
+                            if (container && window.PaperGraphModal && window.PaperGraphModal.renderGraph) {
+                                window.PaperGraphModal.renderGraph(container, graphData);
+                            }
+                        }, 200);
+                    }
+                })
+                .catch(error => {
+                    console.error('[PaperGraph] API 호출 실패:', error);
+                    // API 실패 시 캐시된 데이터 또는 기본 데이터 사용
+                    if (window.PaperGraphModal && window.PaperGraphModal.open) {
+                        window.PaperGraphModal.open(graphData);
+                    } else if (window.Modal && window.Modal.open) {
+                        window.Modal.open('paperGraphModal');
+                        setTimeout(() => {
+                            if (window.PaperGraphModal && window.PaperGraphModal.renderGraph) {
+                                const container = document.getElementById('paperGraphContainer');
+                                if (container) {
+                                    window.PaperGraphModal.renderGraph(container, graphData);
+                                }
+                            }
+                        }, 100);
+                    }
+                });
+            } else {
+                // messageId가 없으면 기본 데이터로 모달 열기
+                if (window.PaperGraphModal && window.PaperGraphModal.open) {
+                    window.PaperGraphModal.open(graphData);
+                } else if (window.Modal && window.Modal.open) {
+                    window.Modal.open('paperGraphModal');
+                    setTimeout(() => {
+                        if (window.PaperGraphModal && window.PaperGraphModal.renderGraph) {
+                            const container = document.getElementById('paperGraphContainer');
+                            if (container) {
+                                window.PaperGraphModal.renderGraph(container, graphData);
+                            }
+                        }
+                    }, 100);
+                }
             }
             break;
         case 'experiment':
@@ -1696,6 +2009,55 @@ function handleMessageAction(action, messageId) {
         default:
             console.error('Unknown action:', action);
     }
+}
+
+function openDislikeFeedbackModal(messageId) {
+    const targetMessage = findMessageByIdentifier(messageId);
+    if (window.ChatDislikeModal && typeof window.ChatDislikeModal.open === 'function') {
+        window.ChatDislikeModal.open(messageId, {
+            currentFeedbackType: targetMessage?.user_feedback || null,
+            reasonCode: targetMessage?.feedback_reason || null,
+            reasonText: targetMessage?.feedback_comment || '',
+        });
+    } else {
+        console.warn('ChatDislikeModal is not available');
+        if (window.notyf) {
+            window.notyf.error('피드백 모달을 불러올 수 없습니다.');
+        }
+    }
+}
+
+// 메시지 ID(또는 인덱스)로 messages 배열에서 항목 찾기
+function findMessageByIdentifier(identifier) {
+    if (identifier === null || identifier === undefined) {
+        return null;
+    }
+    const normalizedId = String(identifier);
+    return messages.find((msg, idx) => {
+        const candidateId =
+            msg.message_id != null ? String(msg.message_id) :
+            msg.id != null ? String(msg.id) :
+            msg.message_sid != null ? String(msg.message_sid) :
+            String(idx);
+        return candidateId === normalizedId;
+    }) || null;
+}
+
+// 메시지 피드백 상태 업데이트 후 UI 갱신
+function updateMessageFeedbackState(messageId, feedbackType, reasonCode = null, reasonText = '') {
+    const targetMessage = findMessageByIdentifier(messageId);
+    if (!targetMessage) {
+        return;
+    }
+    targetMessage.user_feedback = feedbackType || null;
+    if (feedbackType === 'D') {
+        targetMessage.feedback_reason = reasonCode || null;
+        targetMessage.feedback_comment = reasonText || '';
+    } else {
+        targetMessage.feedback_reason = null;
+        targetMessage.feedback_comment = '';
+    }
+    renderMessages();
 }
 
 // Copy message
@@ -1813,6 +2175,8 @@ async function likeMessage(messageId) {
                     window.notyf.success('좋아요를 눌렀습니다.');
                 }
             }
+            const nextFeedback = data.action === 'removed' ? null : (data.feedback_type || 'L');
+            updateMessageFeedbackState(messageId, nextFeedback, null, '');
         } else {
             const errorData = await response.json();
             console.error('Error liking message:', errorData);
@@ -1829,17 +2193,35 @@ async function likeMessage(messageId) {
 }
 
 // Dislike message
-async function dislikeMessage(messageId) {
+async function dislikeMessage(messageId, options = {}) {
+    const { reasonCode = null, reasonText = '', remove = false } = options;
+    if (!remove && !reasonCode) {
+        if (window.notyf) {
+            window.notyf.error('싫어요 사유를 선택해주세요.');
+        }
+        return false;
+    }
     try {
+        const payload = {
+            feedback_type: 'D',
+        };
+        if (remove) {
+            payload.remove_feedback = true;
+        } else {
+            payload.feedback_reason = reasonCode;
+            if (reasonCode === 'other') {
+                payload.feedback_comment = (reasonText || '').trim();
+            } else if (reasonText && reasonText.trim()) {
+                payload.feedback_comment = reasonText.trim();
+            }
+        }
         const response = await fetch(`/chat/api/messages/${messageId}/feedback/`, {
             method: 'POST',
             headers: {
                 'X-CSRFToken': getCsrfToken(),
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-                feedback_type: 'D'
-            }),
+            body: JSON.stringify(payload),
         });
         
         if (response.ok) {
@@ -1848,22 +2230,31 @@ async function dislikeMessage(messageId) {
             if (window.notyf) {
                 if (data.action === 'removed') {
                     window.notyf.success('싫어요가 취소되었습니다.');
+                } else if (remove) {
+                    window.notyf.success('싫어요가 삭제되었습니다.');
                 } else {
                     window.notyf.success('싫어요를 눌렀습니다.');
                 }
             }
+            const nextFeedback = data.action === 'removed' ? null : (data.feedback_type || 'D');
+            const nextReason = nextFeedback === 'D' ? (data.feedback_reason || reasonCode) : null;
+            const nextComment = nextFeedback === 'D' ? (data.feedback_comment || reasonText || '') : '';
+            updateMessageFeedbackState(messageId, nextFeedback, nextReason, nextComment);
+            return true;
         } else {
             const errorData = await response.json();
             console.error('Error disliking message:', errorData);
             if (window.notyf) {
                 window.notyf.error(errorData.error || '싫어요 처리 중 오류가 발생했습니다.');
             }
+            return false;
         }
     } catch (error) {
         console.error('Error disliking message:', error);
         if (window.notyf) {
             window.notyf.error('싫어요 처리 중 오류가 발생했습니다.');
         }
+        return false;
     }
 }
 
@@ -1871,11 +2262,7 @@ async function dislikeMessage(messageId) {
 function saveToNote(messageId) {
     showSaveToNotesModal = true;
     const normalizedId = String(messageId);
-    const targetMessage = messages.find((msg, idx) => {
-        const candidateId = msg.message_id != null ? String(msg.message_id) :
-            msg.id != null ? String(msg.id) : String(idx);
-        return candidateId === normalizedId;
-    });
+    const targetMessage = findMessageByIdentifier(normalizedId);
     // const previewText = targetMessage?.content
     //     ? targetMessage.content.replace(/\s+/g, ' ').trim()
     //     : '';
@@ -1952,6 +2339,31 @@ function showGraphSummary(messageId) {
         }, 100);
     }
 }
+
+function setupChatDislikeModalIntegration() {
+    if (dislikeModalHandlersInitialized) {
+        return;
+    }
+    if (window.ChatDislikeModal && typeof window.ChatDislikeModal.setHandlers === 'function') {
+        window.ChatDislikeModal.setHandlers({
+            onSubmit: async ({ messageId, reasonCode, reasonText }) => {
+                const success = await dislikeMessage(messageId, { reasonCode, reasonText });
+                if (success) {
+                    window.ChatDislikeModal.close();
+                }
+            },
+            onRemove: async ({ messageId }) => {
+                const success = await dislikeMessage(messageId, { remove: true });
+                if (success) {
+                    window.ChatDislikeModal.close();
+                }
+            },
+        });
+        dislikeModalHandlersInitialized = true;
+    }
+}
+
+document.addEventListener('chat-dislike-modal:ready', setupChatDislikeModalIntegration);
 
 // Attach reference handlers
 function attachReferenceHandlers() {
@@ -2150,17 +2562,27 @@ function handleImageSelect(e) {
     if (files && files.length > 0) {
         Array.from(files).forEach(file => {
             if (file.type.startsWith('image/')) {
-                const imageData = {
-                    id: Date.now() + Math.random(),
-                    name: file.name,
-                    size: file.size,
-                    url: URL.createObjectURL(file),
-                    file: file
+                // 이미지를 base64로 미리 읽어서 저장
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    const base64String = reader.result;
+                    const imageData = {
+                        id: Date.now() + Math.random(),
+                        name: file.name,
+                        size: file.size,
+                        url: URL.createObjectURL(file), // 미리보기용 blob URL
+                        file: base64String, // base64 문자열로 저장
+                        type: file.type
+                    };
+                    attachedImages.push(imageData);
+                    renderAttachedItems();
                 };
-                attachedImages.push(imageData);
+                reader.onerror = () => {
+                    console.error('[Chat] 이미지 읽기 실패:', file.name);
+                };
+                reader.readAsDataURL(file);
             }
         });
-        renderAttachedItems();
         
         // Show success message (you can use toast library if available)
         console.log(`${files.length}개의 이미지가 첨부되었습니다`);
@@ -2190,17 +2612,38 @@ function handleExperimentAttached(event) {
 
 // Render attached items
 function renderAttachedItems() {
+    // 현재 활성화된 입력 영역 찾기
+    // inputArea가 표시되어 있으면 그것을, 없으면 emptyState 내부의 input-wrapper 사용
+    let activeInputWrapper = null;
+    
+    if (inputArea && inputArea.style.display !== 'none') {
+        // inputArea가 활성화되어 있으면 inputArea 내부의 input-wrapper 사용
+        activeInputWrapper = inputArea.querySelector('.input-wrapper');
+    }
+    
+    if (!activeInputWrapper) {
+        // inputArea가 없거나 비활성화되어 있으면 emptyState 내부의 input-wrapper 사용
+        activeInputWrapper = document.querySelector('.empty-state .input-wrapper');
+    }
+    
+    if (!activeInputWrapper) {
+        // 마지막으로 아무 input-wrapper나 찾기
+        activeInputWrapper = document.querySelector('.input-wrapper');
+    }
+    
     // Find attached items container or create one
     let attachedContainer = document.getElementById('attachedItems');
-    if (!attachedContainer) {
+    if (!attachedContainer && activeInputWrapper) {
         // Create container if it doesn't exist
-        const inputWrapper = document.querySelector('.input-wrapper');
-        if (inputWrapper) {
-            attachedContainer = document.createElement('div');
-            attachedContainer.id = 'attachedItems';
-            attachedContainer.className = 'attached-items';
-            inputWrapper.insertBefore(attachedContainer, inputWrapper.firstChild);
-        }
+        attachedContainer = document.createElement('div');
+        attachedContainer.id = 'attachedItems';
+        attachedContainer.className = 'attached-items';
+        activeInputWrapper.insertBefore(attachedContainer, activeInputWrapper.firstChild);
+    }
+    
+    // 컨테이너가 활성 입력 영역과 다른 곳에 있으면 이동
+    if (attachedContainer && activeInputWrapper && !activeInputWrapper.contains(attachedContainer)) {
+        activeInputWrapper.insertBefore(attachedContainer, activeInputWrapper.firstChild);
     }
     
     if (!attachedContainer) return;
