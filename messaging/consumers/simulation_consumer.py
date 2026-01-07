@@ -94,7 +94,7 @@ def launch_simulation_docker(
     options: dict | None = None,
     ) -> Dict[str, Any]:
     try:
-        base = views_runpod._get_runpod_base_url()
+        base = views_runpod._get_runpod_sims_base_url()
         run_url = f"{base}/run"
     except RuntimeError as e:
         logger.error(f"[RunPod] base url error: {e}")
