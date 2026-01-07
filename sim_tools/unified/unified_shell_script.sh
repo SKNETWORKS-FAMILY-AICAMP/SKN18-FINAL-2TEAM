@@ -431,8 +431,10 @@ cmd_install() {
       "jaxlib==0.4.26"
   fi
 
-  # dm-haiku 등 나머지
-  "$(venv_python_jax)" -m pip install "dm-haiku==0.0.16"
+# 🔽 haiku 버전을 0.0.12 로 고정 (0.0.16 말고)
+  "$(venv_python_jax)" -m pip uninstall -y dm-haiku haiku || true
+  "$(venv_python_jax)" -m pip install "dm-haiku==0.0.12"
+
   # ColabDesign는 의존성 덮어쓰기 막으려면 --no-deps 권장
   if [[ ! -d "$COLABDESIGN_DIR" ]]; then
     log "Cloning ColabDesign into $COLABDESIGN_DIR"
