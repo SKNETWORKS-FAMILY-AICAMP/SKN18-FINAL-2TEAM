@@ -859,17 +859,67 @@
       };
     }
 
+    // Helper function to create timezone-aware datetime string
+    function createDatetimeString(dateStr, timeStr, isAllDay, isEnd = false) {
+      if (!dateStr) return null;
+      
+      if (isAllDay) {
+        // For all-day events, use the date string directly without timezone conversion
+        // This ensures the date remains as selected by the user
+        const hour = isEnd ? '23' : '00';
+        const minute = isEnd ? '59' : '00';
+        const second = isEnd ? '59' : '00';
+        
+        // Get timezone offset from current date to preserve user's timezone
+        const now = new Date();
+        const offset = -now.getTimezoneOffset();
+        const offsetHours = String(Math.floor(Math.abs(offset) / 60)).padStart(2, '0');
+        const offsetMinutes = String(Math.abs(offset) % 60).padStart(2, '0');
+        const offsetSign = offset >= 0 ? '+' : '-';
+        
+        // Use the date string directly (YYYY-MM-DD format)
+        return `${dateStr}T${hour}:${minute}:${second}${offsetSign}${offsetHours}:${offsetMinutes}`;
+      } else {
+        // For timed events, combine date and time in local timezone
+        const [hours, minutes] = (timeStr || '00:00').split(':');
+        const date = new Date(dateStr);
+        date.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
+        
+        // Convert to ISO string with timezone offset
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hour = String(date.getHours()).padStart(2, '0');
+        const minute = String(date.getMinutes()).padStart(2, '0');
+        const second = String(date.getSeconds()).padStart(2, '0');
+        
+        // Get timezone offset in format +09:00 or -05:00
+        const offset = -date.getTimezoneOffset();
+        const offsetHours = String(Math.floor(Math.abs(offset) / 60)).padStart(2, '0');
+        const offsetMinutes = String(Math.abs(offset) % 60).padStart(2, '0');
+        const offsetSign = offset >= 0 ? '+' : '-';
+        
+        return `${year}-${month}-${day}T${hour}:${minute}:${second}${offsetSign}${offsetHours}:${offsetMinutes}`;
+      }
+    }
+
     const scheduleData = {
       title: scheduleTitleInput?.value || '',
       description: scheduleDescriptionInput?.value || '',
       location: scheduleLocationInput?.value || '',
       is_all_day: isAllDay,
-      start_datetime: isAllDay
-        ? `${scheduleStartDate?.value || ''}T00:00:00`
-        : `${scheduleStartDate?.value || ''}T${scheduleStartTime?.value || '00:00'}:00`,
-      end_datetime: isAllDay
-        ? `${scheduleEndDate?.value || ''}T23:59:59`
-        : `${scheduleEndDate?.value || ''}T${scheduleEndTime?.value || '00:00'}:00`,
+      start_datetime: createDatetimeString(
+        scheduleStartDate?.value,
+        scheduleStartTime?.value,
+        isAllDay,
+        false
+      ),
+      end_datetime: createDatetimeString(
+        scheduleEndDate?.value,
+        scheduleEndTime?.value,
+        isAllDay,
+        true
+      ),
       type: scheduleTypeSelect?.value || 'experiment',
       status: scheduleStatusSelectAdd?.value || 'scheduled',
       recurrence: recurrencePayload,
