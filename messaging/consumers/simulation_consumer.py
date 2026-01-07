@@ -440,19 +440,22 @@ def handle_simulation_task(message: Dict[str, Any]):
 
                 # rfdiffusion 인 경우에만 numSteps → num_designs 로 전달
                 num_designs = None
+                num_seqs = None
+
                 if step_api == "rfdiffusion":
                     try:
                         num_designs = int((tool_options or {}).get("numSteps") or 1)
                     except (TypeError, ValueError):
                         num_designs = None
 
-                if expected_pdb:
-                    register_experiment_results_for_step(
-                        experiment_sid=experiment_sid,
-                        step_api=step_api,
-                        expected_local_path=expected_pdb,
-                        num_designs=num_designs,  # ← 이 값이 RFdiffusion 결과 개수를 결정
-                    )
+                    if expected_pdb:
+                        register_experiment_results_for_step(
+                            experiment_sid=experiment_sid,
+                            step_api=step_api,
+                            expected_local_path=expected_pdb,
+                            num_designs=num_designs,
+                            num_seqs=num_seqs,
+                        )
             except Exception as e:
                 logger.error(
                     "Failed to register experiment results: %s", e, exc_info=True
