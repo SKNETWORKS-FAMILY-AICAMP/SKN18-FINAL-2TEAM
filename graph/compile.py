@@ -6,6 +6,9 @@ LangGraph의 StateGraph를 사용해 전체 BioRAG 파이프라인을 구성한�
 from langgraph.graph import END, StateGraph
 
 from graph.state_origin import BioRAGState
+from graph.logger_config import get_logger
+
+logger = get_logger(__name__)
 from graph.nodes.guardrail import guardrail_input_node
 from graph.nodes.image_processor import image_processing_node
 from graph.nodes.memory import memory_read_node, memory_write_node
@@ -51,14 +54,13 @@ def route_after_evaluate_web(state: BioRAGState) -> str:
     memory_write 로 바로 갈지(generate 생략) 여부를 결정.
     """
     should_skip = state.get("should_skip_generation", False)
-    print(f"\n[ROUTE] route_after_evaluate_web 호출")
-    print(f"[ROUTE] should_skip_generation: {should_skip}")
+    logger.debug(f"route_after_evaluate_web 호출 - should_skip_generation: {should_skip}")
 
     if should_skip:
-        print("[ROUTE] GENERATE_ANSWER 건너뛰고 MEMORY_WRITE로 이동")
+        logger.info("GENERATE_ANSWER 건너뛰고 MEMORY_WRITE로 이동")
         return "skip_generation"
 
-    print("[ROUTE] GENERATE_ANSWER로 이동")
+    logger.info("GENERATE_ANSWER로 이동")
     return "generate_answer"
 
 

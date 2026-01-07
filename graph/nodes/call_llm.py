@@ -25,6 +25,9 @@ Parameter Store 경로 (AWS 환경):
 
 import os
 import json
+from graph.logger_config import get_logger
+
+logger = get_logger(__name__)
 
 # Lambda 환경에서는 .env 파일을 로드하지 않음 (환경 변수에서 직접 읽음)
 # 로컬 환경에서만 .env 파일 로드
@@ -113,7 +116,7 @@ def _get_parameter_from_store(
             return None
         # AWS 환경에서는 상세 로그 출력
         error_type = type(e).__name__
-        print(f"[WARNING] Failed to get parameter {parameter_path}: {error_type}: {e}")
+        logger.warning(f"Failed to get parameter {parameter_path}: {error_type}: {e}")
         return None
 
 
@@ -174,7 +177,7 @@ def _get_sllm_config():
         return _SLLM_BASE_URL, _RUNPOD_API_KEY, _MODEL_NAME
     
     # 환경 변수 또는 Parameter Store에서 값 가져오기
-    print(f"[SLLM Config] 환경 감지 - is_lambda: {is_lambda}, is_ec2: {is_ec2}, is_aws: {is_aws}, HAS_BOTO3: {HAS_BOTO3}")
+    logger.debug(f"환경 감지 - is_lambda: {is_lambda}, is_ec2: {is_ec2}, is_aws: {is_aws}, HAS_BOTO3: {HAS_BOTO3}")
     
     _SLLM_BASE_URL = _get_env_or_parameter(
         "SLLM_BASE_URL",
@@ -192,9 +195,9 @@ def _get_sllm_config():
         with_decryption=False
     )
     
-    print(f"[SLLM Config] 로드 결과 - BASE_URL: {'✓' if _SLLM_BASE_URL else '✗'}, "
-          f"API_KEY: {'✓' if _RUNPOD_API_KEY else '✗'}, "
-          f"MODEL: {'✓' if _MODEL_NAME else '✗'}")
+    logger.info(f"SLLM Config 로드 결과 - BASE_URL: {'✓' if _SLLM_BASE_URL else '✗'}, "
+                f"API_KEY: {'✓' if _RUNPOD_API_KEY else '✗'}, "
+                f"MODEL: {'✓' if _MODEL_NAME else '✗'}")
     
     return _SLLM_BASE_URL, _RUNPOD_API_KEY, _MODEL_NAME
 
@@ -319,15 +322,10 @@ def sllm(prompt: str, temperature: float = 0.7, max_tokens: int = 1024):
         else:
             raise ValueError("❌ MODEL_NAME not found in .env or environment variables")
 
-    print(f"\n{'='*60}")
-    print(f"[SLLM] 호출 시작")
-    print(f"  Model: {model_name}")
-    print(f"  Base URL: {sllm_base_url}")
-    print(f"  Temperature: {temperature}")
-    print(f"  Max Tokens: {max_tokens}")
-    print(f"  Prompt Length: {len(prompt)} chars")
-    print(f"  Prompt Preview: {prompt[:100]}...")
-    print(f"{'='*60}\n")
+    logger.info(f"[SLLM] 호출 시작 - Model: {model_name}, Base URL: {sllm_base_url}, "
+                f"Temperature: {temperature}, Max Tokens: {max_tokens}, "
+                f"Prompt Length: {len(prompt)} chars")
+    logger.debug(f"Prompt Preview: {prompt[:100]}...")
 
     sllm_client = OpenAI(
         base_url=sllm_base_url,
@@ -348,18 +346,15 @@ def sllm(prompt: str, temperature: float = 0.7, max_tokens: int = 1024):
         elapsed = time.time() - start_time
         response_text = _parse_openai_response(resp)
 
-        print(f"\n{'='*60}")
-        print(f"[SLLM] 응답 성공")
-        print(f"  Elapsed Time: {elapsed:.2f}s")
-        print(f"  Response Length: {len(response_text)} chars")
-        print(f"  Response Preview: {response_text[:100]}...")
-        print(f"{'='*60}\n")
+        logger.info(f"[SLLM] 응답 성공 - Elapsed Time: {elapsed:.2f}s, "
+                   f"Response Length: {len(response_text)} chars")
+        logger.debug(f"Response Preview: {response_text[:100]}...")
 
         return response_text
 
     except Exception as e:
-        error_msg = f"[SLLM ERROR] Pod가 비활성화되었거나 연결할 수 없습니다: {str(e)}"
-        print(error_msg)
+        error_msg = f"Pod가 비활성화되었거나 연결할 수 없습니다: {str(e)}"
+        logger.error(f"[SLLM ERROR] {error_msg}", exc_info=True)
         raise RuntimeError(error_msg) from e
 
 

@@ -14,6 +14,9 @@ from typing import Dict, Any, Optional, List
 import json
 import re
 from graph.llm_config import evaluate_web_node_llm, get_model_name
+from graph.logger_config import get_logger
+
+logger = get_logger(__name__)
 
 
 def _safe_json_loads(raw: str) -> Optional[Dict[str, Any]]:
@@ -62,11 +65,9 @@ def evaluate_web_node(state: Dict[str, Any]) -> Dict[str, Any]:
     """
     
     # 노드 진입 로그
-    print(f"\n{'='*60}")
-    print(f"[EVALUATE_WEB NODE] 시작")
-    print(f"  question: {str(state.get('question', ''))[:30]}...")
-    print(f"  web_results: {len(state.get('web_results', []))}개")
-    print(f"{'='*60}\n")
+    question_preview = str(state.get('question', ''))[:30]
+    web_results_count = len(state.get('web_results', []))
+    logger.info(f"[EVALUATE_WEB NODE] 시작 - question: {question_preview}..., web_results: {web_results_count}개")
     
     question = state.get("question", "")
     web_results = state.get("web_results", [])
@@ -74,11 +75,11 @@ def evaluate_web_node(state: Dict[str, Any]) -> Dict[str, Any]:
     # operator.add로 인한 중복 누적 방지: 기존 값 초기화
     existing_chunks = state.get("web_selected_chunks", [])
     if existing_chunks:
-        print(f"[EvaluateWeb] ⚠️ 기존 web_selected_chunks 발견 ({len(existing_chunks)}개) - 초기화합니다")
-        print(f"[EvaluateWeb] 기존 내용 샘플: {existing_chunks[0][:50] if existing_chunks else 'None'}...")
+        logger.warning(f"기존 web_selected_chunks 발견 ({len(existing_chunks)}개) - 초기화합니다")
+        logger.debug(f"기존 내용 샘플: {existing_chunks[0][:50] if existing_chunks else 'None'}...")
         state["web_selected_chunks"] = []  # 초기화
     
-    print(f"[EvaluateWeb] 시작 - {len(web_results)}개 웹 검색 결과 평가")
+    logger.info(f"시작 - {len(web_results)}개 웹 검색 결과 평가")
     
     # 웹 검색 결과가 없는 경우
     if not web_results:
@@ -89,9 +90,9 @@ def evaluate_web_node(state: Dict[str, Any]) -> Dict[str, Any]:
         if case_type == "BIO_Q":
             state["final_answer"] = "죄송합니다. 요청하신 정보를 찾을 수 없습니다. 다른 질문을 해주시거나, 더 구체적인 정보를 제공해주시면 도움을 드리겠습니다."
             state["should_skip_generation"] = True
-            print("[EvaluateWeb] BIO_Q - 웹 검색 결과 없음, 조기 종료")
+            logger.info("BIO_Q - 웹 검색 결과 없음, 조기 종료")
         else:
-            print("[EvaluateWeb] 완료 - 웹 검색 결과 없음")
+            logger.info("완료 - 웹 검색 결과 없음")
 
         return state
     
@@ -104,8 +105,7 @@ def evaluate_web_node(state: Dict[str, Any]) -> Dict[str, Any]:
         
         # 각 웹 검색 결과의 앞 50글자 로그 출력
         snippet_preview = snippet[:50] if snippet else ""
-        print(f"  [웹자료 {i}] {title[:40]}")
-        print(f"      내용: {snippet_preview}...")
+        logger.debug(f"[웹자료 {i}] {title[:40]}, 내용: {snippet_preview}...")
         
         content = f"제목: {title}\n내용: {snippet}"
         if url:
@@ -157,17 +157,13 @@ def evaluate_web_node(state: Dict[str, Any]) -> Dict[str, Any]:
     try:
         # 사용 모델 확인
         model_name = get_model_name(evaluate_web_node_llm)
-        print(f"[EvaluateWeb] 사용 모델: {model_name}")
+        logger.info(f"사용 모델: {model_name}")
         
         # LLM을 사용하여 웹 검색 결과 정제
         result = evaluate_web_node_llm(prompt)
         
         # LLM 출력 원본 로깅 (디버깅용)
-        print(f"[EvaluateWeb] LLM 원본 출력:")
-        print(f"{'='*60}")
-        print(result)
-        print(f"{'='*60}")
-        print(f"[EvaluateWeb] LLM 출력 길이: {len(result)}자")
+        logger.debug(f"LLM 원본 출력 (길이: {len(result)}자):\n{result}")
         
         # JSON 파싱 시도
         web_selected_chunks: List[str] = []
@@ -189,21 +185,20 @@ def evaluate_web_node(state: Dict[str, Any]) -> Dict[str, Any]:
                                 web_selected_chunks.append(f"웹자료 {idx}: {summary}")
                     
                     json_parse_success = True
-                    print(f"[EvaluateWeb] ✅ JSON 파싱 성공 - {len(web_selected_chunks)}개 항목 추출")
-                    print(f"[EvaluateWeb] 파싱된 항목:")
+                    logger.info(f"✅ JSON 파싱 성공 - {len(web_selected_chunks)}개 항목 추출")
                     for i, chunk in enumerate(web_selected_chunks, 1):
-                        print(f"  [{i}] {chunk[:80]}...")
+                        logger.debug(f"  [{i}] {chunk[:80]}...")
                 else:
-                    print(f"[EvaluateWeb] ⚠️ JSON 파싱 성공했지만 selected 배열이 비어있음")
+                    logger.warning("JSON 파싱 성공했지만 selected 배열이 비어있음")
             else:
-                print(f"[EvaluateWeb] ⚠️ JSON 파싱 실패 - 유효한 JSON 객체가 아님")
+                logger.warning("JSON 파싱 실패 - 유효한 JSON 객체가 아님")
         
         except Exception as json_error:
-            print(f"[EvaluateWeb] ⚠️ JSON 파싱 중 오류: {json_error}")
+            logger.warning(f"JSON 파싱 중 오류: {json_error}", exc_info=True)
         
         # JSON 파싱 실패 시 기존 텍스트 기반 파싱 시도 (fallback)
         if not json_parse_success or not web_selected_chunks:
-            print(f"[EvaluateWeb] 텍스트 기반 파싱 시도 (fallback)...")
+            logger.debug("텍스트 기반 파싱 시도 (fallback)...")
             fallback_chunks = []
             
             # "웹자료 N:" 형식 찾기
@@ -229,12 +224,11 @@ def evaluate_web_node(state: Dict[str, Any]) -> Dict[str, Any]:
             
             if fallback_chunks:
                 web_selected_chunks = fallback_chunks
-                print(f"[EvaluateWeb] ✅ 텍스트 기반 파싱 성공 - {len(web_selected_chunks)}개 항목 추출")
-                print(f"[EvaluateWeb] 파싱된 항목:")
+                logger.info(f"✅ 텍스트 기반 파싱 성공 - {len(web_selected_chunks)}개 항목 추출")
                 for i, chunk in enumerate(web_selected_chunks, 1):
-                    print(f"  [{i}] {chunk[:80]}...")
+                    logger.debug(f"  [{i}] {chunk[:80]}...")
             else:
-                print(f"[EvaluateWeb] ❌ 텍스트 기반 파싱도 실패")
+                logger.warning("❌ 텍스트 기반 파싱도 실패")
 
         # BIO_Q이고 관련 정보가 없는 경우 조기 종료 (citations 추가하지 않음)
         if not web_selected_chunks:
@@ -243,10 +237,8 @@ def evaluate_web_node(state: Dict[str, Any]) -> Dict[str, Any]:
                 state["final_answer"] = "죄송합니다. 요청하신 정보를 찾을 수 없습니다. 다른 질문을 해주시거나, 더 구체적인 정보를 제공해주시면 도움을 드리겠습니다."
                 state["should_skip_generation"] = True
                 state["web_selected_chunks"] = []
-                print("[EvaluateWeb] ⚠️ BIO_Q - 관련 정보 없음, GENERATE_ANSWER 건너뛰고 END로 이동")
-                print(f"[EvaluateWeb] should_skip_generation = {state.get('should_skip_generation')}")
-                print(f"[EvaluateWeb] final_answer = {state.get('final_answer')[:50]}...")
-                print(f"[EvaluateWeb] citations = {len(state.get('citations', []))}개 (citations 추가 안 함)")
+                logger.warning("BIO_Q - 관련 정보 없음, GENERATE_ANSWER 건너뛰고 END로 이동")
+                logger.debug(f"should_skip_generation = {state.get('should_skip_generation')}, final_answer = {state.get('final_answer')[:50]}..., citations = {len(state.get('citations', []))}개 (citations 추가 안 함)")
                 return state
 
         # 중복 제거 (operator.add로 인한 누적 방지)
@@ -262,11 +254,10 @@ def evaluate_web_node(state: Dict[str, Any]) -> Dict[str, Any]:
         unique_count = len(unique_chunks)
         
         if original_count != unique_count:
-            print(f"[EvaluateWeb] ⚠️ 중복 제거: {original_count}개 → {unique_count}개")
-            print(f"[EvaluateWeb] 중복 제거 상세:")
+            logger.warning(f"중복 제거: {original_count}개 → {unique_count}개")
             for i, dup in enumerate(web_selected_chunks, 1):
                 is_dup = "중복" if str(dup) not in seen else "유니크"
-                print(f"  [{i}] {is_dup}: {str(dup)[:60]}...")
+                logger.debug(f"  [{i}] {is_dup}: {str(dup)[:60]}...")
         
         # operator.add로 인한 누적 방지: 빈 리스트로 초기화 후 새 값만 추가
         # LangGraph의 operator.add는 기존 값에 새 값을 추가하므로, 
@@ -274,20 +265,16 @@ def evaluate_web_node(state: Dict[str, Any]) -> Dict[str, Any]:
         state["web_selected_chunks"] = []  # 명시적 초기화
         state["web_selected_chunks"] = unique_chunks  # 새 값 할당
         
-        print(f"[EvaluateWeb] ✅ 완료 - {unique_count}개 청크 선별 (원본: {original_count}개, 중복 제거: {original_count - unique_count}개)")
-        print(f"[EvaluateWeb] 최종 web_selected_chunks 개수: {len(state.get('web_selected_chunks', []))}개")
-        print(f"[EvaluateWeb] 최종 web_selected_chunks 형식: {type(unique_chunks[0]) if unique_chunks else 'None'}")
+        logger.info(f"✅ 완료 - {unique_count}개 청크 선별 (원본: {original_count}개, 중복 제거: {original_count - unique_count}개)")
+        logger.debug(f"최종 web_selected_chunks 개수: {len(state.get('web_selected_chunks', []))}개, 형식: {type(unique_chunks[0]) if unique_chunks else 'None'}")
         
         # 저장 직후 값 확인 (디버깅용)
         final_chunks = state.get("web_selected_chunks", [])
-        print(f"[EvaluateWeb] 저장 직후 확인: {len(final_chunks)}개")
         if final_chunks:
-            print(f"[EvaluateWeb] 저장된 첫 번째 항목: {final_chunks[0][:60]}...")
+            logger.debug(f"저장 직후 확인: {len(final_chunks)}개, 첫 번째 항목: {final_chunks[0][:60]}...")
         
     except Exception as e:
-        print(f"[EvaluateWeb] ❌ 오류 발생: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"오류 발생: {e}", exc_info=True)
         
         # 오류 시 원본 웹 검색 결과를 간단히 변환
         web_selected_chunks = []
@@ -304,11 +291,10 @@ def evaluate_web_node(state: Dict[str, Any]) -> Dict[str, Any]:
                 web_selected_chunks.append(f"웹자료 {i}: {content[:200]}...")
         
         state["web_selected_chunks"] = web_selected_chunks
-        print(f"[EvaluateWeb] Fallback: {len(web_selected_chunks)}개 청크 생성")
+        logger.warning(f"Fallback: {len(web_selected_chunks)}개 청크 생성")
     
     # 노드 종료 로그
-    print(f"\n[EVALUATE_WEB NODE] 종료")
-    print(f"  web_selected_chunks: {len(state.get('web_selected_chunks', []))}개")
-    print(f"{'='*60}\n")
+    web_selected_chunks_count = len(state.get('web_selected_chunks', []))
+    logger.info(f"[EVALUATE_WEB NODE] 종료 - web_selected_chunks: {web_selected_chunks_count}개")
     
     return state
