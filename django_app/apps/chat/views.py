@@ -1031,6 +1031,9 @@ def chat_messages(request, chat_id=None):
     if not content:
         return JsonResponse({"error": "content_required"}, status=400)
 
+    # 필터 정보 추출 (선택적)
+    filter_type = payload.get("filter") or None
+
     user_id = str(request.user.user_id) if request.user.is_authenticated else 'anonymous'
 
     # 3. 채팅 조회 또는 생성
@@ -1077,7 +1080,7 @@ def chat_messages(request, chat_id=None):
     # 7. AI 응답 생성 (result_state도 함께 받기 위해 return_state=True)
     try:
         ai_text, citations, scores, reference_type, chat_title, result_state = generate_ai_response(
-            chat, content, return_state=True
+            chat, content, return_state=True, filter_type=filter_type
         )
     except Exception as exc:
         print(f"[ERROR] AI response generation failed: {exc}")

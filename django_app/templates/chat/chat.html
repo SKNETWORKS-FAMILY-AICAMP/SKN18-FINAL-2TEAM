@@ -41,7 +41,7 @@
                     <div class="input-wrapper">
                         <div class="input-toolbar">
                             <div class="relative">
-                                <button class="toolbar-btn" id="attachBtn" title="파일 첨부">
+                                <button class="toolbar-btn" id="attachBtn" title="파일 첨부" style="display: none;">
                                     <i class="fa-solid fa-plus"></i>
                                 </button>
                                 
@@ -72,12 +72,12 @@
                                     style="display: none;"
                                 />
                             </div>
-                            <input
-                                type="text"
+                            <textarea
                                 id="chatInputField"
-                                placeholder="무엇이든 물어보세요"
+                                placeholder="HelixOps AI에게 물어보세요"
                                 class="chat-input-field"
-                            />
+                                rows="1"
+                            ></textarea>
                             <button class="send-btn" id="sendBtn">
                                 <i class="fa-solid fa-paper-plane"></i>
                             </button>
@@ -85,15 +85,14 @@
                         <div class="input-footer">
                             <sl-tooltip content="채팅 종류를 선택하면 더 빨리 검색할 수 있습니다" placement="top">
                                 <div class="filter-controls" id="filterControls">
-                                    <div class="auto-mode">
-                                        <span>자동</span>
-                                        <sl-switch id="autoModeToggle" checked></sl-switch>
-                                    </div>
-                                    <button class="filter-btn" data-filter="paper">논문</button>
-                                    <button class="filter-btn" data-filter="clinical">임상</button>
-                                    <button class="filter-btn" data-filter="protocol">프로토콜</button>
-                                    <button class="filter-btn" data-filter="simulation">시뮬레이션</button>
-                                    <button class="filter-btn" data-filter="interpretation">결과 해석</button>
+                            <div class="auto-mode">
+                                <span>자동</span>
+                                <sl-switch id="autoModeToggle" checked></sl-switch>
+                            </div>
+                            <button class="filter-btn" data-filter="paper">논문/임상</button>
+                            <button class="filter-btn" data-filter="protocol">프로토콜</button>
+                            <button class="filter-btn" data-filter="simulation">시뮬레이션</button>
+                            <button class="filter-btn" data-filter="interpretation">결과 해석</button>
                                 </div>
                             </sl-tooltip>
                         </div>
@@ -155,7 +154,7 @@
             <div class="input-wrapper">
                 <div class="input-toolbar">
                     <div class="relative">
-                        <button class="toolbar-btn" id="attachBtnBottom" title="파일 첨부">
+                        <button class="toolbar-btn" id="attachBtnBottom" title="파일 첨부" style="display: none;">
                             <i class="fa-solid fa-plus"></i>
                         </button>
                         
@@ -186,12 +185,12 @@
                             style="display: none;"
                         />
                     </div>
-                    <input
-                        type="text"
+                    <textarea
                         id="chatInputFieldBottom"
-                        placeholder="무엇이든 물어보세요"
+                        placeholder="HelixOps AI에게 물어보세요"
                         class="chat-input-field"
-                    />
+                        rows="1"
+                    ></textarea>
                     <button class="send-btn" id="sendBtnBottom">
                         <i class="fa-solid fa-paper-plane"></i>
                     </button>
@@ -203,8 +202,7 @@
                                 <span>자동</span>
                                 <sl-switch id="autoModeToggleBottom" checked></sl-switch>
                             </div>
-                            <button class="filter-btn" data-filter="paper">논문</button>
-                            <button class="filter-btn" data-filter="clinical">임상</button>
+                            <button class="filter-btn" data-filter="paper">논문/임상</button>
                             <button class="filter-btn" data-filter="protocol">프로토콜</button>
                             <button class="filter-btn" data-filter="simulation">시뮬레이션</button>
                             <button class="filter-btn" data-filter="interpretation">결과 해석</button>
