@@ -414,32 +414,33 @@ cmd_install() {
   "$(venv_python_jax)" -m pip install -U pandas
   "$(venv_python_jax)" -m pip install -U pip setuptools wheel
 
+
   if [[ "$ENABLE_JAX_CUDA" == "1" ]]; then
-    log "JAX CUDA mode: jax==0.7.2 (JAX_VENV)"
+    log "JAX CUDA mode: jax[cuda12_pip]==0.4.26 (JAX_VENV)"
     # 기존 jax 계열 제거
-    "$(venv_python_jax)" -m pip uninstall -y jax jaxlib jax-cuda12-pjrt jax-cuda12-plugin || true
+    "$(venv_python_jax)" -m pip uninstall -y jax jaxlib || true
+    # 🔽 CUDA 12용 GPU 빌드 설치
+    "$(venv_python_jax)" -m pip install \
+      "jax[cuda12_pip]==0.4.26" \
+      -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+  else
+    log "JAX CPU mode: jax==0.4.26 jaxlib==0.4.26 (JAX_VENV)"
+    "$(venv_python_jax)" -m pip uninstall -y jax jaxlib || true
+    "$(venv_python_jax)" -m pip install \
+      "jax==0.4.26" \
+      "jaxlib==0.4.26"
   fi
 
-    
-  log "JAX mode: jax==0.6.2 (JAX_VENV)"
-  "$(venv_python_jax)" -m pip uninstall -y jax jaxlib || true
-  "$(venv_python_jax)" -m pip install \
-    "jax==0.6.2" \
-    "jaxlib==0.6.2"
-
-  # dm-haiku 버전 고정
-  "$(venv_python_jax)" -m pip uninstall -y dm-haiku || true
+  # dm-haiku 등 나머지
   "$(venv_python_jax)" -m pip install "dm-haiku==0.0.16"
-
-  # ColabDesign: 나머지 의존성은 ColabDesign 쪽 버전에 맞춤
+  # ColabDesign는 의존성 덮어쓰기 막으려면 --no-deps 권장
   if [[ ! -d "$COLABDESIGN_DIR" ]]; then
     log "Cloning ColabDesign into $COLABDESIGN_DIR"
     git clone https://github.com/sokrypton/ColabDesign.git "$COLABDESIGN_DIR"
   fi
-  log "installing ColabDesign (editable) (JAX_VENV)"
-  "$(venv_python_jax)" -m pip install -e "$COLABDESIGN_DIR"
+  log "installing ColabDesign (editable, no-deps) (JAX_VENV)"
+  "$(venv_python_jax)" -m pip install --no-deps -e "$COLABDESIGN_DIR"
 
-  
 
   log "sanity check (TORCH_VENV)"
   set_ld_library_path_for_torch
