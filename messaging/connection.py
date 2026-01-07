@@ -24,6 +24,8 @@ class RabbitMQConnection:
         if self._connection is None or self._connection.is_closed:
             try:
                 parameters = pika.URLParameters(RABBITMQ_URL)
+                parameters.heartbeat = 0
+                parameters.blocked_connection_timeout = None  # 선택이지만 같이 꺼두면 안전
                 self._connection = pika.BlockingConnection(parameters)
                 logger.info(f"RabbitMQ connected to {RABBITMQ_URL.split('@')[1] if '@' in RABBITMQ_URL else RABBITMQ_URL}")
             except Exception as e:
