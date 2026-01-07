@@ -13,6 +13,7 @@
 <link rel="stylesheet" href="{% static 'css/components/modals/paper_graph_modal.css' %}">
 <link rel="stylesheet" href="{% static 'css/components/modals/table_modal.css' %}">
 <link rel="stylesheet" href="{% static 'css/components/modals/experiment_result_modal.css' %}">
+<link rel="stylesheet" href="{% static 'css/components/modals/chat_dislike_modal.css' %}">
 {% endblock %}
 
 {% block content %}
@@ -99,6 +100,8 @@
                     </div>
 
                     <!-- Recommended Questions Dropdown -->
+                    <!-- 보류: 추후 구현 예정 (기존 탭 구조) -->
+                    <!--
                     <div class="recommendations-dropdown" id="recommendationsDropdown" style="display: none;">
                         <div class="recommendations-header">
                             <span>추천 질문</span>
@@ -107,38 +110,46 @@
                             </button>
                         </div>
                         <sl-tab-group id="recommendationsTabGroup" class="recommendations-tab-group">
-                            <sl-tab slot="nav" panel="paper" data-category="P">논문</sl-tab>
-                            <sl-tab slot="nav" panel="clinical" data-category="C">임상</sl-tab>
+                            <sl-tab slot="nav" panel="paper" data-category="P">논문/임상</sl-tab>
                             <sl-tab slot="nav" panel="protocol" data-category="T">프로토콜</sl-tab>
                             <sl-tab slot="nav" panel="simulation" data-category="S">시뮬레이션</sl-tab>
                             <sl-tab slot="nav" panel="interpretation" data-category="R">결과 해석</sl-tab>
                             
                             <sl-tab-panel name="paper" class="recommendations-tab-panel">
                                 <div class="recommendations-list" data-category="P" id="recommendationsListP">
-                                    <!-- 추천 질문 목록이 JavaScript로 동적 로드됩니다 -->
                                 </div>
                             </sl-tab-panel>
                             <sl-tab-panel name="clinical" class="recommendations-tab-panel">
                                 <div class="recommendations-list" data-category="C" id="recommendationsListC">
-                                    <!-- 추천 질문 목록이 JavaScript로 동적 로드됩니다 -->
                                 </div>
                             </sl-tab-panel>
                             <sl-tab-panel name="protocol" class="recommendations-tab-panel">
                                 <div class="recommendations-list" data-category="T" id="recommendationsListT">
-                                    <!-- 추천 질문 목록이 JavaScript로 동적 로드됩니다 -->
                                 </div>
                             </sl-tab-panel>
                             <sl-tab-panel name="simulation" class="recommendations-tab-panel">
                                 <div class="recommendations-list" data-category="S" id="recommendationsListS">
-                                    <!-- 추천 질문 목록이 JavaScript로 동적 로드됩니다 -->
                                 </div>
                             </sl-tab-panel>
                             <sl-tab-panel name="interpretation" class="recommendations-tab-panel">
                                 <div class="recommendations-list" data-category="R" id="recommendationsListR">
-                                    <!-- 추천 질문 목록이 JavaScript로 동적 로드됩니다 -->
                                 </div>
                             </sl-tab-panel>
                         </sl-tab-group>
+                    </div>
+                    -->
+                    
+                    <!-- Recommended Questions Dropdown (dashboard와 동일한 구조) -->
+                    <div class="recommendations-dropdown" id="recommendationsDropdown" style="display: none;">
+                        <div class="recommendations-header">
+                            <span>추천 질문</span>
+                            <button class="close-btn" id="closeRecommendationsBtn">
+                                <i class="fa-solid fa-times"></i>
+                            </button>
+                        </div>
+                        <div class="recommendations-list" id="recommendationsList">
+                            <!-- 추천 질문 목록이 JavaScript로 동적 로드됩니다 -->
+                        </div>
                     </div>
                 </div>
             </div>
@@ -245,6 +256,8 @@
 {% include 'components/modals/paper_graph_modal.html' %}
 <!-- 노트에 저장 모달 -->
 {% include 'components/modals/save_to_note_modal.html' %}
+<!-- Chat Dislike 모달 -->
+{% include 'components/modals/chat_dislike_modal.html' %}
 
 <!-- 표 추가 모달 -->
 {% include 'components/modals/table_modal.html' %}
@@ -258,6 +271,7 @@
 <script src="{% static 'js/components/subsidebar.js' %}"></script>
 <!-- Paper Graph Modal must be loaded before chat.js -->
 <script src="{% static 'js/components/modals/paper_graph_modal.js' %}"></script>
+<script src="{% static 'js/components/modals/chat_dislike_modal.js' %}"></script>
 <script src="{% static 'js/pages/chat.js' %}"></script>
 <script src="{% static 'js/components/modals/bookmark_modal.js' %}"></script>
 <script src="{% static 'js/components/modals/reference_selection_modal.js' %}"></script>

@@ -1,7 +1,10 @@
 from django.apps import AppConfig
 import os
 import sys
+import logging
 from pathlib import Path
+
+logger = logging.getLogger('apps.chat')
 
 
 class ChatConfig(AppConfig):
@@ -25,10 +28,10 @@ class ChatConfig(AppConfig):
             try:
                 from graph.nodes.rag_retriever_bridge import _get_neo4j_driver
                 driver = _get_neo4j_driver()
-                print("✅ [ChatConfig] Neo4j driver initialized at app startup")
+                logger.info("✅ Neo4j driver initialized at app startup")
             except Exception as e:
                 # 초기화 실패해도 앱 시작은 계속됨 (첫 요청 시 재시도)
-                print(f"⚠️ [ChatConfig] Neo4j driver initialization failed (will retry on first request): {e}")
+                logger.warning(f"⚠️ Neo4j driver initialization failed (will retry on first request): {e}", exc_info=True)
             
             # RabbitMQ 연결 미리 초기화
             try:
@@ -37,7 +40,7 @@ class ChatConfig(AppConfig):
                 # 연결 테스트 (연결이 없으면 생성됨)
                 if not connection_manager.is_connected():
                     connection_manager.get_connection()
-                print("✅ [ChatConfig] RabbitMQ connection initialized at app startup")
+                logger.info("✅ RabbitMQ connection initialized at app startup")
             except Exception as e:
                 # 초기화 실패해도 앱 시작은 계속됨 (첫 요청 시 재시도)
-                print(f"⚠️ [ChatConfig] RabbitMQ connection initialization failed (will retry on first request): {e}")
+                logger.warning(f"⚠️ RabbitMQ connection initialization failed (will retry on first request): {e}", exc_info=True)

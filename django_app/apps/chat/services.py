@@ -3,9 +3,12 @@ from __future__ import annotations
 import sys
 import json
 import math
+import logging
 from pathlib import Path
 from typing import Any, Dict, List, Sequence
 from decimal import Decimal
+
+logger = logging.getLogger('apps.chat')
 
 # Django 앱(django_app)보다 한 단계 위에 있는 프로젝트 루트를 파이썬 경로에 추가
 # graph 모듈을 import하기 전에 프로젝트 루트를 sys.path에 추가해야 함
@@ -79,7 +82,7 @@ def _format_citations(raw_result: Dict[str, Any]) -> tuple[List[Dict[str, Any]],
     # ⚠️ 중요: selected_chunks가 비어있으면 참고문헌을 생성하지 않음
     # retrieval_results가 있어도 evaluate_chunk에서 관련성이 없다고 판단되면 selected_chunks가 비어있음
     if not selected_chunks and not web_selected_chunks:
-        print(f"[DEBUG _format_citations] selected_chunks와 web_selected_chunks가 모두 비어있음 → citations 생성 안 함")
+        logger.debug("selected_chunks와 web_selected_chunks가 모두 비어있음 → citations 생성 안 함")
         return [], case_type
 
     # retrieval_results에서 메타데이터 추출 (reranked_results 우선)
@@ -96,18 +99,9 @@ def _format_citations(raw_result: Dict[str, Any]) -> tuple[List[Dict[str, Any]],
             doi = article.get("doi") or metadata.get("doi") or ""
             pmid = article.get("pmid") or metadata.get("pmid") or ""
             
-            print(f"\n{'='*60}")
-            print(f"[DEBUG _format_citations] Citation #{idx} 필드 추출 결과:")
-            print(f"  title: {title[:80] if title else 'N/A'}...")
-            print(f"  pmid: {pmid or 'N/A'}")
-            print(f"  journal_name: {journal or 'N/A'}")
-            print(f"  year: {year or 'N/A'}")
-            print(f"  doi: {doi or 'N/A'}")
-            print(f"  article 구조: {list(article.keys()) if article else 'empty'}")
-            print(f"  result.keys: {list(result.keys())}")
+            logger.debug(f"Citation #{idx} 필드 추출 결과: title: {title[:80] if title else 'N/A'}..., pmid: {pmid or 'N/A'}, journal_name: {journal or 'N/A'}, year: {year or 'N/A'}, doi: {doi or 'N/A'}, article 구조: {list(article.keys()) if article else 'empty'}, result.keys: {list(result.keys())}")
             if article:
-                print(f"  article 내용: {article}")
-            print(f"{'='*60}\n")
+                logger.debug(f"  article 내용: {article}")
             
             # article 구조에서 먼저 찾고, 없으면 metadata에서 찾기 (fallback)
             formatted.append({
@@ -133,18 +127,9 @@ def _format_citations(raw_result: Dict[str, Any]) -> tuple[List[Dict[str, Any]],
             doi = article.get("doi") or metadata.get("doi") or ""
             pmid = article.get("pmid") or metadata.get("pmid") or ""
             
-            print(f"\n{'='*60}")
-            print(f"[DEBUG _format_citations] Citation #{idx} 필드 추출 결과 (retrieval_results):")
-            print(f"  title: {title[:80] if title else 'N/A'}...")
-            print(f"  pmid: {pmid or 'N/A'}")
-            print(f"  journal_name: {journal or 'N/A'}")
-            print(f"  year: {year or 'N/A'}")
-            print(f"  doi: {doi or 'N/A'}")
-            print(f"  article 구조: {list(article.keys()) if article else 'empty'}")
-            print(f"  result.keys: {list(result.keys())}")
+            logger.debug(f"Citation #{idx} 필드 추출 결과 (retrieval_results): title: {title[:80] if title else 'N/A'}..., pmid: {pmid or 'N/A'}, journal_name: {journal or 'N/A'}, year: {year or 'N/A'}, doi: {doi or 'N/A'}, article 구조: {list(article.keys()) if article else 'empty'}, result.keys: {list(result.keys())}")
             if article:
-                print(f"  article 내용: {article}")
-            print(f"{'='*60}\n")
+                logger.debug(f"  article 내용: {article}")
             
             # article 구조에서 먼저 찾고, 없으면 metadata에서 찾기 (fallback)
             formatted.append({
@@ -170,13 +155,11 @@ def _format_citations(raw_result: Dict[str, Any]) -> tuple[List[Dict[str, Any]],
                 unique_chunks.append(chunk_str)
         
         if len(web_selected_chunks) != len(unique_chunks):
-            print(f"[DEBUG _format_citations] ⚠️ web_selected_chunks 중복 제거: {len(web_selected_chunks)}개 → {len(unique_chunks)}개")
+            logger.debug(f"⚠️ web_selected_chunks 중복 제거: {len(web_selected_chunks)}개 → {len(unique_chunks)}개")
         
-        print(f"[DEBUG _format_citations] web_selected_chunks 처리 중: {len(unique_chunks)}개 (원본: {len(web_selected_chunks)}개)")
-        print(f"[DEBUG _format_citations] web_selected_chunks 타입: {type(unique_chunks)}")
-        print(f"[DEBUG _format_citations] web_selected_chunks 내용:")
+        logger.debug(f"web_selected_chunks 처리 중: {len(unique_chunks)}개 (원본: {len(web_selected_chunks)}개), 타입: {type(unique_chunks)}")
         for i, chunk in enumerate(unique_chunks[:5], 1):  # 최대 5개만 로깅
-            print(f"  [{i}] 타입: {type(chunk)}, 값: {str(chunk)[:100]}...")
+            logger.debug(f"  [{i}] 타입: {type(chunk)}, 값: {str(chunk)[:100]}...")
         
         # "웹자료 N:" 형식에서 인덱스 추출 (중복 제거)
         selected_indices = []
@@ -193,18 +176,16 @@ def _format_citations(raw_result: Dict[str, Any]) -> tuple[List[Dict[str, Any]],
                     if idx not in seen_indices:
                         selected_indices.append(idx)
                         seen_indices.add(idx)
-                        print(f"[DEBUG] 웹자료 인덱스 추출: '{chunk_str[:30]}...' → idx: {idx}")
+                        logger.debug(f"웹자료 인덱스 추출: '{chunk_str[:30]}...' → idx: {idx}")
                     else:
-                        print(f"[DEBUG] 중복 인덱스 제거: idx={idx}")
+                        logger.debug(f"중복 인덱스 제거: idx={idx}")
                 else:
-                    print(f"[DEBUG] 웹자료 형식 아님: '{chunk_str[:30]}...' (startswith 체크 실패 또는 ':' 없음)")
+                    logger.debug(f"웹자료 형식 아님: '{chunk_str[:30]}...' (startswith 체크 실패 또는 ':' 없음)")
             except Exception as e:
-                print(f"[DEBUG] 웹자료 인덱스 추출 실패: chunk={chunk[:30] if isinstance(chunk, str) else str(chunk)[:30]}, error: {e}")
-                import traceback
-                traceback.print_exc()
+                logger.debug(f"웹자료 인덱스 추출 실패: chunk={chunk[:30] if isinstance(chunk, str) else str(chunk)[:30]}, error: {e}", exc_info=True)
                 pass
 
-        print(f"[DEBUG] selected_indices (중복 제거 후): {selected_indices}")
+        logger.debug(f"selected_indices (중복 제거 후): {selected_indices}")
 
         # 선택된 인덱스의 web_results만 references로 추가
         for idx in selected_indices:
@@ -236,7 +217,7 @@ def _format_citations(raw_result: Dict[str, Any]) -> tuple[List[Dict[str, Any]],
                     "snippet": result_snippet[:200],  # 200자까지
                     "score": 0.9,  # 웹서치는 evaluate_web에서 이미 관련성 평가 통과 → 높은 관련성
                 })
-                print(f"[DEBUG] 웹 reference 추가: idx={idx}, title={result_title[:50]}")
+                logger.debug(f"웹 reference 추가: idx={idx}, title={result_title[:50]}")
 
     return formatted, case_type
 
@@ -270,7 +251,7 @@ def _build_history(conversation: Chat) -> list:
     return messages
 
 
-def generate_ai_response(conversation: Chat, prompt: str, return_state: bool = False, filter_type: str = None) -> tuple:
+def generate_ai_response(conversation: Chat, prompt: str, return_state: bool = False, filter_type: str = None, attached_images: list = None) -> tuple:
     """
     LangGraph RAG 워크플로우를 호출하여 답변과 참고문헌 정보를 생성한다.
 
@@ -279,6 +260,7 @@ def generate_ai_response(conversation: Chat, prompt: str, return_state: bool = F
         prompt: 사용자 질문
         return_state: result_state도 반환할지 여부 (논문 네트워크 생성용)
         filter_type: 필터 타입 (paper, clinical, protocol, simulation, interpretation)
+        attached_images: 첨부된 이미지 리스트 (선택적)
 
     Returns:
         return_state=False: (content, citations, scores, reference_type, chat_title)
@@ -295,6 +277,14 @@ def generate_ai_response(conversation: Chat, prompt: str, return_state: bool = F
     # 필터 타입이 있으면 payload에 추가
     if filter_type:
         payload["filter_type"] = filter_type
+    
+    # 첨부된 이미지가 있으면 payload에 추가
+    if attached_images:
+        logger.debug(f"generate_ai_response - attached_images 전달: {len(attached_images)}개, attached_images[0] keys: {list(attached_images[0].keys()) if attached_images else []}")
+        payload["attached_images"] = attached_images
+    else:
+        logger.debug("generate_ai_response - attached_images 없음")
+    
     result_state = app.invoke(payload) # ⭐ 워크플로우 시작!
     structured = result_state.get("structured_answer") or {}
     content = (
@@ -341,13 +331,11 @@ def generate_concept_graph(message: ChatMessage) -> str:
     """
     주어진 AI 응답 메시지를 기반으로 Mermaid 그래프 코드를 생성한다.
     """
-    print(f"[DEBUG] generate_concept_graph() 시작")
-    print(f"[DEBUG] 메시지 내용 길이: {len(message.content) if message.content else 0}")
-    print(f"[DEBUG] 메시지 내용 미리보기: {message.content[:100] if message.content else 'None'}...")
+    logger.debug(f"generate_concept_graph() 시작 - 메시지 내용 길이: {len(message.content) if message.content else 0}, 미리보기: {message.content[:100] if message.content else 'None'}...")
     
     try:
         llm = get_llm()
-        print(f"[DEBUG] LLM 초기화 완료")
+        logger.debug("LLM 초기화 완료")
         
         system_prompt = SystemMessage(
             content=(
@@ -368,21 +356,18 @@ def generate_concept_graph(message: ChatMessage) -> str:
                 f"AI 응답:\n{message.content}"
             )
         )
-        print(f"[DEBUG] LLM 호출 시작...")
+        logger.debug("LLM 호출 시작...")
         response = llm.invoke([system_prompt, user_prompt])
-        print(f"[DEBUG] LLM 호출 완료")
+        logger.debug("LLM 호출 완료")
         
         graph_code = response.content if hasattr(response, "content") else str(response)
-        print(f"[DEBUG] 생성된 그래프 코드 길이: {len(graph_code) if graph_code else 0}")
-        print(f"[DEBUG] 생성된 그래프 코드 미리보기: {graph_code[:200] if graph_code else 'None'}...")
+        logger.debug(f"생성된 그래프 코드 길이: {len(graph_code) if graph_code else 0}, 미리보기: {graph_code[:200] if graph_code else 'None'}...")
         
         result = graph_code.strip()
-        print(f"[DEBUG] generate_concept_graph() 완료, 반환 길이: {len(result)}")
+        logger.debug(f"generate_concept_graph() 완료, 반환 길이: {len(result)}")
         return result
     except Exception as e:
-        print(f"[ERROR] generate_concept_graph() 오류 발생: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"generate_concept_graph() 오류 발생: {e}", exc_info=True)
         raise
 
 
@@ -626,7 +611,7 @@ def extract_pmids_from_rag_result(result_state: Dict[str, Any], max_count: int =
     
     # 중복 제거 및 최대 개수 제한
     unique_pmids = list(set(pmids))[:max_count]
-    print(f"[PaperGraph] 추출된 pmid 개수: {len(unique_pmids)}개 (중심: {sum(1 for p in unique_pmids if pmid_types.get(p) == 'central')}개, 관련: {sum(1 for p in unique_pmids if pmid_types.get(p) == 'related')}개)")
+    logger.info(f"PaperGraph: 추출된 pmid 개수: {len(unique_pmids)}개 (중심: {sum(1 for p in unique_pmids if pmid_types.get(p) == 'central')}개, 관련: {sum(1 for p in unique_pmids if pmid_types.get(p) == 'related')}개)")
     return unique_pmids, pmid_types
 
 
@@ -645,7 +630,7 @@ def query_neo4j_paper_network(pmids: List[int], pmid_types: Dict[int, str] = Non
         }
     """
     if not pmids:
-        print("[PaperGraph] pmid가 없어 Neo4j 조회를 건너뜁니다.")
+        logger.info("PaperGraph: pmid가 없어 Neo4j 조회를 건너뜁니다.")
         return {"nodes": [], "edges": []}
     
     if pmid_types is None:
@@ -742,12 +727,10 @@ def query_neo4j_paper_network(pmids: List[int], pmid_types: Dict[int, str] = Non
                     for original_pmid in pmids:
                         edges.append([str(original_pmid), str(pmid)])
             
-            print(f"[PaperGraph] Neo4j 조회 완료: 노드 {len(nodes)}개 (중심: {sum(1 for n in nodes if n.get('paper_type') == 'central')}개, 관련: {sum(1 for n in nodes if n.get('paper_type') == 'related')}개, 파생: {sum(1 for n in nodes if n.get('paper_type') == 'derived')}개), 엣지 {len(edges)}개")
+            logger.info(f"PaperGraph: Neo4j 조회 완료: 노드 {len(nodes)}개 (중심: {sum(1 for n in nodes if n.get('paper_type') == 'central')}개, 관련: {sum(1 for n in nodes if n.get('paper_type') == 'related')}개, 파생: {sum(1 for n in nodes if n.get('paper_type') == 'derived')}개), 엣지 {len(edges)}개")
             
     except Exception as e:
-        print(f"[PaperGraph] Neo4j 조회 오류: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"PaperGraph: Neo4j 조회 오류: {e}", exc_info=True)
         return {"nodes": [], "edges": []}
     
     return {"nodes": nodes, "edges": edges}
@@ -775,7 +758,7 @@ def create_paper_graph_from_neo4j(
     edges_data = paper_network.get("edges", [])
     
     if not nodes_data:
-        print("[PaperGraph] 노드가 없어 그래프를 생성하지 않습니다.")
+        logger.info("PaperGraph: 노드가 없어 그래프를 생성하지 않습니다.")
         return None
     
     try:
@@ -905,13 +888,11 @@ def create_paper_graph_from_neo4j(
             }
         )
         
-        print(f"[PaperGraph] 그래프 생성 완료: graph_sid={graph.graph_sid}, 노드 {node_count}개, 엣지 {len(edges_data)}개")
+        logger.info(f"PaperGraph: 그래프 생성 완료: graph_sid={graph.graph_sid}, 노드 {node_count}개, 엣지 {len(edges_data)}개")
         return graph
-        
+
     except Exception as e:
-        print(f"[PaperGraph] 그래프 생성 오류: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"PaperGraph: 그래프 생성 오류: {e}", exc_info=True)
         return None
 
 
@@ -929,20 +910,20 @@ def generate_paper_graph_background(
         user_question: 사용자 질문 (선택적)
     """
     try:
-        print(f"[PaperGraph] 백그라운드 논문 네트워크 생성 시작: message_id={message.message_sid}")
+        logger.info(f"PaperGraph: 백그라운드 논문 네트워크 생성 시작: message_id={message.message_sid}")
         
         # 1. RAG 결과에서 pmid 추출 및 타입 분류 (최대 20개)
         pmids, pmid_types = extract_pmids_from_rag_result(result_state, max_count=20)
         
         if not pmids:
-            print("[PaperGraph] 추출된 pmid가 없어 논문 네트워크를 생성하지 않습니다.")
+            logger.info("PaperGraph: 추출된 pmid가 없어 논문 네트워크를 생성하지 않습니다.")
             return
         
         # 2. Neo4j에서 논문 네트워크 조회 (타입 정보 포함)
         paper_network = query_neo4j_paper_network(pmids, pmid_types)
         
         if not paper_network.get("nodes"):
-            print("[PaperGraph] Neo4j에서 조회된 노드가 없습니다.")
+            logger.info("PaperGraph: Neo4j에서 조회된 노드가 없습니다.")
             return
         
         # 3. PaperGraph 생성 및 저장
@@ -956,9 +937,7 @@ def generate_paper_graph_background(
             graph_description=graph_description
         )
         
-        print(f"[PaperGraph] 백그라운드 논문 네트워크 생성 완료: message_id={message.message_sid}")
+        logger.info(f"PaperGraph: 백그라운드 논문 네트워크 생성 완료: message_id={message.message_sid}")
         
     except Exception as e:
-        print(f"[PaperGraph] 백그라운드 논문 네트워크 생성 오류: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"PaperGraph: 백그라운드 논문 네트워크 생성 오류: {e}", exc_info=True)

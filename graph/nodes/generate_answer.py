@@ -20,6 +20,9 @@ from graph.llm_config import (
     generate_answer_inference_llm,
     get_model_name
 )
+from graph.logger_config import get_logger
+
+logger = get_logger(__name__)
 
 # Fallback 모델들은 optional로 처리
 try:
@@ -49,13 +52,10 @@ def generate_answer_node(state: Dict[str, Any]) -> Dict[str, Any]:
     question = state.get("question", "")
     
     # 노드 진입 로그
-    print(f"\n{'='*60}")
-    print(f"[GENERATE_ANSWER NODE] 시작")
-    print(f"  question: {str(question)[:30]}...")
-    print(f"  case_type: {case_type}")
-    print(f"  selected_chunks: {len(state.get('selected_chunks', []))}개")
-    print(f"  web_selected_chunks: {len(state.get('web_selected_chunks', []))}개")
-    print(f"{'='*60}\n")
+    question_preview = str(question)[:30]
+    selected_chunks_count = len(state.get('selected_chunks', []))
+    web_selected_chunks_count = len(state.get('web_selected_chunks', []))
+    logger.info(f"[GENERATE_ANSWER NODE] 시작 - question: {question_preview}..., case_type: {case_type}, selected_chunks: {selected_chunks_count}개, web_selected_chunks: {web_selected_chunks_count}개")
     
     # NO_RELATION은 classifier에서 이미 처리됨
     if case_type == "NO_RELATION":
@@ -77,9 +77,8 @@ def generate_answer_node(state: Dict[str, Any]) -> Dict[str, Any]:
         state["final_answer"] = "죄송합니다. 질문을 처리할 수 없습니다."
     
     # 노드 종료 로그
-    print(f"\n[GENERATE_ANSWER NODE] 종료")
-    print(f"  final_answer: {str(state.get('final_answer', ''))[:30]}...")
-    print(f"{'='*60}\n")
+    final_answer_preview = str(state.get('final_answer', ''))[:30]
+    logger.info(f"[GENERATE_ANSWER NODE] 종료 - final_answer: {final_answer_preview}...")
     
     return state
 
@@ -93,7 +92,7 @@ def _generate_user_info_answer(state: Dict[str, Any]) -> Dict[str, Any]:
     
     # 사용 모델 확인
     model_name = get_model_name(generate_answer_info_llm)
-    print(f"[USER_INFO] 사용 모델: {model_name}")
+    logger.info(f"[USER_INFO] 사용 모델: {model_name}")
     
     # 이전 USER_INFO 대화 컨텍스트 구성
     previous_user_info = ""
@@ -172,12 +171,11 @@ def _generate_bio_answer(state: Dict[str, Any]) -> Dict[str, Any]:
     # 웹 검색 결과 추가
     web_selected_chunks = state.get("web_selected_chunks", [])
     if web_selected_chunks:
-        print(f"[GenerateAnswer BIO] web_selected_chunks 수신: {len(web_selected_chunks)}개")
-        print(f"[GenerateAnswer BIO] web_selected_chunks 타입: {type(web_selected_chunks)}")
+        logger.debug(f"web_selected_chunks 수신: {len(web_selected_chunks)}개, 타입: {type(web_selected_chunks)}")
         for i, chunk in enumerate(web_selected_chunks[:3], 1):  # 최대 3개만 로깅
             chunk_type = type(chunk)
             chunk_preview = str(chunk)[:80] if chunk else "None"
-            print(f"[GenerateAnswer BIO]   [{i}] 타입: {chunk_type}, 값: {chunk_preview}...")
+            logger.debug(f"  [{i}] 타입: {chunk_type}, 값: {chunk_preview}...")
         
         context_parts.append("\n=== 웹 검색 결과 ===")
         for i, chunk in enumerate(web_selected_chunks, 1):
@@ -246,7 +244,7 @@ def _generate_bio_answer(state: Dict[str, Any]) -> Dict[str, Any]:
     try:
         # 사용 모델 확인
         model_name = get_model_name(generate_answer_bio_llm)
-        print(f"[BIO_Q] 사용 모델: {model_name}")
+        logger.info(f"[BIO_Q] 사용 모델: {model_name}")
         
         # LLM으로 답변 생성
         answer = generate_answer_bio_llm(prompt)
@@ -324,7 +322,7 @@ def _generate_simulation_answer(state: Dict[str, Any]) -> Dict[str, Any]:
     try:
         # 사용 모델 확인
         model_name = get_model_name(generate_answer_simulation_llm)
-        print(f"[SIMULATION_Q] 사용 모델: {model_name}")
+        logger.info(f"[SIMULATION_Q] 사용 모델: {model_name}")
         
         # LLM으로 답변 생성
         answer = generate_answer_simulation_llm(prompt)
@@ -366,12 +364,11 @@ def _generate_protocol_answer(state: Dict[str, Any]) -> Dict[str, Any]:
     # 웹 검색 결과 추가
     web_selected_chunks = state.get("web_selected_chunks", [])
     if web_selected_chunks:
-        print(f"[GenerateAnswer PROTOCOL] web_selected_chunks 수신: {len(web_selected_chunks)}개")
-        print(f"[GenerateAnswer PROTOCOL] web_selected_chunks 타입: {type(web_selected_chunks)}")
+        logger.debug(f"web_selected_chunks 수신: {len(web_selected_chunks)}개, 타입: {type(web_selected_chunks)}")
         for i, chunk in enumerate(web_selected_chunks[:3], 1):  # 최대 3개만 로깅
             chunk_type = type(chunk)
             chunk_preview = str(chunk)[:80] if chunk else "None"
-            print(f"[GenerateAnswer PROTOCOL]   [{i}] 타입: {chunk_type}, 값: {chunk_preview}...")
+            logger.debug(f"  [{i}] 타입: {chunk_type}, 값: {chunk_preview}...")
         
         context_parts.append("\n=== 웹 검색 결과 ===")
         for i, chunk in enumerate(web_selected_chunks, 1):
@@ -444,7 +441,7 @@ def _generate_protocol_answer(state: Dict[str, Any]) -> Dict[str, Any]:
     try:
         # 사용 모델 확인
         model_name = get_model_name(generate_answer_protocol_llm)
-        print(f"[PROTOCOL_Q] 사용 모델: {model_name}")
+        logger.info(f"[PROTOCOL_Q] 사용 모델: {model_name}")
         
         # LLM으로 답변 생성
         answer = generate_answer_protocol_llm(prompt)
@@ -457,14 +454,14 @@ def _generate_protocol_answer(state: Dict[str, Any]) -> Dict[str, Any]:
         if generate_answer_protocol_fallback_llm is not None:
             try:
                 fallback_model_name = get_model_name(generate_answer_protocol_fallback_llm)
-                print(f"[PROTOCOL_Q] Fallback 모델: {fallback_model_name}")
+                logger.warning(f"[PROTOCOL_Q] Fallback 모델 사용: {fallback_model_name}")
                 answer = generate_answer_protocol_fallback_llm(prompt)
                 state["final_answer"] = answer
             except Exception as fallback_error:
-                print(f"[PROTOCOL_Q] Fallback 모델도 실패: {fallback_error}")
+                logger.error(f"[PROTOCOL_Q] Fallback 모델도 실패: {fallback_error}", exc_info=True)
                 state["final_answer"] = f"프로토콜 답변 생성 중 오류가 발생했습니다: {str(e)}"
         else:
-            print(f"[PROTOCOL_Q] Fallback 모델이 설정되지 않음")
+            logger.warning("[PROTOCOL_Q] Fallback 모델이 설정되지 않음")
             state["final_answer"] = f"프로토콜 답변 생성 중 오류가 발생했습니다: {str(e)}"
     
     return state
@@ -512,7 +509,7 @@ def _generate_inference_answer(state: Dict[str, Any]) -> Dict[str, Any]:
     try:
         # 사용 모델 확인
         model_name = get_model_name(generate_answer_inference_llm)
-        print(f"[INFERENCE_Q] 사용 모델: {model_name}")
+        logger.info(f"[INFERENCE_Q] 사용 모델: {model_name}")
         
         # LLM으로 답변 생성
         answer = generate_answer_inference_llm(prompt)
@@ -524,14 +521,14 @@ def _generate_inference_answer(state: Dict[str, Any]) -> Dict[str, Any]:
         if generate_answer_inference_fallback_llm is not None:
             try:
                 fallback_model_name = get_model_name(generate_answer_inference_fallback_llm)
-                print(f"[INFERENCE_Q] Fallback 모델: {fallback_model_name}")
+                logger.warning(f"[INFERENCE_Q] Fallback 모델 사용: {fallback_model_name}")
                 answer = generate_answer_inference_fallback_llm(prompt)
                 state["final_answer"] = answer
             except Exception as fallback_error:
-                print(f"[INFERENCE_Q] Fallback 모델도 실패: {fallback_error}")
+                logger.error(f"[INFERENCE_Q] Fallback 모델도 실패: {fallback_error}", exc_info=True)
                 state["final_answer"] = f"실험 결과 해석 생성 중 오류가 발생했습니다: {str(e)}"
         else:
-            print(f"[INFERENCE_Q] Fallback 모델이 설정되지 않음")
+            logger.warning("[INFERENCE_Q] Fallback 모델이 설정되지 않음")
             state["final_answer"] = f"실험 결과 해석 생성 중 오류가 발생했습니다: {str(e)}"
     
     return state

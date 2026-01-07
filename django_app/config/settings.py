@@ -324,3 +324,120 @@ SPECTACULAR_SETTINGS = {
         {'csrftoken': []},
     ],
 }
+
+# ───────────────────────────────────
+# Logging Configuration
+# ───────────────────────────────────
+# AWS 배포 환경 고려사항:
+# - docker-compose.prod.yml에서 CloudWatch Logs (awslogs driver) 사용
+# - 프로덕션에서는 콘솔 로깅만 사용 (CloudWatch가 자동 수집)
+# - 로컬 개발 환경에서는 파일 로깅도 사용 가능
+# - 환경변수 DJANGO_LOG_TO_FILE=true로 파일 로깅 활성화 가능
+
+# 로그 레벨 설정 (환경변수로 제어 가능)
+LOG_LEVEL = os.getenv('DJANGO_LOG_LEVEL', 'INFO').upper()
+# 파일 로깅 활성화 여부 (기본값: DEBUG 모드일 때만, 프로덕션에서는 False)
+LOG_TO_FILE = env.bool('DJANGO_LOG_TO_FILE', default=DEBUG)
+
+# 로그 핸들러 설정
+handlers_config = {
+    'console': {
+        'level': LOG_LEVEL,
+        'class': 'logging.StreamHandler',
+        'formatter': 'verbose',
+    },
+}
+
+# 파일 로깅 핸들러 (로컬 개발 환경 또는 명시적으로 활성화한 경우)
+if LOG_TO_FILE:
+    # 로그 디렉토리 생성 (예외 처리 포함)
+    log_dir = BASE_DIR / 'logs'
+    try:
+        os.makedirs(log_dir, exist_ok=True)
+    except (OSError, PermissionError) as e:
+        # AWS 컨테이너 환경에서 권한 문제 시 파일 로깅 비활성화
+        import warnings
+        warnings.warn(f"로그 디렉토리 생성 실패: {e}. 파일 로깅을 비활성화합니다.")
+        LOG_TO_FILE = False
+    
+    if LOG_TO_FILE:
+        handlers_config['file'] = {
+            'level': LOG_LEVEL,
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': str(log_dir / 'django.log'),
+            'maxBytes': 1024 * 1024 * 10,  # 10MB
+            'backupCount': 5,
+            'formatter': 'verbose',
+            'encoding': 'utf-8',
+        }
+        handlers_config['debug_file'] = {
+            'level': 'DEBUG',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': str(log_dir / 'debug.log'),
+            'maxBytes': 1024 * 1024 * 10,  # 10MB
+            'backupCount': 5,
+            'formatter': 'verbose',
+            'filters': ['require_debug_true'],
+            'encoding': 'utf-8',
+        }
+
+# 루트 핸들러 설정 (프로덕션에서는 콘솔만, 개발 환경에서는 파일도 포함)
+root_handlers = ['console']
+if LOG_TO_FILE:
+    root_handlers.append('file')
+
+# 각 logger의 핸들러 설정
+logger_handlers = ['console']
+if LOG_TO_FILE:
+    logger_handlers.append('file')
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '[%(asctime)s] [%(levelname)s] [%(name)s:%(lineno)d] %(message)s',
+            'datefmt': '%Y-%m-%d %H:%M:%S',
+        },
+        'simple': {
+            'format': '[%(levelname)s] %(message)s',
+        },
+    },
+    'filters': {
+        'require_debug_true': {
+            '()': 'django.utils.log.RequireDebugTrue',
+        },
+    },
+    'handlers': handlers_config,
+    'root': {
+        'handlers': root_handlers,
+        'level': LOG_LEVEL,
+    },
+    'loggers': {
+        'django': {
+            'handlers': logger_handlers,
+            'level': LOG_LEVEL,
+            'propagate': False,
+        },
+        'django.request': {
+            'handlers': logger_handlers,
+            'level': 'WARNING',
+            'propagate': False,
+        },
+        'django.db.backends': {
+            'handlers': ['debug_file'] if LOG_TO_FILE else ['console'],
+            'level': 'DEBUG' if DEBUG else 'INFO',
+            'propagate': False,
+        },
+        'apps': {
+            'handlers': logger_handlers,
+            'level': LOG_LEVEL,
+            'propagate': False,
+        },
+        'graph': {
+            'handlers': logger_handlers,
+            'level': LOG_LEVEL,
+            'propagate': False,
+        },
+    },
+}

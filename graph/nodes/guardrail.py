@@ -14,6 +14,9 @@ guardrail.py
 
 from typing import Dict, Any
 from graph.llm_config import guardrail_check_safety_llm, get_model_name
+from graph.logger_config import get_logger
+
+logger = get_logger(__name__)
 
 
 def _check_harmful_content(question: str) -> Dict[str, Any]:
@@ -77,7 +80,7 @@ JSON만 출력하고 다른 텍스트는 포함하지 마세요."""
     response = None
     try:
         model_name = get_model_name(guardrail_check_safety_llm)
-        print(f"[Guardrail] 안전 검사 모델: {model_name}")
+        logger.info(f"안전 검사 모델: {model_name}")
         response = guardrail_check_safety_llm(prompt).strip()
         
         # JSON 파싱
@@ -102,11 +105,11 @@ JSON만 출력하고 다른 텍스트는 포함하지 마세요."""
         }
         
     except Exception as e:
-        print(f"[Guardrail Error] {e}")
+        logger.error(f"안전 검사 중 오류 발생: {e}", exc_info=True)
         if response is not None:
-            print(f"[Guardrail Error] Response: {response}")
+            logger.debug(f"오류 발생 시 응답: {response}")
         else:
-            print(f"[Guardrail Error] Response: (not available - error occurred before LLM call)")
+            logger.debug("응답 없음 - LLM 호출 전 오류 발생")
         # 오류 시 안전하게 차단 (False Positive보다 False Negative가 더 위험)
         return {
             "is_safe": True,  # 에러 시에는 통과시키고 다음 단계에서 처리
@@ -130,15 +133,17 @@ def guardrail_input_node(state: Dict[str, Any]) -> Dict[str, Any]:
     """
     
     # 노드 진입 로그
-    print(f"\n{'='*60}")
-    print(f"[GUARDRAIL INPUT NODE] 시작")
-    print(f"  question: {str(state.get('question', ''))[:50]}...")
-    print(f"{'='*60}\n")
+    question_preview = str(state.get('question', ''))[:50]
+    logger.info(f"[GUARDRAIL INPUT NODE] 시작 - question: {question_preview}...")
+    
+    # 디버깅: attached_images 확인
+    attached_images = state.get("attached_images", [])
+    logger.debug(f"attached_images 확인: {len(attached_images) if attached_images else 0}개")
     
     question = (state.get("question") or "").strip()
     
     if not question:
-        # 빈 질문은 통과
+        # 빈 질문은 통과 (attached_images 유지)
         state["guardrail_passed"] = True
         return state
     
@@ -151,8 +156,7 @@ def guardrail_input_node(state: Dict[str, Any]) -> Dict[str, Any]:
     # 로깅용 (State에는 저장하지 않음)
     risk_category = safety_check["risk_category"]
     risk_reason = safety_check["reason"]
-    print(f"[Guardrail] Risk Category: {risk_category}")
-    print(f"[Guardrail] Reason: {risk_reason}")
+    logger.info(f"Risk Category: {risk_category}, Reason: {risk_reason}")
     
     # 위험한 질문인 경우 즉시 차단 메시지 설정
     if not safety_check["is_safe"]:
@@ -182,12 +186,16 @@ def guardrail_input_node(state: Dict[str, Any]) -> Dict[str, Any]:
 다른 질문이 있으시면 언제든지 말씀해 주세요."""
     
     # 노드 종료 로그
-    print(f"\n[GUARDRAIL INPUT NODE] 종료")
-    print(f"  guardrail_passed: {state.get('guardrail_passed')}")
-    if not state.get('guardrail_passed'):
-        print(f"  risk_category: {risk_category}")
-        print(f"  reason: {risk_reason}")
-    print(f"{'='*60}\n")
+    guardrail_passed = state.get('guardrail_passed')
+    if not guardrail_passed:
+        logger.info(f"[GUARDRAIL INPUT NODE] 종료 - guardrail_passed: {guardrail_passed}, risk_category: {risk_category}, reason: {risk_reason}")
+    else:
+        logger.info(f"[GUARDRAIL INPUT NODE] 종료 - guardrail_passed: {guardrail_passed}")
+    
+    # attached_images가 있으면 명시적으로 유지 (LangGraph state 병합을 위해)
+    if attached_images:
+        state["attached_images"] = attached_images
+        logger.debug(f"attached_images 유지: {len(attached_images)}개")
     
     return state
 
