@@ -1,0 +1,51 @@
+{% load static %}
+<div class="modal-overlay" id="chatDislikeModal" role="dialog" aria-labelledby="chatDislikeModalTitle" aria-modal="true">
+    <div class="modal-container modal-small chat-dislike-modal">
+        <div class="modal-header">
+            <h2 class="modal-title" id="chatDislikeModalTitle">무엇이 문제였나요?</h2>
+            <button class="modal-close-btn" type="button" aria-label="닫기" data-action="close">
+                <i class="fa-solid fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <form id="chatDislikeForm" class="chat-dislike-form">
+                <p class="chat-dislike-description">싫어요를 누른 이유를 선택해주세요.</p>
+                <div class="chat-dislike-options" role="radiogroup" aria-label="싫어요 사유">
+                    <label class="chat-dislike-option">
+                        <input type="radio" name="chatDislikeReason" value="incorrect_fact" />
+                        <span>사실과 다름 (Incorrect Fact)</span>
+                    </label>
+                    <label class="chat-dislike-option">
+                        <input type="radio" name="chatDislikeReason" value="wrong_reference" />
+                        <span>참고문헌/가이드라인이 틀림 (Wrong Reference)</span>
+                    </label>
+                    <label class="chat-dislike-option">
+                        <input type="radio" name="chatDislikeReason" value="too_vague" />
+                        <span>너무 모호함 (Too Vague)</span>
+                    </label>
+                    <label class="chat-dislike-option">
+                        <input type="radio" name="chatDislikeReason" value="misunderstood" />
+                        <span>질문을 이해 못함 (Misunderstood Question)</span>
+                    </label>
+                    <label class="chat-dislike-option">
+                        <input type="radio" name="chatDislikeReason" value="other" />
+                        <span>기타 (Other)</span>
+                    </label>
+                </div>
+                <div class="chat-dislike-textarea" id="chatDislikeTextareaWrapper">
+                    <textarea
+                        id="chatDislikeReasonText"
+                        class="chat-dislike-textarea-input"
+                        placeholder="기타 사유를 입력하세요"
+                        rows="4"
+                    ></textarea>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="modal-btn modal-btn-secondary" type="button" data-action="close" id="chatDislikeCancelBtn">취소</button>
+            <button class="modal-btn modal-btn-secondary" type="button" id="chatDislikeRemoveBtn">피드백 삭제</button>
+            <button class="modal-btn modal-btn-primary" type="button" id="chatDislikeSubmitBtn" disabled>제출</button>
+        </div>
+    </div>
+</div>

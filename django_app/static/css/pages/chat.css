@@ -150,6 +150,7 @@
     border: none;
     outline: none;
     color: #111827;
+    
 }
 
 .chat-input-field::placeholder {
@@ -668,6 +669,7 @@
     flex: 1; /* flex-1 */
     display: flex;
     justify-content: flex-end; /* flex justify-end */
+    min-width: 0; /* allow text to wrap inside flex */
 }
 
 .message-bubble-user {
@@ -683,6 +685,30 @@
     font-size: 0.875rem; /* text-sm */
     line-height: 1.75; /* leading-relaxed */
     margin: 0;
+}
+
+/* Message Images */
+.message-images {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.message-image-item {
+    max-width: 200px;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.message-image-item img {
+    width: 100%;
+    height: auto;
+    display: block;
+    max-height: 300px;
+    object-fit: contain;
 }
 
 .user-avatar {
@@ -723,12 +749,20 @@
 
 .message-content-assistant {
     flex: 1; /* flex-1 */
+    min-width: 0; /* keep markdown content from overflowing flex container */
 }
 
 .markdown-content {
     font-size: 0.875rem; /* text-sm */
     color: #111827; /* text-gray-900 */
     line-height: 1.75;
+    overflow-wrap: anywhere; /* break long tokens like URLs */
+    word-break: break-word;
+}
+
+.markdown-content a {
+    overflow-wrap: anywhere;
+    word-break: break-all; /* ensure raw URLs wrap safely */
 }
 
 .markdown-content h1 {
@@ -798,12 +832,19 @@
     overflow-x: auto;
     margin-bottom: 0.75rem; /* mb-3 */
     display: block;
+    max-width: 100%; /* 부모 컨테이너 너비를 초과하지 않도록 */
+    word-wrap: break-word; /* 긴 단어도 줄바꿈 */
 }
 
 .markdown-content pre code {
     background: none;
     padding: 0;
     font-size: 0.875rem; /* text-sm */
+    white-space: pre-wrap; /* 공백과 줄바꿈 유지하되, 필요시 줄바꿈 */
+    word-wrap: break-word; /* 긴 단어도 줄바꿈 */
+    overflow-wrap: break-word; /* 긴 URL이나 토큰도 줄바꿈 */
+    display: block;
+    max-width: 100%;
 }
 
 /* Mermaid Chart Styles */
@@ -936,6 +977,30 @@
 
 .action-btn i {
     font-size: 0.875rem;
+}
+
+.action-btn.selected {
+    font-weight: 600;
+}
+
+.action-btn.selected-like {
+    background: #ecfdf5;
+    border-color: #34d399;
+    color: #047857;
+}
+
+.action-btn.selected-like:hover {
+    background: #d1fae5;
+}
+
+.action-btn.selected-dislike {
+    background: #fef2f2;
+    border-color: #f87171;
+    color: #b91c1c;
+}
+
+.action-btn.selected-dislike:hover {
+    background: #fee2e2;
 }
 
 .action-btn-text {

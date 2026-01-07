@@ -191,6 +191,52 @@ def classify_agent_node(state: Dict[str, Any]) -> Dict[str, Any]:
     print(f"  conversation_id: {state.get('conversation_id', '')}")
     print(f"{'='*60}\n")
 
+    # case_type이 이미 지정되어 있으면 LLM 호출 없이 바로 다음 노드로 이동
+    existing_case_type = state.get("case_type")
+    if existing_case_type and existing_case_type != "N/A":
+        print(f"[Classifier] case_type이 이미 지정됨: '{existing_case_type}' (LLM 호출 건너뜀)")
+        # is_follow_up만 설정하고 바로 반환
+        q = (state.get("question") or "").strip()
+        if q:
+            needs_previous = _check_needs_previous_context(q)
+            state["is_follow_up"] = needs_previous
+        else:
+            state["is_follow_up"] = False
+        
+        # 노드 종료 로그
+        print(f"\n[CLASSIFIER NODE] 종료 (기존 case_type 사용)")
+        print(f"  case_type: {state.get('case_type', '')}")
+        print(f"  is_follow_up: {state.get('is_follow_up', False)}")
+        print(f"{'='*60}\n")
+        
+        return state
+
+    # 필터 타입이 있으면 LLM 호출 없이 직접 case_type 설정
+    filter_type = state.get("filter_type")
+    if filter_type:
+        # 필터 타입을 case_type으로 매핑
+        filter_to_case_type = {
+            "paper": "BIO_Q",  # 논문/임상
+            "clinical": "BIO_Q",  # 임상 (하위 호환성)
+            "protocol": "PROTOCOL_Q",
+            "simulation": "SIMULATION_Q",
+            "interpretation": "INFERENCE_Q",  # 결과 해석
+        }
+        
+        case_label = filter_to_case_type.get(filter_type)
+        if case_label:
+            print(f"[Classifier] 필터 타입 '{filter_type}' → case_type '{case_label}' (LLM 호출 건너뜀)")
+            state["case_type"] = case_label
+            state["is_follow_up"] = False
+            
+            # 노드 종료 로그
+            print(f"\n[CLASSIFIER NODE] 종료 (필터 기반)")
+            print(f"  case_type: {state.get('case_type', '')}")
+            print(f"  is_follow_up: {state.get('is_follow_up', False)}")
+            print(f"{'='*60}\n")
+            
+            return state
+
     # state 딕셔너리에서 'question' 키의 값을 가져옵니다
     # 만약 값이 없으면 빈 문자열("")을 사용합니다
     # .strip()은 앞뒤 공백을 제거합니다 (예: "  안녕  " → "안녕")
