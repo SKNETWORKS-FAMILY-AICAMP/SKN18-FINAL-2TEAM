@@ -364,6 +364,7 @@ async function handleSearch() {
                 evidenceLevel: r.protein_existence,       // -> Evidence at protein level
                 annotationScore: r.annotation_score,      // -> 5
                 tags: r.keywords || [],         // -> #Hormone, ...
+                sequence: r.sequence || "",
             }));
 
             currentPage = 1;

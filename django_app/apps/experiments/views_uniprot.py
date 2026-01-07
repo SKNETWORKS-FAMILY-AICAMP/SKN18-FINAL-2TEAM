@@ -116,6 +116,8 @@ def uniprot_search_api(request):
             for kw in item.get("keywords", [])
             if kw.get("name")
         ]
+        # --- Sequence ---
+        seq = item.get("sequence", {})
 
         results.append({
             "accession": item.get("primaryAccession"),          # P38567
@@ -128,7 +130,8 @@ def uniprot_search_api(request):
             "protein_existence": protein_existence,             # Evidence at protein level
             "annotation_score": item.get("annotationScore"),    # 5
             "keywords": keywords,                               # Glycosidase, ...
-        })
+            'sequence': seq.get("value")}
+        )
 
     return Response({
         "keyword": keyword,
