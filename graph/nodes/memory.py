@@ -14,6 +14,9 @@ from psycopg_pool import ConnectionPool
 from dotenv import load_dotenv
 
 from graph.llm_config import memory_summarize_tool_llm, get_model_name
+from graph.logger_config import get_logger
+
+logger = get_logger(__name__)
 
 # .env 파일 로드
 load_dotenv()
@@ -100,7 +103,7 @@ def summarize_llm_response(question: str, full_response: str, max_length: int = 
 요약만 출력하세요:"""
 
         model_name = get_model_name(memory_summarize_tool_llm)
-        print(f"[Memory] 요약 모델: {model_name}")
+        logger.debug(f"요약 모델: {model_name}")
         summary = memory_summarize_tool_llm(prompt).strip()
 
         # 길이 초과 시 문장 단위로 자르기
@@ -112,11 +115,11 @@ def summarize_llm_response(question: str, full_response: str, max_length: int = 
             else:
                 summary = summary[:target_length-3] + "..."
 
-        print(f"[Summarize] Q&A 요약 완료: 질문 {len(question)}자 + 응답 {len(full_response)}자 → 요약 {len(summary)}자 ({sentence_count}문장)")
+        logger.info(f"Q&A 요약 완료: 질문 {len(question)}자 + 응답 {len(full_response)}자 → 요약 {len(summary)}자 ({sentence_count}문장)")
         return summary
 
     except Exception as e:
-        print(f"[Summarize] LLM 요약 실패: {e}, fallback 사용")
+        logger.warning(f"LLM 요약 실패: {e}, fallback 사용", exc_info=True)
         # fallback: 질문 요약 + 답변 첫 문장
         question_summary = question[:50] + "..." if len(question) > 50 else question
         sentences = full_response.split('.')
@@ -154,7 +157,7 @@ def memory_read_basic_tool(chat_room_id: str, user_id: str = "default") -> dict:
     try:
         chat_room_id_int = int(chat_room_id) if chat_room_id else None
     except (ValueError, TypeError):
-        print(f"[memory_read_basic_tool] Warning: chat_room_id 변환 실패: {chat_room_id}")
+        logger.warning(f"chat_room_id 변환 실패: {chat_room_id}")
         return {
             "last_question": "",
             "last_summary": "",
@@ -199,7 +202,7 @@ def memory_read_basic_tool(chat_room_id: str, user_id: str = "default") -> dict:
         }
 
     except Exception as e:
-        print(f"[memory_read_basic_tool Error] {e}")
+        logger.error(f"memory_read_basic_tool 오류: {e}", exc_info=True)
         return {
             "last_question": "",
             "last_summary": "",
@@ -223,19 +226,17 @@ def memory_read_node(state):
     """
 
     # 노드 진입 로그
-    print(f"\n{'='*60}")
-    print(f"[MEMORY_READ NODE] 시작")
-    print(f"  question: {str(state.get('question', ''))[:30]}...")
-    print(f"  conversation_id: {state.get('conversation_id', '')}")
-    print(f"  case_type: {state.get('case_type', '')}")
-    print(f"{'='*60}\n")
+    question_preview = str(state.get('question', ''))[:30]
+    conversation_id = state.get('conversation_id', '')
+    case_type = state.get('case_type', '')
+    logger.info(f"[MEMORY_READ NODE] 시작 - question: {question_preview}..., conversation_id: {conversation_id}, case_type: {case_type}")
 
     chat_room_id = state.get("conversation_id")
     # chat_room_id를 정수로 변환 (DB 스키마가 Integer)
     try:
         chat_room_id = int(chat_room_id) if chat_room_id else None
     except (ValueError, TypeError):
-        print(f"[MemoryRead] Warning: chat_room_id 변환 실패: {chat_room_id}")
+        logger.warning(f"chat_room_id 변환 실패: {chat_room_id}")
         chat_room_id = None
 
     user_id = state.get("user_id", "default")
@@ -259,10 +260,10 @@ def memory_read_node(state):
         conn.commit()  # SELECT 쿼리 후 트랜잭션 명시적 커밋
 
         # 조회된 대화들의 chat_id 로그
-        print(f"\n[MemoryRead] 조회된 대화 개수: {len(conversations)}")
+        logger.info(f"조회된 대화 개수: {len(conversations)}")
         for conv in conversations:
             summary_preview = (conv.get("summary") or "")[:30] + "..." if conv.get("summary") else "N/A"
-            print(f"[MemoryRead] chat_sid={conv.get('chat_sid')}, case_type={conv.get('case_type')}, created_at={conv.get('created_at')}, summary={summary_preview}")
+            logger.debug(f"chat_sid={conv.get('chat_sid')}, case_type={conv.get('case_type')}, created_at={conv.get('created_at')}, summary={summary_preview}")
 
         # 가장 최근 대화 정보
         last_case = None
@@ -286,19 +287,19 @@ def memory_read_node(state):
         if current_case == "USER_INFO":
             target_case_type = "USER_INFO"
             history_source = "USER_INFO"
-            print(f"[MemoryRead] USER_INFO 질문: USER_INFO 타입 히스토리 로드")
+            logger.info("USER_INFO 질문: USER_INFO 타입 히스토리 로드")
         # 꼬리질문이어도 원본 질문의 case_type을 기준으로 조회
         # 예: "내가 최근에 물어봤던 논문 내용이 뭐더라?" → BIO_Q로 분류 → BIO_Q 타입 메모리 조회
         elif is_follow_up:
             target_case_type = current_case
             history_source = "FOLLOW_UP"
-            print(f"[MemoryRead] 꼬리질문 감지: 원본 질문 타입({current_case}) 기준으로 히스토리 로드")
+            logger.info(f"꼬리질문 감지: 원본 질문 타입({current_case}) 기준으로 히스토리 로드")
             if reference_case and reference_case != current_case:
-                print(f"[MemoryRead] 참고: 이전 대화 타입은 {reference_case}였지만, 원본 질문 타입({current_case}) 기준으로 조회")
+                logger.debug(f"참고: 이전 대화 타입은 {reference_case}였지만, 원본 질문 타입({current_case}) 기준으로 조회")
         else:
             target_case_type = current_case
             history_source = "CURRENT_TYPE"
-            print(f"[MemoryRead] 일반 질문: {current_case} 타입 히스토리 로드")
+            logger.info(f"일반 질문: {current_case} 타입 히스토리 로드")
 
         # 해당 케이스 타입의 히스토리만 최대 5개 조회
         relevant_conversations = [
@@ -319,15 +320,13 @@ def memory_read_node(state):
         state["history_source"] = history_source
 
         # 노드 종료 로그
-        print(f"\n[MEMORY_READ NODE] 종료")
-        print(f"  memory_slot: {state.get('memory_slot', {})}")
-        print(f"  relevant_history: {len(state.get('relevant_history', []))}개 (타입: {target_case_type}, 소스: {history_source})")
-        print(f"{'='*60}\n")
+        relevant_history_count = len(state.get('relevant_history', []))
+        logger.info(f"[MEMORY_READ NODE] 종료 - memory_slot: {state.get('memory_slot', {})}, relevant_history: {relevant_history_count}개 (타입: {target_case_type}, 소스: {history_source})")
 
         return state
 
     except Exception as e:
-        print(f"[MemoryRead Error] {e}")
+        logger.error(f"MemoryRead 오류: {e}", exc_info=True)
         # 에러 발생 시에도 state 반환 (빈 메모리로)
         state["memory_slot"] = {
             "last_case": None,
@@ -353,19 +352,17 @@ def memory_write_node(state):
     topic 필드에 채팅방 제목용 1줄 요약 저장.
     """
     # 노드 진입 로그
-    print(f"\n{'='*60}")
-    print(f"[MEMORY_WRITE NODE] 시작")
-    print(f"  question: {str(state.get('question', ''))[:30]}...")
-    print(f"  case_type: {state.get('case_type', '')}")
-    print(f"  final_answer: {str(state.get('final_answer', ''))[:30]}...")
-    print(f"{'='*60}\n")
+    question_preview = str(state.get('question', ''))[:30]
+    case_type = state.get('case_type', '')
+    final_answer_preview = str(state.get('final_answer', ''))[:30]
+    logger.info(f"[MEMORY_WRITE NODE] 시작 - question: {question_preview}..., case_type: {case_type}, final_answer: {final_answer_preview}...")
 
     chat_room_id = state.get("conversation_id")
     # chat_room_id를 정수로 변환 (DB 스키마가 Integer)
     try:
         chat_room_id = int(chat_room_id) if chat_room_id else None
     except (ValueError, TypeError):
-        print(f"[MemoryWrite] Warning: chat_room_id 변환 실패: {chat_room_id}")
+        logger.warning(f"chat_room_id 변환 실패: {chat_room_id}")
         chat_room_id = None
 
     user_id = state.get("user_id", "default")
@@ -399,16 +396,16 @@ def memory_write_node(state):
 
 요약만 출력하세요:"""
                     model_name = get_model_name(memory_summarize_tool_llm)
-                    print(f"[Memory] 요약 모델: {model_name}")
+                    logger.debug(f"요약 모델: {model_name}")
                     summary = memory_summarize_tool_llm(prompt).strip()
 
                     # 길이 제한
                     if len(summary) > 100:
                         summary = summary[:97] + "..."
 
-                    print(f"[MemoryWrite] USER_INFO 요약: {summary}")
+                    logger.info(f"USER_INFO 요약: {summary}")
                 except Exception as e:
-                    print(f"[MemoryWrite] USER_INFO 요약 실패: {e}, fallback 사용")
+                    logger.warning(f"USER_INFO 요약 실패: {e}, fallback 사용", exc_info=True)
                     # fallback: 질문을 그대로 사용하되 50자로 제한
                     summary = question[:50] + "..." if len(question) > 50 else question
             else:
@@ -470,27 +467,18 @@ def memory_write_node(state):
                 conn.commit()
                 cursor.close()
 
-                print(f"[MemoryWrite] 새 row 생성: chat_sid={new_chat_sid}, case_type={current_case_type}")
-                print(f"[MemoryWrite] 저장 완료:")
-                print(f"  - case_type: {current_case_type}")
-                print(f"  - topic: {topic}")
-                print(f"  - referenced_memory_count: {referenced_count}개")
-                print(f"  - full_response: {len(full_answer)}자")
-                print(f"  - summary: {summary[:50]}...")
+                logger.info(f"새 row 생성: chat_sid={new_chat_sid}, case_type={current_case_type}, topic={topic}, referenced_memory_count={referenced_count}개, full_response={len(full_answer)}자")
+                logger.debug(f"summary: {summary[:50]}...")
             else:
-                print(f"[MemoryWrite] Warning: 알 수 없는 case_type입니다: {current_case_type}")
+                logger.warning(f"알 수 없는 case_type입니다: {current_case_type}")
 
         # 노드 종료 로그
-        print(f"\n[MEMORY_WRITE NODE] 종료")
-        print(f"  저장 완료: case_type={current_case_type}")
-        print(f"{'='*60}\n")
+        logger.info(f"[MEMORY_WRITE NODE] 종료 - 저장 완료: case_type={current_case_type}")
 
         return state
 
     except Exception as e:
-        print(f"[MemoryWrite Error] {e}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"MemoryWrite 오류: {e}", exc_info=True)
         # 에러 발생 시에도 state 반환
         return state
     finally:

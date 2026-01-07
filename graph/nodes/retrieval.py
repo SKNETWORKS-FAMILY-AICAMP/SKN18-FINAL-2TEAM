@@ -17,6 +17,9 @@ retrieval.py
 from typing import Dict, Any, List
 import os
 from dotenv import load_dotenv
+from graph.logger_config import get_logger
+
+logger = get_logger(__name__)
 
 # 환경 변수 로드
 load_dotenv()
@@ -55,11 +58,11 @@ def embed_query_openai(query: str) -> List[float]:
             input=query
         )
         embedding = response.data[0].embedding
-        print(f"[OpenAI Embedding] {OPENAI_EMBEDDING_MODEL} 생성 완료: {len(embedding)}차원")
+        logger.info(f"OpenAI Embedding {OPENAI_EMBEDDING_MODEL} 생성 완료: {len(embedding)}차원")
         return embedding
         
     except Exception as e:
-        print(f"[OpenAI Embedding] 오류: {e}")
+        logger.error(f"OpenAI Embedding 오류: {e}", exc_info=True)
         # 더미 벡터 반환 (테스트용)
         return [0.0] * OPENAI_EMBEDDING_DIM
 
@@ -81,11 +84,11 @@ def embed_query_local(query: str) -> List[float]:
         model = SentenceTransformer(LOCAL_EMBEDDING_MODEL)  # 상수 사용
         embedding = model.encode(query).tolist()
         
-        print(f"[Local Embedding] {LOCAL_EMBEDDING_MODEL} 생성 완료: {len(embedding)}차원")
+        logger.info(f"Local Embedding {LOCAL_EMBEDDING_MODEL} 생성 완료: {len(embedding)}차원")
         return embedding
         
     except Exception as e:
-        print(f"[Local Embedding] 오류: {e}")
+        logger.error(f"Local Embedding 오류: {e}", exc_info=True)
         # 더미 벡터 반환 (테스트용)
         return [0.0] * LOCAL_EMBEDDING_DIM
 
@@ -153,19 +156,18 @@ def search_pgvector(query_embedding: List[float], top_k: int = 50, query_text: s
                 "source": "pgvector"
             })
         
-        print(f"[pgvector] {len(formatted_results)}개 결과 검색 완료")
+        logger.info(f"pgvector {len(formatted_results)}개 결과 검색 완료")
         return formatted_results
         
     except Exception as e:
-        print(f"[pgvector] 오류: {e}")
-        print(f"[pgvector] 더미 데이터 반환 (실제 DB 미구축)")
+        logger.warning(f"pgvector 오류: {e}, 더미 데이터 반환 (실제 DB 미구축)", exc_info=True)
         
         # 더미 데이터 반환 - 시나리오별 분기
         query_lower = query_text.lower() if query_text else ""
         
         # 시나리오 3: PROTOCOL_Q (KaiC 단백질 정제 프로토콜)
         if "kaic" in query_lower and "정제" in query_lower or "purification" in query_lower:
-            print(f"[pgvector] 시나리오 3: KaiC 프로토콜 더미 데이터 반환")
+            logger.debug("시나리오 3: KaiC 프로토콜 더미 데이터 반환")
             return [
                 {
                     "content": """KaiC Protein Purification Protocol - Part 1 (Initial Steps):
@@ -250,7 +252,7 @@ final quality control: Measure concentration by Bradford assay, check activity, 
         
         # 시나리오 2-2: BIO_Q 최근 2개월 (관련성 낮은 논문 → web_search 트리거)
         elif ("최근" in query_lower or "recent" in query_lower) and ("2개월" in query_lower or "개월" in query_lower):
-            print(f"[pgvector] 시나리오 2-2: 관련성 낮은 더미 (web_search 트리거용)")
+            logger.debug("시나리오 2-2: 관련성 낮은 더미 (web_search 트리거용)")
             return [
                 {
                     "content": "[pgvector dummy] Agricultural crop yield optimization using CRISPR technology. This study focuses on plant genetics and has minimal relevance to protein mutation analysis. Published in Plant Biotechnology Journal, 2024.",
@@ -274,7 +276,7 @@ final quality control: Measure concentration by Bradford assay, check activity, 
         
         # 시나리오 2-1: BIO_Q 2025년 논문 (기본값)
         else:
-            print(f"[pgvector] 시나리오 2-1: 2025년 단백질 변이 논문 더미")
+            logger.debug("시나리오 2-1: 2025년 단백질 변이 논문 더미")
             return [
                 {
                     "content": "Protein mutation analysis in 2025: Recent advances in understanding missense variants and their effects on protein stability. This comprehensive study examines 1,247 protein mutations across various organisms, revealing novel insights into mutation patterns and structural impacts. The research utilized deep mutational scanning combined with computational modeling to predict stability changes.",
@@ -403,44 +405,36 @@ def search_neo4j(query: str, top_k: int = 50) -> List[Dict[str, Any]]:
         results = retriever.retrieve(query)
         
         # 🔍 DEBUG: TextRetriever가 반환하는 원본 데이터 구조 확인
-        print(f"\n{'='*60}")
-        print(f"[DEBUG Neo4j TextRetriever] 검색 결과 수: {len(results) if results else 0}")
+        import json
+        logger.debug(f"Neo4j TextRetriever 검색 결과 수: {len(results) if results else 0}")
         if results and len(results) > 0:
-            print(f"[DEBUG Neo4j TextRetriever] 첫 번째 결과 타입: {type(results[0])}")
-            print(f"[DEBUG Neo4j TextRetriever] 첫 번째 결과 keys: {list(results[0].keys()) if isinstance(results[0], dict) else 'Not a dict'}")
+            first_result = results[0]
+            logger.debug(f"첫 번째 결과 타입: {type(first_result)}, keys: {list(first_result.keys()) if isinstance(first_result, dict) else 'Not a dict'}")
             
             # 첫 번째 결과의 전체 구조 출력 (JSON으로 직렬화 시도)
-            first_result = results[0]
             try:
-                # dict인 경우 JSON으로 직렬화
                 if isinstance(first_result, dict):
-                    print(f"[DEBUG Neo4j TextRetriever] 첫 번째 결과 전체 구조:")
-                    print(json.dumps(first_result, indent=2, default=str, ensure_ascii=False))
+                    logger.debug(f"첫 번째 결과 전체 구조:\n{json.dumps(first_result, indent=2, default=str, ensure_ascii=False)}")
                 else:
-                    print(f"[DEBUG Neo4j TextRetriever] 첫 번째 결과 (직렬화 불가): {first_result}")
+                    logger.debug(f"첫 번째 결과 (직렬화 불가): {first_result}")
             except Exception as json_err:
-                print(f"[DEBUG Neo4j TextRetriever] JSON 직렬화 실패: {json_err}")
-                print(f"[DEBUG Neo4j TextRetriever] 첫 번째 결과 (raw): {first_result}")
+                logger.debug(f"JSON 직렬화 실패: {json_err}, 첫 번째 결과 (raw): {first_result}")
             
             # metadata 구조 상세 확인
             if isinstance(first_result, dict):
                 metadata = first_result.get("metadata", {})
-                print(f"[DEBUG Neo4j TextRetriever] metadata 타입: {type(metadata)}")
-                print(f"[DEBUG Neo4j TextRetriever] metadata keys: {list(metadata.keys()) if isinstance(metadata, dict) else 'Not a dict'}")
+                logger.debug(f"metadata 타입: {type(metadata)}, keys: {list(metadata.keys()) if isinstance(metadata, dict) else 'Not a dict'}")
                 if isinstance(metadata, dict):
-                    print(f"[DEBUG Neo4j TextRetriever] metadata 내용:")
-                    print(json.dumps(metadata, indent=2, default=str, ensure_ascii=False))
-                
-                # title 관련 필드 확인
-                if isinstance(metadata, dict):
+                    logger.debug(f"metadata 내용:\n{json.dumps(metadata, indent=2, default=str, ensure_ascii=False)}")
+                    
+                    # title 관련 필드 확인
                     title_fields = [k for k in metadata.keys() if 'title' in k.lower() or 'Title' in k]
                     if title_fields:
-                        print(f"[DEBUG Neo4j TextRetriever] title 관련 필드: {title_fields}")
+                        logger.debug(f"title 관련 필드: {title_fields}")
                         for field in title_fields:
-                            print(f"[DEBUG Neo4j TextRetriever]   {field}: {metadata.get(field)}")
+                            logger.debug(f"  {field}: {metadata.get(field)}")
                     else:
-                        print(f"[DEBUG Neo4j TextRetriever] ⚠️ metadata에 title 관련 필드 없음")
-        print(f"{'='*60}\n")
+                        logger.debug("⚠️ metadata에 title 관련 필드 없음")
         
         driver.close()
         
@@ -449,9 +443,7 @@ def search_neo4j(query: str, top_k: int = 50) -> List[Dict[str, Any]]:
         for idx, item in enumerate(results):
             # 🔍 DEBUG: 각 항목의 구조 확인 (처음 3개만)
             if idx < 3:
-                print(f"[DEBUG Neo4j Format] 항목 {idx} 타입: {type(item)}")
-                if isinstance(item, dict):
-                    print(f"[DEBUG Neo4j Format] 항목 {idx} keys: {list(item.keys())}")
+                logger.debug(f"항목 {idx} 타입: {type(item)}, keys: {list(item.keys()) if isinstance(item, dict) else 'N/A'}")
             
             formatted_results.append({
                 "content": item.get("text", ""),
@@ -460,19 +452,18 @@ def search_neo4j(query: str, top_k: int = 50) -> List[Dict[str, Any]]:
                 "source": "neo4j"
             })
         
-        print(f"[Neo4j] {len(formatted_results)}개 결과 검색 완료")
+        logger.info(f"Neo4j {len(formatted_results)}개 결과 검색 완료")
         return formatted_results
         
     except Exception as e:
-        print(f"[Neo4j] 오류: {e}")
-        print(f"[Neo4j] 더미 데이터 반환 (실제 노드 미구축)")
+        logger.warning(f"Neo4j 오류: {e}, 더미 데이터 반환 (실제 노드 미구축)", exc_info=True)
         
         # 더미 데이터 반환 - 시나리오별 분기
         query_lower = query.lower() if query else ""
         
         # 시나리오 3: PROTOCOL_Q (KaiC 단백질)
         if "kaic" in query_lower:
-            print(f"[Neo4j] 시나리오 3: KaiC 프로토콜 그래프 더미")
+            logger.debug("시나리오 3: KaiC 프로토콜 그래프 더미")
             return [
                 {
                     "content": "[neo4j dummy] KaiC protein purification workflow graph: Connected nodes include [GST-tag] -BINDS_TO-> [Glutathione resin] -CLEAVED_BY-> [PreScission protease] -YIELDS-> [Pure KaiC]. The workflow shows optimal conditions for each step with temperature and buffer requirements.",
@@ -490,7 +481,7 @@ def search_neo4j(query: str, top_k: int = 50) -> List[Dict[str, Any]]:
         
         # 기본 더미 (BIO_Q)
         else:
-            print(f"[Neo4j] 기본 더미: 단백질 상호작용 그래프")
+            logger.debug("기본 더미: 단백질 상호작용 그래프")
             return [
                 {
                     "content": "[neo4j dummy] Protein mutation impact network: Knowledge graph analysis reveals that mutations in conserved domains have cascading effects on protein-protein interactions. Nodes represent proteins, edges represent interaction changes upon mutation.",
@@ -541,19 +532,19 @@ def decide_search_strategy(query: str, case_type: str) -> str:
     
     try:
         model_name = get_model_name(retrieval_decide_search_strategy_llm)
-        print(f"[Search Strategy] 사용 모델: {model_name}")
+        logger.debug(f"Search Strategy 사용 모델: {model_name}")
         
         response = retrieval_decide_search_strategy_llm(prompt).strip().lower()
         
         if "neo4j" in response:
-            print(f"[Search Strategy] neo4j 선택")
+            logger.info("Search Strategy: neo4j 선택")
             return "neo4j"
         else:
-            print(f"[Search Strategy] pgvector 선택 (기본값)")
+            logger.info("Search Strategy: pgvector 선택 (기본값)")
             return "pgvector"
             
     except Exception as e:
-        print(f"[Search Strategy] 오류: {e}, pgvector 기본값 사용")
+        logger.warning(f"Search Strategy 오류: {e}, pgvector 기본값 사용", exc_info=True)
         return "pgvector"
 
 
@@ -580,25 +571,23 @@ def retriever_bio_node(state: Dict[str, Any]) -> Dict[str, Any]:
     """
     
     # 노드 진입 로그
-    print(f"\n{'='*60}")
-    print(f"[RETRIEVER_BIO NODE] 시작")
-    print(f"  question: {str(state.get('question', ''))[:30]}...")
-    print(f"  rewritten_query: {str(state.get('rewritten_query', ''))[:30]}...")
-    print(f"{'='*60}\n")
+    question_preview = str(state.get('question', ''))[:30]
+    rewritten_preview = str(state.get('rewritten_query', ''))[:30]
+    logger.info(f"[RETRIEVER_BIO NODE] 시작 - question: {question_preview}..., rewritten_query: {rewritten_preview}...")
     
     query = state.get("rewritten_query", state.get("question", ""))
     case_type = state.get("case_type", "BIO_Q")
     
     # 1. OpenAI 임베딩 생성
-    print("[BIO Retriever] Step 1: OpenAI 임베딩 생성")
+    logger.info("Step 1: OpenAI 임베딩 생성")
     query_embedding = embed_query_openai(query)
     
     # 2. 검색 전략 결정 (LLM 판단)
-    print("[BIO Retriever] Step 2: 검색 전략 결정")
+    logger.info("Step 2: 검색 전략 결정")
     search_strategy = decide_search_strategy(query, case_type)
     
     # 3. 선택된 전략으로 검색
-    print(f"[BIO Retriever] Step 3: {search_strategy} 검색 실행")
+    logger.info(f"Step 3: {search_strategy} 검색 실행")
     if search_strategy == "neo4j":
         results = search_neo4j(query, top_k=50)
     else:
@@ -606,7 +595,7 @@ def retriever_bio_node(state: Dict[str, Any]) -> Dict[str, Any]:
     
     # 4. RAG 결과에서 엔티티 추출 (placeholder)
     # TODO: 나중에 RAG 구축 시 실제 엔티티 추출 로직 구현
-    print("[BIO Retriever] Step 4: 엔티티 추출 (placeholder)")
+    logger.debug("Step 4: 엔티티 추출 (placeholder)")
     entities = []
 
     # Placeholder: 검색 결과의 메타데이터나 내용에서 엔티티 추출
@@ -621,11 +610,7 @@ def retriever_bio_node(state: Dict[str, Any]) -> Dict[str, Any]:
     state["used_search_db"] = search_strategy
 
     # 노드 종료 로그
-    print(f"\n[RETRIEVER_BIO NODE] 종료")
-    print(f"  retrieval_results: {len(results)}개")
-    print(f"  used_search_db: {search_strategy}")
-    print(f"  entities: {len(entities)}개 (placeholder)")
-    print(f"{'='*60}\n")
+    logger.info(f"[RETRIEVER_BIO NODE] 종료 - retrieval_results: {len(results)}개, used_search_db: {search_strategy}, entities: {len(entities)}개 (placeholder)")
     
     return state
 
@@ -653,25 +638,23 @@ def retriever_protocol_node(state: Dict[str, Any]) -> Dict[str, Any]:
     """
 
     # 노드 진입 로그
-    print(f"\n{'='*60}")
-    print(f"[RETRIEVER_PROTOCOL NODE] 시작")
-    print(f"  question: {str(state.get('question', ''))[:30]}...")
-    print(f"  rewritten_query: {str(state.get('rewritten_query', ''))[:30]}...")
-    print(f"{'='*60}\n")
+    question_preview = str(state.get('question', ''))[:30]
+    rewritten_preview = str(state.get('rewritten_query', ''))[:30]
+    logger.info(f"[RETRIEVER_PROTOCOL NODE] 시작 - question: {question_preview}..., rewritten_query: {rewritten_preview}...")
     
     query = state.get("rewritten_query", state.get("question", ""))
     case_type = state.get("case_type", "PROTOCOL_Q")
     
     # 1. 로컬 임베딩 생성 (보안)
-    print("[PROTOCOL Retriever] Step 1: 로컬 임베딩 생성 (보안)")
+    logger.info("Step 1: 로컬 임베딩 생성 (보안)")
     query_embedding = embed_query_local(query)
     
     # 2. 검색 전략 결정 (LLM 판단)
-    print("[PROTOCOL Retriever] Step 2: 검색 전략 결정")
+    logger.info("Step 2: 검색 전략 결정")
     search_strategy = decide_search_strategy(query, case_type)
     
     # 3. 선택된 전략으로 검색
-    print(f"[PROTOCOL Retriever] Step 3: {search_strategy} 검색 실행")
+    logger.info(f"Step 3: {search_strategy} 검색 실행")
     if search_strategy == "neo4j":
         results = search_neo4j(query, top_k=50)
     else:
@@ -679,7 +662,7 @@ def retriever_protocol_node(state: Dict[str, Any]) -> Dict[str, Any]:
     
     # 4. RAG 결과에서 엔티티 추출 (placeholder)
     # TODO: 나중에 RAG 구축 시 실제 엔티티 추출 로직 구현
-    print("[PROTOCOL Retriever] Step 4: 엔티티 추출 (placeholder)")
+    logger.debug("Step 4: 엔티티 추출 (placeholder)")
     entities = []
 
     # Placeholder: 검색 결과의 메타데이터나 내용에서 엔티티 추출
@@ -694,11 +677,7 @@ def retriever_protocol_node(state: Dict[str, Any]) -> Dict[str, Any]:
     state["used_search_db"] = search_strategy
 
     # 노드 종료 로그
-    print(f"\n[RETRIEVER_PROTOCOL NODE] 종료")
-    print(f"  retrieval_results: {len(results)}개")
-    print(f"  used_search_db: {search_strategy}")
-    print(f"  entities: {len(entities)}개 (placeholder)")
-    print(f"{'='*60}\n")
+    logger.info(f"[RETRIEVER_PROTOCOL NODE] 종료 - retrieval_results: {len(results)}개, used_search_db: {search_strategy}, entities: {len(entities)}개 (placeholder)")
     
     return state
 
