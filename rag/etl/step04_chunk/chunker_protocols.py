@@ -568,7 +568,12 @@ def chunk_dataframe(
         base_id = f"{keyword}_{url_hash}"
 
         # 1️⃣ sentence split (기존 로직 그대로 사용)
-        sentences = split_into_sentences(row["cleaned_text"])
+        # 🔥 ingest 단계에서 들어온 [TABLE] 태그 제거
+        text = row["cleaned_text"]
+        text = re.sub(r"\[/?TABLE\]", "", text)
+
+        sentences = split_into_sentences(text)
+
 
         # 2️⃣ sentence → chunk
         chunks = create_sentence_chunks(
