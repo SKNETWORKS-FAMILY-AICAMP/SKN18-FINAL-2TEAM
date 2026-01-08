@@ -2075,15 +2075,15 @@ function renderResultFilesList(files, experimentId) {
     }
 
     experimentResultFilesList.innerHTML = files.map(file => {
-        const fileId = file.id || file.file_id;
         const fileName = file.name || file.filename || 'Unknown';
         const fileType = file.type || file.file_type || 'FILE';
         const fileTypeRaw = fileType.toUpperCase();
         const isPdb = fileTypeRaw === 'PDB';
         const fileDateRaw = file.date || file.created_at || '신규';
         const fileDate = formatResultDate(fileDateRaw);
-        // file_path를 그대로 사용
-        const fileUrl = file.file_path;
+        // 백엔드 프록시 URL 사용 (CORS 문제 해결)
+        const fileId = file.id || file.result_sid || file.file_id;
+        const fileUrl = fileId ? `/api/experiments/results/${fileId}/file/` : (file.file_path || file.url || file.file_url || '');
 
 
         return `
@@ -2094,6 +2094,7 @@ function renderResultFilesList(files, experimentId) {
                         ${isPdb ? `
                             <button class="result-file-actions-btn"
                                 data-file-url="${fileUrl}"
+                                data-file-name="${escapeHtml(fileName)}"
                                 title="상세보기">
                                 <i class="fa-solid fa-arrow-up-right-from-square"></i>
                             </button>
@@ -2151,8 +2152,28 @@ function attachResultFileDetailHandlers() {
             e.stopPropagation();
             e.preventDefault();
             console.log('[Experiment] Detail button clicked');
-            // Wait for ExperimentResultModal to be available
-            openExperimentResultModalWithRetry();
+            
+            // Get file URL and name from data attributes
+            const fileUrl = newBtn.getAttribute('data-file-url');
+            const fileName = newBtn.getAttribute('data-file-name') || 'PDB 파일';
+            
+            if (!fileUrl) {
+                console.error('[Experiment] File URL not found');
+                if (window.notyf) {
+                    window.notyf.error('파일 URL을 찾을 수 없습니다.');
+                }
+                return;
+            }
+            
+            // Open molstar modal
+            if (window.MolstarModal && typeof window.MolstarModal.open === 'function') {
+                window.MolstarModal.open(fileUrl, fileName);
+            } else {
+                console.error('[Experiment] MolstarModal is not available');
+                if (window.notyf) {
+                    window.notyf.error('3D 뷰어를 열 수 없습니다. 페이지를 새로고침해주세요.');
+                }
+            }
         });
     });
 }
