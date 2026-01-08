@@ -11,6 +11,7 @@
 <link rel="stylesheet" href="{% static 'css/components/modals/simulation_confirm_modal.css' %}">
 <link rel="stylesheet" href="{% static 'css/components/modals/tool_options_modal.css' %}">
 <link rel="stylesheet" href="{% static 'css/components/modals/save_to_note_modal.css' %}">
+<link rel="stylesheet" href="{% static 'css/components/modals/experiment_result_modal.css' %}">
 {% endblock %}
 
 {% block content %}
@@ -273,6 +274,7 @@
 {% include 'components/modals/simulation_confirm_modal.html' %}
 {% include 'components/modals/tool_options_modal.html' %}
 {% include 'components/modals/save_to_note_modal.html' %}
+{% include 'components/modals/experiment_result_modal.html' %}
 {% endblock %}
 
 {% block extra_js %}
@@ -298,6 +300,7 @@
 <script src="{% static 'js/components/modals/simulation_confirm_modal.js' %}"></script>
 <script src="{% static 'js/components/modals/tool_options_modal.js' %}"></script>
 <script src="{% static 'js/components/modals/save_to_note_modal.js' %}"></script>
+<script src="{% static 'js/components/modals/experiment_molstar_viewer.js' %}"></script>
 <!-- Load main experiment script after modals are loaded -->
 <script>
     // Function to load experiment.js after ensuring all modals are ready

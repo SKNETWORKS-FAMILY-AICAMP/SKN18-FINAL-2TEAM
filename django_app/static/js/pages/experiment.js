@@ -2092,7 +2092,7 @@ function renderResultFilesList(files, experimentId) {
                     <p class="result-file-name">${escapeHtml(fileName)}</p>
                     <div class="result-file-actions">
                         ${isPdb ? `
-                            <button class="result-file-detail-btn"
+                            <button class="result-file-actions-btn"
                                 data-file-url="${fileUrl}"
                                 title="상세보기">
                                 <i class="fa-solid fa-arrow-up-right-from-square"></i>
@@ -2134,14 +2134,60 @@ function attachResultFileDownloadHandlers() {
 
 // Attach result file detail view handlers (PDB preview)
 function attachResultFileDetailHandlers() {
-    const detailBtns = experimentResultFilesList?.querySelectorAll('.result-file-detail-btn');
-    detailBtns?.forEach(btn => {
-        btn.addEventListener('click', (e) => {
+    const detailBtns = experimentResultFilesList?.querySelectorAll('.result-file-actions-btn');
+    console.log('[Experiment] Found detail buttons:', detailBtns?.length || 0);
+    
+    if (!detailBtns || detailBtns.length === 0) {
+        console.warn('[Experiment] No detail buttons found');
+        return;
+    }
+    
+    detailBtns.forEach(btn => {
+        // Remove existing listeners to avoid duplicates
+        const newBtn = btn.cloneNode(true);
+        btn.parentNode.replaceChild(newBtn, btn);
+        
+        newBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            const fileUrl = btn.getAttribute('data-file-url');
-            handleResultFileView(fileUrl);
+            e.preventDefault();
+            console.log('[Experiment] Detail button clicked');
+            // Wait for ExperimentResultModal to be available
+            openExperimentResultModalWithRetry();
         });
     });
+}
+
+// Open experiment result modal with retry logic
+function openExperimentResultModalWithRetry(maxAttempts = 20) {
+    console.log('[Experiment] Attempting to open modal, attempts left:', maxAttempts);
+    console.log('[Experiment] ExperimentResultModal available:', !!window.ExperimentResultModal);
+    
+    if (window.ExperimentResultModal && typeof window.ExperimentResultModal.open === 'function') {
+        console.log('[Experiment] Opening modal...');
+        try {
+            window.ExperimentResultModal.open();
+            console.log('[Experiment] Modal open called successfully');
+        } catch (error) {
+            console.error('[Experiment] Error opening modal:', error);
+            if (window.notyf) {
+                window.notyf.error('모달을 여는 중 오류가 발생했습니다.');
+            }
+        }
+        return;
+    }
+    
+    // Retry if modal is not ready yet
+    if (maxAttempts > 0) {
+        setTimeout(() => {
+            openExperimentResultModalWithRetry(maxAttempts - 1);
+        }, 100);
+    } else {
+        console.error('[Experiment] ExperimentResultModal is not available after waiting');
+        console.error('[Experiment] window.ExperimentResultModal:', window.ExperimentResultModal);
+        if (window.notyf) {
+            window.notyf.error('실험 결과 모달을 열 수 없습니다. 페이지를 새로고침해주세요.');
+        }
+    }
 }
 
 // Open file in new tab for quick preview
