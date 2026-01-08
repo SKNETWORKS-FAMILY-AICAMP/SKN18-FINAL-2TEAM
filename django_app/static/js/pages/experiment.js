@@ -2051,6 +2051,20 @@ function generateMockResultFiles(status) {
     }
 }
 
+//formatTime 함수 추가
+function formatResultDate(value) {
+    if (!value) return '신규';
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return '신규';
+    return d.toLocaleString('ko-KR', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+    });
+}
+
 // Render result files list
 function renderResultFilesList(files, experimentId) {
     if (!experimentResultFilesList) return;
@@ -2064,9 +2078,11 @@ function renderResultFilesList(files, experimentId) {
         const fileId = file.id || file.file_id;
         const fileName = file.name || file.filename || 'Unknown';
         const fileType = file.type || file.file_type || 'FILE';
-        const fileDate = file.date || file.created_at || '신규';
+        const fileDateRaw = file.date || file.created_at || '신규';
+        const fileDate = formatResultDate(fileDateRaw);
         // file_path를 그대로 사용
         const fileUrl = file.file_path;
+
 
         return `
             <div class="result-file-item" data-file-id="${fileId}">
