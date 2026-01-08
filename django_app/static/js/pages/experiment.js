@@ -1660,14 +1660,20 @@ function renderExperimentTable(experiments) {
 
         // 상태 처리 - API에서 status_display를 제공하거나 상태 코드를 변환
         const statusCode = experiment.status || 'R';
-        const statusDisplay = experiment.status_display || 
+        const rawStatusDisplay = experiment.status_display || 
                             (statusCode === 'C' ? '완료' :
-                             statusCode === 'P' ? '진행중' :
-                             statusCode === 'R' ? '준비' :
-                             statusCode === 'F' ? '실패' :
-                             statusCode === 'E' ? '활성' :
-                             statusCode === 'D' ? '비활성' : statusCode);
-
+                            statusCode === 'P' ? '진행중' :
+                            statusCode === 'R' ? '준비' :
+                            statusCode === 'F' ? '진행' : //실패를 변경
+                            statusCode === 'E' ? '활성' :
+                            statusCode === 'D' ? '비활성' : statusCode);
+        const statusDisplay =
+            rawStatusDisplay === 'Failed' || rawStatusDisplay === '실패'
+                ? '진행'
+                : rawStatusDisplay;
+        
+                    
+        
         // 생성일 처리
         const createdAgo = experiment.created_at ? 
             formatTimeAgo(new Date(experiment.created_at)) : 
@@ -1683,17 +1689,30 @@ function renderExperimentTable(experiments) {
         const pipelineName = experiment.pipeline || experiment.pipeline_name || experiment.name || 'Unnamed Pipeline';
 
         // 상태 클래스 결정
-        const statusClass = statusDisplay === '완료' ? 'status-완료 status-completed' :
-                           statusDisplay === '진행중' ? 'status-진행중 status-progress' :
-                           statusDisplay === '준비' ? 'status-준비 status-ready' :
-                           statusDisplay === '실패' ? 'status-실패 status-failed' :
-                           'status-준비 status-ready';
+        // const statusClass = normalizedStatusDisplay === '완료' ? 'status-완료 status-completed' :
+        //                    statusDisplay === '진행중' ? 'status-진행중 status-progress' :
+        //                    statusDisplay === '준비' ? 'status-준비 status-ready' :
+        //                    statusDisplay === '진행' ? 'status-진행 status-failed' : //실패를 변경
+        //                    'status-준비 status-ready';
         
-        const statusDotClass = statusDisplay === '완료' ? 'status-dot-완료 status-dot-completed' :
-                              statusDisplay === '진행중' ? 'status-dot-진행중 status-dot-progress' :
-                              statusDisplay === '준비' ? 'status-dot-준비 status-dot-ready' :
-                              statusDisplay === '실패' ? 'status-dot-실패 status-dot-failed' :
-                              'status-dot-준비 status-dot-ready';
+        // const statusDotClass = normalizedStatusDisplay === '완료' ? 'status-dot-완료 status-dot-completed' :
+        //                       statusDisplay === '진행중' ? 'status-dot-진행중 status-dot-progress' :
+        //                       statusDisplay === '준비' ? 'status-dot-준비 status-dot-ready' :
+        //                       statusDisplay === '진행' ? 'status-dot-진행 status-dot-failed' : //실패를 변경
+        //                       'status-dot-준비 status-dot-ready';
+        const statusClass =
+                            statusDisplay === '완료'   ? 'status-completed' :
+                            statusDisplay === '진행'   ? 'status-progress' :
+                            statusDisplay === '진행중' ? 'status-progress' :
+                            statusDisplay === '준비'   ? 'status-ready' :
+                            'status-ready';
+
+        const statusDotClass =
+                            statusDisplay === '완료'   ? 'status-dot-completed' :
+                            statusDisplay === '진행'   ? 'status-dot-progress' :
+                            statusDisplay === '진행중' ? 'status-dot-progress' :
+                            statusDisplay === '준비'   ? 'status-dot-ready' :
+                            'status-dot-ready';
 
         return `
             <tr data-experiment-id="${experiment.id}" data-experiment-progress="${progress}" class="status-table-row">
@@ -1870,7 +1889,7 @@ function renderExperimentResult(experiment) {
         let statusDisplay = '';
         if (typeof status === 'string') {
             // Check if already in Korean
-            if (status === '완료' || status === '진행중' || status === '준비' || status === '실패' || status === '활성' || status === '비활성') {
+            if (status === '완료' || status === '진행중' || status === '준비' || status === '진행' || status === '활성' || status === '비활성') {
                 statusDisplay = status;
             }
             // Check English status strings
@@ -1881,7 +1900,7 @@ function renderExperimentResult(experiment) {
             } else if (status === 'ready' || status === 'R') {
                 statusDisplay = '준비';
             } else if (status === 'failed' || status === 'F') {
-                statusDisplay = '실패';
+                statusDisplay = '진행';
             } else if (status === 'enabled' || status === 'E') {
                 statusDisplay = '활성';
             } else if (status === 'disabled' || status === 'D') {
@@ -1909,7 +1928,7 @@ function renderExperimentResult(experiment) {
             progress = 65; // Default progress for in_progress (matching React mock data)
         } else if (status === 'ready' || status === '준비' || status === 'R') {
             progress = 25; // Default progress for ready (matching React mock data)
-        } else if (status === 'failed' || status === '실패' || status === 'F') {
+        } else if (status === 'failed' || status === '진행' || status === 'F') {
             progress = 0; // Failed experiments have 0% progress
         } else {
             progress = 0; // Default for unknown status
@@ -1960,7 +1979,7 @@ async function renderExperimentResultFiles(experiment) {
     let statusKorean = '';
     if (typeof status === 'string') {
         // Check if already in Korean
-        if (status === '완료' || status === '진행중' || status === '준비' || status === '실패') {
+        if (status === '완료' || status === '진행중' || status === '준비' || status === '진행') {
             statusKorean = status;
         }
         // Check English status strings and codes
@@ -1971,7 +1990,7 @@ async function renderExperimentResultFiles(experiment) {
         } else if (status === 'ready' || status === 'R') {
             statusKorean = '준비';
         } else if (status === 'failed' || status === 'F') {
-            statusKorean = '실패';
+            statusKorean = '진행';
         } else {
             statusKorean = '준비'; // Default
         }
@@ -1990,7 +2009,7 @@ function generateMockResultFiles(status) {
     let statusKorean = '';
     if (typeof status === 'string') {
         // Check if already in Korean
-        if (status === '완료' || status === '진행중' || status === '준비' || status === '실패') {
+        if (status === '완료' || status === '진행중' || status === '준비' || status === '진행') {
             statusKorean = status;
         }
         // Check English status strings and codes
@@ -2001,7 +2020,7 @@ function generateMockResultFiles(status) {
         } else if (status === 'ready' || status === 'R') {
             statusKorean = '준비';
         } else if (status === 'failed' || status === 'F') {
-            statusKorean = '실패';
+            statusKorean = '진행';
         } else {
             statusKorean = '준비'; // Default
         }
@@ -2020,7 +2039,7 @@ function generateMockResultFiles(status) {
             { id: 1, name: '중간 결과 1', type: 'TXT', size: '89 KB', date: '30분 전', url: '/api/experiments/files/1/' },
             { id: 2, name: '로그 파일', type: 'LOG', size: '234 KB', date: '15분 전', url: '/api/experiments/files/2/' },
         ];
-    } else if (statusKorean === '실패') {
+    } else if (statusKorean === '진행') {
         return [
             { id: 1, name: '에러 로그', type: 'LOG', size: '45 KB', date: '1시간 전', url: '/api/experiments/files/1/' },
         ];
