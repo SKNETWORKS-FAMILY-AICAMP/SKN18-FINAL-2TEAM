@@ -1,5 +1,7 @@
 import json
+import re
 import requests
+from urllib.parse import unquote
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse, HttpResponse
@@ -590,27 +592,104 @@ def experiment_result_file_proxy(request, result_sid: int):
         response = requests.get(result.file_path, timeout=30)
         response.raise_for_status()
         
-        # Content-Type 설정
-        content_type = 'text/plain'
-        if result.result_type and result.result_type.upper() == 'PDB':
-            content_type = 'chemical/x-pdb'
-        elif result.result_name:
-            if result.result_name.endswith('.pdb'):
+        # 파일명 추출 (S3 URL에서 또는 result_name에서)
+        # S3 URL에서 파일명 추출 시도
+        file_name_from_url = None
+        if result.file_path:
+            # s3://bucket/key/path/filename.ext 또는 https://bucket.s3.../filename.ext 패턴
+            url_parts = result.file_path.split('/')
+            if url_parts:
+                potential_filename = unquote(url_parts[-1].split('?')[0])  # 쿼리 파라미터 제거
+                if '.' in potential_filename:
+                    file_name_from_url = potential_filename
+        
+        # result_name에서 파일명 추출 시도
+        file_name_from_result = None
+        if result.result_name:
+            # "RFdiffusion 구조 #0" 같은 경우 확장자가 없으므로 파일 타입에서 추론 필요
+            file_name_from_result = result.result_name
+        
+        # 최종 파일명 결정: URL에서 추출한 것이 우선, 없으면 result_name 사용
+        final_filename = file_name_from_url or file_name_from_result or f"result_{result_sid}"
+        
+        # 파일명에 확장자가 없으면 result_type에서 추론
+        if '.' not in final_filename.split('/')[-1]:
+            result_type_upper = (result.result_type or '').upper()
+            extension_map = {
+                'PDB': '.pdb',
+                'FASTA': '.fasta',
+                'CSV': '.csv',
+                'ZIP': '.zip',
+                'OTHER': '',  # OTHER는 파일명에서 추론 시도
+                'LOG': '.log',
+            }
+            extension = extension_map.get(result_type_upper, '')
+            
+            # OTHER 타입인 경우 파일명이나 URL에서 확장자 추론
+            if not extension and result_type_upper == 'OTHER':
+                # result_name에서 확장자 추론 시도
+                if result.result_name:
+                    if 'trb' in result.result_name.lower() or 'trb' in (file_name_from_url or '').lower():
+                        extension = '.trb'
+                    elif 'zip' in result.result_name.lower() or 'zip' in (file_name_from_url or '').lower():
+                        extension = '.zip'
+                    elif result.file_path and '.trb' in result.file_path.lower():
+                        extension = '.trb'
+                    elif result.file_path and '.zip' in result.file_path.lower():
+                        extension = '.zip'
+            
+            if extension:
+                final_filename = final_filename + extension
+        
+        # Content-Type 매핑 (파일 확장자 기반)
+        content_type_map = {
+            '.pdb': 'chemical/x-pdb',
+            '.fasta': 'text/plain',  # 또는 'application/x-fasta'
+            '.fa': 'text/plain',
+            '.csv': 'text/csv',
+            '.zip': 'application/zip',
+            '.trb': 'application/octet-stream',  # TRB는 바이너리
+            '.json': 'application/json',
+            '.log': 'text/plain',
+        }
+        
+        # 확장자 추출
+        file_ext = ''
+        if '.' in final_filename:
+            file_ext = '.' + final_filename.rsplit('.', 1)[1].lower()
+        
+        # Content-Type 결정: 확장자 우선, 없으면 result_type 기반
+        content_type = content_type_map.get(file_ext, 'application/octet-stream')
+        
+        if content_type == 'application/octet-stream':
+            # result_type으로 재시도
+            result_type_upper = (result.result_type or '').upper()
+            if result_type_upper == 'PDB':
                 content_type = 'chemical/x-pdb'
-            elif result.result_name.endswith('.csv'):
+            elif result_type_upper == 'FASTA':
+                content_type = 'text/plain'
+            elif result_type_upper == 'CSV':
                 content_type = 'text/csv'
-            elif result.result_name.endswith('.json'):
-                content_type = 'application/json'
+            elif result_type_upper == 'ZIP':
+                content_type = 'application/zip'
+            elif result_type_upper == 'LOG':
+                content_type = 'text/plain'
         
         # 파일 내용을 응답으로 반환
         http_response = HttpResponse(
             response.content,
             content_type=content_type
         )
+        
+        # Content-Disposition 헤더 추가 (파일명 지정)
+        # RFC 5987에 따라 UTF-8 파일명 지원
+        safe_filename = final_filename.replace('\n', '').replace('\r', '')
+        http_response['Content-Disposition'] = f'attachment; filename="{safe_filename}"; filename*=UTF-8\'\'{safe_filename}'
+        
         # CORS 헤더 추가
         http_response['Access-Control-Allow-Origin'] = '*'
         http_response['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
-        http_response['Access-Control-Allow-Headers'] = 'Content-Type'
+        http_response['Access-Control-Allow-Headers'] = 'Content-Type, Content-Disposition'
         return http_response
         
     except requests.RequestException as e:

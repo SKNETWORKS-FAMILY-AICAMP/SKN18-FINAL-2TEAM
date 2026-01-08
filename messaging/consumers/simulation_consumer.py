@@ -438,24 +438,49 @@ def handle_simulation_task(message: Dict[str, Any]):
                 step_api = TOOL_NAME_QUEUE_MAP.get(tool_name, tool_name)
                 expected_pdb = result.get("expected_pdb")
 
-                # rfdiffusion 인 경우에만 numSteps → num_designs 로 전달
+                # 각 도구별로 num_designs, num_seqs 추출
                 num_designs = None
                 num_seqs = None
 
                 if step_api == "rfdiffusion":
+                    # rfdiffusion: numSteps → num_designs
                     try:
                         num_designs = int((tool_options or {}).get("numSteps") or 1)
                     except (TypeError, ValueError):
                         num_designs = None
+                
+                elif step_api == "protein_mpnn":
+                    # proteinMPNN: numSequences → num_seqs
+                    try:
+                        num_seqs = int((tool_options or {}).get("numSequences") or 1)
+                    except (TypeError, ValueError):
+                        num_seqs = None
+                
+                elif step_api == "alphafold3":
+                    # alphafold: num_designs와 num_seqs는 옵션에서 추출 가능
+                    # (현재는 옵션에 없을 수 있으므로 None으로 둠)
+                    pass
 
-                    if expected_pdb:
-                        register_experiment_results_for_step(
-                            experiment_sid=experiment_sid,
-                            step_api=step_api,
-                            expected_local_path=expected_pdb,
-                            num_designs=num_designs,
-                            num_seqs=num_seqs,
-                        )
+                # expected_pdb가 있으면 모든 도구에 대해 결과 등록
+                # expected_pdb는 각 도구별로 다른 파일 타입일 수 있지만,
+                # 경로 구조는 동일하므로 이를 기반으로 날짜/step 추출 가능
+                if expected_pdb:
+                    register_experiment_results_for_step(
+                        experiment_sid=experiment_sid,
+                        step_api=step_api,
+                        expected_local_path=expected_pdb,
+                        num_designs=num_designs,
+                        num_seqs=num_seqs,
+                    )
+                    logger.info(
+                        f"Registered results for experiment {experiment_sid}, "
+                        f"step={step_api}, num_designs={num_designs}, num_seqs={num_seqs}"
+                    )
+                else:
+                    logger.warning(
+                        f"No expected_pdb in result for experiment {experiment_sid}, "
+                        f"step={step_api}. Results not registered."
+                    )
             except Exception as e:
                 logger.error(
                     "Failed to register experiment results: %s", e, exc_info=True

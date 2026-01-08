@@ -2128,7 +2128,13 @@ function attachResultFileDownloadHandlers() {
             e.stopPropagation();
             const fileUrl = btn.getAttribute('data-file-url');
             const fileName = btn.getAttribute('data-file-name');
-            await handleResultFileDownload(fileUrl, fileName);
+            
+            // 파일 타입 추출 (result-file-item의 형제 요소에서)
+            const fileItem = btn.closest('.result-file-item');
+            const fileTypeElement = fileItem?.querySelector('.result-file-type');
+            const fileType = fileTypeElement?.textContent?.trim() || '';
+            
+            await handleResultFileDownload(fileUrl, fileName, fileType);
         });
     });
 }
@@ -2220,8 +2226,60 @@ function handleResultFileView(fileUrl) {
     window.open(fileUrl, '_blank', 'noopener,noreferrer');
 }
 
-// Handle result file download - open the file_path directly
-async function handleResultFileDownload(fileUrl, fileName) {
+// 파일 타입에서 확장자 추론
+function getExtensionFromFileType(fileType) {
+    const typeMap = {
+        'PDB': '.pdb',
+        'FASTA': '.fasta',
+        'CSV': '.csv',
+        'ZIP': '.zip',
+        'OTHER': '',  // OTHER는 파일명이나 URL에서 추론 필요
+        'LOG': '.log',
+    };
+    return typeMap[fileType?.toUpperCase()] || '';
+}
+
+// 파일명에 확장자 추가 (없는 경우)
+function ensureFileExtension(fileName, fileType, fileUrl) {
+    if (!fileName) return fileName;
+    
+    // 이미 확장자가 있으면 그대로 반환
+    if (fileName.includes('.') && /\.\w+$/.test(fileName)) {
+        return fileName;
+    }
+    
+    // 파일 타입에서 확장자 추론
+    let extension = getExtensionFromFileType(fileType);
+    
+    // OTHER 타입인 경우 파일명이나 URL에서 추론
+    if (!extension && fileType?.toUpperCase() === 'OTHER') {
+        const fileNameLower = fileName.toLowerCase();
+        const urlLower = (fileUrl || '').toLowerCase();
+        
+        if (fileNameLower.includes('trb') || urlLower.includes('.trb')) {
+            extension = '.trb';
+        } else if (fileNameLower.includes('zip') || urlLower.includes('.zip')) {
+            extension = '.zip';
+        } else if (urlLower.includes('.trb')) {
+            extension = '.trb';
+        } else if (urlLower.includes('.zip')) {
+            extension = '.zip';
+        }
+    }
+    
+    // URL에서 확장자 추출 시도
+    if (!extension && fileUrl) {
+        const urlMatch = fileUrl.match(/\.([a-z0-9]+)(?:\?|$)/i);
+        if (urlMatch) {
+            extension = '.' + urlMatch[1].toLowerCase();
+        }
+    }
+    
+    return extension ? fileName + extension : fileName;
+}
+
+// Handle result file download - fetch를 통해 Content-Disposition 헤더 처리
+async function handleResultFileDownload(fileUrl, fileName, fileType) {
     if (!fileUrl) {
         if (window.notyf) {
             window.notyf.error('다운로드 URL이 제공되지 않았습니다.');
@@ -2230,24 +2288,74 @@ async function handleResultFileDownload(fileUrl, fileName) {
     }
 
     try {
-        const link = document.createElement('a');
-        link.href = fileUrl;              // 실제 file_path (S3 등)
-        link.target = '_blank';
-        link.rel = 'noopener noreferrer';
-        if (fileName) {
-            link.download = fileName;     // 확장자 포함 파일명 지정 가능
-        }
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        // 백엔드 프록시 URL인 경우 fetch 사용 (Content-Disposition 헤더 처리)
+        if (fileUrl.includes('/api/experiments/results/') && fileUrl.includes('/file/')) {
+            const response = await fetch(fileUrl, {
+                method: 'GET',
+                headers: {
+                    'X-CSRFToken': getCsrfToken(),
+                },
+            });
 
-        if (window.notyf) {
-            window.notyf.success('다운로드가 완료되었습니다.');
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            // Content-Disposition 헤더에서 파일명 추출
+            const contentDisposition = response.headers.get('Content-Disposition');
+            let downloadFileName = fileName;
+            
+            if (contentDisposition) {
+                // filename="..." 또는 filename*=UTF-8''... 패턴 매칭
+                const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+                if (filenameMatch && filenameMatch[1]) {
+                    downloadFileName = filenameMatch[1].replace(/['"]/g, '');
+                    // UTF-8 인코딩된 파일명 처리
+                    if (downloadFileName.startsWith("UTF-8''")) {
+                        downloadFileName = decodeURIComponent(downloadFileName.replace("UTF-8''", ""));
+                    }
+                }
+            }
+            
+            // 파일명에 확장자가 없으면 파일 타입에서 추론
+            downloadFileName = ensureFileExtension(downloadFileName, fileType, fileUrl);
+            
+            // Blob으로 변환하여 다운로드
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = downloadFileName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+
+            if (window.notyf) {
+                window.notyf.success('다운로드가 완료되었습니다.');
+            }
+        } else {
+            // 직접 S3 URL인 경우 (프록시를 거치지 않는 경우)
+            // 파일명에 확장자 보장
+            const finalFileName = ensureFileExtension(fileName, fileType, fileUrl);
+            
+            const link = document.createElement('a');
+            link.href = fileUrl;
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            link.download = finalFileName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            if (window.notyf) {
+                window.notyf.success('다운로드가 완료되었습니다.');
+            }
         }
     } catch (error) {
-        console.error('Error starting download:', error);
+        console.error('Error downloading file:', error);
         if (window.notyf) {
-            window.notyf.error('파일 다운로드를 시작하지 못했습니다.');
+            window.notyf.error('파일 다운로드 중 오류가 발생했습니다.');
         }
     }
 }

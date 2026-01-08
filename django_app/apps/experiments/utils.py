@@ -106,6 +106,147 @@ def _build_simulation_s3_prefix(dt: str, experiment_sid: int, s3_step: str) -> s
     return f"simulations/dt={dt}/pipeline={experiment_sid}/step={s3_step}".strip("/")
 
 
+def _get_result_type_from_filename(filename: str) -> str:
+    """
+    파일명에서 result_type을 추론 (s3_uploader.py의 content_type 매핑과 유사)
+    """
+    filename_lower = filename.lower()
+    if filename_lower.endswith(".pdb"):
+        return "PDB"
+    elif filename_lower.endswith((".fasta", ".fa")):
+        return "FASTA"
+    elif filename_lower.endswith(".csv"):
+        return "CSV"
+    elif filename_lower.endswith(".zip"):
+        return "OTHER"
+    elif filename_lower.endswith(".trb"):
+        return "OTHER"
+    elif filename_lower.endswith(".log"):
+        return "LOG"
+    else:
+        return "OTHER"
+
+
+def _get_result_name_from_filename(filename: str, s3_step: str, exp_id_str: str) -> str:
+    """
+    파일명과 step 정보로부터 사용자 친화적인 result_name 생성
+    """
+    filename_lower = filename.lower()
+    
+    if s3_step == "rfdiffusion":
+        if filename == f"{exp_id_str}_all_results.zip":
+            return "RFdiffusion 전체 결과 ZIP"
+        elif filename_lower.endswith(".pdb"):
+            # expId_0.pdb -> RFdiffusion 구조 #0
+            try:
+                idx = filename.replace(f"{exp_id_str}_", "").replace(".pdb", "")
+                return f"RFdiffusion 구조 #{idx}"
+            except:
+                return f"RFdiffusion 구조 {filename}"
+        elif filename_lower.endswith(".trb"):
+            try:
+                idx = filename.replace(f"{exp_id_str}_", "").replace(".trb", "")
+                return f"RFdiffusion TRB #{idx}"
+            except:
+                return f"RFdiffusion TRB {filename}"
+    
+    elif s3_step == "proteinMPNN":
+        if filename == f"{exp_id_str}_mpnn.fasta":
+            return "서열 데이터 (MPNN FASTA)"
+        elif filename == f"{exp_id_str}_mpnn_results.csv":
+            return "서열 분석 결과 (MPNN CSV)"
+    
+    elif s3_step == "alphafold":
+        if filename == f"{exp_id_str}_af_best.pdb":
+            return "AlphaFold 베스트 구조"
+        elif filename == f"{exp_id_str}_af_all_pdb.zip":
+            return "AlphaFold 전체 구조 ZIP"
+        elif filename == f"{exp_id_str}_af_results.csv":
+            return "AlphaFold 결과 테이블"
+        elif filename_lower.endswith(".pdb") and filename.startswith("af_"):
+            return f"AlphaFold 구조 {filename}"
+    
+    # 기본값: 파일명 기반
+    return f"{s3_step} 결과 {filename}"
+
+
+def _generate_expected_filenames_for_step(
+    s3_step: str,
+    exp_id_str: str,
+    num_designs: int | None = None,
+    num_seqs: int | None = None,
+) -> list[tuple[str, str, str]]:
+    """
+    s3_uploader.py의 upload_job_outputs 로직과 동일하게
+    업로드될 것으로 예상되는 파일 목록을 생성.
+    
+    Returns:
+        list of (filename, result_type, result_name) tuples
+    """
+    files: list[tuple[str, str, str]] = []
+    
+    if s3_step == "rfdiffusion":
+        # PDB + TRB 파일들 (num_designs 개수만큼)
+        n = int(num_designs or 1)
+        for i in range(n):
+            files.append((
+                f"{exp_id_str}_{i}.pdb",
+                "PDB",
+                f"RFdiffusion 구조 #{i}"
+            ))
+            files.append((
+                f"{exp_id_str}_{i}.trb",
+                "OTHER",
+                f"RFdiffusion TRB #{i}"
+            ))
+        
+        # ZIP 파일 (PDB + TRB가 하나라도 있으면 생성됨)
+        if n > 0:
+            files.append((
+                f"{exp_id_str}_all_results.zip",
+                "OTHER",
+                "RFdiffusion 전체 결과 ZIP"
+            ))
+    
+    elif s3_step == "proteinMPNN":
+        files.extend([
+            (f"{exp_id_str}_mpnn.fasta", "FASTA", "서열 데이터 (MPNN FASTA)"),
+            (f"{exp_id_str}_mpnn_results.csv", "CSV", "서열 분석 결과 (MPNN CSV)"),
+        ])
+    
+    elif s3_step == "alphafold":
+        # 기본 결과 파일
+        files.extend([
+            (f"{exp_id_str}_af_best.pdb", "PDB", "AlphaFold 베스트 구조"),
+            (f"{exp_id_str}_af_results.csv", "CSV", "AlphaFold 결과 테이블"),
+        ])
+        
+        # all_pdb 폴더의 개별 PDB 파일들
+        # s3_uploader.py에서는 실제 디렉토리를 스캔하지만,
+        # 여기서는 num_designs/num_seqs가 있으면 예상 파일 생성
+        # 실제로는 all_pdb 폴더의 모든 .pdb 파일이 업로드되므로,
+        # 정확한 개수를 알 수 없음. 하지만 일단 num_designs/num_seqs 기반으로 생성
+        if num_designs is not None and num_seqs is not None:
+            for d in range(num_designs):
+                for s_idx in range(num_seqs):
+                    # 실제 파일명 패턴은 다를 수 있지만, 일반적인 패턴 사용
+                    filename = f"af_d{d}_s{s_idx}_k4.pdb"
+                    files.append((
+                        filename,
+                        "PDB",
+                        f"AlphaFold 구조 {filename}"
+                    ))
+        
+        # ZIP 파일 (all_pdb 폴더가 있으면 생성됨)
+        files.append((
+            f"{exp_id_str}_af_all_pdb.zip",
+            "OTHER",
+            "AlphaFold 전체 구조 ZIP"
+        ))
+    
+    return files
+
+
 @transaction.atomic
 def register_experiment_results_for_step(
     experiment_sid: int,
@@ -116,8 +257,20 @@ def register_experiment_results_for_step(
 ) -> list[ExperimentResult]:
     """
     RunPod 컨테이너가 업로드한 S3 결과 파일들을
-    S3 키 규칙만으로 URL(file_path)을 계산해 t_experiment_result 에 저장한다.
-    S3 API(boto3)는 호출하지 않고, file_size는 None으로 둔다.
+    s3_uploader.py의 로직과 동일하게 모든 업로드 파일을 DB에 저장한다.
+    
+    s3_uploader.py의 upload_job_outputs 함수가 업로드하는 모든 파일 타입을
+    포함하여 t_experiment_result에 저장한다.
+    
+    Args:
+        experiment_sid: 실험 ID
+        step_api: step API 이름 ("rfdiffusion", "protein_mpnn", "alphafold3")
+        expected_local_path: 예상 로컬 경로 (날짜/step 추출용)
+        num_designs: rfdiffusion의 numSteps 또는 alphafold의 design 개수
+        num_seqs: ProteinMPNN의 Number of Sequences 또는 alphafold의 sequence 개수
+    
+    Returns:
+        생성된 ExperimentResult 객체 리스트
     """
     dt, _ = _parse_dt_and_step_from_expected(expected_local_path)
     s3_step = _s3_step_from_cli_step(step_api)  # rfdiffusion / proteinMPNN / alphafold
@@ -126,92 +279,32 @@ def register_experiment_results_for_step(
     exp_id_str = str(experiment_sid).strip()
     results: list[ExperimentResult] = []
 
-    # 1) RFdiffusion 요약: expId_i.pdb / expId_i.trb / expId_all_results.zip
-    if s3_step == "rfdiffusion":
-        n = int(num_designs or 1)
-        for i in range(n):
-            for filename, result_type, result_name in [
-                (f"{exp_id_str}_{i}.pdb", "PDB",   f"RFdiffusion 구조 #{i}"),
-                (f"{exp_id_str}_{i}.trb", "OTHER", f"RFdiffusion TRB #{i}"),
-            ]:
-                key = f"{prefix}/{filename}"
-                url = get_s3_url(key)
-                results.append(
-                    ExperimentResult.objects.create(
-                        experiment_id=experiment_sid,
-                        result_name=result_name,
-                        result_type=result_type,
-                        file_size=None,
-                        file_path=url,
-                    )
-                )
+    # s3_uploader.py와 동일한 로직으로 예상 파일 목록 생성
+    expected_files = _generate_expected_filenames_for_step(
+        s3_step=s3_step,
+        exp_id_str=exp_id_str,
+        num_designs=num_designs,
+        num_seqs=num_seqs,
+    )
 
-        zip_name = f"{exp_id_str}_all_results.zip"
-        zip_key = f"{prefix}/{zip_name}"
-        zip_url = get_s3_url(zip_key)
+    # 각 파일에 대해 DB 레코드 생성
+    for filename, result_type, result_name in expected_files:
+        key = f"{prefix}/{filename}"
+        url = get_s3_url(key)
         results.append(
             ExperimentResult.objects.create(
                 experiment_id=experiment_sid,
-                result_name="RFdiffusion 전체 결과 ZIP",
-                result_type="OTHER",
+                result_name=result_name,
+                result_type=result_type,
                 file_size=None,
-                file_path=zip_url,
+                file_path=url,
             )
         )
 
-    # 2) ProteinMPNN 요약: expId_mpnn.fasta / expId_mpnn_results.csv
-    elif s3_step == "proteinMPNN":
-        for filename, result_type, result_name in [
-            (f"{exp_id_str}_mpnn.fasta", "FASTA", "서열 데이터 (MPNN FASTA)"),
-            (f"{exp_id_str}_mpnn_results.csv", "CSV", "서열 분석 결과 (MPNN CSV)"),
-        ]:
-            key = f"{prefix}/{filename}"
-            url = get_s3_url(key)
-            results.append(
-                ExperimentResult.objects.create(
-                    experiment_id=experiment_sid,
-                    result_name=result_name,
-                    result_type=result_type,
-                    file_size=None,
-                    file_path=url,
-                )
-            )
-
-    # 3) AlphaFold 요약: best / zip / csv
-    elif s3_step == "alphafold":
-        for filename, result_type, result_name in [
-            (f"{exp_id_str}_af_best.pdb", "PDB",   "AlphaFold 베스트 구조"),
-            (f"{exp_id_str}_af_all_pdb.zip", "OTHER", "AlphaFold 전체 구조 ZIP"),
-            (f"{exp_id_str}_af_results.csv", "CSV", "AlphaFold 결과 테이블"),
-        ]:
-            key = f"{prefix}/{filename}"
-            url = get_s3_url(key)
-            results.append(
-                ExperimentResult.objects.create(
-                    experiment_id=experiment_sid,
-                    result_name=result_name,
-                    result_type=result_type,
-                    file_size=None,
-                    file_path=url,
-                )
-            )
-
-        # 개별 구조 PDB: af_d{design}_s{seq}_k4.pdb  (k=4 고정)
-        if num_designs is not None and num_seqs is not None:
-            for d in range(num_designs):
-                for s_idx in range(num_seqs):
-                    filename = f"af_d{d}_s{s_idx}_k4.pdb"
-                    key = f"{prefix}/{filename}"
-                    url = get_s3_url(key)
-                    results.append(
-                        ExperimentResult.objects.create(
-                            experiment_id=experiment_sid,
-                            result_name=f"AlphaFold 구조 {filename}",
-                            result_type="PDB",
-                            file_size=None,
-                            file_path=url,
-                        )
-                    )
+    logger.info(
+        f"Registered {len(results)} result files for experiment {experiment_sid}, "
+        f"step={s3_step}"
+    )
 
     return results
 
