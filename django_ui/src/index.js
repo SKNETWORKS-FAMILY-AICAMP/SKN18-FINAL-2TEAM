@@ -6,6 +6,7 @@ import '@fortawesome/fontawesome-free/css/all.css';
 import 'air-datepicker/air-datepicker.css';
 import 'notyf/notyf.min.css';
 import 'tippy.js/dist/tippy.css';
+import 'molstar/build/viewer/molstar.css';
 // CKEditor5 CSS
 import 'ckeditor5/ckeditor5.css';
 // Tagify CSS
@@ -58,6 +59,10 @@ import Tagify from '@yaireo/tagify';
 // highcharts - 차트 라이브러리
 import Highcharts from 'highcharts';
 
+//Molstar - 3D 분자 뷰어
+import molstar from 'molstar/build/viewer/molstar.js';
+
+
 // ============================================
 // 전역에서 사용할 수 있도록 window 객체에 할당
 // ============================================
@@ -67,6 +72,7 @@ window.CKEditor = CKEditor;
 window.AirDatepicker = AirDatepicker;
 window.AirDatepickerLocaleKo = localeKo;
 window.Notyf = Notyf;
+window.Molstar = molstar;
 
 // 전역 Notyf 인스턴스 생성 (재사용을 위해)
 // 이미 초기화되어 있으면 재생성하지 않음

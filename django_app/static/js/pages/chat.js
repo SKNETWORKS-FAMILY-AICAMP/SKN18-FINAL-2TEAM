@@ -405,13 +405,42 @@ async function handleSend() {
 
     // 목적: AI 응답 대기 중 사용자에게 로딩 상태 표시
     // AI 로딩 메시지 추가 (애니메이션 효과와 함께 표시됨)
+    const loadingMessages = [
+        'AI가 응답을 작성하는 중입니다',
+        '논문과 데이터를 분석하고 있습니다',
+        '최신 연구 결과를 검토하고 있습니다',
+        '답변을 준비하고 있습니다',
+        '정보를 수집하고 있습니다'
+    ];
+
+    // 랜덤하게 메시지 선택
+    const randomMessage = loadingMessages[Math.floor(Math.random() * loadingMessages.length)];
+
     const loadingMessage = {
         role: 'assistant',
-        content: 'AI가 응답을 작성하는 중입니다',
+        content: randomMessage,
         is_loading: true,  // 로딩 메시지 식별용 플래그
+        loading_start_time: Date.now(), // 메시지 순환을 위한 타임스탬프
     };
     messages.push(loadingMessage);
     renderMessages();
+
+    // 로딩 메시지 자동 순환 (3초마다)
+    if (window.loadingMessageInterval) {
+        clearInterval(window.loadingMessageInterval);
+    }
+    window.loadingMessageInterval = setInterval(() => {
+        const loadingMsg = messages.find(m => m.is_loading);
+        if (loadingMsg) {
+            const currentIndex = loadingMessages.indexOf(loadingMsg.content);
+            const nextIndex = (currentIndex + 1) % loadingMessages.length;
+            loadingMsg.content = loadingMessages[nextIndex];
+            renderMessages();
+        } else {
+            clearInterval(window.loadingMessageInterval);
+            window.loadingMessageInterval = null;
+        }
+    }, 3000);
 
     // Send to API - 랭그래프의 응답을 화면으로 쏴줌
     try {
@@ -449,6 +478,10 @@ async function handleSend() {
             const data = await response.json();
 
             // 목적: AI 응답을 받았으므로 로딩 메시지 제거
+            if (window.loadingMessageInterval) {
+                clearInterval(window.loadingMessageInterval);
+                window.loadingMessageInterval = null;
+            }
             messages = messages.filter(m => !m.is_loading);
 
             // 목적: 새 채팅 생성 시 chat_id 저장 및 URL 업데이트
@@ -555,6 +588,10 @@ async function handleSend() {
             }
         } else {
             // 목적: 에러 발생 시에도 로딩 메시지 제거
+            if (window.loadingMessageInterval) {
+                clearInterval(window.loadingMessageInterval);
+                window.loadingMessageInterval = null;
+            }
             messages = messages.filter(m => !m.is_loading);
 
             const error = await response.json();
@@ -571,6 +608,10 @@ async function handleSend() {
         }
     } catch (error) {
         // 목적: 네트워크 오류 시에도 로딩 메시지 제거
+        if (window.loadingMessageInterval) {
+            clearInterval(window.loadingMessageInterval);
+            window.loadingMessageInterval = null;
+        }
         messages = messages.filter(m => !m.is_loading);
 
         console.error('Error sending message:', error);
@@ -807,10 +848,26 @@ function renderMessages() {
                 return `
                     <div class="message-item" data-message-id="${msg.message_id || ''}">
                         <div class="message-assistant">
-                            <div class="message-avatar assistant-avatar">AI</div>
+                            <div class="message-avatar assistant-avatar">
+                                <div class="avatar-pulse"></div>
+                                AI
+                            </div>
                             <div class="message-content-assistant message-loading">
-                                <div class="markdown-content">
-                                    <p>${escapeHtml(msg.content)}<span class="typing-indicator"><span>.</span><span>.</span><span>.</span></span></p>
+                                <div class="loading-container">
+                                    <div class="loading-skeleton">
+                                        <div class="skeleton-line skeleton-line-1"></div>
+                                        <div class="skeleton-line skeleton-line-2"></div>
+                                        <div class="skeleton-line skeleton-line-3"></div>
+                                    </div>
+                                    <div class="loading-text">
+                                        <span class="loading-message">${escapeHtml(msg.content)}</span>
+                                        <span class="typing-indicator">
+                                            <span>.</span><span>.</span><span>.</span>
+                                        </span>
+                                    </div>
+                                    <div class="loading-progress">
+                                        <div class="progress-bar"></div>
+                                    </div>
                                 </div>
                             </div>
                         </div>

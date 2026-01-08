@@ -12,9 +12,25 @@ Status Badge 컴포넌트
 - progress_class: 진행중 상태일 때 추가할 클래스 (선택사항)
 {% endcomment %}
 
-<span class="status-badge status-{{ status }}">
+<!-- <span class="status-badge status-{{ status }}">
     {% if show_dot %}
     <span class="status-dot status-dot-{{ status }}{% if progress_class %} status-dot-progress{% endif %}"></span>
     {% endif %}
     {{ status_display }}
+</span> -->
+{% with status_l=status|lower status_display_l=status_display|lower %}
+<span class="status-badge status-{{ status }}{% if status_l == 'failed' or status_l == 'f' or status_display_l == 'failed' or status_display == '실패' or status_display == 'Failed' %} status-progress{% elif status_l == 'completed' or status_l == 'c' or status_display_l == 'completed' or status_display == '완료' %} status-completed{% elif status_l == 'in_progress' or status_l == 'p' or status_display_l == 'in progress' or status_display_l == 'in_progress' or status_display == '진행중' %} status-progress{% endif %}">
+    {% if show_dot %}
+    <span class="status-dot status-dot-{{ status }}{% if status_l == 'failed' or status_l == 'f' or status_display_l == 'failed' or status_display == '실패' or status_display == 'Failed' %} status-dot-progress{% elif status_l == 'completed' or status_l == 'c' or status_display_l == 'completed' or status_display == '완료' %} status-dot-completed{% elif status_l == 'in_progress' or status_l == 'p' or status_display_l == 'in progress' or status_display_l == 'in_progress' or status_display == '진행중' %} status-dot-progress{% endif %}{% if progress_class %} status-dot-progress{% endif %}"></span>
+    {% endif %}
+    {% if status_l == 'failed' or status_l == 'f' or status_display_l == 'failed' or status_display == '실패' or status_display == 'Failed' %}
+        진행
+    {% elif status_display_l == 'completed' or status_l == 'completed' or status_l == 'c' %}
+        완료
+    {% elif status_display_l == 'in progress' or status_display_l == 'in_progress' or status_l == 'in_progress' or status_l == 'p' %}
+        진행중
+    {% else %}
+        {{ status_display }}
+    {% endif %}
 </span>
+{% endwith %}

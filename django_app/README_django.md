@@ -604,3 +604,4 @@ docker compose -f infra/docker-compose.yml logs -f
 1. 코드 스타일 가이드를 따르세요
 2. 변경사항을 커밋하기 전에 테스트하세요
 3. 새로운 패키지 추가 시 팀원들에게 공유하세요
+
