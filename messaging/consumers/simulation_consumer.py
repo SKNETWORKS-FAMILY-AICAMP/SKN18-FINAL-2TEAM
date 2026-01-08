@@ -377,22 +377,6 @@ def handle_simulation_task(message: Dict[str, Any]):
         return
 
     experiment_sid = int(experiment_sid_raw)
-    # sort_order = current_sort_order
-    # # 2) 첫 스텝일 때만 “앞선 미완료 실험 있으면 재큐잉”
-    # if sort_order == 0 and has_older_pending_experiment(experiment_sid):
-    #     logger.info(
-    #         "Skip for now: experiment_sid=%s has older pending experiments. Requeue.",
-    #         experiment_sid,
-    #     )
-    #     raise RuntimeError("Older pending experiment exists")
-    
-    # if has_older_pending_experiment(experiment_sid):
-    #     logger.info(
-    #         f"Skip for now: experiment_sid={experiment_sid} has older pending experiments. Requeue."
-    #     )
-    #     # 그냥 예외를 던지면 BaseConsumer가 basic_nack(..., requeue=True) 해서
-    #     # 메시지를 큐 뒤로 다시 넣어 줍니다.
-    #     raise RuntimeError("Older pending experiment exists")
     
     try:
         # 1. 시작: 상태 업데이트 + 피드백 발행
@@ -446,6 +430,37 @@ def handle_simulation_task(message: Dict[str, Any]):
         )
 
         if result["success"]:
+            try:
+                from django_app.apps.experiments.utils import (
+                    register_experiment_results_for_step,
+                )
+
+                step_api = TOOL_NAME_QUEUE_MAP.get(tool_name, tool_name)
+                expected_pdb = result.get("expected_pdb")
+
+                # rfdiffusion 인 경우에만 numSteps → num_designs 로 전달
+                num_designs = None
+                num_seqs = None
+
+                if step_api == "rfdiffusion":
+                    try:
+                        num_designs = int((tool_options or {}).get("numSteps") or 1)
+                    except (TypeError, ValueError):
+                        num_designs = None
+
+                    if expected_pdb:
+                        register_experiment_results_for_step(
+                            experiment_sid=experiment_sid,
+                            step_api=step_api,
+                            expected_local_path=expected_pdb,
+                            num_designs=num_designs,
+                            num_seqs=num_seqs,
+                        )
+            except Exception as e:
+                logger.error(
+                    "Failed to register experiment results: %s", e, exc_info=True
+                )
+            
             # 파이프라인 진행률 계산 (0-based sort_order → 1-based 단계)
             step_index = current_sort_order + 1
             pipeline_progress = int(100 * step_index / max(total_steps, 1))

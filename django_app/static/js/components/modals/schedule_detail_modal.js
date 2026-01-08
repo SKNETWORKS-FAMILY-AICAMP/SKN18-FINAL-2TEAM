@@ -297,12 +297,26 @@ function renderScheduleDetail(schedule) {
         }
     }
     
+    // ✅ 공유하기 버튼: 일정 소유자일 경우에만 표시
+    const currentUserId = getCurrentUserId();
+    const isOwner = schedule.is_owner !== undefined 
+        ? schedule.is_owner 
+        : (schedule.created_id && currentUserId && String(schedule.created_id) === String(currentUserId));
+    
+    if (scheduleShareAddBtn) {
+        scheduleShareAddBtn.style.display = isOwner ? 'flex' : 'none';
+    }
+    if (scheduleShareEmptyBtn) {
+        scheduleShareEmptyBtn.style.display = isOwner ? 'flex' : 'none';
+    }
+    
     // Shared users - load from API if not in schedule data
+    // ✅ 공유받은 사용자도 공유 목록을 볼 수 있도록 항상 로드
     if (schedule.shared_with && schedule.shared_with.length > 0) {
         selectedScheduleData.shared_with = schedule.shared_with;
         renderSharedUsers(schedule.shared_with);
     } else {
-        // Try to load shared users from API
+        // ✅ 소유자 여부와 관계없이 항상 공유 목록 로드 (공유받은 사용자도 볼 수 있음)
         loadSharedUsers(schedule.id);
     }
 }
@@ -331,6 +345,10 @@ async function loadSharedUsers(scheduleId) {
             const sharedUsers = data.results || data || [];
             if (selectedScheduleData) {
                 selectedScheduleData.shared_with = sharedUsers;
+                // ✅ 소유자 여부 업데이트 후 공유하기 버튼 표시 여부 업데이트
+                if (data.is_owner !== undefined) {
+                    updateShareButtonVisibility(data.is_owner);
+                }
             }
             renderSharedUsers(sharedUsers);
         } else {
@@ -359,16 +377,19 @@ function renderSharedUsers(sharedUsers) {
         const currentUserId = selectedScheduleData?.current_user_id || getCurrentUserId();
         const isOwner = selectedScheduleData?.is_owner || (selectedScheduleData && selectedScheduleData.created_id === currentUserId);
         
+        // ✅ 공유하기 버튼: 일정 소유자일 경우에만 표시
+        updateShareButtonVisibility(isOwner);
+        
         scheduleSharedList.innerHTML = sharedUsers.map((user, index) => {
             const userId = user.user_id || user.email || user.id;
             const isCurrentUser = userId === currentUserId;
             const isPending = user.status === 'pending';
+            const isOwnerUser = user.status === 'owner';  // 소유자 여부
             
-            // 내 일정인 경우: 공유 제거 버튼
-            // 내 일정이 아닌 경우: 자신에게만 일정 나가기 버튼 표시
+            // ✅ 공유받은 사용자도 공유 목록을 볼 수 있도록 버튼만 조건부로 표시
             let actionButton = '';
-            if (isOwner && !isPending) {
-                // 소유자: 모든 공유자에 대해 공유 제거 버튼
+            if (isOwner && !isPending && !isOwnerUser) {
+                // 소유자: 모든 공유자에 대해 공유 제거 버튼 (소유자 자신 제외)
                 actionButton = `
                     <button 
                         class="schedule-shared-remove-btn" 
@@ -378,8 +399,8 @@ function renderSharedUsers(sharedUsers) {
                         <i class="fa-solid fa-times"></i>
                     </button>
                 `;
-            } else if (isCurrentUser) {
-                // 공유된 사용자: 자신에게만 일정 나가기 버튼
+            } else if (isCurrentUser && !isOwner) {
+                // 공유받은 사용자: 자신에게만 일정 나가기 버튼 표시
                 actionButton = `
                     <button 
                         class="schedule-shared-leave-btn" 
@@ -390,15 +411,28 @@ function renderSharedUsers(sharedUsers) {
                     </button>
                 `;
             }
+            // ✅ 공유받은 사용자가 다른 공유자를 볼 때는 버튼 없이 목록만 표시
+            // ✅ 소유자는 버튼 없음
+            
+            // 상태 배지: 소유자, 대기중, 공유됨
+            let statusText = '공유됨';
+            let statusClass = 'accepted';
+            if (isOwnerUser) {
+                statusText = '소유자';
+                statusClass = 'owner';
+            } else if (isPending) {
+                statusText = '대기중';
+                statusClass = 'pending';
+            }
             
             const statusBadge = `
                 <div class="schedule-shared-meta">
-                    <span class="schedule-shared-status ${isPending ? 'pending' : 'accepted'}">
-                        ${isPending ? '대기중' : '공유됨'}
+                    <span class="schedule-shared-status ${statusClass}">
+                        ${statusText}
                     </span>
                 </div>
             `;
-            const itemClass = isPending ? 'schedule-shared-item pending' : 'schedule-shared-item';
+            const itemClass = isPending ? 'schedule-shared-item pending' : (isOwnerUser ? 'schedule-shared-item owner' : 'schedule-shared-item');
 
             return `
                 <div class="${itemClass}">
@@ -432,6 +466,16 @@ function renderSharedUsers(sharedUsers) {
                 await handleLeaveSchedule();
             });
         }
+    }
+}
+
+// Update share button visibility based on owner status
+function updateShareButtonVisibility(isOwner) {
+    if (scheduleShareAddBtn) {
+        scheduleShareAddBtn.style.display = isOwner ? 'flex' : 'none';
+    }
+    if (scheduleShareEmptyBtn) {
+        scheduleShareEmptyBtn.style.display = isOwner ? 'flex' : 'none';
     }
 }
 
