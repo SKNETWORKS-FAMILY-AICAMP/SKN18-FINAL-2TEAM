@@ -2078,6 +2078,8 @@ function renderResultFilesList(files, experimentId) {
         const fileId = file.id || file.file_id;
         const fileName = file.name || file.filename || 'Unknown';
         const fileType = file.type || file.file_type || 'FILE';
+        const fileTypeRaw = fileType.toUpperCase();
+        const isPdb = fileTypeRaw === 'PDB';
         const fileDateRaw = file.date || file.created_at || '신규';
         const fileDate = formatResultDate(fileDateRaw);
         // file_path를 그대로 사용
@@ -2088,12 +2090,21 @@ function renderResultFilesList(files, experimentId) {
             <div class="result-file-item" data-file-id="${fileId}">
                 <div class="result-file-header">
                     <p class="result-file-name">${escapeHtml(fileName)}</p>
-                    <button class="result-file-download-btn"
-                        data-file-url="${fileUrl}"
-                        data-file-name="${escapeHtml(fileName)}"
-                        title="다운로드">
-                        <i class="fas fa-download"></i>
-                    </button>
+                    <div class="result-file-actions">
+                        ${isPdb ? `
+                            <button class="result-file-detail-btn"
+                                data-file-url="${fileUrl}"
+                                title="상세보기">
+                                <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                            </button>
+                        ` : ''}
+                        <button class="result-file-download-btn"
+                            data-file-url="${fileUrl}"
+                            data-file-name="${escapeHtml(fileName)}"
+                            title="다운로드">
+                            <i class="fas fa-download"></i>
+                        </button>
+                    </div>
                 </div>
                 <div class="result-file-meta">
                     <span class="result-file-type">${escapeHtml(fileType)}</span>
@@ -2105,6 +2116,7 @@ function renderResultFilesList(files, experimentId) {
 
     // 이후 download 버튼 핸들러는 기존 handleResultFileDownload를 사용
     attachResultFileDownloadHandlers();
+    attachResultFileDetailHandlers();
 }
 
 // Attach result file download handlers
@@ -2118,6 +2130,27 @@ function attachResultFileDownloadHandlers() {
             await handleResultFileDownload(fileUrl, fileName);
         });
     });
+}
+
+// Attach result file detail view handlers (PDB preview)
+function attachResultFileDetailHandlers() {
+    const detailBtns = experimentResultFilesList?.querySelectorAll('.result-file-detail-btn');
+    detailBtns?.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const fileUrl = btn.getAttribute('data-file-url');
+            handleResultFileView(fileUrl);
+        });
+    });
+}
+
+// Open file in new tab for quick preview
+function handleResultFileView(fileUrl) {
+    if (!fileUrl) {
+        window.notyf?.error('보기 URL이 없습니다.');
+        return;
+    }
+    window.open(fileUrl, '_blank', 'noopener,noreferrer');
 }
 
 // Handle result file download - open the file_path directly
