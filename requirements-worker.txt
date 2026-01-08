@@ -7,6 +7,15 @@
 Django>=5.0,<6.0
 django-environ
 
+# Django REST Framework (settings.py에서 import)
+djangorestframework
+drf-spectacular
+
+# Django 기본 패키지 (settings.py에서 사용)
+whitenoise
+libsass
+django-sass-processor
+
 # Database
 psycopg[binary, pool]
 

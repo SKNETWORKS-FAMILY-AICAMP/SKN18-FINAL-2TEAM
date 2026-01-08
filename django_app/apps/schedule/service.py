@@ -2,7 +2,9 @@
 
 import json
 import urllib.parse
-from urllib.parse import quote  # ✅ calendar_id URL 인코딩용
+import secrets
+import base64
+from urllib.parse import quote  # calendar_id URL 인코딩용
 from datetime import datetime, timedelta
 
 import requests
@@ -12,6 +14,9 @@ from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from django.db import transaction
+from django.contrib.auth import get_user_model, login
+
+User = get_user_model()
 
 from .models import (
     GoogleCredentials,
@@ -69,7 +74,7 @@ def _parse_json_body(request: HttpRequest) -> dict:
         return {}
 
 
-# ✅ 추가: 기본 색상/색상 검증
+# 추가: 기본 색상/색상 검증
 DEFAULT_CAL_COLOR = "#4285F4"
 
 def _normalize_hex_color(value: str | None) -> str:
@@ -630,6 +635,20 @@ def google_login(request: HttpRequest) -> HttpResponse:
     if GoogleCredentials.objects.filter(user=request.user).exists():
         return redirect("schedule:schedule")
 
+    # ✅ state 파라미터 생성: 사용자 ID + CSRF 토큰 (세션 만료 시 사용자 복원용)
+    state_token = secrets.token_urlsafe(32)
+    state_data = {
+        'user_id': request.user.pk,  # CustomUser는 user_id를 primary key로 사용
+        'token': state_token
+    }
+    # 세션에 state 저장 (콜백에서 검증용)
+    request.session['oauth_state_token'] = state_token
+    
+    # state를 URL-safe하게 인코딩
+    state_encoded = base64.urlsafe_b64encode(
+        json.dumps(state_data).encode()
+    ).decode().rstrip('=')  # padding 제거
+
     base_url = "https://accounts.google.com/o/oauth2/v2/auth"
     params = {
         "client_id": settings.GOOGLE_CLIENT_ID,
@@ -639,6 +658,7 @@ def google_login(request: HttpRequest) -> HttpResponse:
         "access_type": "offline",
         "include_granted_scopes": "true",
         "prompt": "consent",
+        "state": state_encoded,  # state 추가
     }
     url = f"{base_url}?{urllib.parse.urlencode(params)}"
     return redirect(url)
@@ -648,17 +668,74 @@ def google_login(request: HttpRequest) -> HttpResponse:
 # 2) OAuth 콜백
 # ---------------------------------------------------------------------
 def google_callback(request: HttpRequest) -> HttpResponse:
-    print("✅ google_callback called", request.user, "has_code=", bool(request.GET.get("code")))
+    print("google_callback called", request.user, "has_code=", bool(request.GET.get("code")))
+    
+    # state 파라미터 검증 및 사용자 복원 (세션 만료 시 대비)
+    state_encoded = request.GET.get("state")
+    user = None
+    
+    if state_encoded:
+        try:
+            # padding 추가 (필요한 경우)
+            padding = 4 - len(state_encoded) % 4
+            if padding != 4:
+                state_encoded += '=' * padding
+            
+            state_data = json.loads(base64.urlsafe_b64decode(state_encoded).decode())
+            user_id = state_data.get('user_id')
+            state_token = state_data.get('token')
+            
+            # 세션에서 저장된 토큰과 비교 (세션이 있으면 검증, 없으면 state만으로 복원)
+            session_token = request.session.get('oauth_state_token')
+            
+            # 세션 토큰이 있으면 검증, 없으면 state의 user_id만으로 복원 (세션 만료 대응)
+            if session_token:
+                # 세션이 유지된 경우: 토큰 검증
+                if state_token and state_token == session_token:
+                    try:
+                        user = User.objects.get(pk=user_id)
+                        if not request.user.is_authenticated:
+                            login(request, user, backend='django.contrib.auth.backends.ModelBackend')
+                            print(f"✅ 세션 유지: 사용자 {user_id} 로그인 복원")
+                    except User.DoesNotExist:
+                        print(f"⛔ 사용자 없음: user_id={user_id}")
+                else:
+                    print(f"⛔ state 토큰 불일치: session_token={bool(session_token)}, state_token={bool(state_token)}")
+            else:
+                # 세션이 만료된 경우: state의 user_id만으로 복원 (보안: state 자체가 이미 인코딩되어 있음)
+                if user_id:
+                    try:
+                        user = User.objects.get(pk=user_id)
+                        if not request.user.is_authenticated:
+                            login(request, user, backend='django.contrib.auth.backends.ModelBackend')
+                            print(f"세션 만료 복구: 사용자 {user_id} 로그인 복원 (state 기반)")
+                    except User.DoesNotExist:
+                        print(f"사용자 없음: user_id={user_id}")
+                else:
+                    print(f"state에 user_id 없음")
+                    
+        except Exception as e:
+            print(f"state 파싱 실패: {e}")
+    
+    # 세션에서 state 정리
+    if 'oauth_state_token' in request.session:
+        del request.session['oauth_state_token']
+    
+    # 사용자 인증 확인 (복원된 사용자 또는 기존 세션)
     if not request.user.is_authenticated:
-        return redirect(settings.LOGIN_URL)
+        if user:
+            request.user = user
+        else:
+            print("인증 실패: 로그인 페이지로 리다이렉트")
+            return redirect(settings.LOGIN_URL)
 
     if "error" in request.GET:
-        print("⛔ google_callback error param:", request.GET.get("error"))
+        print("google_callback error param:", request.GET.get("error"))
         return redirect("schedule:schedule")
 
     code = request.GET.get("code")
     if not code:
-        print("⛔ google_callback: no code in querystring", dict(request.GET))
+        print("google_callback: no code in querystring", dict(request.GET))
         return redirect("schedule:schedule")
 
     token_url = "https://oauth2.googleapis.com/token"
@@ -805,23 +882,23 @@ def calendar_settings(request: HttpRequest) -> HttpResponse:
 # 5) 이벤트 READ (FullCalendar용)
 # ---------------------------------------------------------------------
 def google_events_api(request: HttpRequest) -> JsonResponse:
-    print("✅ google_events_api CALLED")
+    print("google_events_api CALLED")
 
     if not request.user.is_authenticated:
-        print("⛔ not authenticated")
+        print("not authenticated")
         return JsonResponse([], safe=False)
 
     try:
         creds = _get_valid_creds(request.user)
-        print("✅ creds ok / has refresh_token =", bool(creds.refresh_token))
+        print("creds ok / has refresh_token =", bool(creds.refresh_token))
     except GoogleCredentials.DoesNotExist:
-        print("⛔ creds does not exist")
+        print("creds does not exist")
         return JsonResponse([], safe=False)
 
     headers = {"Authorization": f"Bearer {creds.access_token}"}
 
     synced = list(SyncedCalendar.objects.filter(user=request.user, selected=True))
-    print("✅ synced selected count =", len(synced))
+    print("synced selected count =", len(synced))
 
     if not synced:
         calendar_ids = ["primary"]
@@ -851,7 +928,7 @@ def google_events_api(request: HttpRequest) -> JsonResponse:
         if res.status_code == 401:
             print("⚠️ 401 from Google. Try refresh token once. cal_id =", cal_id)
             if not creds.refresh_token:
-                print("⛔ no refresh_token. Need reconnect.")
+                print("no refresh_token. Need reconnect.")
                 continue
 
             creds = _refresh_google_token(creds)
@@ -859,7 +936,7 @@ def google_events_api(request: HttpRequest) -> JsonResponse:
             res = requests.get(url, headers=headers, params=params)
 
         if res.status_code != 200:
-            print("❌ Google API failed:", cal_id, res.status_code, res.text[:200])
+            print("Google API failed:", cal_id, res.status_code, res.text[:200])
             continue
 
         for item in res.json().get("items", []):
@@ -889,7 +966,7 @@ def google_events_api(request: HttpRequest) -> JsonResponse:
                 "end": end,
                 "allDay": all_day,
 
-                # ✅ 캘린더별 색 적용
+                # 캘린더별 색 적용
                 "color": color_map.get(cal_id, DEFAULT_CAL_COLOR),
 
                 "extendedProps": {
