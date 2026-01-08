@@ -897,11 +897,14 @@
     color: #065f46; /* text-green-700 */
 }
 
-.status-failed,
-.status-실패 {
-    background: #fee2e2; /* bg-red-100 */
-    color: #991b1b; /* text-red-700 */
+.status-progress,
+.status-진행중 {
+    background: #dbeafe; /* bg-blue-100 */
+    color: #1e40af; /* text-blue-700 */
 }
+/* .status-?? {
+    background: #fee2e2; /* bg-red-100 */
+    /* color: #991b1b; text-red-700 *} */
 
 .status-dot {
     width: 0.5rem; /* w-2 */
@@ -928,10 +931,16 @@
     background: #059669; /* bg-green-600 */
 }
 
-.status-dot-failed,
-.status-dot-실패 {
-    background: #dc2626; /* bg-red-600 */
+.status-dot-progress,
+.status-dot-진행중 {
+    background: #2563eb; /* bg-blue-600 */
 }
+/* .status-dot-실패 {
+    background: #dc2626; /* bg-red-600 */
+/* } 
+
+
+
 
 @keyframes shadow-pulse {
     0%, 100% {
