@@ -59,6 +59,21 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
+      - name: Clean up Docker before build
+        if: steps.check.outputs.should-deploy == 'true'
+        run: |
+          echo "Cleaning up Docker before build..."
+          echo "Disk space before cleanup:"
+          df -h
+          docker system prune -af --volumes || true
+          docker builder prune -af || true
+          # 중지된 컨테이너 제거
+          docker container prune -f || true
+          # 사용하지 않는 이미지 제거
+          docker image prune -af || true
+          echo "Disk space after cleanup:"
+          df -h
+
       - name: Build and push image (or use rollback tag)
         if: steps.check.outputs.should-deploy == 'true'
         id: build-image
@@ -100,14 +115,20 @@ jobs:
             IMAGE_TAG="${{ github.sha }}"
             IMAGE_URI="$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
             
-            # Docker 빌드
+            # Docker 빌드 (캐시 사용으로 디스크 효율성 향상)
             docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
               -t $ECR_REGISTRY/$ECR_REPOSITORY:latest \
-              -f ${{ env.DOCKERFILE_PATH }} .
+              -f ${{ env.DOCKERFILE_PATH }} . \
+              --progress=plain
             
             # ECR에 푸시
             docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
             docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+            
+            # 빌드 후 정리 (디스크 공간 확보)
+            echo "Cleaning up after web image build..."
+            docker image prune -f || true
+            docker builder prune -f || true
           fi
           
           echo "image-uri=$IMAGE_URI" >> $GITHUB_OUTPUT
@@ -155,19 +176,30 @@ jobs:
             IMAGE_TAG="${{ github.sha }}"
             IMAGE_URI="$ECR_REGISTRY/$ECR_WORKER_REPOSITORY:$IMAGE_TAG"
             
-            # Docker 빌드
+            # Docker 빌드 (캐시 사용으로 디스크 효율성 향상)
             docker build -t $ECR_REGISTRY/$ECR_WORKER_REPOSITORY:$IMAGE_TAG \
               -t $ECR_REGISTRY/$ECR_WORKER_REPOSITORY:latest \
-              -f ${{ env.WORKER_DOCKERFILE_PATH }} .
+              -f ${{ env.WORKER_DOCKERFILE_PATH }} . \
+              --progress=plain
             
             # ECR에 푸시
             docker push $ECR_REGISTRY/$ECR_WORKER_REPOSITORY:$IMAGE_TAG
             docker push $ECR_REGISTRY/$ECR_WORKER_REPOSITORY:latest
+            
+            # 빌드 후 정리 (디스크 공간 확보)
+            echo "Cleaning up after worker image build..."
+            docker image prune -f || true
+            docker builder prune -f || true
           fi
           
           echo "image-uri=$IMAGE_URI" >> $GITHUB_OUTPUT
           echo "image-tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
           echo "✓ Worker image ready: $IMAGE_URI"
+          
+          # 최종 정리
+          echo "Final cleanup..."
+          docker system df
+          docker system prune -af --volumes || true
 
   build-check:
     runs-on: ubuntu-latest
