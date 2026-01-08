@@ -1,3 +1,4 @@
+(() => {
 // Protein Detail Modal JavaScript
 
 const modalId = 'proteinDetailModal';
@@ -316,3 +317,4 @@ if (typeof window !== 'undefined') {
         init: initProteinDetailModal,
     };
 }
+})();

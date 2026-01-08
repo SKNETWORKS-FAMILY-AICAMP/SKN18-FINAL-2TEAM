@@ -1,5 +1,5 @@
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone as dt_timezone
 from urllib.parse import quote
 
 import requests
@@ -441,14 +441,32 @@ def _get_user_calendar_by_id(user, calendar_id: int | None) -> UserCalendar | No
         return None
 
 
-def _parse_iso_datetime(value: str | None):
+def _parse_iso_datetime(value: str | None, is_all_day: bool = False):
     if not value:
         return None
     dt = parse_datetime(value)
     if not dt:
         return None
-    if timezone.is_naive(dt):
-        dt = timezone.make_aware(dt, timezone.get_current_timezone())
+    
+    # For all-day events, preserve the date by extracting only the date part
+    # and setting it to UTC midnight (or 23:59:59 for end_datetime) to avoid timezone conversion issues
+    if is_all_day:
+        # Extract date part (YYYY-MM-DD) from the datetime string
+        date_part = value.split('T')[0] if 'T' in value else value.split(' ')[0]
+        # Check if this is an end datetime (contains 23:59:59)
+        is_end = '23:59:59' in value or '23:59' in value
+        # Create a naive datetime at UTC midnight (or 23:59:59) for the date
+        if is_end:
+            dt = datetime.strptime(date_part, '%Y-%m-%d')
+            dt = dt.replace(hour=23, minute=59, second=59)
+        else:
+            dt = datetime.strptime(date_part, '%Y-%m-%d')
+        # Make it aware in UTC timezone
+        dt = timezone.make_aware(dt, dt_timezone.utc)
+    else:
+        if timezone.is_naive(dt):
+            dt = timezone.make_aware(dt, timezone.get_current_timezone())
+    
     return dt
 
 
@@ -654,18 +672,18 @@ def schedule_list(request):
     if not title:
         return JsonResponse({"error": "title_required"}, status=400)
 
-    start_dt = _parse_iso_datetime(data.get("start_datetime"))
-    end_dt = _parse_iso_datetime(data.get("end_datetime") or data.get("start_datetime"))
+    is_all_day = data.get("is_all_day")
+    if isinstance(is_all_day, str):
+        is_all_day = is_all_day.lower() == "true"
+    is_all_day = bool(is_all_day)
+
+    start_dt = _parse_iso_datetime(data.get("start_datetime"), is_all_day=is_all_day)
+    end_dt = _parse_iso_datetime(data.get("end_datetime") or data.get("start_datetime"), is_all_day=is_all_day)
     if not start_dt or not end_dt:
         return JsonResponse({"error": "invalid_datetime"}, status=400)
 
     if end_dt <= start_dt:
         end_dt = start_dt + timedelta(hours=1)
-
-    is_all_day = data.get("is_all_day")
-    if isinstance(is_all_day, str):
-        is_all_day = is_all_day.lower() == "true"
-    is_all_day = bool(is_all_day)
 
     type_map = {
         "experiment": "E",
@@ -811,9 +829,17 @@ def schedule_detail(request, schedule_id):
             color = type_colors.get(schedule.schedule_type, '#3b82f6')
 
         # Load shared users
+        # ✅ 공유받은 일정(is_shared_copy)인 경우 원본 일정의 공유 목록을 조회
+        target_schedule = schedule.original_schedule if schedule.is_shared_copy else schedule
         shared_users = []
+        shared_user_ids = set()  # 중복 체크용
+        
+        # 현재 사용자가 소유자인지 확인
+        owner_id = _resolve_owner_id(request.user)
+        is_owner = target_schedule.created_id == owner_id
+        
         try:
-            schedule_shares = ScheduleShare.objects.filter(schedule=schedule).select_related()
+            schedule_shares = ScheduleShare.objects.filter(schedule=target_schedule).select_related()
             user_ids = [share.user_id for share in schedule_shares]
             users = {str(u.user_id): u for u in CustomUser.objects.filter(user_id__in=user_ids)}
             for share in schedule_shares:
@@ -825,12 +851,13 @@ def schedule_detail(request, schedule_id):
                     'status': 'accepted',
                     'sharedDate': share.created_at.isoformat() if share.created_at else None,
                 })
+                shared_user_ids.add(str(share.user_id))
         except Exception as e:
             print(f"[WARNING] Error loading shared users: {e}")
 
         try:
             pending_invitations = ScheduleInvitation.objects.filter(
-                schedule=schedule,
+                schedule=target_schedule,
                 status=ScheduleInvitation.Status.PENDING
             )
             pending_user_ids = [invite.user_id for invite in pending_invitations]
@@ -844,8 +871,31 @@ def schedule_detail(request, schedule_id):
                     'status': 'pending',
                     'sharedDate': invite.created_at.isoformat() if invite.created_at else None,
                 })
+                shared_user_ids.add(str(invite.user_id))
         except Exception as e:
             print(f"[WARNING] Error loading pending invitations: {e}")
+
+        # ✅ 일정 작성자가 아닐 경우 소유자도 공유 목록에 추가
+        schedule_owner_id = str(target_schedule.created_id)
+        if not is_owner and schedule_owner_id not in shared_user_ids:
+            try:
+                owner_user = CustomUser.objects.get(user_id=schedule_owner_id)
+                shared_users.insert(0, {  # 맨 앞에 추가
+                    'user_id': schedule_owner_id,
+                    'email': owner_user.email,
+                    'name': owner_user.full_name or owner_user.email,
+                    'status': 'owner',  # 소유자 표시
+                    'sharedDate': target_schedule.created_at.isoformat() if target_schedule.created_at else None,
+                })
+            except CustomUser.DoesNotExist:
+                # 소유자 정보를 찾을 수 없는 경우 기본 정보로 추가
+                shared_users.insert(0, {
+                    'user_id': schedule_owner_id,
+                    'email': schedule_owner_id,
+                    'name': schedule_owner_id,
+                    'status': 'owner',
+                    'sharedDate': target_schedule.created_at.isoformat() if target_schedule.created_at else None,
+                })
 
         payload['color'] = color
         payload['shared_with'] = shared_users
@@ -961,10 +1011,17 @@ def schedule_detail(request, schedule_id):
                 update_fields.append('color')
                 sync_fields.append('color')
 
+        # Get is_all_day value for datetime parsing
+        is_all_day = data.get('is_all_day')
+        if is_all_day is None:
+            # If not provided, use existing schedule value
+            is_all_day = schedule.is_all_day == 'Y'
+        elif isinstance(is_all_day, str):
+            is_all_day = is_all_day.lower() in ('true', '1', 'y', 'yes')
+        else:
+            is_all_day = bool(is_all_day)
+
         if 'is_all_day' in data:
-            is_all_day = data.get('is_all_day')
-            if isinstance(is_all_day, str):
-                is_all_day = is_all_day.lower() in ('true', '1', 'y', 'yes')
             new_is_all_day = 'Y' if is_all_day else 'N'
             if schedule.is_all_day != new_is_all_day:
                 schedule.is_all_day = new_is_all_day
@@ -996,16 +1053,14 @@ def schedule_detail(request, schedule_id):
                     sync_fields.append('calendar')
 
         if 'start_datetime' in data:
-            from django.utils.dateparse import parse_datetime
-            start_date = parse_datetime(data['start_datetime'])
+            start_date = _parse_iso_datetime(data['start_datetime'], is_all_day=is_all_day)
             if start_date and schedule.start_date != start_date:
                 schedule.start_date = start_date
                 update_fields.append('start_date')
                 sync_fields.append('start_date')
 
         if 'end_datetime' in data:
-            from django.utils.dateparse import parse_datetime
-            end_date = parse_datetime(data['end_datetime'])
+            end_date = _parse_iso_datetime(data['end_datetime'], is_all_day=is_all_day)
             if end_date and schedule.end_date != end_date:
                 schedule.end_date = end_date
                 update_fields.append('end_date')
@@ -1128,9 +1183,12 @@ def schedule_shared_users(request, schedule_id):
             owner_id = _resolve_owner_id(request.user)
             is_owner = schedule.created_id == owner_id
 
-            schedule_shares = ScheduleShare.objects.filter(schedule=schedule)
+            # ✅ 공유받은 일정(is_shared_copy)인 경우 원본 일정의 공유 목록을 조회
+            # ✅ 공유받은 사용자도 공유 목록을 볼 수 있도록 조회 (권한 체크 없이)
+            target_schedule = schedule.original_schedule if schedule.is_shared_copy else schedule
+            schedule_shares = ScheduleShare.objects.filter(schedule=target_schedule)
             pending_invitations = ScheduleInvitation.objects.filter(
-                schedule=schedule,
+                schedule=target_schedule,
                 status=ScheduleInvitation.Status.PENDING
             )
             user_ids = [share.user_id for share in schedule_shares]
@@ -1139,6 +1197,9 @@ def schedule_shared_users(request, schedule_id):
             users = {str(u.user_id): u for u in CustomUser.objects.filter(user_id__in=combined_ids)}
 
             shared_users = []
+            shared_user_ids = set()  # 중복 체크용
+            
+            # 공유된 사용자 목록 추가
             for share in schedule_shares:
                 user = users.get(str(share.user_id))
                 shared_users.append({
@@ -1148,7 +1209,9 @@ def schedule_shared_users(request, schedule_id):
                     'created_at': share.created_at.isoformat() if share.created_at else None,
                     'status': 'accepted',
                 })
+                shared_user_ids.add(str(share.user_id))
 
+            # 대기 중인 초대 목록 추가
             for invite in pending_invitations:
                 user = users.get(str(invite.user_id))
                 shared_users.append({
@@ -1158,6 +1221,29 @@ def schedule_shared_users(request, schedule_id):
                     'created_at': invite.created_at.isoformat() if invite.created_at else None,
                     'status': 'pending',
                 })
+                shared_user_ids.add(str(invite.user_id))
+
+            # ✅ 일정 작성자가 아닐 경우 소유자도 공유 목록에 추가
+            schedule_owner_id = str(target_schedule.created_id)
+            if not is_owner and schedule_owner_id not in shared_user_ids:
+                try:
+                    owner_user = CustomUser.objects.get(user_id=schedule_owner_id)
+                    shared_users.insert(0, {  # 맨 앞에 추가
+                        'user_id': schedule_owner_id,
+                        'email': owner_user.email,
+                        'name': owner_user.full_name or owner_user.email,
+                        'created_at': target_schedule.created_at.isoformat() if target_schedule.created_at else None,
+                        'status': 'owner',  # 소유자 표시
+                    })
+                except CustomUser.DoesNotExist:
+                    # 소유자 정보를 찾을 수 없는 경우 기본 정보로 추가
+                    shared_users.insert(0, {
+                        'user_id': schedule_owner_id,
+                        'email': schedule_owner_id,
+                        'name': schedule_owner_id,
+                        'created_at': target_schedule.created_at.isoformat() if target_schedule.created_at else None,
+                        'status': 'owner',
+                    })
 
             return JsonResponse({
                 'results': shared_users,

@@ -890,7 +890,7 @@ function renderMessages() {
                                     </button>
                                     <button class="action-btn-text" data-action="graph-summary" data-message-id="${msg.message_id || index}">
                                         <i class="fas fa-chart-bar"></i>
-                                        <span>그래프 요약</span>
+                                        <span>내용 요약</span>
                                     </button>
                                 </div>
                             </div>

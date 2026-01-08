@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import os
-import uuid
 import subprocess
 from pathlib import Path
 from typing import Optional, Literal
@@ -16,22 +15,27 @@ OUTPUTS_DIR = os.environ.get("OUTPUTS_DIR", f"{SCRIPT_DIR}/outputs")
 TORCH_VENV = os.environ.get("TORCH_VENV", "/opt/venv_torch")
 PYTHONPATH = os.environ.get("PYTHONPATH", "/app/RFdiffusion")
 
-# (선택) 간단한 보호장치
 API_KEY = os.environ.get("API_KEY")  # 설정 안 하면 인증 없이 동작
 
-app = FastAPI(title="RFdiffusion Runner API")
+app = FastAPI(title="Unified Runner API")
 
-
+STEP_FOR_CLI = {
+    "rfdiffusion": "rfdiffusion",
+    "protein_mpnn": "proteinMPNN",
+    "alphafold3": "alphafold",
+}
 # ---------------- Models ----------------
 class RunRequest(BaseModel):
     mode: Literal["backbone", "binder", "other"] = "backbone"
-    name: Optional[str] = None
+
+    # # # ⚠️ 기존 호환을 위해 남겨두되, 실제 실행에서는 무시함
+    # name: Optional[str] = None
     contigs: str = Field(default="100")
-    iterations: int = Field(default=1, ge=1, le=1000)
-
-    # ✅ (선택) API 요청에서 로그 업로드까지 하고 싶으면 true
-    s3_upload_logs: bool = Field(default=False)
-
+    iterations: int = Field(default=1)   
+    s3_upload_logs: bool = Field(default=True)
+    experiment_id: str            # 파이프라인 ID (experiment_sid 문자열)
+    step: Literal["rfdiffusion", "protein_mpnn", "alphafold3"]
+    options: dict = Field(default_factory=dict)
 
 class RunResponse(BaseModel):
     ok: bool
@@ -69,25 +73,74 @@ def _job_paths(name: str):
     pid_path = logs_dir / f"{name}.pid"
     return log_path, pid_path
 
+def _has_s3_uploaded(log_path: Path) -> bool:
+    """
+    main.py 로그 안에 '[s3] uploaded:' 라인이 있으면
+    S3 업로드까지 정상 종료된 것으로 본다.
+    """
+    if not log_path.exists():
+        return False
+    try:
+        text = log_path.read_text(errors="ignore")
+    except Exception:
+        return False
+    return "[s3] uploaded:" in text
+
 
 def _status_from_files(name: str) -> str:
-    pdb0 = Path(OUTPUTS_DIR) / f"{name}_0.pdb"
-    _log_path, pid_path = _job_paths(name)
+    log_path, pid_path = _job_paths(name)
 
-    if pdb0.exists():
-        return "done"
-
+    # 1) PID 살아 있는지 먼저 확인
+    pid_alive = False
     if pid_path.exists():
         try:
             pid = int(pid_path.read_text().strip())
             if Path(f"/proc/{pid}").exists():
-                return "running"
-            else:
-                return "failed"
+                pid_alive = True
         except Exception:
-            return "unknown"
+            pid_alive = False
+
+    # 2) 기대하는 결과 파일들 모으기
+    parts = name.split("__", 1)
+    exp_id = parts[0]
+    step_cli = parts[1] if len(parts) > 1 else ""
+    outputs_root = Path(OUTPUTS_DIR) / "simulations"
+    pipeline_dirs = list(outputs_root.rglob(f"pipeline-{exp_id}"))
+
+    expected_paths: list[Path] = []
+    for pipeline_dir in pipeline_dirs:
+        if step_cli == "rfdiffusion":
+            expected_paths.append(pipeline_dir / "step-rfdiffusion" / f"{exp_id}_0.pdb")
+        elif step_cli == "proteinMPNN":
+            expected_paths.append(pipeline_dir / "step-proteinMPNN" / f"{exp_id}_mpnn.fasta")
+        elif step_cli == "alphafold":
+            expected_paths.append(pipeline_dir / "step-alphafold" / f"{exp_id}_af_best.pdb")
+
+    any_file = any(p.exists() for p in expected_paths)
+
+    # 3) S3 업로드 로그 확인
+    s3_done = _has_s3_uploaded(log_path)
+
+    # 4) 최종 상태 판정
+
+    # (1) 결과 파일도 있고, [s3] uploaded: 로그도 있으면 → 완전히 끝난 상태
+    if any_file and s3_done:
+        return "done"
+
+    # (2) 그 전에는, PID가 살아 있으면 중간에 파일이 있어도 계속 running
+    if pid_alive:
+        return "running"
+
+    # (3) PID는 끝났는데 파일만 있고 S3 로그가 없으면 → 업로드 실패로 간주
+    if any_file and not s3_done:
+        return "failed"
+
+    # (4) PID 끝났고 파일도 없으면 그냥 실패
+    if pid_path.exists() and not pid_alive:
+        return "failed"
 
     return "unknown"
+
 
 
 # ---------------- Routes ----------------
@@ -101,12 +154,10 @@ def health():
         "torch_venv": TORCH_VENV,
         "pythonpath": PYTHONPATH,
 
-        # 기존(최종적으로 쓰이는 값)
         "s3_bucket": os.environ.get("S3_BUCKET", ""),
-        "s3_prefix": os.environ.get("S3_PREFIX", "rfdiffusion"),
+        "s3_base": os.environ.get("S3_BASE", "simulations"),
         "aws_region": os.environ.get("AWS_REGION", os.environ.get("AWS_DEFAULT_REGION", "")),
 
-        # ✅ 추가: RunPod에 AWS_S3_*로 넣었을 때 디버깅 편하게 같이 노출
         "aws_s3_bucket": os.environ.get("AWS_S3_BUCKET", ""),
         "aws_s3_base_path": os.environ.get("AWS_S3_BASE_PATH", ""),
     }
@@ -117,21 +168,58 @@ def run(req: RunRequest, x_api_key: Optional[str] = None):
     _auth_or_throw(x_api_key)
     _ensure_paths()
 
-    job_id = uuid.uuid4().hex[:12]
-    name = req.name or f"job_{job_id}"
+    experiment_id = req.experiment_id.strip()
+    if not experiment_id:
+        raise HTTPException(status_code=400, detail="experiment_id is required")
 
-    log_path, pid_path = _job_paths(name)
+    step_api = req.step
+    opts = req.options or {}
+    step_cli = STEP_FOR_CLI[step_api]  
 
-    # ✅ 여기서 main.py에 s3_upload_logs 옵션을 넘겨줄지 결정
+    contigs = req.contigs or "100"
+    iterations = req.iterations or 1
+    cautious = False
+
+    if step_api == "rfdiffusion":
+        contigs = str(opts.get("contigs") or contigs)
+        iterations = int(opts.get("numSteps") or iterations)
+        cautious = bool(opts.get("cautious") or False)
+
+    elif step_api == "protein_mpnn":
+        contigs = str(opts.get("contigs") or req.contigs)
+        iterations = int(opts.get("numSequences") or req.iterations)
+        cautious = False
+    elif step_api == "alphafold3":
+        contigs = req.contigs
+        iterations = int(opts.get("maxRecycles") or req.iterations)
+        cautious = False
+        
+    protein_seq = (opts.get("protein_sequence") or "").strip()
+    af_sequence_only = bool(opts.get("af_sequence_only"))
+
+
+    job_name = f"{experiment_id}__{step_cli}"
+    job_id = experiment_id   
+
+    log_path, pid_path = _job_paths(job_name)
+
+    # ✅ main.py에 experiment_id / step 전달
     args = [
         "run",
         "--mode", req.mode,
-        "--name", name,
-        "--contigs", req.contigs,
-        "--iterations", str(req.iterations),
+        "--contigs", contigs,
+        "--iterations", str(iterations),
+        "--experiment_id", experiment_id,
+        "--step", step_api
     ]
+    if protein_seq:
+        args.extend(["--protein_sequence", protein_seq])
+    if af_sequence_only:
+        args.append("--af_sequence_only")
     if req.s3_upload_logs:
         args.append("--s3_upload_logs")
+    if cautious:
+        args.append("--cautious")
 
     env = os.environ.copy()
     env["TORCH_VENV"] = TORCH_VENV
@@ -139,13 +227,12 @@ def run(req: RunRequest, x_api_key: Optional[str] = None):
     env["OUTPUTS_DIR"] = OUTPUTS_DIR
     env["SCRIPT_DIR"] = SCRIPT_DIR
 
-    # ✅ 중요: S3 관련 env를 자식 프로세스(run)에도 확실히 전달
+    # S3/AWS env 전달
     env["S3_BUCKET"] = os.environ.get("S3_BUCKET", "")
-    env["S3_PREFIX"] = os.environ.get("S3_PREFIX", "rfdiffusion")
+    env["S3_BASE"] = os.environ.get("S3_BASE", "simulations")
     env["AWS_REGION"] = os.environ.get("AWS_REGION", os.environ.get("AWS_DEFAULT_REGION", ""))
     env["AWS_DEFAULT_REGION"] = os.environ.get("AWS_DEFAULT_REGION", env["AWS_REGION"])
 
-    # ✅ (디버깅/호환) AWS_S3_*도 그대로 전달해두면 run 쪽에서 확인하기 쉬움
     env["AWS_S3_BUCKET"] = os.environ.get("AWS_S3_BUCKET", "")
     env["AWS_S3_BASE_PATH"] = os.environ.get("AWS_S3_BASE_PATH", "")
 
@@ -162,8 +249,8 @@ def run(req: RunRequest, x_api_key: Optional[str] = None):
 
     return RunResponse(
         ok=True,
-        job_id=job_id,
-        name=name,
+        job_id=job_id,   
+        name=job_name,  
         outputs_dir=OUTPUTS_DIR,
         cmd=["bash", OPS_SH, *args],
     )
@@ -177,11 +264,32 @@ def status(name: str, x_api_key: Optional[str] = None):
     log_path, _ = _job_paths(name)
     st = _status_from_files(name)
 
+    # 참고용 expected_pdb: 위 유틸과 같은 규칙으로 첫 번째 매치만 잡아줌
+    parts = name.split("__", 1)
+    exp_id = parts[0]
+    step_cli = parts[1] if len(parts) > 1 else ""
+    outputs_root = Path(OUTPUTS_DIR) / "simulations"
+    pipeline_dirs = list(outputs_root.rglob(f"pipeline-{exp_id}"))
+
+    expected = Path(OUTPUTS_DIR) / f"{name}_0.pdb"
+    for pipeline_dir in pipeline_dirs:
+        if step_cli == "rfdiffusion":
+            cand = pipeline_dir / "step-rfdiffusion" / f"{exp_id}_0.pdb"
+        elif step_cli == "proteinMPNN":
+            cand = pipeline_dir / "step-proteinMPNN" / f"{exp_id}_mpnn.fasta"
+        elif step_cli == "alphafold":
+            cand = pipeline_dir / "step-alphafold" / f"{exp_id}_af_best.pdb"
+        else:
+            continue
+        if cand.exists():
+            expected = cand
+            break
+
     return StatusResponse(
         ok=True,
         job_id="(use name)",
         name=name,
         status=st,
         log_path=str(log_path),
-        expected_pdb=str(Path(OUTPUTS_DIR) / f"{name}_0.pdb"),
+        expected_pdb=str(expected),
     )
