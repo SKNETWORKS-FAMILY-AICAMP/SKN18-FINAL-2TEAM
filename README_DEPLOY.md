@@ -43,6 +43,41 @@
 프록시 레이어 (옵션)
 → nginx
 
+
+## 메세지 큐 (RabbitMQ) 구조
+```text
+┌─────────────────────────────────────────┐
+│  RabbitMQ EC2 (Broker)                  │
+│  └─ RabbitMQ Server                     │
+│     └─ 큐: sim.run.alphafold3 등       │
+└─────────────────────────────────────────┘
+              ▲                    ▼
+              │                    │
+     [발행]   │                    │   [소비]
+              │                    │
+┌─────────────┴────────────────────┴─────────────┐
+│  App EC2                                        │
+│  ├─ web (Producer)                             │
+│  │  └─ Django → publish_simulation()           │
+│  │     └─ messaging/producers/                 │
+│  │                                             │
+│  └─ worker (Consumer)                          │
+│     └─ messaging/workers/main.py               │
+│        └─ messaging/consumers/                 │
+└─────────────────────────────────────────────────┘
+```
+
+### 요약
+
+|용어|역할|위치|코드 위치|
+|---|---|---|---|
+|Broker|메시지 중개 서버|RabbitMQ EC2|RabbitMQ 서버|
+|Producer|메시지 발행|App EC2 (web)|django_app/apps/core/queue.py|
+|Consumer/Worker|메시지 소비 및 처리|App EC2 (worker)|messaging/workers/main.py|
+
+- 결론: 브로커는 서버, Producer는 클라이언트입니다. Worker는 Consumer가 맞습니다.
+
+
 ## 메시지 큐 (RabbitMQ) 배포
 
 ### 서비스 구성
@@ -153,5 +188,7 @@ rabbitmq:
    - DLX (Dead Letter Exchange) 확인
    - 메시지 영속화 설정 확인
    - 재시도 로직 확인
+
+
 
 
