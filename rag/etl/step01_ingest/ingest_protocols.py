@@ -19,6 +19,8 @@ else:
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+PLACEHOLDER_PATTERN = re.compile(r'%s+', re.I)
+
 from rag.etl.step01_ingest.modules.protocol import (
     get_protocol,
     get_public_protocols,
@@ -31,29 +33,57 @@ from bs4 import BeautifulSoup
 # -------------------------
 # (1) 표(table) → 텍스트 변환 함수
 # -------------------------
-def parse_table_to_text(html):
+def extract_cell_text(cell: BeautifulSoup) -> str:
+    """
+    td/th 안에 직접 텍스트가 없을 경우
+    내부 block 구조를 줄 단위로 풀어냄
+    """
+    text = cell.get_text(separator=" ", strip=True)
+
+    if text:
+        return text
+
+    # fallback: li, p, div 단위 추출
+    lines = []
+
+    for tag in cell.find_all(["li", "p", "div"], recursive=True):
+        t = tag.get_text(strip=True)
+        if t:
+            lines.append(t)
+
+    return "; ".join(lines)
+
+def parse_table_to_text(html: str) -> str:
     if not html:
         return html
 
     soup = BeautifulSoup(html, "html.parser")
+
+    # sup → ^ 변환 (이전 논의 반영)
+    for sup in soup.find_all("sup"):
+        sup.replace_with(f"^{sup.get_text(strip=True)}")
+
     tables = soup.find_all("table")
 
     for table in tables:
         rows = []
 
-        # 모든 tr 반복
         for tr in table.find_all("tr"):
             cells = []
-
-            # th, td 모두 읽기
             for cell in tr.find_all(["th", "td"]):
-                cells.append(cell.get_text(strip=True))
+                cells.append(extract_cell_text(cell))
+            rows.append(cells)
 
-            rows.append("\t".join(cells))  # 탭 구분자로 처리
+        # 🔥 모든 cell이 빈 경우 → table 전체 fallback
+        if all(all(not c for c in row) for row in rows):
+            continue
 
-        # 표 전체를 텍스트로 변환
-        table_text = "\n".join(rows)
-        table.replace_with("\n" + table_text + "\n")
+        lines = ["[TABLE]"]
+        for row in rows:
+            lines.append("| " + " | ".join(row) + " |")
+        lines.append("[/TABLE]")
+
+        table.replace_with("\n" + "\n".join(lines) + "\n")
 
     return str(soup)
 
@@ -188,19 +218,6 @@ def detect_pseudo_table_from_text(text: str) -> str:
         i += 1
 
     return "\n".join(raw_lines)
-
-def strip_pseudo_table_tags(text: str) -> str:
-    """
-    <PSEUDO_TABLE> 태그 제거 (내용은 유지)
-    """
-    if not text:
-        return text
-    return (
-        text
-        .replace("<PSEUDO_TABLE>", "")
-        .replace("</PSEUDO_TABLE>", "")
-        .strip()
-    )
 
 # -------------------------
 # (2) API 데이터 수집
@@ -470,7 +487,6 @@ def ingest_keyword(search_keyword: str, raw_dir: Path | None = None) -> None:
             abstract_html = parse_table_to_text(abstract_html)
             abstract_str = html_to_text_with_superscript(abstract_html)
             abstract_str = detect_pseudo_table_from_text(abstract_str)
-            abstract_str = strip_pseudo_table_tags(abstract_str)
             if not abstract_str.strip():
                 abstract_str = "<no data>"
             print(f"abstract: {abstract_str}")
@@ -504,6 +520,9 @@ def ingest_keyword(search_keyword: str, raw_dir: Path | None = None) -> None:
                 # 기존 테이블 변환 및 superscript 변환 적용
                 step_html = parse_table_to_text(step_html)
                 step_text = html_to_text_with_superscript(step_html)
+
+                if PLACEHOLDER_PATTERN.fullmatch(step_text.strip()):
+                    step_text = ""
                 
                 # 버튼 텍스트가 있으면 앞이나 뒤에 붙임 (예: 앞에 번호 넣기)
                 if buttons_combined:
@@ -514,7 +533,6 @@ def ingest_keyword(search_keyword: str, raw_dir: Path | None = None) -> None:
                 step_str = "<no data>"
 
             step_str = detect_pseudo_table_from_text(step_str)
-            step_str = strip_pseudo_table_tags(step_str)
             print(f"step_content: {step_str}")
 
 
@@ -522,7 +540,6 @@ def ingest_keyword(search_keyword: str, raw_dir: Path | None = None) -> None:
             reference_html = parse_table_to_text(reference_html)
             reference_str = html_to_text_with_superscript(reference_html)
             reference_str = detect_pseudo_table_from_text(reference_str)
-            reference_str = strip_pseudo_table_tags(reference_str)
             if not reference_str.strip():
                 reference_str = "<no data>"
             print(f"reference: {reference_str}")
@@ -531,7 +548,6 @@ def ingest_keyword(search_keyword: str, raw_dir: Path | None = None) -> None:
             guidelines_html = parse_table_to_text(guidelines_html)
             guidelines_str = html_to_text_with_superscript(guidelines_html)
             guidelines_str = detect_pseudo_table_from_text(guidelines_str)
-            guidelines_str = strip_pseudo_table_tags(guidelines_str)
             if not guidelines_str.strip():
                 guidelines_str = "<no data>"
             print(f"guidelines: {guidelines_str}")
@@ -540,7 +556,6 @@ def ingest_keyword(search_keyword: str, raw_dir: Path | None = None) -> None:
             materials_html = parse_table_to_text(materials_html)
             materials_str = html_to_text_with_superscript(materials_html)
             materials_str = detect_pseudo_table_from_text(materials_str)
-            materials_str = strip_pseudo_table_tags(materials_str)
             if not materials_str.strip():
                 materials_str = "<no data>"
             print(f"materials: {materials_str}")
