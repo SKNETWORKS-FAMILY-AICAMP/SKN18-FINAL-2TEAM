@@ -1,7 +1,9 @@
 import json
+import requests
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
+from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from rest_framework.decorators import api_view, permission_classes
@@ -10,7 +12,7 @@ from rest_framework.response import Response
 from rest_framework.authentication import SessionAuthentication
 from rest_framework.views import APIView
 from drf_spectacular.utils import extend_schema, OpenApiParameter
-from .models import ExperimentTool, Experiment, ExperimentToolSelection, ExperimentToolOption
+from .models import ExperimentTool, Experiment, ExperimentToolSelection, ExperimentToolOption, ExperimentResult
 from django.db import transaction
 from django_app.apps.core.queue import publish_simulation
 from rest_framework.exceptions import NotFound
@@ -563,3 +565,56 @@ def experiment_result_files_api(request, experiment_sid: int):
         "results": results,
     }
     , status=200)
+
+@extend_schema(tags=["Experiments"], summary="실험 결과 파일 프록시 (CORS 우회)",)
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def experiment_result_file_proxy(request, result_sid: int):
+    """
+    실험 결과 파일을 프록시하여 CORS 문제를 해결합니다.
+    """
+    user_identifier = _get_user_identifier(request.user)
+    try:
+        result = ExperimentResult.objects.select_related('experiment').get(
+            result_sid=result_sid,
+            experiment__created_id=user_identifier,
+        )
+    except ExperimentResult.DoesNotExist:
+        raise NotFound("Result not found")
+    
+    if not result.file_path:
+        return Response({"error": "File path not found"}, status=404)
+    
+    try:
+        # S3에서 파일 다운로드
+        response = requests.get(result.file_path, timeout=30)
+        response.raise_for_status()
+        
+        # Content-Type 설정
+        content_type = 'text/plain'
+        if result.result_type and result.result_type.upper() == 'PDB':
+            content_type = 'chemical/x-pdb'
+        elif result.result_name:
+            if result.result_name.endswith('.pdb'):
+                content_type = 'chemical/x-pdb'
+            elif result.result_name.endswith('.csv'):
+                content_type = 'text/csv'
+            elif result.result_name.endswith('.json'):
+                content_type = 'application/json'
+        
+        # 파일 내용을 응답으로 반환
+        http_response = HttpResponse(
+            response.content,
+            content_type=content_type
+        )
+        # CORS 헤더 추가
+        http_response['Access-Control-Allow-Origin'] = '*'
+        http_response['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
+        http_response['Access-Control-Allow-Headers'] = 'Content-Type'
+        return http_response
+        
+    except requests.RequestException as e:
+        return Response(
+            {"error": f"Failed to fetch file: {str(e)}"},
+            status=500
+        )

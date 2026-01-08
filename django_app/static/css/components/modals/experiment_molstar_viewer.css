@@ -1,0 +1,40 @@
+/* Experiment Molstar Viewer Modal Styles */
+
+/* Make modal even larger for better 3D viewing */
+#molstarModal .modal-container.modal-xlarge {
+    max-width: 85%;
+    width: 85%;
+    max-height: 85vh;
+    height: 85vh;
+    display: flex;
+    flex-direction: column;
+}
+
+#molstarModal .modal-body {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+#molstar-viewer-container {
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+}
+
+#molstar-viewer {
+    width: 100%;
+    height: 100%;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1024px) {
+    #molstarModal .modal-container.modal-xlarge {
+        max-width: 98%;
+        width: 98%;
+        max-height: 98vh;
+        height: 98vh;
+    }
+}

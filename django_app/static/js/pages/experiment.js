@@ -2075,15 +2075,15 @@ function renderResultFilesList(files, experimentId) {
     }
 
     experimentResultFilesList.innerHTML = files.map(file => {
-        const fileId = file.id || file.file_id;
         const fileName = file.name || file.filename || 'Unknown';
         const fileType = file.type || file.file_type || 'FILE';
         const fileTypeRaw = fileType.toUpperCase();
         const isPdb = fileTypeRaw === 'PDB';
         const fileDateRaw = file.date || file.created_at || '신규';
         const fileDate = formatResultDate(fileDateRaw);
-        // file_path를 그대로 사용
-        const fileUrl = file.file_path;
+        // 백엔드 프록시 URL 사용 (CORS 문제 해결)
+        const fileId = file.id || file.result_sid || file.file_id;
+        const fileUrl = fileId ? `/api/experiments/results/${fileId}/file/` : (file.file_path || file.url || file.file_url || '');
 
 
         return `
@@ -2092,8 +2092,9 @@ function renderResultFilesList(files, experimentId) {
                     <p class="result-file-name">${escapeHtml(fileName)}</p>
                     <div class="result-file-actions">
                         ${isPdb ? `
-                            <button class="result-file-detail-btn"
+                            <button class="result-file-actions-btn"
                                 data-file-url="${fileUrl}"
+                                data-file-name="${escapeHtml(fileName)}"
                                 title="상세보기">
                                 <i class="fa-solid fa-arrow-up-right-from-square"></i>
                             </button>
@@ -2134,14 +2135,80 @@ function attachResultFileDownloadHandlers() {
 
 // Attach result file detail view handlers (PDB preview)
 function attachResultFileDetailHandlers() {
-    const detailBtns = experimentResultFilesList?.querySelectorAll('.result-file-detail-btn');
-    detailBtns?.forEach(btn => {
-        btn.addEventListener('click', (e) => {
+    const detailBtns = experimentResultFilesList?.querySelectorAll('.result-file-actions-btn');
+    console.log('[Experiment] Found detail buttons:', detailBtns?.length || 0);
+    
+    if (!detailBtns || detailBtns.length === 0) {
+        console.warn('[Experiment] No detail buttons found');
+        return;
+    }
+    
+    detailBtns.forEach(btn => {
+        // Remove existing listeners to avoid duplicates
+        const newBtn = btn.cloneNode(true);
+        btn.parentNode.replaceChild(newBtn, btn);
+        
+        newBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            const fileUrl = btn.getAttribute('data-file-url');
-            handleResultFileView(fileUrl);
+            e.preventDefault();
+            console.log('[Experiment] Detail button clicked');
+            
+            // Get file URL and name from data attributes
+            const fileUrl = newBtn.getAttribute('data-file-url');
+            const fileName = newBtn.getAttribute('data-file-name') || 'PDB 파일';
+            
+            if (!fileUrl) {
+                console.error('[Experiment] File URL not found');
+                if (window.notyf) {
+                    window.notyf.error('파일 URL을 찾을 수 없습니다.');
+                }
+                return;
+            }
+            
+            // Open molstar modal
+            if (window.MolstarModal && typeof window.MolstarModal.open === 'function') {
+                window.MolstarModal.open(fileUrl, fileName);
+            } else {
+                console.error('[Experiment] MolstarModal is not available');
+                if (window.notyf) {
+                    window.notyf.error('3D 뷰어를 열 수 없습니다. 페이지를 새로고침해주세요.');
+                }
+            }
         });
     });
+}
+
+// Open experiment result modal with retry logic
+function openExperimentResultModalWithRetry(maxAttempts = 20) {
+    console.log('[Experiment] Attempting to open modal, attempts left:', maxAttempts);
+    console.log('[Experiment] ExperimentResultModal available:', !!window.ExperimentResultModal);
+    
+    if (window.ExperimentResultModal && typeof window.ExperimentResultModal.open === 'function') {
+        console.log('[Experiment] Opening modal...');
+        try {
+            window.ExperimentResultModal.open();
+            console.log('[Experiment] Modal open called successfully');
+        } catch (error) {
+            console.error('[Experiment] Error opening modal:', error);
+            if (window.notyf) {
+                window.notyf.error('모달을 여는 중 오류가 발생했습니다.');
+            }
+        }
+        return;
+    }
+    
+    // Retry if modal is not ready yet
+    if (maxAttempts > 0) {
+        setTimeout(() => {
+            openExperimentResultModalWithRetry(maxAttempts - 1);
+        }, 100);
+    } else {
+        console.error('[Experiment] ExperimentResultModal is not available after waiting');
+        console.error('[Experiment] window.ExperimentResultModal:', window.ExperimentResultModal);
+        if (window.notyf) {
+            window.notyf.error('실험 결과 모달을 열 수 없습니다. 페이지를 새로고침해주세요.');
+        }
+    }
 }
 
 // Open file in new tab for quick preview

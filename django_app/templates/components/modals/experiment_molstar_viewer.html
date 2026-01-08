@@ -1,0 +1,21 @@
+{% load static %}
+<div class="modal-overlay" id="molstarModal" role="dialog" aria-labelledby="molstarModalTitle" aria-modal="true">
+    <div class="modal-container modal-xlarge">
+        <div class="modal-header">
+            <div>
+                <h2 class="modal-title" id="molstarModalTitle">3D 구조 뷰어</h2>
+                <p class="modal-subtitle" id="molstarModalSubtitle">PDB 파일을 시각화합니다</p>
+            </div>
+            <button class="modal-close-btn" aria-label="닫기" data-action="close">
+                <i class="fa-solid fa-times"></i>
+            </button>
+        </div>
+        
+        <div class="modal-body">
+            <!-- Molstar Viewer Container -->
+            <div id="molstar-viewer-container" style="width: 100%; height: 80vh; min-height: 700px;">
+                <div id="molstar-viewer" style="width: 100%; height: 100%;"></div>
+            </div>
+        </div>
+    </div>
+</div>
