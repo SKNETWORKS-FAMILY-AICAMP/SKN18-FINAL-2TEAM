@@ -13,7 +13,8 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter
 from .models import ExperimentTool, Experiment, ExperimentToolSelection, ExperimentToolOption
 from django.db import transaction
 from django_app.apps.core.queue import publish_simulation
-
+from rest_framework.exceptions import NotFound
+from drf_spectacular.utils import extend_schema
 
 def _get_user_identifier(user):
     return str(user.user_id) if hasattr(user, 'user_id') else str(user.pk)
@@ -527,3 +528,38 @@ def _create_experiment_api(request):
         },
         status=200,
     )
+
+@extend_schema(tags=["Experiments"], summary="실험 결과 데이터 조회",)
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def experiment_result_files_api(request, experiment_sid: int):
+    user_identifier = _get_user_identifier(request.user)
+    try:
+        experiment = Experiment.objects.prefetch_related("results").get(
+            experiment_sid=experiment_sid,
+            created_id=user_identifier,
+        )
+    except Experiment.DoesNotExist:
+        raise NotFound("Experiment not found")
+
+    results = []
+    for result in experiment.results.order_by("-created_at"):
+        results.append({
+            "id": result.result_sid,
+            "name": result.result_name,
+            "type": result.result_type,
+            "size": None,
+            "created_at": result.created_at.isoformat() if result.created_at else None,
+            "file_path": result.file_path,
+        })
+
+    return Response({
+        "status": "success",
+        "experiment": {
+            "id": experiment.experiment_sid,
+            "pipeline_name": experiment.pipeline_name,
+            "status": experiment.status,
+        },
+        "results": results,
+    }
+    , status=200)
