@@ -2,16 +2,16 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# 시스템 의존성
-RUN apt-get update && apt-get install -y \
+# 시스템 의존성 (필요 최소 패키지만)
+RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     postgresql-client \
-    docker.io \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
 
-# Python 의존성
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Python 의존성 (Worker 전용 - 최소 패키지만)
+COPY requirements-worker.txt .
+RUN pip install --no-cache-dir -r requirements-worker.txt
 
 # Worker에 필요한 코드만 복사
 # messaging: Consumer 모듈 포함
