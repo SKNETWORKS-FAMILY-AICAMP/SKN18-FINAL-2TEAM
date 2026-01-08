@@ -546,6 +546,23 @@ def _build_section(tag: str, text: str) -> str:
 
     return f"<{tag}>\n{text.strip()}\n"
 
+def remove_pipe_table_rows(text: str) -> str:
+    lines = text.splitlines()
+    filtered = []
+
+    for ln in lines:
+        stripped = ln.strip()
+
+        # ✅ pipe-table row + 잔여 텍스트 제거
+        # | a | b | c |
+        # | a | b | c | blah
+        if re.match(r"^\|.*\|", stripped):
+            continue
+
+        filtered.append(ln)
+
+    return "\n".join(filtered)
+
 def chunk_dataframe(
     df: pd.DataFrame,
     keyword: str,
@@ -590,6 +607,9 @@ def chunk_dataframe(
             cleaned_chunk_text, table_blocks = protect_table_blocks(
                 chunk_text
             )
+
+            # ✅ chunk 본문에서만 pipe-table 제거
+            cleaned_chunk_text = remove_pipe_table_rows(cleaned_chunk_text)
 
             # 4️⃣ chunk row 생성
             output_rows.append(
