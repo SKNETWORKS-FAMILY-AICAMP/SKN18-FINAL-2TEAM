@@ -1412,7 +1412,7 @@
     right: 0;
     top: 0;
     height: 100vh;
-    width: 350px;
+    width: 420px; /* widen sidebar for experiment results */
     background: white;
     border-left: 1px solid #e5e7eb;
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);

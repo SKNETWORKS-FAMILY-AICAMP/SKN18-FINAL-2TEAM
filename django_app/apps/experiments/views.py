@@ -529,7 +529,7 @@ def _create_experiment_api(request):
         status=200,
     )
 
-@extend_schema(tags=["Experiments"])
+@extend_schema(tags=["Experiments"], summary="실험 결과 데이터 조회",)
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def experiment_result_files_api(request, experiment_sid: int):
