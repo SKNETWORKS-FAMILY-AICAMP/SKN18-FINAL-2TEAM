@@ -237,21 +237,112 @@ X_FRAME_OPTIONS = "SAMEORIGIN"
 # ───────────────────────────────────
 # Google OAuth / Calendar
 # ───────────────────────────────────
-GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
-GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
+
+# EC2 환경 감지 및 Parameter Store 헬퍼 함수
+def is_ec2_instance():
+    """EC2 인스턴스인지 확인"""
+    try:
+        import urllib.request
+        urllib.request.urlopen("http://169.254.169.254/latest/meta-data/instance-id", timeout=1)
+        return True
+    except:
+        return False
+
+def _get_parameter_from_store(parameter_path: str, with_decryption: bool = False) -> str | None:
+    """
+    AWS Parameter Store에서 파라미터 값을 가져온다.
+    
+    Args:
+        parameter_path: Parameter Store 경로
+        with_decryption: SecureString 타입인 경우 복호화 여부
+    
+    Returns:
+        파라미터 값, 실패 시 None
+    """
+    try:
+        import boto3
+        from botocore.exceptions import ClientError
+    except ImportError:
+        return None
+    
+    try:
+        region = os.getenv("AWS_REGION", os.getenv("AWS_DEFAULT_REGION", "ap-northeast-2"))
+        ssm_client = boto3.client("ssm", region_name=region)
+        response = ssm_client.get_parameter(
+            Name=parameter_path,
+            WithDecryption=with_decryption
+        )
+        return response["Parameter"]["Value"]
+    except (ClientError, Exception):
+        return None
+
+def _get_google_config(env_var_name: str, parameter_path: str, default: str = "", with_decryption: bool = False) -> str:
+    """
+    환경 변수 또는 Parameter Store에서 Google OAuth 설정 값을 가져온다.
+    
+    우선순위:
+        1. 환경 변수
+        2. Parameter Store (EC2 환경인 경우)
+        3. 기본값
+    
+    Args:
+        env_var_name: 환경 변수 이름
+        parameter_path: Parameter Store 경로
+        default: 기본값
+        with_decryption: SecureString 타입인 경우 복호화 여부
+    
+    Returns:
+        설정 값
+    """
+    # 1. 환경 변수 확인 (로컬 및 EC2 모두)
+    value = os.getenv(env_var_name)
+    if value:
+        return value
+    
+    # 2. EC2 환경인 경우 Parameter Store에서 가져오기
+    if is_ec2_instance():
+        param_value = _get_parameter_from_store(parameter_path, with_decryption=with_decryption)
+        if param_value:
+            return param_value
+    
+    # 3. 기본값 반환
+    return default
+
+# Google OAuth 설정 (로컬: 환경변수, EC2: Parameter Store)
+GOOGLE_CLIENT_ID = _get_google_config(
+    "GOOGLE_CLIENT_ID",
+    "/skn18/google-client-id",
+    ""
+)
+
+GOOGLE_CLIENT_SECRET = _get_google_config(
+    "GOOGLE_CLIENT_SECRET",
+    "/skn18/google-client-secret",
+    "",
+    with_decryption=True  # 비밀번호는 SecureString으로 저장
+)
 
 # 용도별 리디렉션 URI
 GOOGLE_REDIRECT_URIS = {
-    'calendar': os.getenv("GOOGLE_CALENDAR_REDIRECT_URI", "http://localhost:8000/schedule/google/oauth2/callback/"),
-    'profile': os.getenv("GOOGLE_PROFILE_REDIRECT_URI", "http://localhost:8000/accounts/google/login/callback/"),
+    'calendar': _get_google_config(
+        "GOOGLE_CALENDAR_REDIRECT_URI",
+        "/skn18/google-calendar-redirect-uri",
+        "http://localhost:8000/schedule/google/oauth2/callback/"
+    ),
+    'profile': _get_google_config(
+        "GOOGLE_PROFILE_REDIRECT_URI",
+        "/skn18/google-profile-redirect-uri",
+        "http://localhost:8000/accounts/google/login/callback/"
+    ),
 }
 
 # 기존 호환성 유지
-GOOGLE_REDIRECT_URI = GOOGLE_REDIRECT_URIS.get('calendar', os.getenv("GOOGLE_REDIRECT_URI", ""))
+GOOGLE_REDIRECT_URI = GOOGLE_REDIRECT_URIS.get('calendar', _get_google_config("GOOGLE_REDIRECT_URI", "/skn18/google-redirect-uri", ""))
 
-GOOGLE_CALENDAR_SCOPE = os.getenv(
+GOOGLE_CALENDAR_SCOPE = _get_google_config(
     "GOOGLE_CALENDAR_SCOPE",
-    "https://www.googleapis.com/auth/calendar",
+    "/skn18/google-calendar-scope",
+    "https://www.googleapis.com/auth/calendar"
 )
 
 # ───────────────────────────────────
