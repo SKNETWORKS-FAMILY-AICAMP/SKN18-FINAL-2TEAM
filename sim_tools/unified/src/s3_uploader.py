@@ -61,10 +61,20 @@ def upload_job_outputs(
     candidates: list[Path] = []
 
     if step == "rfdiffusion":
-        candidates += [
-            out / f"{job_name}_0.pdb",
-            out / f"{job_name}_0.trb",
-        ]
+        pdb_files = sorted(out.glob(f"{job_name}_*.pdb"))
+        trb_files = sorted(out.glob(f"{job_name}_*.trb"))
+        candidates += pdb_files + trb_files
+
+        # PDB + TRB 전체를 합친 ZIP도 함께 업로드
+        all_files = [*pdb_files, *trb_files]
+        if all_files:
+            zip_path = out / f"{job_name}_all_results.zip"
+            with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+                for f in all_files:
+                    if f.exists():
+                        zf.write(f, arcname=f.name)
+            if zip_path.exists() and zip_path.stat().st_size > 0:
+                candidates.append(zip_path)
 
     elif step == "proteinMPNN":
         candidates += [
@@ -73,16 +83,25 @@ def upload_job_outputs(
         ]
 
     elif step == "alphafold":
+        # 기본 결과 파일: best PDB + CSV
         candidates += [
             out / f"{job_name}_af_best.pdb",
             out / f"{job_name}_af_results.csv",
         ]
-        # all_pdb 폴더는 zip으로 올리기(있으면)
+
+        # all_pdb 폴더가 있으면: 개별 PDB 전부 + ZIP 업로드
         all_dir = out / f"{job_name}_af_all_pdb"
         zip_path = out / f"{job_name}_af_all_pdb.zip"
-        z = _zip_dir(all_dir, zip_path)
-        if z is not None:
-            candidates.append(z)
+
+        if all_dir.exists() and all_dir.is_dir():
+            # 폴더 안의 모든 PDB 개별 업로드
+            all_pdbs = sorted(all_dir.glob("*.pdb"))
+            candidates += all_pdbs
+
+            # 전체를 ZIP 으로도 업로드
+            z = _zip_dir(all_dir, zip_path)
+            if z is not None:
+                candidates.append(z)
 
     else:
         raise ValueError(f"Unknown step for upload: {step}")

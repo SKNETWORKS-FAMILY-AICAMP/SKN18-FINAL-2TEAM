@@ -219,12 +219,12 @@ def run_mpnn_only(cfg: MPNNStepConfig) -> dict:
     csv_path = out_dir / f"{exp}_mpnn_results.csv"
 
     all_rows = []
+    # RFdiffusion이 실제로 만들어 놓은 PDB 개수만큼 반복하면서,
+    # 각 design(백본)에 대해 MPNN 샘플을 생성
     with open(fasta_path, "w") as f:
-        with open(fasta_path, "w") as f:
-        # RFdiffusion이 실제로 만들어 놓은 PDB 개수만큼 반복
-            for design_idx, input_pdb in enumerate(pdb_paths):
-                if not input_pdb.exists():
-                    continue
+        for design_idx, input_pdb in enumerate(pdb_paths):
+            if not input_pdb.exists():
+                continue
 
             af_model.prep_inputs(str(input_pdb), **prep_flags)
             if protocol == "partial" and fixed_pos_arr is not None:
@@ -233,7 +233,7 @@ def run_mpnn_only(cfg: MPNNStepConfig) -> dict:
 
             mpnn_model.get_af_inputs(af_model)
 
-            # 샘플 개수/배치 설정 (원래 로직에서 가져오면 됨)
+            # 샘플 개수/배치 설정
             batch_size = min(8, cfg.num_seqs)
             num_batches = (cfg.num_seqs + batch_size - 1) // batch_size
 
