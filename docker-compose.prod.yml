@@ -79,12 +79,12 @@ services:
     network_mode: bridge
 
   ########################################
-  # 3) Worker (ETL / 배치 / Consumer)
+  # 3) Worker (RabbitMQ Consumer / 시뮬레이션 작업 처리)
   ########################################
   worker:
     # CI/CD에서 따로 빌드한 worker 이미지
     image: ${ECR_WORKER_IMAGE:-skn18-final-worker:latest}
-    container_name: etl-worker
+    container_name: rabbitmq-worker
     # env_file 제거 - Parameter Store에서 모든 설정을 읽어옴
     # db와 rabbitmq는 외부 EC2를 사용하므로 depends_on 제거
     environment:
