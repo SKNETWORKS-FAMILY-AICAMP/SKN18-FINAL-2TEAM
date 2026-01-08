@@ -15,7 +15,9 @@ on:
 env:
   AWS_REGION: ap-northeast-2
   ECR_REPOSITORY: helixops_web
+  ECR_WORKER_REPOSITORY: skn18-final-worker
   DOCKERFILE_PATH: infra/docker/Dockerfile.django
+  WORKER_DOCKERFILE_PATH: infra/docker/Dockerfile.worker
   STACK_NAME: skn18-final-infra
 
 jobs:
@@ -24,6 +26,8 @@ jobs:
     outputs:
       image-uri: ${{ steps.build-image.outputs.image-uri }}
       image-tag: ${{ steps.build-image.outputs.image-tag }}
+      worker-image-uri: ${{ steps.build-worker-image.outputs.image-uri }}
+      worker-image-tag: ${{ steps.build-worker-image.outputs.image-tag }}
       should-deploy: ${{ steps.check.outputs.should-deploy }}
     
     steps:
@@ -54,6 +58,21 @@ jobs:
         if: steps.check.outputs.should-deploy == 'true'
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Clean up Docker before build
+        if: steps.check.outputs.should-deploy == 'true'
+        run: |
+          echo "Cleaning up Docker before build..."
+          echo "Disk space before cleanup:"
+          df -h
+          docker system prune -af --volumes || true
+          docker builder prune -af || true
+          # 중지된 컨테이너 제거
+          docker container prune -f || true
+          # 사용하지 않는 이미지 제거
+          docker image prune -af || true
+          echo "Disk space after cleanup:"
+          df -h
 
       - name: Build and push image (or use rollback tag)
         if: steps.check.outputs.should-deploy == 'true'
@@ -96,19 +115,91 @@ jobs:
             IMAGE_TAG="${{ github.sha }}"
             IMAGE_URI="$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
             
-            # Docker 빌드
+            # Docker 빌드 (캐시 사용으로 디스크 효율성 향상)
             docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
               -t $ECR_REGISTRY/$ECR_REPOSITORY:latest \
-              -f ${{ env.DOCKERFILE_PATH }} .
+              -f ${{ env.DOCKERFILE_PATH }} . \
+              --progress=plain
             
             # ECR에 푸시
             docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
             docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+            
+            # 빌드 후 정리 (디스크 공간 확보)
+            echo "Cleaning up after web image build..."
+            docker image prune -f || true
+            docker builder prune -f || true
           fi
           
           echo "image-uri=$IMAGE_URI" >> $GITHUB_OUTPUT
           echo "image-tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
           echo "✓ Image ready: $IMAGE_URI"
+
+      - name: Build and push worker image
+        if: steps.check.outputs.should-deploy == 'true'
+        id: build-worker-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_WORKER_REPOSITORY: ${{ env.ECR_WORKER_REPOSITORY }}
+          ROLLBACK_TAG: ${{ github.event.inputs.rollback_to }}
+        run: |
+          if [ -n "$ROLLBACK_TAG" ]; then
+            # 롤백 모드: 기존 이미지 태그 사용
+            echo "Rollback mode: Using existing worker image tag $ROLLBACK_TAG"
+            IMAGE_TAG="$ROLLBACK_TAG"
+            IMAGE_URI="$ECR_REGISTRY/$ECR_WORKER_REPOSITORY:$IMAGE_TAG"
+            
+            # 이미지 존재 확인
+            if ! aws ecr describe-images \
+              --repository-name $ECR_WORKER_REPOSITORY \
+              --image-ids imageTag=$ROLLBACK_TAG \
+              --region ${{ env.AWS_REGION }} > /dev/null 2>&1; then
+              echo "Error: Worker image tag $ROLLBACK_TAG not found in ECR"
+              exit 1
+            fi
+            
+            # latest 태그를 롤백 태그로 업데이트
+            MANIFEST=$(aws ecr batch-get-image \
+              --repository-name $ECR_WORKER_REPOSITORY \
+              --image-ids imageTag=$ROLLBACK_TAG \
+              --region ${{ env.AWS_REGION }} \
+              --query 'images[0].imageManifest' \
+              --output text)
+            
+            aws ecr put-image \
+              --repository-name $ECR_WORKER_REPOSITORY \
+              --image-tag latest \
+              --image-manifest "$MANIFEST" \
+              --region ${{ env.AWS_REGION }}
+          else
+            # 일반 빌드 모드
+            IMAGE_TAG="${{ github.sha }}"
+            IMAGE_URI="$ECR_REGISTRY/$ECR_WORKER_REPOSITORY:$IMAGE_TAG"
+            
+            # Docker 빌드 (캐시 사용으로 디스크 효율성 향상)
+            docker build -t $ECR_REGISTRY/$ECR_WORKER_REPOSITORY:$IMAGE_TAG \
+              -t $ECR_REGISTRY/$ECR_WORKER_REPOSITORY:latest \
+              -f ${{ env.WORKER_DOCKERFILE_PATH }} . \
+              --progress=plain
+            
+            # ECR에 푸시
+            docker push $ECR_REGISTRY/$ECR_WORKER_REPOSITORY:$IMAGE_TAG
+            docker push $ECR_REGISTRY/$ECR_WORKER_REPOSITORY:latest
+            
+            # 빌드 후 정리 (디스크 공간 확보)
+            echo "Cleaning up after worker image build..."
+            docker image prune -f || true
+            docker builder prune -f || true
+          fi
+          
+          echo "image-uri=$IMAGE_URI" >> $GITHUB_OUTPUT
+          echo "image-tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
+          echo "✓ Worker image ready: $IMAGE_URI"
+          
+          # 최종 정리
+          echo "Final cleanup..."
+          docker system df
+          docker system prune -af --volumes || true
 
   build-check:
     runs-on: ubuntu-latest
@@ -276,7 +367,9 @@ jobs:
             
             # 환경 변수 설정 (docker-compose에서 사용)
             export ECR_WEB_IMAGE=\$ECR_REGISTRY/\$ECR_REPOSITORY:latest
+            export ECR_WORKER_IMAGE=\$ECR_REGISTRY/${{ env.ECR_WORKER_REPOSITORY }}:latest
             echo "Image to pull: \$ECR_WEB_IMAGE"
+            echo "Worker image to pull: \$ECR_WORKER_IMAGE"
             
             # docker-compose config로 이미지 확인
             echo "Checking docker-compose configuration..."
@@ -427,7 +520,7 @@ jobs:
             
             # 기존 컨테이너 중지 (이미지 제거를 위해)
             echo "Stopping existing containers..."
-            docker-compose -f docker-compose.prod.yml stop web || true
+            docker-compose -f docker-compose.prod.yml stop web worker || true
             
             # 중지된 컨테이너 제거
             docker container prune -f || true
@@ -487,7 +580,7 @@ jobs:
             done
             
             if [ "\$PULL_SUCCESS" != "true" ]; then
-              echo "ERROR: Failed to pull image after \$PULL_RETRIES attempts"
+              echo "ERROR: Failed to pull web image after \$PULL_RETRIES attempts"
               echo "Final disk space:"
               df -h
               echo "Docker disk usage:"
@@ -499,7 +592,38 @@ jobs:
               exit 1
             fi
             
-            echo "✓ Image pulled successfully"
+            echo "✓ Web image pulled successfully"
+            
+            # Worker 이미지 pull
+            echo "Pulling worker image..."
+            PULL_WORKER_SUCCESS=false
+            for i in \$(seq 1 \$PULL_RETRIES); do
+              if ECR_WORKER_IMAGE=\$ECR_WORKER_IMAGE \
+                 POSTGRES_HOST=\$POSTGRES_HOST \
+                 POSTGRES_DB=\$POSTGRES_DB \
+                 POSTGRES_USER=\$POSTGRES_USER \
+                 POSTGRES_PASSWORD=\$POSTGRES_PASSWORD \
+                 POSTGRES_PORT=\$POSTGRES_PORT \
+                 RABBITMQ_HOST=\$RABBITMQ_HOST \
+                 RABBITMQ_USER=\$RABBITMQ_USER \
+                 RABBITMQ_PASSWORD=\$RABBITMQ_PASSWORD \
+                 docker-compose -f docker-compose.prod.yml pull worker; then
+                PULL_WORKER_SUCCESS=true
+                break
+              else
+                echo "Worker pull attempt \$i failed. Retrying..."
+                if [ \$i -lt \$PULL_RETRIES ]; then
+                  sleep 5
+                fi
+              fi
+            done
+            
+            if [ "\$PULL_WORKER_SUCCESS" != "true" ]; then
+              echo "WARNING: Failed to pull worker image after \$PULL_RETRIES attempts"
+              echo "Worker will not be deployed this time. Check ECR repository: ${{ env.ECR_WORKER_REPOSITORY }}"
+            else
+              echo "✓ Worker image pulled successfully"
+            fi
             
             # 새 컨테이너 시작 (entrypoint에서 마이그레이션 자동 실행)
             # (컨테이너는 이미 디스크 정리 단계에서 중지됨)
@@ -510,8 +634,9 @@ jobs:
             else
               echo "Warning: CloudWatch logs driver may not be available, using default logging"
             fi
-            # 환경변수를 명시적으로 전달하여 docker-compose 실행
+            # 환경변수를 명시적으로 전달하여 docker-compose 실행 (web + worker)
             ECR_WEB_IMAGE=\$ECR_WEB_IMAGE \
+            ECR_WORKER_IMAGE=\$ECR_WORKER_IMAGE \
             POSTGRES_HOST=\$POSTGRES_HOST \
             POSTGRES_DB=\$POSTGRES_DB \
             POSTGRES_USER=\$POSTGRES_USER \
@@ -529,7 +654,14 @@ jobs:
             OPENAI_API_KEY=\$OPENAI_API_KEY \
             AWS_REGION=\$AWS_REGION \
             STACK_NAME=\$STACK_NAME \
-            docker-compose -f docker-compose.prod.yml up -d web
+            docker-compose -f docker-compose.prod.yml up -d web worker
+            
+            # Worker 로그 확인
+            if [ "\$PULL_WORKER_SUCCESS" == "true" ]; then
+              echo "Waiting for worker to start..."
+              sleep 5
+              docker logs rabbitmq-worker --tail 50 || echo "Worker container not started yet"
+            fi
             
             # 마이그레이션 로그 확인 (최대 2분 대기)
             echo "Waiting for migrations to complete..."

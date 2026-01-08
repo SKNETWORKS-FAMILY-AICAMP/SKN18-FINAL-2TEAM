@@ -1,0 +1,39 @@
+########################################
+# Worker 전용 requirements.txt
+# RabbitMQ Consumer 및 시뮬레이션 작업에 필요한 최소 패키지만 포함
+########################################
+
+# Django (ORM 사용)
+Django>=5.0,<6.0
+django-environ
+
+# Django REST Framework (settings.py에서 import)
+djangorestframework
+drf-spectacular
+
+# Django 기본 패키지 (settings.py에서 사용)
+whitenoise
+libsass
+django-sass-processor
+
+# Database
+psycopg[binary, pool]
+
+# RabbitMQ
+pika
+
+# HTTP 요청 (RunPod API)
+requests
+
+# 환경변수 관리
+python-dotenv
+
+# 설정 파일 (YAML)
+PyYAML
+
+# AWS SDK (Parameter Store 접근)
+boto3
+
+# 기본 유틸리티
+python-dateutil
+

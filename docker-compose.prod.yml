@@ -39,6 +39,9 @@ services:
       # Django 설정 (SSM에서 주입, 옵션)
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
       OPENAI_API_KEY: ${OPENAI_API_KEY}
+      # RunPod 설정 (SSM에서 주입)
+      RUNPOD_SIMS_BASE_URL: ${RUNPOD_SIMS_BASE_URL}
+      RUNPOD_SIMS_API_KEY: ${RUNPOD_SIMS_API_KEY}
     # Entrypoint가 마이그레이션을 실행한 후 CMD 실행
     command: >
       gunicorn config.wsgi:application
@@ -76,20 +79,42 @@ services:
     network_mode: bridge
 
   ########################################
-  # 3) Worker (ETL / 배치 / Consumer)
+  # 3) Worker (RabbitMQ Consumer / 시뮬레이션 작업 처리)
   ########################################
   worker:
     # CI/CD에서 따로 빌드한 worker 이미지
     image: ${ECR_WORKER_IMAGE:-skn18-final-worker:latest}
-    container_name: etl-worker
+    container_name: rabbitmq-worker
     # env_file 제거 - Parameter Store에서 모든 설정을 읽어옴
     # db와 rabbitmq는 외부 EC2를 사용하므로 depends_on 제거
     environment:
       # RabbitMQ 연결 정보는 entrypoint.sh에서 Parameter Store에서 읽어옴
       AWS_REGION: ${AWS_REGION:-ap-northeast-2}
       STACK_NAME: ${STACK_NAME:-skn18-final-infra}
+      # RunPod 설정 (SSM에서 주입)
+      RUNPOD_SIMS_BASE_URL: ${RUNPOD_SIMS_BASE_URL}
+      RUNPOD_SIMS_API_KEY: ${RUNPOD_SIMS_API_KEY}
+      # RabbitMQ 설정 (SSM에서 주입)
+      RABBITMQ_HOST: ${RABBITMQ_HOST}
+      RABBITMQ_PORT: ${RABBITMQ_PORT:-5672}
+      RABBITMQ_USER: ${RABBITMQ_USER}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+      # PostgreSQL 설정 (Django ORM 사용)
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      # Django 설정
+      DJANGO_SETTINGS_MODULE: config.settings
     # 시뮬레이션 Consumer 실행
     command: ["python", "-m", "messaging.workers.main"]
+    # CloudWatch 로그 드라이버 사용 (AWS 환경에서만 동작)
+    logging:
+      driver: awslogs
+      options:
+        awslogs-group: /ec2/skn18/worker-service
+        awslogs-region: ap-northeast-2
     restart: unless-stopped
 
   ########################################
