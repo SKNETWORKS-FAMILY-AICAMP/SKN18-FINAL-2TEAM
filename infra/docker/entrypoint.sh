@@ -230,6 +230,26 @@ if command -v aws &> /dev/null; then
       --output text 2>/dev/null || echo "")
   fi
   
+  # ========================================
+  # RunPod 설정 가져오기 (Parameter Store에서)
+  # ========================================
+  if [ -z "$RUNPOD_SIMS_BASE_URL" ]; then
+    RUNPOD_SIMS_BASE_URL=$(aws ssm get-parameter \
+      --name /skn18/runpod-sims-base-url \
+      --region "$AWS_REGION" \
+      --query 'Parameter.Value' \
+      --output text 2>/dev/null || echo "")
+  fi
+  
+  if [ -z "$RUNPOD_SIMS_API_KEY" ]; then
+    RUNPOD_SIMS_API_KEY=$(aws ssm get-parameter \
+      --name /skn18/runpod-sims-api-key \
+      --with-decryption \
+      --region "$AWS_REGION" \
+      --query 'Parameter.Value' \
+      --output text 2>/dev/null || echo "")
+  fi
+  
   # 환경 변수로 export (이미 설정된 경우 덮어쓰지 않음)
   [ -n "$POSTGRES_HOST" ] && export POSTGRES_HOST
   [ -n "$POSTGRES_DB" ] && export POSTGRES_DB
@@ -249,6 +269,8 @@ if command -v aws &> /dev/null; then
   [ -n "$DJANGO_SECRET_KEY" ] && export DJANGO_SECRET_KEY
   [ -n "$OPENAI_API_KEY" ] && export OPENAI_API_KEY
   [ -n "$TAVILY_API_KEY" ] && export TAVILY_API_KEY
+  [ -n "$RUNPOD_SIMS_BASE_URL" ] && export RUNPOD_SIMS_BASE_URL
+  [ -n "$RUNPOD_SIMS_API_KEY" ] && export RUNPOD_SIMS_API_KEY
   
   echo "✓ Configuration loaded from Parameter Store"
   echo "  POSTGRES_HOST: ${POSTGRES_HOST:-(not set)}"

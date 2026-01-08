@@ -39,6 +39,9 @@ services:
       # Django 설정 (SSM에서 주입, 옵션)
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
       OPENAI_API_KEY: ${OPENAI_API_KEY}
+      # RunPod 설정 (SSM에서 주입)
+      RUNPOD_SIMS_BASE_URL: ${RUNPOD_SIMS_BASE_URL}
+      RUNPOD_SIMS_API_KEY: ${RUNPOD_SIMS_API_KEY}
     # Entrypoint가 마이그레이션을 실행한 후 CMD 실행
     command: >
       gunicorn config.wsgi:application
@@ -88,8 +91,30 @@ services:
       # RabbitMQ 연결 정보는 entrypoint.sh에서 Parameter Store에서 읽어옴
       AWS_REGION: ${AWS_REGION:-ap-northeast-2}
       STACK_NAME: ${STACK_NAME:-skn18-final-infra}
+      # RunPod 설정 (SSM에서 주입)
+      RUNPOD_SIMS_BASE_URL: ${RUNPOD_SIMS_BASE_URL}
+      RUNPOD_SIMS_API_KEY: ${RUNPOD_SIMS_API_KEY}
+      # RabbitMQ 설정 (SSM에서 주입)
+      RABBITMQ_HOST: ${RABBITMQ_HOST}
+      RABBITMQ_PORT: ${RABBITMQ_PORT:-5672}
+      RABBITMQ_USER: ${RABBITMQ_USER}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+      # PostgreSQL 설정 (Django ORM 사용)
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      # Django 설정
+      DJANGO_SETTINGS_MODULE: config.settings
     # 시뮬레이션 Consumer 실행
     command: ["python", "-m", "messaging.workers.main"]
+    # CloudWatch 로그 드라이버 사용 (AWS 환경에서만 동작)
+    logging:
+      driver: awslogs
+      options:
+        awslogs-group: /ec2/skn18/worker-service
+        awslogs-region: ap-northeast-2
     restart: unless-stopped
 
   ########################################
