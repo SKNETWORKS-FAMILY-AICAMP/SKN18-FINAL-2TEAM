@@ -34,6 +34,19 @@ TOOL_NAME_QUEUE_MAP = {
 }
 
 
+def _ensure_django_setup():
+    """Django가 setup되어 있는지 확인하고 필요시 setup"""
+    try:
+        import django
+        if not django.apps.apps.ready:
+            import os
+            os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
+            django.setup()
+    except Exception:
+        # 이미 setup되어 있거나 다른 방식으로 setup된 경우
+        pass
+
+
 def update_experiment_status(
     experiment_sid: int,
     status: str,
@@ -50,11 +63,7 @@ def update_experiment_status(
         error_message: 에러 메시지 (실패 시)
     """
     try:
-        # Django 설정 로드
-        import django
-        import os
-        os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
-        django.setup()
+        _ensure_django_setup()
         
         from django_app.apps.experiments.utils import update_experiment_status as update_status
         update_status(experiment_sid, status, progress, error_message)
@@ -245,6 +254,34 @@ def launch_simulation_docker(
         status__in=["E", "R", "P"],
     ).exists()
 
+
+def _get_previous_step_options(experiment_sid: int, tool_name: str) -> dict:
+    """
+    이전 단계의 tool_options를 조회
+    
+    Args:
+        experiment_sid: 실험 ID
+        tool_name: 도구 이름 ("RFdiffusion", "ProteinMPNN")
+    
+    Returns:
+        tool_options 딕셔너리
+    """
+    _ensure_django_setup()
+    
+    try:
+        selection = ExperimentToolSelection.objects.filter(
+            experiment_id=experiment_sid,
+            tool__tool_name=tool_name
+        ).select_related("tool").order_by("sort_order").first()
+        
+        if selection and selection.tool_options_json:
+            return json.loads(selection.tool_options_json)
+    except Exception as e:
+        logger.warning(f"Failed to get previous step options for {tool_name}: {e}")
+    
+    return {}
+
+
 def enqueue_next_selection(experiment_sid: int, current_sort_order: int, requested_by: int | None):
     """
     현재 sort_order 이후의 다음 ExperimentToolSelection을 찾아
@@ -252,10 +289,7 @@ def enqueue_next_selection(experiment_sid: int, current_sort_order: int, request
     다음 단계가 없으면 None 반환.
     """
     try:
-        import django
-        import os as _os
-        _os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
-        django.setup()
+        _ensure_django_setup()
 
         qs = (
             ExperimentToolSelection.objects
@@ -457,10 +491,33 @@ def handle_simulation_task(message: Dict[str, Any]):
                         num_seqs = None
                 
                 elif step_api == "alphafold3":
-                    # alphafold: num_designs와 num_seqs는 옵션에서 추출 가능
-                    # (현재는 옵션에 없을 수 있으므로 None으로 둠)
-                    pass
-
+                    # alphafold: 
+                    # - num_designs: 이전 단계(RFdiffusion)의 numSteps 값
+                    # - num_seqs: 이전 단계(ProteinMPNN)의 numSequences 값
+                    try:
+                        # 이전 단계의 tool_options 조회
+                        rfdiffusion_options = _get_previous_step_options(experiment_sid, "RFdiffusion")
+                        mpnn_options = _get_previous_step_options(experiment_sid, "ProteinMPNN")
+                        
+                        # RFdiffusion의 numSteps → num_designs
+                        num_designs = int(rfdiffusion_options.get("numSteps") or 1)
+                        
+                        # ProteinMPNN의 numSequences → num_seqs
+                        num_seqs = int(mpnn_options.get("numSequences") or 8)
+                            
+                        logger.info(
+                            f"[alphafold3] Extracted from previous steps: "
+                            f"num_designs={num_designs} (from RFdiffusion), "
+                            f"num_seqs={num_seqs} (from ProteinMPNN)"
+                        )
+                    except Exception as e:
+                        logger.warning(
+                            f"Failed to extract previous step values for alphafold3: {e}. "
+                            f"Using defaults: num_designs=1, num_seqs=8",
+                            exc_info=True
+                        )
+                        num_designs = 1
+                        num_seqs = 8
                 # expected_pdb가 있으면 모든 도구에 대해 결과 등록
                 # expected_pdb는 각 도구별로 다른 파일 타입일 수 있지만,
                 # 경로 구조는 동일하므로 이를 기반으로 날짜/step 추출 가능

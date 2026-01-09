@@ -1,0 +1,68 @@
+{% load static %}
+<div class="modal-overlay" id="pdbSelectionModal" role="dialog" aria-labelledby="pdbSelectionModalTitle" aria-modal="true">
+    <div class="modal-container modal-large">
+        <div class="modal-header">
+            <div>
+                <h2 class="modal-title" id="pdbSelectionModalTitle">구조 파일 선택</h2>
+                <p class="modal-subtitle">뷰어에서 확인할 PDB 파일을 선택하세요</p>
+            </div>
+            <button class="modal-close-btn" aria-label="닫기" data-action="close">
+                <i class="fa-solid fa-times"></i>
+            </button>
+        </div>
+        
+        <!-- Tabs -->
+        <div class="pdb-modal-tabs">
+            <button class="pdb-tab-btn active" data-tab="pdb-files">
+                <i class="fa-solid fa-file"></i>
+                <span>PDB 파일</span>
+            </button>
+            <button class="pdb-tab-btn" data-tab="saved-states">
+                <i class="fa-solid fa-floppy-disk"></i>
+                <span>저장된 상태</span>
+            </button>
+        </div>
+        
+        <!-- PDB Files Tab -->
+        <div class="pdb-tab-content active" id="pdb-files-tab">
+            <!-- Select All Checkbox -->
+            <div class="pdb-modal-select-all">
+                <label class="pdb-select-all-label">
+                    <input type="checkbox" id="selectAllPdbFiles" class="pdb-select-all-checkbox">
+                    <span>전체 선택</span>
+                </label>
+            </div>
+            
+            <div class="modal-body pdb-modal-body-with-sidebar">
+                <!-- Tool Sidebar -->
+                <div class="pdb-tool-sidebar" id="pdbToolSidebar">
+                    <!-- Tool list will be loaded dynamically -->
+                </div>
+                
+                <!-- PDB Files Content -->
+                <div class="pdb-files-content">
+                    <div class="pdb-selection-list" id="pdbSelectionList">
+                        <!-- PDB files will be loaded dynamically -->
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Saved States Tab -->
+        <div class="pdb-tab-content" id="saved-states-tab">
+            <div class="modal-body">
+                <div class="pdb-saved-states-list" id="pdbSavedStatesList">
+                    <!-- Saved states will be loaded dynamically -->
+                </div>
+            </div>
+        </div>
+        
+        <div class="modal-footer">
+            <span class="pdb-selected-count">선택된 항목: <span id="selectedPdbCount">0</span>개</span>
+            <div class="pdb-footer-actions">
+                <button class="modal-btn modal-btn-secondary" data-action="close">취소</button>
+                <button class="modal-btn modal-btn-primary" id="confirmPdbSelectionBtn">확인</button>
+            </div>
+        </div>
+    </div>
+</div>

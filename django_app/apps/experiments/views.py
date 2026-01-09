@@ -14,7 +14,7 @@ from rest_framework.response import Response
 from rest_framework.authentication import SessionAuthentication
 from rest_framework.views import APIView
 from drf_spectacular.utils import extend_schema, OpenApiParameter
-from .models import ExperimentTool, Experiment, ExperimentToolSelection, ExperimentToolOption, ExperimentResult
+from .models import ExperimentTool, Experiment, ExperimentToolSelection, ExperimentToolOption, ExperimentResult, ExperimentViewerState
 from django.db import transaction
 from django_app.apps.core.queue import publish_simulation
 from rest_framework.exceptions import NotFound
@@ -534,6 +534,145 @@ def _create_experiment_api(request):
     )
 
 @extend_schema(tags=["Experiments"], summary="실험 결과 데이터 조회",)
+@api_view(["GET", "POST"])
+@permission_classes([IsAuthenticated])
+def experiment_viewer_state_api(request, experiment_sid: int):
+    """뷰어 작업 상태 저장/불러오기 API"""
+    user_identifier = _get_user_identifier(request.user)
+    
+    try:
+        experiment = Experiment.objects.get(
+            experiment_sid=experiment_sid,
+            created_id=user_identifier
+        )
+    except Experiment.DoesNotExist:
+        return Response(
+            {'error': '실험을 찾을 수 없습니다.'},
+            status=404
+        )
+    
+    if request.method == 'GET':
+        # 저장된 상태 목록 조회
+        states = ExperimentViewerState.objects.filter(
+            experiment=experiment
+        ).order_by('-updated_at')
+        
+        states_data = [{
+            'state_sid': state.state_sid,
+            'state_name': state.state_name,
+            'state_data': state.state_data,
+            'created_at': state.created_at.isoformat(),
+            'updated_at': state.updated_at.isoformat()
+        } for state in states]
+        
+        return Response({
+            'experiment_sid': experiment_sid,
+            'states': states_data
+        })
+    
+    elif request.method == 'POST':
+        # 새 상태 저장
+        try:
+            body = json.loads(request.body)
+            state_name = body.get('state_name', '')
+            state_data = body.get('state_data', {})
+            
+            if not state_data:
+                return Response(
+                    {'error': '상태 데이터가 필요합니다.'},
+                    status=400
+                )
+            
+            viewer_state = ExperimentViewerState.objects.create(
+                experiment=experiment,
+                state_name=state_name or None,
+                state_data=state_data,
+                created_id=user_identifier,
+                updated_id=user_identifier
+            )
+            
+            return Response({
+                'state_sid': viewer_state.state_sid,
+                'state_name': viewer_state.state_name,
+                'message': '작업 상태가 저장되었습니다.'
+            }, status=201)
+        except json.JSONDecodeError:
+            return Response(
+                {'error': '잘못된 JSON 형식입니다.'},
+                status=400
+            )
+        except Exception as e:
+            return Response(
+                {'error': f'상태 저장 중 오류가 발생했습니다: {str(e)}'},
+                status=500
+            )
+
+
+@api_view(["GET", "PUT", "DELETE"])
+@permission_classes([IsAuthenticated])
+def experiment_viewer_state_detail_api(request, experiment_sid: int, state_sid: int):
+    """뷰어 작업 상태 상세 API (조회/수정/삭제)"""
+    user_identifier = _get_user_identifier(request.user)
+    
+    try:
+        experiment = Experiment.objects.get(
+            experiment_sid=experiment_sid,
+            created_id=user_identifier
+        )
+        viewer_state = ExperimentViewerState.objects.get(
+            state_sid=state_sid,
+            experiment=experiment
+        )
+    except Experiment.DoesNotExist:
+        return Response(
+            {'error': '실험을 찾을 수 없습니다.'},
+            status=404
+        )
+    except ExperimentViewerState.DoesNotExist:
+        return Response(
+            {'error': '저장된 상태를 찾을 수 없습니다.'},
+            status=404
+        )
+    
+    if request.method == 'GET':
+        # 상태 조회
+        return Response({
+            'state_sid': viewer_state.state_sid,
+            'state_name': viewer_state.state_name,
+            'state_data': viewer_state.state_data,
+            'created_at': viewer_state.created_at.isoformat(),
+            'updated_at': viewer_state.updated_at.isoformat()
+        })
+    
+    elif request.method == 'PUT':
+        # 상태 수정
+        try:
+            body = json.loads(request.body)
+            if 'state_name' in body:
+                viewer_state.state_name = body['state_name']
+            if 'state_data' in body:
+                viewer_state.state_data = body['state_data']
+            viewer_state.updated_id = user_identifier
+            viewer_state.save()
+            
+            return Response({
+                'state_sid': viewer_state.state_sid,
+                'message': '상태가 업데이트되었습니다.'
+            })
+        except json.JSONDecodeError:
+            return Response(
+                {'error': '잘못된 JSON 형식입니다.'},
+                status=400
+            )
+    
+    elif request.method == 'DELETE':
+        # 상태 삭제
+        viewer_state.delete()
+        return Response({
+            'message': '상태가 삭제되었습니다.'
+        })
+
+
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def experiment_result_files_api(request, experiment_sid: int):

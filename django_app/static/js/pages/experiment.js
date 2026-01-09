@@ -241,6 +241,12 @@ function initExperiment() {
             closeExperimentResultSidebar();
         }
     });
+
+    // Structure view button handler
+    const structureViewBtn = document.getElementById('resultStructureViewBtn');
+    if (structureViewBtn) {
+        structureViewBtn.addEventListener('click', handleStructureViewClick);
+    }
 }
 
 // Load available tools from API
@@ -1824,10 +1830,14 @@ function attachExperimentTableHandlers() {
 // Open experiment result sidebar
 async function openExperimentResultSidebar(experimentId) {
     if (!experimentResultSidebar) return;
+    
+    // 전역 변수에 실험 ID 저장
+    window.currentExperimentId = experimentId;
+    console.log('[openExperimentResultSidebar] Saved experiment ID:', experimentId);
 
     try {
-        // Load experiment detail from API
-        const response = await fetch(`/api/experiments/${experimentId}/`, {
+        // 실험 파일 목록 API를 통해 실험 정보 가져오기
+        const response = await fetch(`/api/experiments/${experimentId}/files/`, {
             method: 'GET',
             headers: {
                 'X-CSRFToken': getCsrfToken(),
@@ -1836,18 +1846,41 @@ async function openExperimentResultSidebar(experimentId) {
         });
 
         if (response.ok) {
-            const experiment = await response.json();
-            renderExperimentResult(experiment);
+            const data = await response.json();
+            console.log('[openExperimentResultSidebar] API response:', data);
+            
+            // API 응답에서 실험 정보 추출
+            const experiment = data.experiment || {};
+            const expId = experiment.id || experiment.experiment_sid || experimentId;
+            
+            // 실험 ID 저장 (확실하게)
+            window.currentExperimentId = expId;
+            console.log('[openExperimentResultSidebar] Final experiment ID:', expId);
+            
+            // 실험 정보 구성 (파일 목록 API 응답에서 가져온 정보 사용)
+            const experimentData = {
+                id: expId,
+                experiment_sid: expId,
+                pipeline_name: experiment.pipeline_name || 'Unnamed Pipeline',
+                pipeline: experiment.pipeline_name || 'Unnamed Pipeline',
+                status: experiment.status || 'R',
+                progress: 0, // 파일 목록 API에는 progress가 없으므로 0으로 설정
+                tools: [], // 파일 목록 API에는 tools가 없으므로 빈 배열
+            };
+            
+            renderExperimentResult(experimentData);
             experimentResultSidebar.style.display = 'flex';
             document.body.style.overflow = 'hidden';
         } else {
-            console.error('Failed to load experiment detail');
+            console.error('[openExperimentResultSidebar] Failed to load experiment files:', response.status, response.statusText);
+            const errorText = await response.text();
+            console.error('[openExperimentResultSidebar] Error response:', errorText);
             if (window.notyf) {
                 window.notyf.error('실험 정보를 불러오는데 실패했습니다.');
             }
         }
     } catch (error) {
-        console.error('Error loading experiment detail:', error);
+        console.error('[openExperimentResultSidebar] Error loading experiment files:', error);
         if (window.notyf) {
             window.notyf.error('실험 정보를 불러오는 중 오류가 발생했습니다.');
         }
@@ -1863,6 +1896,12 @@ function closeExperimentResultSidebar() {
 
 // Render experiment result
 function renderExperimentResult(experiment) {
+    // 실험 ID 저장 (구조 상세보기 버튼에서 사용)
+    if (experiment) {
+        window.currentExperimentId = experiment.id || experiment.experiment_sid || experiment.experiment_id;
+        console.log('[renderExperimentResult] Saved experiment ID:', window.currentExperimentId);
+    }
+    
     // Pipeline name - React uses 'pipeline' field
     if (experimentResultPipelineName) {
         experimentResultPipelineName.textContent = experiment.pipeline || experiment.pipeline_name || 'Unnamed Pipeline';
@@ -1946,6 +1985,157 @@ function renderExperimentResult(experiment) {
     renderExperimentResultFiles(experiment);
 }
 
+// Handle structure view button click
+async function handleStructureViewClick() {
+    if (!experimentResultFilesList) {
+        if (window.notyf) {
+            window.notyf.error('결과 파일 목록을 찾을 수 없습니다.');
+        }
+        return;
+    }
+    
+    // 현재 실험 ID 가져오기
+    let experimentId = getCurrentExperimentId();
+    
+    // 실험 ID가 없으면 디버깅 정보 출력
+    if (!experimentId) {
+        console.error('[handleStructureViewClick] Experiment ID not found. Debug info:', {
+            windowCurrentExperimentId: window.currentExperimentId,
+            sidebar: document.getElementById('experimentResultSidebar'),
+            url: window.location.pathname
+        });
+        if (window.notyf) {
+            window.notyf.error('실험 정보를 찾을 수 없습니다. 실험을 다시 선택해주세요.');
+        }
+        return;
+    }
+    
+    console.log('[handleStructureViewClick] Using experiment ID:', experimentId);
+    
+    // API에서 파일 목록 가져오기
+    let allFiles = [];
+    try {
+        const response = await fetch(`/api/experiments/${experimentId}/files/`, {
+            method: 'GET',
+            headers: {
+                'X-CSRFToken': getCsrfToken(),
+                'Content-Type': 'application/json',
+            },
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            console.log('[handleStructureViewClick] API response:', data);
+            allFiles = data.results || data || [];
+            console.log('[handleStructureViewClick] Extracted files:', allFiles);
+        } else {
+            console.error('[handleStructureViewClick] API response not OK:', response.status, response.statusText);
+            const errorText = await response.text();
+            console.error('[handleStructureViewClick] Error response:', errorText);
+            if (window.notyf) {
+                window.notyf.error('파일 목록을 불러오는데 실패했습니다.');
+            }
+            return;
+        }
+    } catch (error) {
+        console.error('[handleStructureViewClick] Error fetching files:', error);
+        if (window.notyf) {
+            window.notyf.error('파일 목록을 불러오는 중 오류가 발생했습니다.');
+        }
+        return;
+    }
+    
+    // PDB 파일만 필터링하고 도구별로 그룹화
+    const pdbFilesByTool = {};
+    
+    allFiles.forEach(file => {
+        const fileType = (file.type || file.file_type || file.result_type || '').toUpperCase();
+        if (fileType === 'PDB') {
+            const fileName = file.name || file.filename || file.result_name || 'Unknown';
+            const tool = extractToolFromFileName(fileName);
+            
+            if (!pdbFilesByTool[tool]) {
+                pdbFilesByTool[tool] = [];
+            }
+            
+            pdbFilesByTool[tool].push({
+                id: file.id || file.result_sid || file.file_id,
+                name: fileName,
+                url: file.id ? `/api/experiments/results/${file.id}/file/` : (file.file_path || file.url || ''),
+                tool: tool,
+                date: file.date || file.created_at,
+                type: 'PDB'
+            });
+        }
+    });
+    
+    // 모든 도구의 PDB 파일을 하나의 배열로 합치기
+    const allPdbFiles = [];
+    Object.keys(pdbFilesByTool).forEach(tool => {
+        allPdbFiles.push(...pdbFilesByTool[tool]);
+    });
+    
+    if (allPdbFiles.length === 0) {
+        if (window.notyf) {
+            window.notyf.warning('PDB 구조 파일이 없습니다.');
+        }
+        return;
+    }
+    
+    // PDB 선택 모달 열기
+    if (window.PdbSelectionModal && typeof window.PdbSelectionModal.open === 'function') {
+        window.PdbSelectionModal.open(allPdbFiles);
+    } else {
+        console.error('[Experiment] PdbSelectionModal is not available');
+        if (window.notyf) {
+            window.notyf.error('파일 선택 모달을 열 수 없습니다. 페이지를 새로고침해주세요.');
+        }
+    }
+}
+
+// Get current experiment ID from sidebar
+function getCurrentExperimentId() {
+    // 전역 변수에서 가져오기 시도 (가장 확실한 방법)
+    if (window.currentExperimentId) {
+        console.log('[getCurrentExperimentId] Found from window.currentExperimentId:', window.currentExperimentId);
+        return window.currentExperimentId;
+    }
+    
+    // 실험 결과 사이드바에서 실험 ID 추출 시도
+    const sidebar = document.getElementById('experimentResultSidebar');
+    if (sidebar) {
+        const experimentIdAttr = sidebar.getAttribute('data-experiment-id');
+        if (experimentIdAttr) {
+            const id = parseInt(experimentIdAttr);
+            console.log('[getCurrentExperimentId] Found from sidebar data attribute:', id);
+            return id;
+        }
+    }
+    
+    // 렌더링된 파일 목록에서 실험 ID 추출 시도
+    if (experimentResultFilesList) {
+        const firstFileItem = experimentResultFilesList.querySelector('.result-file-item');
+        if (firstFileItem) {
+            const fileId = firstFileItem.getAttribute('data-file-id');
+            if (fileId) {
+                // 파일 ID가 있으면 API를 통해 실험 ID를 찾을 수 있지만, 이건 복잡함
+                // 대신 이미 로드된 파일 데이터에서 찾기
+            }
+        }
+    }
+    
+    // URL에서 추출 시도
+    const urlMatch = window.location.pathname.match(/\/experiments\/(\d+)/);
+    if (urlMatch) {
+        const id = parseInt(urlMatch[1]);
+        console.log('[getCurrentExperimentId] Found from URL:', id);
+        return id;
+    }
+    
+    console.warn('[getCurrentExperimentId] Could not find experiment ID');
+    return null;
+}
+
 // Render experiment result files
 async function renderExperimentResultFiles(experiment) {
     if (!experimentResultFilesList) return;
@@ -1963,6 +2153,8 @@ async function renderExperimentResultFiles(experiment) {
         if (response.ok) {
             const data = await response.json();
             const resultFiles = data.results || data || [];
+            console.log('[renderExperimentResultFiles] API response:', data);
+            console.log('[renderExperimentResultFiles] Result files:', resultFiles);
             if (resultFiles.length > 0) {
                 renderResultFilesList(resultFiles, experiment.id);
                 return;
@@ -2065,59 +2257,264 @@ function formatResultDate(value) {
     });
 }
 
-// Render result files list
-function renderResultFilesList(files, experimentId) {
-    if (!experimentResultFilesList) return;
+// 파일명에서 도구 추출
+function extractToolFromFileName(fileName) {
+    if (!fileName) {
+        console.warn('[extractToolFromFileName] fileName is empty');
+        return '기타';
+    }
+    
+    const nameLower = fileName.toLowerCase();
+    console.log('[extractToolFromFileName] Processing fileName:', fileName, '→ lower:', nameLower);
+    
+    // AlphaFold 패턴: "AlphaFold", "alphafold", "af_", "af-", "af "
+    // 예: "AlphaFold 베스트 구조", "AlphaFold 전체 구조 ZIP", "AlphaFold 결과 테이블"
+    if (nameLower.includes('alphafold') || nameLower.includes('af_') || nameLower.includes('af-') || nameLower.startsWith('af ')) {
+        console.log('[extractToolFromFileName] → AlphaFold3');
+        return 'AlphaFold3';
+    } 
+    // ProteinMPNN 패턴: "MPNN", "proteinmpnn", "protein_mpnn", "protein mpnn"
+    // 예: "서열 데이터 (MPNN FASTA)", "서열 분석 결과 (MPNN CSV)"
+    else if (nameLower.includes('mpnn') || nameLower.includes('proteinmpnn') || nameLower.includes('protein_mpnn') || nameLower.includes('protein mpnn')) {
+        console.log('[extractToolFromFileName] → ProteinMPNN');
+        return 'ProteinMPNN';
+    } 
+    // RFdiffusion 패턴: "rfdiffusion", "rf_", "rf-", "rf "
+    // 예: "RFdiffusion 전체 결과 ZIP", "RFdiffusion TRB #4", "RFdiffusion 구조 #0"
+    else if (nameLower.includes('rfdiffusion') || nameLower.includes('rf_') || nameLower.includes('rf-') || nameLower.startsWith('rf ')) {
+        console.log('[extractToolFromFileName] → RFdiffusion');
+        return 'RFdiffusion';
+    }
+    
+    console.log('[extractToolFromFileName] → 기타 (no match)');
+    return '기타';
+}
 
-    if (files.length === 0) {
+// 도구별 표시 이름 매핑
+function getToolDisplayName(toolName) {
+    const displayNames = {
+        'AlphaFold3': 'AlphaFold3',
+        'ProteinMPNN': 'ProteinMPNN',
+        'RFdiffusion': 'RFdiffusion',
+        '기타': '기타'
+    };
+    return displayNames[toolName] || toolName;
+}
+
+// 파일들을 도구별로 그룹화
+function groupFilesByTool(files) {
+    const grouped = {};
+    
+    files.forEach((file, index) => {
+        const fileName = file.name || file.filename || file.result_name || 'Unknown';
+        const tool = extractToolFromFileName(fileName);
+        
+        console.log(`[groupFilesByTool] File ${index}: "${fileName}" → Tool: "${tool}"`);
+        
+        if (!grouped[tool]) {
+            grouped[tool] = [];
+        }
+        grouped[tool].push(file);
+    });
+    
+    return grouped;
+}
+
+// 단일 파일 아이템 렌더링
+function renderFileItem(file) {
+    const fileName = file.name || file.filename || file.result_name || 'Unknown';
+    const fileType = file.type || file.file_type || file.result_type || 'FILE';
+    const fileTypeRaw = fileType.toUpperCase();
+    const isPdb = fileTypeRaw === 'PDB';
+    const fileDateRaw = file.date || file.created_at || '신규';
+    const fileDate = formatResultDate(fileDateRaw);
+    // 백엔드 프록시 URL 사용 (CORS 문제 해결)
+    const fileId = file.id || file.result_sid || file.file_id;
+    const fileUrl = fileId ? `/api/experiments/results/${fileId}/file/` : (file.file_path || file.url || file.file_url || '');
+
+    return `
+        <div class="result-file-item" data-file-id="${fileId}">
+            <div class="result-file-header">
+                <p class="result-file-name">${escapeHtml(fileName)}</p>
+                <div class="result-file-actions">
+                    <button class="result-file-download-btn"
+                        data-file-url="${fileUrl}"
+                        data-file-name="${escapeHtml(fileName)}"
+                        data-file-type="${escapeHtml(fileType)}"
+                        title="다운로드">
+                        <i class="fas fa-download"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="result-file-meta">
+                <span class="result-file-type">${escapeHtml(fileType)}</span>
+                <span class="result-file-date">${escapeHtml(fileDate)}</span>
+            </div>
+        </div>
+    `;
+}
+
+// Render result files list with tool grouping and toggles
+function renderResultFilesList(files, experimentId) {
+    console.log('[renderResultFilesList] START - files:', files, 'experimentId:', experimentId);
+    
+    if (!experimentResultFilesList) {
+        console.error('[renderResultFilesList] experimentResultFilesList element not found');
+        console.error('[renderResultFilesList] Available elements:', {
+            sidebar: !!experimentResultSidebar,
+            filesList: !!document.getElementById('experimentResultFilesList')
+        });
+        return;
+    }
+
+    if (!files || files.length === 0) {
+        console.log('[renderResultFilesList] No files, showing empty message');
         experimentResultFilesList.innerHTML = '<p class="result-empty-text">결과 파일이 없습니다</p>';
         return;
     }
 
-    experimentResultFilesList.innerHTML = files.map(file => {
-        const fileName = file.name || file.filename || 'Unknown';
-        const fileType = file.type || file.file_type || 'FILE';
-        const fileTypeRaw = fileType.toUpperCase();
-        const isPdb = fileTypeRaw === 'PDB';
-        const fileDateRaw = file.date || file.created_at || '신규';
-        const fileDate = formatResultDate(fileDateRaw);
-        // 백엔드 프록시 URL 사용 (CORS 문제 해결)
-        const fileId = file.id || file.result_sid || file.file_id;
-        const fileUrl = fileId ? `/api/experiments/results/${fileId}/file/` : (file.file_path || file.url || file.file_url || '');
+    console.log('[renderResultFilesList] Processing', files.length, 'files:', files);
 
-
-        return `
-            <div class="result-file-item" data-file-id="${fileId}">
-                <div class="result-file-header">
-                    <p class="result-file-name">${escapeHtml(fileName)}</p>
-                    <div class="result-file-actions">
-                        ${isPdb ? `
-                            <button class="result-file-actions-btn"
-                                data-file-url="${fileUrl}"
-                                data-file-name="${escapeHtml(fileName)}"
-                                title="상세보기">
-                                <i class="fa-solid fa-arrow-up-right-from-square"></i>
-                            </button>
-                        ` : ''}
-                        <button class="result-file-download-btn"
-                            data-file-url="${fileUrl}"
-                            data-file-name="${escapeHtml(fileName)}"
-                            title="다운로드">
-                            <i class="fas fa-download"></i>
-                        </button>
+    // 파일들을 도구별로 그룹화
+    const groupedFiles = groupFilesByTool(files);
+    console.log('[renderResultFilesList] Grouped files:', groupedFiles);
+    console.log('[renderResultFilesList] Group keys:', Object.keys(groupedFiles));
+    
+    // 도구 순서 정의 (PIPELINE_ORDER와 동일한 순서)
+    const toolOrder = ['RFdiffusion', 'ProteinMPNN', 'AlphaFold3', '기타'];
+    
+    // 각 도구별 섹션 생성
+    const sections = [];
+    toolOrder.forEach((toolName, index) => {
+        const toolFiles = groupedFiles[toolName] || [];
+        console.log(`[renderResultFilesList] Tool: ${toolName}, Files: ${toolFiles.length}`);
+        
+        if (toolFiles.length === 0) {
+            return; // 파일이 없는 도구는 표시하지 않음
+        }
+        
+        const displayName = getToolDisplayName(toolName);
+        const sectionId = `tool-section-${toolName.toLowerCase().replace(/\s+/g, '-')}`;
+        const toggleId = `tool-toggle-${toolName.toLowerCase().replace(/\s+/g, '-')}`;
+        
+        // 파일 아이템들 렌더링
+        const filesHtml = toolFiles.map(file => renderFileItem(file)).join('');
+        
+        const sectionHtml = `
+            <div class="result-tool-section" data-tool="${toolName}">
+                <div class="result-tool-section-header" data-toggle-id="${toggleId}">
+                    <div class="result-tool-section-title">
+                        <i class="fas fa-chevron-down result-tool-toggle-icon" data-toggle-id="${toggleId}"></i>
+                        <span class="result-tool-name">${escapeHtml(displayName)}</span>
+                        <span class="result-tool-count">(${toolFiles.length})</span>
                     </div>
+                    <div class="result-tool-section-divider"></div>
                 </div>
-                <div class="result-file-meta">
-                    <span class="result-file-type">${escapeHtml(fileType)}</span>
-                    <span class="result-file-date">${escapeHtml(fileDate)}</span>
+                <div class="result-tool-section-content" id="${sectionId}" data-tool="${toolName}">
+                    ${filesHtml}
                 </div>
             </div>
         `;
-    }).join('');
+        
+        sections.push(sectionHtml);
+        console.log(`[renderResultFilesList] Generated section for ${toolName}:`, sectionHtml.substring(0, 100) + '...');
+    });
+    
+    const sectionsHtml = sections.join('');
 
-    // 이후 download 버튼 핸들러는 기존 handleResultFileDownload를 사용
+    if (!sectionsHtml || sectionsHtml.trim() === '') {
+        console.warn('[renderResultFilesList] No sections generated, falling back to flat list');
+        console.warn('[renderResultFilesList] Grouped files:', groupedFiles);
+        // 폴백: 평평한 리스트로 표시
+        experimentResultFilesList.innerHTML = files.map(file => renderFileItem(file)).join('');
+        attachResultFileDownloadHandlers();
+        return;
+    }
+
+    console.log('[renderResultFilesList] Generated HTML sections, length:', sectionsHtml.length);
+    console.log('[renderResultFilesList] HTML preview:', sectionsHtml.substring(0, 500));
+    
+    experimentResultFilesList.innerHTML = sectionsHtml;
+    
+    // DOM이 업데이트된 후 확인
+    setTimeout(() => {
+        const sections = experimentResultFilesList.querySelectorAll('.result-tool-section');
+        const headers = experimentResultFilesList.querySelectorAll('.result-tool-section-header');
+        console.log('[renderResultFilesList] After DOM update - Sections:', sections.length, 'Headers:', headers.length);
+    }, 100);
+
+    // 토글 핸들러 및 다운로드 핸들러 연결
+    attachToolSectionToggles();
     attachResultFileDownloadHandlers();
-    attachResultFileDetailHandlers();
+    
+    console.log('[renderResultFilesList] END - Handlers attached');
+}
+
+// Attach tool section toggle handlers
+function attachToolSectionToggles() {
+    console.log('[attachToolSectionToggles] START');
+    
+    if (!experimentResultFilesList) {
+        console.error('[attachToolSectionToggles] experimentResultFilesList not found');
+        return;
+    }
+    
+    const sectionHeaders = experimentResultFilesList.querySelectorAll('.result-tool-section-header');
+    console.log('[attachToolSectionToggles] Found', sectionHeaders.length, 'section headers');
+    
+    sectionHeaders.forEach((header, index) => {
+        console.log(`[attachToolSectionToggles] Attaching handler to header ${index}`);
+        
+        // 기존 이벤트 리스너 제거 (중복 방지)
+        const newHeader = header.cloneNode(true);
+        header.parentNode.replaceChild(newHeader, header);
+        
+        newHeader.addEventListener('click', (e) => {
+            e.stopPropagation();
+            console.log('[attachToolSectionToggles] Header clicked');
+            
+            const toggleId = newHeader.getAttribute('data-toggle-id');
+            const section = newHeader.closest('.result-tool-section');
+            const content = section?.querySelector('.result-tool-section-content');
+            const icon = newHeader.querySelector('.result-tool-toggle-icon');
+            
+            console.log('[attachToolSectionToggles] Toggle elements:', {
+                toggleId,
+                section: !!section,
+                content: !!content,
+                icon: !!icon
+            });
+            
+            if (!content) {
+                console.error('[attachToolSectionToggles] Content not found');
+                return;
+            }
+            
+            // 토글 상태 변경
+            const isExpanded = !content.classList.contains('collapsed');
+            console.log('[attachToolSectionToggles] Current state:', isExpanded ? 'expanded' : 'collapsed');
+            
+            if (isExpanded) {
+                // 접기
+                content.classList.add('collapsed');
+                if (icon) {
+                    icon.classList.remove('fa-chevron-down');
+                    icon.classList.add('fa-chevron-right');
+                }
+                console.log('[attachToolSectionToggles] Collapsed');
+            } else {
+                // 펼치기
+                content.classList.remove('collapsed');
+                if (icon) {
+                    icon.classList.remove('fa-chevron-right');
+                    icon.classList.add('fa-chevron-down');
+                }
+                console.log('[attachToolSectionToggles] Expanded');
+            }
+        });
+    });
+    
+    console.log('[attachToolSectionToggles] END');
 }
 
 // Attach result file download handlers

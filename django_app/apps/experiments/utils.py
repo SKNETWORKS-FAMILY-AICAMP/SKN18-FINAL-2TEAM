@@ -222,19 +222,23 @@ def _generate_expected_filenames_for_step(
         ])
         
         # all_pdb 폴더의 개별 PDB 파일들
-        # s3_uploader.py에서는 실제 디렉토리를 스캔하지만,
-        # 여기서는 num_designs/num_seqs가 있으면 예상 파일 생성
-        # 실제로는 all_pdb 폴더의 모든 .pdb 파일이 업로드되므로,
-        # 정확한 개수를 알 수 없음. 하지만 일단 num_designs/num_seqs 기반으로 생성
-        if num_designs is not None and num_seqs is not None:
-            for d in range(num_designs):
-                for s_idx in range(num_seqs):
-                    # 실제 파일명 패턴은 다를 수 있지만, 일반적인 패턴 사용
-                    filename = f"af_d{d}_s{s_idx}_k4.pdb"
+        # 파일명 패턴: af_d{design_idx}_s{seq_idx}_k{k}.pdb
+        # - design_idx: RFdiffusion의 numSteps (num_designs)
+        # - seq_idx: ProteinMPNN의 numSequences (num_seqs)
+        # - k: top_k = 5로 고정 (0~4)
+        # num_designs나 num_seqs가 None이면 기본값 사용 (최소한 기본 파일들은 생성)
+        top_k = 5  # alphafold_step.py에서 top_k = 5로 고정
+        designs = num_designs if num_designs is not None else 1
+        seqs = num_seqs if num_seqs is not None else 8
+        
+        for d in range(designs):
+            for s_idx in range(seqs):
+                for k in range(top_k):
+                    filename = f"af_d{d}_s{s_idx}_k{k}.pdb"
                     files.append((
                         filename,
                         "PDB",
-                        f"AlphaFold 구조 {filename}"
+                        f"AlphaFold 구조 d{d}_s{s_idx}_k{k}"
                     ))
         
         # ZIP 파일 (all_pdb 폴더가 있으면 생성됨)
@@ -272,7 +276,13 @@ def register_experiment_results_for_step(
     Returns:
         생성된 ExperimentResult 객체 리스트
     """
-    dt, _ = _parse_dt_and_step_from_expected(expected_local_path)
+    try:
+        dt, _ = _parse_dt_and_step_from_expected(expected_local_path)
+    except (ValueError, IndexError) as e:
+        logger.error(
+            f"Failed to parse expected_local_path: {expected_local_path}, error: {e}"
+        )
+        raise
     s3_step = _s3_step_from_cli_step(step_api)  # rfdiffusion / proteinMPNN / alphafold
     prefix = _build_simulation_s3_prefix(dt, experiment_sid, s3_step)
 
@@ -286,20 +296,47 @@ def register_experiment_results_for_step(
         num_designs=num_designs,
         num_seqs=num_seqs,
     )
+    
+    logger.info(
+        f"[register_experiment_results_for_step] Generated {len(expected_files)} expected files "
+        f"for step={s3_step}, num_designs={num_designs}, num_seqs={num_seqs}"
+    )
+    if s3_step == "alphafold" and expected_files:
+        pdb_count = sum(1 for _, rt, _ in expected_files if rt == "PDB")
+        logger.info(
+            f"[register_experiment_results_for_step] AlphaFold: {pdb_count} PDB files expected "
+            f"(including {pdb_count - 1} from all_pdb folder)"
+        )
 
-    # 각 파일에 대해 DB 레코드 생성
+    # 각 파일에 대해 DB 레코드 생성 (중복 방지)
     for filename, result_type, result_name in expected_files:
         key = f"{prefix}/{filename}"
         url = get_s3_url(key)
-        results.append(
-            ExperimentResult.objects.create(
-                experiment_id=experiment_sid,
-                result_name=result_name,
-                result_type=result_type,
-                file_size=None,
-                file_path=url,
+        
+        # 이미 존재하는 레코드가 있는지 확인 (file_path 기준)
+        existing = ExperimentResult.objects.filter(
+            experiment_id=experiment_sid,
+            file_path=url
+        ).first()
+        
+        if existing:
+            # 이미 존재하면 업데이트만 수행
+            existing.result_name = result_name
+            existing.result_type = result_type
+            existing.save()
+            results.append(existing)
+            logger.debug(f"Updated existing record: {url}")
+        else:
+            # 새로 생성
+            results.append(
+                ExperimentResult.objects.create(
+                    experiment_id=experiment_sid,
+                    result_name=result_name,
+                    result_type=result_type,
+                    file_size=None,
+                    file_path=url,
+                )
             )
-        )
 
     logger.info(
         f"Registered {len(results)} result files for experiment {experiment_sid}, "

@@ -1576,11 +1576,56 @@
     margin-top: 1.5rem; /* mt-6 */
 }
 
+.result-files-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
 .result-files-title {
     font-size: 0.875rem; /* text-sm */
     font-weight: 600;
     color: #111827;
-    margin: 0 0 0.75rem 0; /* mb-3 */
+    margin: 0;
+    flex: 1;
+}
+
+.result-structure-view-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background: #2563eb; /* bg-blue-600 */
+    color: white;
+    border: none;
+    border-radius: 0.5rem; /* rounded-lg */
+    font-size: 0.75rem; /* text-xs */
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.1s;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.result-structure-view-btn:hover {
+    background: #1d4ed8; /* hover:bg-blue-700 */
+    transform: translateY(-1px);
+}
+
+.result-structure-view-btn:active {
+    transform: translateY(0);
+}
+
+.result-structure-view-btn i {
+    font-size: 0.875rem;
+}
+
+.result-structure-view-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
 }
 
 .result-files-list {
@@ -1701,6 +1746,90 @@
 
 .result-file-date {
     color: #6b7280;
+}
+
+/* Tool Section Styles */
+.result-tool-section {
+    margin-bottom: 1rem;
+}
+
+.result-tool-section-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0;
+    cursor: pointer;
+    user-select: none;
+    transition: color 0.2s;
+}
+
+.result-tool-section-header:hover {
+    color: #2563eb;
+}
+
+.result-tool-section-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #111827;
+}
+
+.result-tool-toggle-icon {
+    padding: 0.25rem; /* p-1 */
+    background: none;
+    border: none;
+    border-radius: 0.25rem; /* rounded */
+    cursor: pointer;
+    color: #4b5563; /* text-gray-600 */
+    transition: background-color 0.2s, color 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 0.875rem; /* w-3.5 */
+    height: 0.875rem; /* h-3.5 */
+}
+
+.result-tool-section-header:hover .result-tool-toggle-icon {
+    color: #2563eb;
+}
+
+.result-tool-name {
+    font-weight: 600;
+}
+
+.result-tool-count {
+    font-weight: 400;
+    color: #6b7280;
+    font-size: 0.8125rem;
+}
+
+.result-tool-section-divider {
+    flex: 1;
+    height: 1px;
+    background: #e5e7eb;
+    margin-left: 0.5rem;
+}
+
+.result-tool-section-content {
+    margin-top: 0.5rem;
+    padding-left: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    transition: max-height 0.3s ease, opacity 0.3s ease;
+    overflow: hidden;
+}
+
+.result-tool-section-content.collapsed {
+    max-height: 0;
+    margin-top: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    opacity: 0;
+    overflow: hidden;
 }
 
 /* Responsive - Experiment Result Sidebar */
