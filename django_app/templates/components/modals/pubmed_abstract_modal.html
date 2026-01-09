@@ -1,0 +1,58 @@
+{% load static %}
+<div class="modal-overlay" id="pubmedAbstractModal" role="dialog" aria-labelledby="pubmedAbstractModalTitle" aria-modal="true">
+    <div class="modal-container modal-large">
+        <div class="modal-header">
+            <div>
+                <h2 class="modal-title" id="pubmedAbstractModalTitle">논문 초록</h2>
+                <p class="modal-description">PubMed 논문의 초록을 확인할 수 있습니다</p>
+            </div>
+            <button class="modal-close-btn" aria-label="닫기">
+                <i class="fa-solid fa-times"></i>
+            </button>
+        </div>
+        
+        <div class="modal-body">
+            <!-- 논문 정보 섹션 -->
+            <div class="pubmed-paper-info" id="pubmedPaperInfo" style="display: none;">
+                <div class="paper-info-header">
+                    <h3 class="paper-title" id="pubmedAbstractModalTitleText"></h3>
+                    <div class="paper-meta">
+                        <span class="paper-meta-item">
+                            <i class="fas fa-hashtag"></i>
+                            <span>PMID: <strong id="pubmedAbstractModalPmid">-</strong></span>
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 초록 내용 섹션 -->
+            <div class="pubmed-abstract-container" id="pubmedAbstractContainer">
+                <div class="pubmed-abstract-loading" id="pubmedAbstractLoading">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>초록을 불러오는 중...</p>
+                </div>
+                <div class="pubmed-abstract-content" id="pubmedAbstractContent" style="display: none;">
+                    <div class="abstract-section-header">
+                        <i class="fas fa-file-lines"></i>
+                        <span>Abstract</span>
+                    </div>
+                    <div class="pubmed-abstract-text" id="pubmedAbstractText"></div>
+                </div>
+                <div class="pubmed-abstract-error" id="pubmedAbstractError" style="display: none;">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <p>초록을 불러오는 중 오류가 발생했습니다.</p>
+                    <p class="error-message" id="pubmedAbstractErrorMessage"></p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="modal-footer">
+            <button class="modal-btn modal-btn-secondary" data-action="close">닫기</button>
+            <a href="#" id="pubmedAbstractLink" target="_blank" rel="noopener noreferrer" class="modal-btn modal-btn-primary" style="display: none;">
+                <i class="fas fa-external-link-alt"></i>
+                PubMed에서 보기
+            </a>
+        </div>
+    </div>
+</div>
+

@@ -1,0 +1,161 @@
+/* 논문 정보 섹션 */
+.pubmed-paper-info {
+    padding: 20px 24px;
+    background: var(--color-bg-light, #f9fafb);
+    border-bottom: 1px solid var(--color-border-light, #e5e7eb);
+    margin-bottom: 0;
+}
+
+.paper-info-header {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.paper-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    line-height: 1.5;
+    color: var(--text-primary, #1f2937);
+    margin: 0;
+    word-wrap: break-word;
+}
+
+.paper-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: center;
+}
+
+.paper-meta-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.875rem;
+    color: var(--text-secondary, #6b7280);
+}
+
+.paper-meta-item i {
+    font-size: 0.8rem;
+    color: var(--text-tertiary, #9ca3af);
+}
+
+.paper-meta-item strong {
+    color: var(--text-primary, #1f2937);
+    font-weight: 600;
+}
+
+/* 초록 컨테이너 */
+.pubmed-abstract-container {
+    min-height: 300px;
+    max-height: calc(70vh - 180px);
+    overflow-y: auto;
+}
+
+.pubmed-abstract-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    color: var(--text-secondary, #666);
+}
+
+.pubmed-abstract-loading i {
+    font-size: 2rem;
+    margin-bottom: 16px;
+    color: var(--primary-color, #007bff);
+}
+
+.pubmed-abstract-loading p {
+    margin: 0;
+    font-size: 0.95rem;
+}
+
+.pubmed-abstract-content {
+    padding: 24px;
+}
+
+.abstract-section-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--color-border-light, #e5e7eb);
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-primary, #1f2937);
+}
+
+.abstract-section-header i {
+    color: var(--primary-color, #007bff);
+    font-size: 1rem;
+}
+
+.pubmed-abstract-text {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    line-height: 1.8;
+    font-size: 0.95rem;
+    color: var(--text-primary, #1f2937);
+    text-align: justify;
+    letter-spacing: 0.01em;
+}
+
+.pubmed-abstract-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    color: var(--error-color, #dc3545);
+    text-align: center;
+}
+
+.pubmed-abstract-error i {
+    font-size: 2rem;
+    margin-bottom: 16px;
+}
+
+.pubmed-abstract-error p {
+    margin: 8px 0;
+}
+
+.pubmed-abstract-error .error-message {
+    font-size: 0.85rem;
+    color: var(--text-secondary, #666);
+    margin-top: 8px;
+}
+
+/* Reference title clickable style */
+.reference-title.pubmed-clickable {
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+.reference-title.pubmed-clickable:hover {
+    color: var(--primary-color, #007bff);
+    text-decoration: underline;
+}
+
+/* 스크롤바 스타일링 (선택사항) */
+.pubmed-abstract-container::-webkit-scrollbar {
+    width: 8px;
+}
+
+.pubmed-abstract-container::-webkit-scrollbar-track {
+    background: var(--color-bg-light, #f9fafb);
+    border-radius: 4px;
+}
+
+.pubmed-abstract-container::-webkit-scrollbar-thumb {
+    background: var(--color-border, #d1d5db);
+    border-radius: 4px;
+}
+
+.pubmed-abstract-container::-webkit-scrollbar-thumb:hover {
+    background: var(--text-tertiary, #9ca3af);
+}
+
