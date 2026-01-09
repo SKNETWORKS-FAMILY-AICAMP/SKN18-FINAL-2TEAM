@@ -233,7 +233,7 @@ def _generate_expected_filenames_for_step(
         
         for d in range(designs):
             for s_idx in range(seqs):
-                    filename = f"af_d{d}_s{s_idx}_k4"
+                    filename = f"af_d{d}_s{s_idx}_k4.pdb"
                     files.append((
                         filename,
                         "PDB",
