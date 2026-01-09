@@ -660,7 +660,7 @@ jobs:
             if [ "\$PULL_WORKER_SUCCESS" == "true" ]; then
               echo "Waiting for worker to start..."
               sleep 5
-              docker logs etl-worker --tail 50 || echo "Worker container not started yet"
+              docker logs rabbitmq-worker --tail 50 || echo "Worker container not started yet"
             fi
             
             # 마이그레이션 로그 확인 (최대 2분 대기)

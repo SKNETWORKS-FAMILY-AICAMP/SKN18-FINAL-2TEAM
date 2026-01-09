@@ -137,7 +137,7 @@ RABBITMQ_VHOST=/
    docker logs rabbitmq-final
    
    # Worker 로그 (Consumer)
-   docker logs etl-worker
+   docker logs rabbitmq-worker
    
    # Web 로그 (Producer)
    docker logs web-app

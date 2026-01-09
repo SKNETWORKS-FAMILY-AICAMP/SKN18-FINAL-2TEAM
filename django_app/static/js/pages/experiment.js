@@ -2051,6 +2051,20 @@ function generateMockResultFiles(status) {
     }
 }
 
+//formatTime 함수 추가
+function formatResultDate(value) {
+    if (!value) return '신규';
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return '신규';
+    return d.toLocaleString('ko-KR', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+    });
+}
+
 // Render result files list
 function renderResultFilesList(files, experimentId) {
     if (!experimentResultFilesList) return;
@@ -2064,30 +2078,45 @@ function renderResultFilesList(files, experimentId) {
         const fileId = file.id || file.file_id;
         const fileName = file.name || file.filename || 'Unknown';
         const fileType = file.type || file.file_type || 'FILE';
-        const fileSize = file.size || file.file_size || '0 KB';
-        const fileDate = file.date || file.created_at || '알 수 없음';
-        const fileUrl = file.url || file.download_url || `/api/experiments/${experimentId}/files/${fileId}/download/`;
+        const fileTypeRaw = fileType.toUpperCase();
+        const isPdb = fileTypeRaw === 'PDB';
+        const fileDateRaw = file.date || file.created_at || '신규';
+        const fileDate = formatResultDate(fileDateRaw);
+        // file_path를 그대로 사용
+        const fileUrl = file.file_path;
+
 
         return `
             <div class="result-file-item" data-file-id="${fileId}">
                 <div class="result-file-header">
                     <p class="result-file-name">${escapeHtml(fileName)}</p>
-                    <button class="result-file-download-btn" data-file-url="${fileUrl}" data-file-name="${escapeHtml(fileName)}" title="다운로드">
-                        <i class="fas fa-download"></i>
-                    </button>
+                    <div class="result-file-actions">
+                        ${isPdb ? `
+                            <button class="result-file-detail-btn"
+                                data-file-url="${fileUrl}"
+                                title="상세보기">
+                                <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                            </button>
+                        ` : ''}
+                        <button class="result-file-download-btn"
+                            data-file-url="${fileUrl}"
+                            data-file-name="${escapeHtml(fileName)}"
+                            title="다운로드">
+                            <i class="fas fa-download"></i>
+                        </button>
+                    </div>
                 </div>
                 <div class="result-file-meta">
                     <span class="result-file-type">${escapeHtml(fileType)}</span>
-                    <span class="result-file-size">${escapeHtml(fileSize)}</span>
-                    <span class="result-file-separator">·</span>
                     <span class="result-file-date">${escapeHtml(fileDate)}</span>
                 </div>
             </div>
         `;
     }).join('');
 
-    // Attach download button handlers
+    // 이후 download 버튼 핸들러는 기존 handleResultFileDownload를 사용
     attachResultFileDownloadHandlers();
+    attachResultFileDetailHandlers();
 }
 
 // Attach result file download handlers
@@ -2103,64 +2132,119 @@ function attachResultFileDownloadHandlers() {
     });
 }
 
-// Handle result file download
+// Attach result file detail view handlers (PDB preview)
+function attachResultFileDetailHandlers() {
+    const detailBtns = experimentResultFilesList?.querySelectorAll('.result-file-detail-btn');
+    detailBtns?.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const fileUrl = btn.getAttribute('data-file-url');
+            handleResultFileView(fileUrl);
+        });
+    });
+}
+
+// Open file in new tab for quick preview
+function handleResultFileView(fileUrl) {
+    if (!fileUrl) {
+        window.notyf?.error('보기 URL이 없습니다.');
+        return;
+    }
+    window.open(fileUrl, '_blank', 'noopener,noreferrer');
+}
+
+// Handle result file download - open the file_path directly
 async function handleResultFileDownload(fileUrl, fileName) {
     if (!fileUrl) {
         if (window.notyf) {
-            window.notyf.error('다운로드 URL이 없습니다.');
+            window.notyf.error('다운로드 URL이 제공되지 않았습니다.');
         }
         return;
     }
 
     try {
-        const response = await fetch(fileUrl, {
-            method: 'GET',
-            headers: {
-                'X-CSRFToken': getCsrfToken(),
-            },
-        });
+        const link = document.createElement('a');
+        link.href = fileUrl;              // 실제 file_path (S3 등)
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        if (fileName) {
+            link.download = fileName;     // 확장자 포함 파일명 지정 가능
+        }
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
 
-        if (response.ok) {
-            // Get blob from response
-            const blob = await response.blob();
-            
-            // Create download link
-            const url = window.URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            
-            // Get filename from Content-Disposition header or use provided name
-            const contentDisposition = response.headers.get('Content-Disposition');
-            let downloadFileName = fileName;
-            if (contentDisposition) {
-                const fileNameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
-                if (fileNameMatch && fileNameMatch[1]) {
-                    downloadFileName = fileNameMatch[1].replace(/['"]/g, '');
-                }
-            }
-            
-            link.download = downloadFileName;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            window.URL.revokeObjectURL(url);
-
-            if (window.notyf) {
-                window.notyf.success('다운로드를 시작합니다.');
-            }
-        } else {
-            console.error('Failed to download file');
-            if (window.notyf) {
-                window.notyf.error('파일 다운로드에 실패했습니다.');
-            }
+        if (window.notyf) {
+            window.notyf.success('다운로드가 완료되었습니다.');
         }
     } catch (error) {
-        console.error('Error downloading file:', error);
+        console.error('Error starting download:', error);
         if (window.notyf) {
-            window.notyf.error('파일 다운로드 중 오류가 발생했습니다.');
+            window.notyf.error('파일 다운로드를 시작하지 못했습니다.');
         }
     }
 }
+
+// 원본코드
+// async function handleResultFileDownload(fileUrl, fileName) {
+//     if (!fileUrl) {
+//         if (window.notyf) {
+//             window.notyf.error('다운로드 URL이 없습니다.');
+//         }
+//         return;
+//     }
+
+//     try {
+//         const response = await fetch(fileUrl, {
+//             method: 'GET',
+//             headers: {
+//                 'X-CSRFToken': getCsrfToken(),
+//             },
+//         });
+
+//         if (response.ok) {
+//             // Get blob from response
+//             const blob = await response.blob();
+            
+//             // Create download link
+//             const url = window.URL.createObjectURL(blob);
+//             const link = document.createElement('a');
+//             link.href = url;
+            
+//             // Get filename from Content-Disposition header or use provided name
+//             const contentDisposition = response.headers.get('Content-Disposition');
+//             let downloadFileName = fileName;
+//             if (contentDisposition) {
+//                 const fileNameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+//                 if (fileNameMatch && fileNameMatch[1]) {
+//                     downloadFileName = fileNameMatch[1].replace(/['"]/g, '');
+//                 }
+//             }
+            
+//             link.download = downloadFileName;
+//             document.body.appendChild(link);
+//             link.click();
+//             document.body.removeChild(link);
+//             window.URL.revokeObjectURL(url);
+
+//             if (window.notyf) {
+//                 window.notyf.success('다운로드를 시작합니다.');
+//             }
+//         } else {
+//             console.error('Failed to download file');
+//             if (window.notyf) {
+//                 window.notyf.error('파일 다운로드에 실패했습니다.');
+//             }
+//         }
+//     } catch (error) {
+//         console.error('Error downloading file:', error);
+//         if (window.notyf) {
+//             window.notyf.error('파일 다운로드 중 오류가 발생했습니다.');
+//         }
+//     }
+// }
+
+
 
 // Show tool guide
 function showToolGuide(toolId) {
