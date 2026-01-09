@@ -1,5 +1,7 @@
 import json
+import re
 import requests
+from urllib.parse import unquote
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse, HttpResponse
@@ -12,7 +14,7 @@ from rest_framework.response import Response
 from rest_framework.authentication import SessionAuthentication
 from rest_framework.views import APIView
 from drf_spectacular.utils import extend_schema, OpenApiParameter
-from .models import ExperimentTool, Experiment, ExperimentToolSelection, ExperimentToolOption, ExperimentResult
+from .models import ExperimentTool, Experiment, ExperimentToolSelection, ExperimentToolOption, ExperimentResult, ExperimentViewerState
 from django.db import transaction
 from django_app.apps.core.queue import publish_simulation
 from rest_framework.exceptions import NotFound
@@ -532,6 +534,145 @@ def _create_experiment_api(request):
     )
 
 @extend_schema(tags=["Experiments"], summary="실험 결과 데이터 조회",)
+@api_view(["GET", "POST"])
+@permission_classes([IsAuthenticated])
+def experiment_viewer_state_api(request, experiment_sid: int):
+    """뷰어 작업 상태 저장/불러오기 API"""
+    user_identifier = _get_user_identifier(request.user)
+    
+    try:
+        experiment = Experiment.objects.get(
+            experiment_sid=experiment_sid,
+            created_id=user_identifier
+        )
+    except Experiment.DoesNotExist:
+        return Response(
+            {'error': '실험을 찾을 수 없습니다.'},
+            status=404
+        )
+    
+    if request.method == 'GET':
+        # 저장된 상태 목록 조회
+        states = ExperimentViewerState.objects.filter(
+            experiment=experiment
+        ).order_by('-updated_at')
+        
+        states_data = [{
+            'state_sid': state.state_sid,
+            'state_name': state.state_name,
+            'state_data': state.state_data,
+            'created_at': state.created_at.isoformat(),
+            'updated_at': state.updated_at.isoformat()
+        } for state in states]
+        
+        return Response({
+            'experiment_sid': experiment_sid,
+            'states': states_data
+        })
+    
+    elif request.method == 'POST':
+        # 새 상태 저장
+        try:
+            body = json.loads(request.body)
+            state_name = body.get('state_name', '')
+            state_data = body.get('state_data', {})
+            
+            if not state_data:
+                return Response(
+                    {'error': '상태 데이터가 필요합니다.'},
+                    status=400
+                )
+            
+            viewer_state = ExperimentViewerState.objects.create(
+                experiment=experiment,
+                state_name=state_name or None,
+                state_data=state_data,
+                created_id=user_identifier,
+                updated_id=user_identifier
+            )
+            
+            return Response({
+                'state_sid': viewer_state.state_sid,
+                'state_name': viewer_state.state_name,
+                'message': '작업 상태가 저장되었습니다.'
+            }, status=201)
+        except json.JSONDecodeError:
+            return Response(
+                {'error': '잘못된 JSON 형식입니다.'},
+                status=400
+            )
+        except Exception as e:
+            return Response(
+                {'error': f'상태 저장 중 오류가 발생했습니다: {str(e)}'},
+                status=500
+            )
+
+
+@api_view(["GET", "PUT", "DELETE"])
+@permission_classes([IsAuthenticated])
+def experiment_viewer_state_detail_api(request, experiment_sid: int, state_sid: int):
+    """뷰어 작업 상태 상세 API (조회/수정/삭제)"""
+    user_identifier = _get_user_identifier(request.user)
+    
+    try:
+        experiment = Experiment.objects.get(
+            experiment_sid=experiment_sid,
+            created_id=user_identifier
+        )
+        viewer_state = ExperimentViewerState.objects.get(
+            state_sid=state_sid,
+            experiment=experiment
+        )
+    except Experiment.DoesNotExist:
+        return Response(
+            {'error': '실험을 찾을 수 없습니다.'},
+            status=404
+        )
+    except ExperimentViewerState.DoesNotExist:
+        return Response(
+            {'error': '저장된 상태를 찾을 수 없습니다.'},
+            status=404
+        )
+    
+    if request.method == 'GET':
+        # 상태 조회
+        return Response({
+            'state_sid': viewer_state.state_sid,
+            'state_name': viewer_state.state_name,
+            'state_data': viewer_state.state_data,
+            'created_at': viewer_state.created_at.isoformat(),
+            'updated_at': viewer_state.updated_at.isoformat()
+        })
+    
+    elif request.method == 'PUT':
+        # 상태 수정
+        try:
+            body = json.loads(request.body)
+            if 'state_name' in body:
+                viewer_state.state_name = body['state_name']
+            if 'state_data' in body:
+                viewer_state.state_data = body['state_data']
+            viewer_state.updated_id = user_identifier
+            viewer_state.save()
+            
+            return Response({
+                'state_sid': viewer_state.state_sid,
+                'message': '상태가 업데이트되었습니다.'
+            })
+        except json.JSONDecodeError:
+            return Response(
+                {'error': '잘못된 JSON 형식입니다.'},
+                status=400
+            )
+    
+    elif request.method == 'DELETE':
+        # 상태 삭제
+        viewer_state.delete()
+        return Response({
+            'message': '상태가 삭제되었습니다.'
+        })
+
+
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def experiment_result_files_api(request, experiment_sid: int):
@@ -590,27 +731,104 @@ def experiment_result_file_proxy(request, result_sid: int):
         response = requests.get(result.file_path, timeout=30)
         response.raise_for_status()
         
-        # Content-Type 설정
-        content_type = 'text/plain'
-        if result.result_type and result.result_type.upper() == 'PDB':
-            content_type = 'chemical/x-pdb'
-        elif result.result_name:
-            if result.result_name.endswith('.pdb'):
+        # 파일명 추출 (S3 URL에서 또는 result_name에서)
+        # S3 URL에서 파일명 추출 시도
+        file_name_from_url = None
+        if result.file_path:
+            # s3://bucket/key/path/filename.ext 또는 https://bucket.s3.../filename.ext 패턴
+            url_parts = result.file_path.split('/')
+            if url_parts:
+                potential_filename = unquote(url_parts[-1].split('?')[0])  # 쿼리 파라미터 제거
+                if '.' in potential_filename:
+                    file_name_from_url = potential_filename
+        
+        # result_name에서 파일명 추출 시도
+        file_name_from_result = None
+        if result.result_name:
+            # "RFdiffusion 구조 #0" 같은 경우 확장자가 없으므로 파일 타입에서 추론 필요
+            file_name_from_result = result.result_name
+        
+        # 최종 파일명 결정: URL에서 추출한 것이 우선, 없으면 result_name 사용
+        final_filename = file_name_from_url or file_name_from_result or f"result_{result_sid}"
+        
+        # 파일명에 확장자가 없으면 result_type에서 추론
+        if '.' not in final_filename.split('/')[-1]:
+            result_type_upper = (result.result_type or '').upper()
+            extension_map = {
+                'PDB': '.pdb',
+                'FASTA': '.fasta',
+                'CSV': '.csv',
+                'ZIP': '.zip',
+                'OTHER': '',  # OTHER는 파일명에서 추론 시도
+                'LOG': '.log',
+            }
+            extension = extension_map.get(result_type_upper, '')
+            
+            # OTHER 타입인 경우 파일명이나 URL에서 확장자 추론
+            if not extension and result_type_upper == 'OTHER':
+                # result_name에서 확장자 추론 시도
+                if result.result_name:
+                    if 'trb' in result.result_name.lower() or 'trb' in (file_name_from_url or '').lower():
+                        extension = '.trb'
+                    elif 'zip' in result.result_name.lower() or 'zip' in (file_name_from_url or '').lower():
+                        extension = '.zip'
+                    elif result.file_path and '.trb' in result.file_path.lower():
+                        extension = '.trb'
+                    elif result.file_path and '.zip' in result.file_path.lower():
+                        extension = '.zip'
+            
+            if extension:
+                final_filename = final_filename + extension
+        
+        # Content-Type 매핑 (파일 확장자 기반)
+        content_type_map = {
+            '.pdb': 'chemical/x-pdb',
+            '.fasta': 'text/plain',  # 또는 'application/x-fasta'
+            '.fa': 'text/plain',
+            '.csv': 'text/csv',
+            '.zip': 'application/zip',
+            '.trb': 'application/octet-stream',  # TRB는 바이너리
+            '.json': 'application/json',
+            '.log': 'text/plain',
+        }
+        
+        # 확장자 추출
+        file_ext = ''
+        if '.' in final_filename:
+            file_ext = '.' + final_filename.rsplit('.', 1)[1].lower()
+        
+        # Content-Type 결정: 확장자 우선, 없으면 result_type 기반
+        content_type = content_type_map.get(file_ext, 'application/octet-stream')
+        
+        if content_type == 'application/octet-stream':
+            # result_type으로 재시도
+            result_type_upper = (result.result_type or '').upper()
+            if result_type_upper == 'PDB':
                 content_type = 'chemical/x-pdb'
-            elif result.result_name.endswith('.csv'):
+            elif result_type_upper == 'FASTA':
+                content_type = 'text/plain'
+            elif result_type_upper == 'CSV':
                 content_type = 'text/csv'
-            elif result.result_name.endswith('.json'):
-                content_type = 'application/json'
+            elif result_type_upper == 'ZIP':
+                content_type = 'application/zip'
+            elif result_type_upper == 'LOG':
+                content_type = 'text/plain'
         
         # 파일 내용을 응답으로 반환
         http_response = HttpResponse(
             response.content,
             content_type=content_type
         )
+        
+        # Content-Disposition 헤더 추가 (파일명 지정)
+        # RFC 5987에 따라 UTF-8 파일명 지원
+        safe_filename = final_filename.replace('\n', '').replace('\r', '')
+        http_response['Content-Disposition'] = f'attachment; filename="{safe_filename}"; filename*=UTF-8\'\'{safe_filename}'
+        
         # CORS 헤더 추가
         http_response['Access-Control-Allow-Origin'] = '*'
         http_response['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
-        http_response['Access-Control-Allow-Headers'] = 'Content-Type'
+        http_response['Access-Control-Allow-Headers'] = 'Content-Type, Content-Disposition'
         return http_response
         
     except requests.RequestException as e:

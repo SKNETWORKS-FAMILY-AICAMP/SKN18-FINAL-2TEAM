@@ -234,3 +234,39 @@ class ExperimentResult(models.Model):
                 return f"{size:.1f} {unit}"
             size /= 1024.0
         return f"{size:.1f} TB"
+
+
+class ExperimentViewerState(models.Model):
+    """실험 뷰어 작업 상태 모델"""
+    
+    state_sid = models.AutoField(primary_key=True, db_column='state_sid')
+    experiment = models.ForeignKey(
+        Experiment,
+        on_delete=models.CASCADE,
+        related_name='viewer_states',
+        db_column='experiment_sid'
+    )
+    state_name = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        db_column='state_name',
+        help_text='저장된 작업 상태 이름'
+    )
+    state_data = models.JSONField(
+        db_column='state_data',
+        help_text='JSON 형식의 뷰어 상태 데이터 (로드된 파일, 설정, 카메라 등)'
+    )
+    created_at = models.DateTimeField(auto_now_add=True, db_column='created_at')
+    created_id = models.CharField(max_length=60, db_column='created_id')
+    updated_at = models.DateTimeField(auto_now=True, db_column='updated_at')
+    updated_id = models.CharField(max_length=60, db_column='updated_id')
+    
+    class Meta:
+        db_table = 't_experiment_viewer_state'
+        ordering = ['-updated_at']
+        verbose_name = '실험 뷰어 상태'
+        verbose_name_plural = '실험 뷰어 상태들'
+    
+    def __str__(self):
+        return f"{self.experiment.pipeline_name} - {self.state_name or 'Unnamed State'}"

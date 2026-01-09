@@ -15,5 +15,8 @@ urlpatterns = [
     path("uniprot/detail/<str:accession>/", views_uniprot.uniprot_detail_api, name="api_uniprot_detail"),
     path("<int:experiment_sid>/files/", views.experiment_result_files_api, name="api_experiment_files"),
     path("results/<int:result_sid>/file/", views.experiment_result_file_proxy, name="api_experiment_result_file_proxy"),
+    # Viewer state API
+    path("<int:experiment_sid>/viewer-state/", views.experiment_viewer_state_api, name="api_experiment_viewer_state"),
+    path("<int:experiment_sid>/viewer-state/<int:state_sid>/", views.experiment_viewer_state_detail_api, name="api_experiment_viewer_state_detail"),
 
 ]
