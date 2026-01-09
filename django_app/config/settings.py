@@ -322,6 +322,16 @@ GOOGLE_CLIENT_SECRET = _get_google_config(
     with_decryption=True  # 비밀번호는 SecureString으로 저장
 )
 
+# Google OAuth 설정 검증 (디버깅용)
+if not GOOGLE_CLIENT_ID:
+    import warnings
+    warnings.warn(
+        "GOOGLE_CLIENT_ID가 설정되지 않았습니다. "
+        "Google 로그인 기능이 작동하지 않습니다. "
+        "로컬 환경: GOOGLE_CLIENT_ID 환경 변수를 설정하세요. "
+        "EC2 환경: Parameter Store의 /skn18/google-client-id를 확인하세요."
+    )
+
 # 용도별 리디렉션 URI
 GOOGLE_REDIRECT_URIS = {
     'calendar': _get_google_config(

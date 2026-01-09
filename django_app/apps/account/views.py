@@ -448,6 +448,22 @@ def google_login_start(request):
     """
     Google OAuth 로그인 시작 (로그인하지 않은 사용자도 사용 가능)
     """
+    # GOOGLE_CLIENT_ID 검증
+    if not settings.GOOGLE_CLIENT_ID:
+        import logging
+        logger = logging.getLogger('apps.account')
+        logger.error(
+            f"GOOGLE_CLIENT_ID가 설정되지 않았습니다. "
+            f"환경 변수 GOOGLE_CLIENT_ID 또는 Parameter Store /skn18/google-client-id를 확인하세요."
+        )
+        messages.error(
+            request,
+            'Google 로그인 설정이 완료되지 않았습니다. 관리자에게 문의하세요.'
+        )
+        if request.user.is_authenticated:
+            return redirect('accounts:profile')
+        return redirect('accounts:login')
+    
     # 동적으로 redirect_uri 생성 (request의 호스트 사용)
     scheme = 'https' if request.is_secure() else 'http'
     host = request.get_host()
@@ -522,6 +538,22 @@ def google_profile_callback(request):
             return redirect('accounts:profile')
     
     state = request.GET.get("state", "")
+    
+    # GOOGLE_CLIENT_ID 및 GOOGLE_CLIENT_SECRET 검증
+    if not settings.GOOGLE_CLIENT_ID or not settings.GOOGLE_CLIENT_SECRET:
+        import logging
+        logger = logging.getLogger('apps.account')
+        logger.error(
+            f"Google OAuth 설정이 완료되지 않았습니다. "
+            f"GOOGLE_CLIENT_ID: {'설정됨' if settings.GOOGLE_CLIENT_ID else '누락'}, "
+            f"GOOGLE_CLIENT_SECRET: {'설정됨' if settings.GOOGLE_CLIENT_SECRET else '누락'}"
+        )
+        if state == "login":
+            messages.error(request, 'Google 로그인 설정이 완료되지 않았습니다. 관리자에게 문의하세요.')
+            return redirect('accounts:login')
+        else:
+            messages.error(request, 'Google 계정 연동 설정이 완료되지 않았습니다. 관리자에게 문의하세요.')
+            return redirect('accounts:profile')
     
     # 동적으로 redirect_uri 생성 (request의 호스트 사용)
     scheme = 'https' if request.is_secure() else 'http'
