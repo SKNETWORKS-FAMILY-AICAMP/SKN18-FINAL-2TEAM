@@ -453,7 +453,7 @@ console.log('[PdbSelectionModal] ===== Script file loading... =====');
         // Attach checkbox handlers
         pdbList.querySelectorAll('.pdb-checkbox').forEach(checkbox => {
             checkbox.addEventListener('change', (e) => {
-                const pdbId = e.target.getAttribute('data-pdb-id');
+                const pdbIdStr = e.target.getAttribute('data-pdb-id');
                 const pdbIndex = parseInt(e.target.getAttribute('data-pdb-index'));
                 
                 // Validate index and find file
@@ -461,23 +461,26 @@ console.log('[PdbSelectionModal] ===== Script file loading... =====');
                 if (pdbIndex >= 0 && pdbIndex < allPdbFiles.length) {
                     file = allPdbFiles[pdbIndex];
                 } else {
-                    // Fallback: find by ID
-                    file = allPdbFiles.find(f => f.id === pdbId);
+                    // Fallback: find by ID (convert to string for comparison since HTML attributes are strings)
+                    file = allPdbFiles.find(f => String(f.id) === pdbIdStr);
                 }
                 
                 if (!file) {
-                    console.error('[PdbSelectionModal] File not found for pdbId:', pdbId, 'pdbIndex:', pdbIndex);
+                    console.error('[PdbSelectionModal] File not found for pdbId:', pdbIdStr, 'pdbIndex:', pdbIndex);
                     return;
                 }
                 
+                // Use file.id for comparison (consistent type)
+                const fileId = file.id;
+                
                 if (e.target.checked) {
-                    if (!selectedPdbFiles.some(f => f.id === pdbId)) {
+                    if (!selectedPdbFiles.some(f => f.id === fileId)) {
                         selectedPdbFiles.push(file);
                         console.log('[PdbSelectionModal] Added file to selection:', file);
                     }
                 } else {
-                    selectedPdbFiles = selectedPdbFiles.filter(f => f.id !== pdbId);
-                    console.log('[PdbSelectionModal] Removed file from selection:', pdbId);
+                    selectedPdbFiles = selectedPdbFiles.filter(f => f.id !== fileId);
+                    console.log('[PdbSelectionModal] Removed file from selection:', fileId);
                 }
                 
                 updateSelectedCount();

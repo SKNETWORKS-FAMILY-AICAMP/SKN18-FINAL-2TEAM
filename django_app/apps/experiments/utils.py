@@ -227,18 +227,17 @@ def _generate_expected_filenames_for_step(
         # - seq_idx: ProteinMPNN의 numSequences (num_seqs)
         # - k: top_k = 5로 고정 (0~4)
         # num_designs나 num_seqs가 None이면 기본값 사용 (최소한 기본 파일들은 생성)
-        top_k = 5  # alphafold_step.py에서 top_k = 5로 고정
+        # alphafold_step.py에서 top_k = 5로 고정
         designs = num_designs if num_designs is not None else 1
         seqs = num_seqs if num_seqs is not None else 8
         
         for d in range(designs):
             for s_idx in range(seqs):
-                for k in range(top_k):
-                    filename = f"af_d{d}_s{s_idx}_k{k}.pdb"
+                    filename = f"af_d{d}_s{s_idx}_k4"
                     files.append((
                         filename,
                         "PDB",
-                        f"AlphaFold 구조 d{d}_s{s_idx}_k{k}"
+                        f"AlphaFold 구조 d{d}_s{s_idx}_k4"
                     ))
         
         # ZIP 파일 (all_pdb 폴더가 있으면 생성됨)
