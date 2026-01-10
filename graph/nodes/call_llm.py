@@ -25,6 +25,8 @@ Parameter Store 경로 (AWS 환경):
 
 import os
 import json
+import time
+from typing import Optional
 from graph.logger_config import get_logger
 
 logger = get_logger(__name__)
@@ -235,6 +237,45 @@ def _get_openai_client():
     return openai_client
 
 
+# SLLM 클라이언트도 지연 초기화 (lazy initialization) - 커넥션 재사용
+sllm_client = None
+
+def _get_sllm_client():
+    """SLLM 클라이언트를 지연 초기화 (lazy initialization) - 커넥션 풀 재사용"""
+    global sllm_client
+    
+    # 설정값 가져오기 (지연 로딩)
+    sllm_base_url, runpod_api_key, model_name = _get_sllm_config()
+    
+    # 사용 시점에 환경변수 또는 Parameter Store 값 검증
+    if not sllm_base_url:
+        if is_aws:
+            raise ValueError("❌ SLLM_BASE_URL not found in environment variables or Parameter Store (/skn18/sllm-base-url)")
+        else:
+            raise ValueError("❌ SLLM_BASE_URL not found in .env or environment variables")
+    if not runpod_api_key:
+        if is_aws:
+            raise ValueError("❌ RUNPOD_API_KEY not found in environment variables or Parameter Store (/skn18/sllm-runpod-api-key)")
+        else:
+            raise ValueError("❌ RUNPOD_API_KEY not found in .env or environment variables")
+    if not model_name:
+        if is_aws:
+            raise ValueError("❌ MODEL_NAME not found in environment variables or Parameter Store (/skn18/sllm-model-name)")
+        else:
+            raise ValueError("❌ MODEL_NAME not found in .env or environment variables")
+    
+    # 클라이언트가 없거나 base_url이 변경된 경우 재생성
+    if sllm_client is None or sllm_client.base_url != sllm_base_url:
+        logger.info(f"[SLLM] 클라이언트 {'재생성' if sllm_client else '생성'} - Base URL: {sllm_base_url}")
+        sllm_client = OpenAI(
+            base_url=sllm_base_url,
+            api_key=runpod_api_key,
+            timeout=60.0  # 60초 타임아웃
+        )
+    
+    return sllm_client, model_name
+
+
 # -----------------------------------------
 # 3) 공통 response 처리 함수
 # -----------------------------------------
@@ -252,13 +293,21 @@ def _parse_openai_response(resp):
 
 def gpt4_1_nano(prompt: str):
     """GPT-4.1-nano 호출"""
+    start_time = time.time()
+    
     client = _get_openai_client()
     resp = client.chat.completions.create(
         model="gpt-4.1-nano",
         messages=[{"role": "user", "content": prompt}],
         temperature=0.2
     )
-    return _parse_openai_response(resp)
+    response_text = _parse_openai_response(resp)
+    
+    elapsed = time.time() - start_time
+    logger.info(f"[GPT-4.1-nano] 응답 성공 - Elapsed Time: {elapsed:.2f}s, "
+                f"Response Length: {len(response_text)} chars")
+    
+    return response_text
 
 
 def gpt4o_mini(prompt: str):
@@ -281,17 +330,51 @@ def gpt5_nano(prompt: str):
     )
     return _parse_openai_response(resp)
 
+
+def gpt5_2(prompt: str, system_prompt: Optional[str] = None, temperature: float = 0.7, max_tokens: int = 2048):
+    """
+    GPT-5.2 호출 (fallback 모델용)
+    
+    Args:
+        prompt: 입력 프롬프트 (user 메시지)
+        system_prompt: 시스템 프롬프트 (선택적)
+        temperature: 생성 온도 (기본값: 0.7)
+        max_tokens: 최대 토큰 수 (기본값: 2048)
+    
+    Returns:
+        모델 응답 텍스트
+    """
+    client = _get_openai_client()
+    
+    # 메시지 구성 (System/User role 분리)
+    messages = []
+    if system_prompt:
+        messages.append({"role": "system", "content": system_prompt})
+    messages.append({"role": "user", "content": prompt})
+    
+    resp = client.chat.completions.create(
+        model="gpt-5.2",
+        messages=messages,
+        temperature=temperature,
+        max_tokens=max_tokens
+    )
+    return _parse_openai_response(resp)
+
 # -----------------------------------------
 # 5) SLLM 호출 (실험결과해석 모델)
 # -----------------------------------------
-def sllm(prompt: str, temperature: float = 0.7, max_tokens: int = 1024):
+def sllm(prompt: str, system_prompt: Optional[str] = None, temperature: float = 0.7, max_tokens: int = 2048):
     """
     SLLM 모델 호출 (RunPod 프록시 사용)
+    Gemma3-12B-it 기반 파인튜닝 모델용
+    
+    클라이언트는 모듈 레벨에서 캐싱되어 커넥션 풀을 재사용합니다.
 
     Args:
-        prompt: 입력 프롬프트
+        prompt: 입력 프롬프트 (user 메시지)
+        system_prompt: 시스템 프롬프트 (선택적, 규칙/지침용)
         temperature: 생성 온도 (기본값: 0.7)
-        max_tokens: 최대 토큰 수 (기본값: 1024)
+        max_tokens: 최대 토큰 수 (기본값: 2048, 동적으로 조정됨)
 
     Returns:
         모델 응답 텍스트
@@ -299,48 +382,69 @@ def sllm(prompt: str, temperature: float = 0.7, max_tokens: int = 1024):
     Raises:
         Exception: Pod가 비활성화되었거나 연결 오류가 발생한 경우
     """
-    from openai import OpenAI
     import time
 
-    # 함수 호출 시점에 설정값 가져오기 (지연 로딩)
-    sllm_base_url, runpod_api_key, model_name = _get_sllm_config()
+    # 캐싱된 클라이언트 가져오기 (커넥션 풀 재사용)
+    client, model_name = _get_sllm_client()
+    sllm_base_url = client.base_url
+
+    # 입력 토큰 수 계산 (system + user)
+    try:
+        import tiktoken
+        encoding = tiktoken.get_encoding("cl100k_base")  # GPT-4/GPT-3.5와 호환
+        total_input = (system_prompt or "") + prompt
+        input_tokens = len(encoding.encode(total_input))
+    except (ImportError, Exception):
+        # tiktoken이 없거나 에러 발생 시 근사치 사용 (평균 1 토큰 ≈ 4 문자)
+        total_input = (system_prompt or "") + prompt
+        input_tokens = len(total_input) // 4
+        logger.debug("[SLLM] tiktoken을 사용할 수 없어 근사치로 계산")
+
+    # 모델 최대 컨텍스트 길이 (Gemma3-12B-it 기반, 일반적으로 4096)
+    MAX_CONTEXT_LENGTH = 4096
+    # 안전 마진 (시스템 메시지, 응답 형식 등 고려)
+    SAFETY_MARGIN = 100
     
-    # 사용 시점에 환경변수 또는 Parameter Store 값 검증
-    if not sllm_base_url:
-        if is_aws:
-            raise ValueError("❌ SLLM_BASE_URL not found in environment variables or Parameter Store (/skn18/sllm-base-url)")
-        else:
-            raise ValueError("❌ SLLM_BASE_URL not found in .env or environment variables")
-    if not runpod_api_key:
-        if is_aws:
-            raise ValueError("❌ RUNPOD_API_KEY not found in environment variables or Parameter Store (/skn18/sllm-runpod-api-key)")
-        else:
-            raise ValueError("❌ RUNPOD_API_KEY not found in .env or environment variables")
-    if not model_name:
-        if is_aws:
-            raise ValueError("❌ MODEL_NAME not found in environment variables or Parameter Store (/skn18/sllm-model-name)")
-        else:
-            raise ValueError("❌ MODEL_NAME not found in .env or environment variables")
+    # 사용 가능한 최대 출력 토큰 수 계산
+    available_tokens = MAX_CONTEXT_LENGTH - input_tokens - SAFETY_MARGIN
+    
+    # max_tokens를 동적으로 조정 (최소 200 토큰 보장)
+    if available_tokens < 200:
+        logger.error(f"[SLLM] ❌ 사용 가능한 토큰이 심각하게 부족합니다! "
+                    f"입력: {input_tokens} 토큰, 사용 가능: {available_tokens} 토큰, "
+                    f"최대 컨텍스트: {MAX_CONTEXT_LENGTH} 토큰")
+        logger.warning(f"[SLLM] 최소값(200) 사용 - 응답이 잘릴 수 있습니다")
+        adjusted_max_tokens = 200
+    elif max_tokens > available_tokens:
+        logger.warning(f"[SLLM] ⚠️ 요청된 max_tokens({max_tokens})가 사용 가능한 토큰({available_tokens})보다 큽니다. "
+                      f"입력: {input_tokens} 토큰, 최대 컨텍스트: {MAX_CONTEXT_LENGTH} 토큰. "
+                      f"동적으로 조정: {available_tokens} 토큰")
+        adjusted_max_tokens = available_tokens
+    else:
+        adjusted_max_tokens = max_tokens
+        logger.debug(f"[SLLM] ✅ max_tokens 조정 불필요: {max_tokens} 토큰 (사용 가능: {available_tokens} 토큰)")
+
+    # 메시지 구성 (System/User role 분리)
+    messages = []
+    if system_prompt:
+        messages.append({"role": "system", "content": system_prompt})
+    messages.append({"role": "user", "content": prompt})
 
     logger.info(f"[SLLM] 호출 시작 - Model: {model_name}, Base URL: {sllm_base_url}, "
-                f"Temperature: {temperature}, Max Tokens: {max_tokens}, "
-                f"Prompt Length: {len(prompt)} chars")
-    logger.debug(f"Prompt Preview: {prompt[:100]}...")
-
-    sllm_client = OpenAI(
-        base_url=sllm_base_url,
-        api_key=runpod_api_key,
-        timeout=60.0  # 60초 타임아웃
-    )
+                f"Temperature: {temperature}, Max Context: {MAX_CONTEXT_LENGTH}, "
+                f"Input Tokens: {input_tokens} (System: {len(encoding.encode(system_prompt or ''))}, User: {len(encoding.encode(prompt))}), "
+                f"Requested Max Tokens: {max_tokens}, Adjusted Max Tokens: {adjusted_max_tokens}")
+    logger.debug(f"System Prompt Preview: {(system_prompt or '')[:100]}...")
+    logger.debug(f"User Prompt Preview: {prompt[:100]}...")
 
     try:
         start_time = time.time()
 
-        resp = sllm_client.chat.completions.create(
+        resp = client.chat.completions.create(
             model=model_name,
-            messages=[{"role": "user", "content": prompt}],
+            messages=messages,
             temperature=temperature,
-            max_tokens=max_tokens
+            max_tokens=adjusted_max_tokens
         )
 
         elapsed = time.time() - start_time

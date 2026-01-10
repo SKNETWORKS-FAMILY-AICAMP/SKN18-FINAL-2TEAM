@@ -1,10 +1,7 @@
 """
 image_processor.py
 --------------------
-이미지 업로드 및 분석 노드
-- S3에 이미지 업로드
-- Vision API로 실험 결과 JSON 추출
-- 질의에 JSON 정보 덧붙이기
+
 """
 
 from typing import Dict, Any, List, Optional

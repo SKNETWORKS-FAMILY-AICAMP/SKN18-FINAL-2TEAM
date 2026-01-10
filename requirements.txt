@@ -47,6 +47,7 @@ gunicorn
 django-sass-processor
 libsass
 whitenoise  # 정적 파일 서빙 (프로덕션 환경)
+httpx
 
 # ETL / Parsing
 requests
@@ -81,3 +82,6 @@ boto3
 
 # RabbitMQ (Message Queue)
 pika
+
+## toon
+git+https://github.com/toon-format/toon-python.git
