@@ -1,15 +1,35 @@
 """
 알림 생성 유틸리티 함수
 각 기능에서 알림을 생성할 때 사용하는 공통 함수들
+
+비동기 처리:
+    - create_notification_async(): Celery task를 통한 비동기 알림 생성
+    - bulk_create_notifications_async(): 대량 알림 비동기 일괄 생성
 """
 import logging
 from typing import Optional, List
 from django.utils import timezone
 from django.db import transaction
+from django.conf import settings
 from apps.dashboard.models import Notification
 from apps.account.models import CustomUser
 
 logger = logging.getLogger(__name__)
+
+
+def _use_async_notifications() -> bool:
+    """
+    비동기 알림 사용 여부 확인
+    
+    Returns:
+        bool: Celery가 설정되어 있고 비동기 알림이 활성화되어 있으면 True
+    """
+    # Celery가 설정되어 있는지 확인
+    if hasattr(settings, 'CELERY_BROKER_URL') and settings.CELERY_BROKER_URL:
+        # 환경변수로 비동기 알림 활성화 여부 제어 (기본값: True)
+        from django.conf import settings as django_settings
+        return getattr(django_settings, 'NOTIFICATION_USE_ASYNC', True)
+    return False
 
 
 def create_notification(
@@ -18,7 +38,8 @@ def create_notification(
     title: str,
     message: str,
     related_sid: Optional[int] = None,
-    read_yn: str = 'N'
+    read_yn: str = 'N',
+    use_async: Optional[bool] = None
 ) -> Notification:
     """
     알림 생성 함수
@@ -30,10 +51,35 @@ def create_notification(
         message: 알림 메시지
         related_sid: 관련 ID (experiment_sid, schedule_sid, note_sid, chat_sid 등)
         read_yn: 읽음 여부 ('Y': 읽음, 'N': 읽지 않음)
+        use_async: 비동기 처리 사용 여부 (None이면 설정값 사용)
     
     Returns:
-        생성된 Notification 객체
+        생성된 Notification 객체 (비동기 사용 시 Task 객체)
     """
+    # 비동기 사용 여부 결정
+    if use_async is None:
+        use_async = _use_async_notifications()
+    
+    # 비동기 처리 사용 시
+    if use_async:
+        try:
+            from apps.dashboard.tasks import create_notification_async
+            task = create_notification_async.delay(
+                user_id=user_id,
+                notification_type=notification_type,
+                title=title,
+                message=message,
+                related_sid=related_sid,
+                read_yn=read_yn
+            )
+            logger.info(f"Notification creation queued as task {task.id} for user {user_id}")
+            # Task 객체 반환 (결과는 task.result로 조회 가능)
+            return task
+        except Exception as e:
+            logger.warning(f"Failed to queue notification task, falling back to sync: {e}")
+            # 비동기 실패 시 동기 처리로 폴백
+    
+    # 동기 처리 (기본 동작)
     try:
         notification = Notification.objects.create(
             user_id=user_id,

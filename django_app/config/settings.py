@@ -542,3 +542,67 @@ LOGGING = {
         },
     },
 }
+
+# ───────────────────────────────────
+# Celery Configuration
+# ───────────────────────────────────
+# Celery를 사용하려면 celery 패키지를 설치해야 합니다: pip install celery
+# 프로젝트에 이미 RabbitMQ가 설정되어 있으므로 RabbitMQ를 사용합니다.
+
+# Celery Broker URL (메시지 브로커)
+# RabbitMQ를 사용 (프로젝트의 messaging/config.py에서 설정된 RabbitMQ 사용)
+try:
+    from messaging.config import RABBITMQ_URL
+    CELERY_BROKER_URL = env('CELERY_BROKER_URL', default=RABBITMQ_URL)
+except ImportError:
+    # messaging 모듈을 찾을 수 없으면 환경변수 또는 기본값 사용
+    CELERY_BROKER_URL = env('CELERY_BROKER_URL', default=RABBITMQ_URL)
+
+# Celery Result Backend (작업 결과 저장소)
+# 최신 Celery는 RabbitMQ를 Result Backend로 직접 사용할 수 없습니다.
+# 알림 생성은 결과를 저장할 필요가 없으므로 None으로 설정합니다.
+# 결과가 필요한 경우 Django DB를 사용: 'db+postgresql://...' 또는 Redis 사용
+CELERY_RESULT_BACKEND = env('CELERY_RESULT_BACKEND', default=None)
+
+# Celery 시간대 설정
+CELERY_TIMEZONE = 'Asia/Seoul'
+CELERY_ENABLE_UTC = True
+
+# Celery Beat 스케줄 설정 (주기적 작업)
+# crontab을 사용하려면 아래 주석을 해제하고 위의 schedule을 주석 처리하세요
+try:
+    from celery.schedules import crontab
+    
+    CELERY_BEAT_SCHEDULE = {
+        'check-schedule-reminders': {
+            'task': 'apps.dashboard.tasks.check_schedule_reminders',
+            # 방법 1: 초 단위로 지정 (5분 = 300초)
+            'schedule': 300.0,
+            # 방법 2: crontab 사용 (매 5분마다)
+            # 'schedule': crontab(minute='*/5'),
+            # 방법 3: 특정 시간에 실행 (매일 오전 9시)
+            # 'schedule': crontab(hour=9, minute=0),
+        },
+    }
+except ImportError:
+    # celery가 설치되어 있지 않으면 기본 스케줄만 설정
+    CELERY_BEAT_SCHEDULE = {
+        'check-schedule-reminders': {
+            'task': 'apps.dashboard.tasks.check_schedule_reminders',
+            'schedule': 300.0,  # 5분마다 실행
+        },
+    }
+
+# Celery 작업 설정
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_TRACK_STARTED = True
+CELERY_TASK_TIME_LIMIT = 30 * 60  # 30분
+CELERY_TASK_SOFT_TIME_LIMIT = 25 * 60  # 25분
+
+# 알림 시스템 설정
+# 비동기 알림 사용 여부 (Celery를 통한 비동기 처리)
+# 기본값: True (비동기 알림 활성화)
+# False로 설정하려면 환경변수 NOTIFICATION_USE_ASYNC=False 설정
+NOTIFICATION_USE_ASYNC = env.bool('NOTIFICATION_USE_ASYNC', default=True)

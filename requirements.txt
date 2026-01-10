@@ -81,3 +81,6 @@ boto3
 
 # RabbitMQ (Message Queue)
 pika
+
+# shedule reminder
+celery

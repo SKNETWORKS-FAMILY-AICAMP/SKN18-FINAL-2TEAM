@@ -253,17 +253,42 @@ python manage.py check_schedule_reminders --check-minutes 120
   ```
 
 - **Celery Beat 사용** (권장):
-  ```python
-  # celery.py 또는 settings.py에 추가
-  from celery.schedules import crontab
   
+  **설정 파일 위치:**
+  - `django_app/config/celery.py` - Celery 앱 설정 (이미 생성됨)
+  - `django_app/config/settings.py` - Celery Beat 스케줄 설정 (이미 추가됨)
+  - `django_app/apps/dashboard/tasks.py` - Celery task 함수 (이미 생성됨)
+  
+  **실행 방법:**
+  ```bash
+  # 1. Celery worker 실행
+  cd django_app
+  celery -A config worker --loglevel=info
+  
+  # 2. Celery Beat 실행 (스케줄러)
+  celery -A config beat --loglevel=info
+  
+  # 3. Worker + Beat 동시 실행 (개발 환경)
+  celery -A config worker --beat --loglevel=info
+  ```
+  
+  **스케줄 설정 변경:**
+  `django_app/config/settings.py` 파일의 `CELERY_BEAT_SCHEDULE` 섹션에서 수정:
+  ```python
   CELERY_BEAT_SCHEDULE = {
       'check-schedule-reminders': {
           'task': 'apps.dashboard.tasks.check_schedule_reminders',
-          'schedule': crontab(minute='*/5'),  # 매 5분마다
+          'schedule': 300.0,  # 5분마다 (초 단위)
+          # 또는 crontab 사용:
+          # 'schedule': crontab(minute='*/5'),  # 매 5분마다
       },
   }
   ```
+  
+  **주의사항:**
+  - Celery를 사용하려면 `celery` 패키지 설치 필요: `pip install celery`
+  - Redis 또는 RabbitMQ가 필요합니다 (기본값: Redis)
+  - 환경변수 `CELERY_BROKER_URL`과 `CELERY_RESULT_BACKEND` 설정 필요
 
 - **Windows Task Scheduler** (Windows 환경):
   - 작업 스케줄러에서 Python 스크립트를 주기적으로 실행
