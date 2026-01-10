@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     "apps.codes.apps.CodesConfig",
     "apps.bookmark.apps.BookmarkConfig",
     "apps.feedback.apps.FeedbackConfig",
+    "apps.notification.apps.NotificationConfig",
     
     "django.contrib.admin",
     "django.contrib.auth",
