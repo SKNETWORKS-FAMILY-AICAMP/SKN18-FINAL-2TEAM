@@ -284,6 +284,39 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H ${{ steps.infra-info.outputs.public-ip }} >> ~/.ssh/known_hosts 2>/dev/null || true
 
+      - name: Create CloudWatch Log Groups
+        run: |
+          echo "Creating CloudWatch log groups..."
+          LOG_GROUPS=(
+            "/ec2/skn18/web-service"
+            "/ec2/skn18/worker-service"
+            "/ec2/skn18/celery-worker-service"
+            "/ec2/skn18/celery-beat-service"
+          )
+          
+          for log_group in "${LOG_GROUPS[@]}"; do
+            echo "Checking/Creating log group: $log_group"
+            # 로그 그룹 존재 여부 확인
+            if aws logs describe-log-groups \
+                --log-group-name-prefix "$log_group" \
+                --region ${{ env.AWS_REGION }} \
+                --query "logGroups[?logGroupName=='$log_group'].logGroupName" \
+                --output text | grep -q "$log_group"; then
+              echo "  ✓ Log group already exists: $log_group"
+            else
+              # 로그 그룹 생성
+              echo "  Creating log group: $log_group"
+              aws logs create-log-group \
+                --log-group-name "$log_group" \
+                --region ${{ env.AWS_REGION }} || {
+                echo "  ⚠ Failed to create log group: $log_group"
+                echo "  Continuing with next log group..."
+              }
+              echo "  ✓ Created log group: $log_group"
+            fi
+          done
+          echo "CloudWatch log groups setup complete!"
+
       - name: Copy docker-compose.prod.yml to EC2
         env:
           EC2_HOST: ${{ steps.infra-info.outputs.public-ip }}
