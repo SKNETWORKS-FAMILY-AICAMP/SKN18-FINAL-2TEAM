@@ -15,7 +15,8 @@ import warnings
 from pathlib import Path
 
 # 로그 레벨 설정 (환경변수로 제어 가능)
-LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+# LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+LOG_LEVEL = os.getenv("LOG_LEVEL", "DEBUG").upper()
 
 # 파일 로깅 활성화 여부 (기본값: False, AWS 프로덕션 환경에서는 콘솔만 사용)
 LOG_TO_FILE = os.getenv("GRAPH_LOG_TO_FILE", "false").lower() == "true"

@@ -135,6 +135,7 @@ def _generate_user_info_answer(state: Dict[str, Any]) -> Dict[str, Any]:
 답변:"""
 
     # LLM으로 답변 생성 (Pod 비활성화 시 에러 발생)
+    logger.info(f"[USER_INFO] sLLM에 전달되는 최종 프롬프트:\n{prompt}")
     answer = generate_answer_info_llm(prompt)
     state["final_answer"] = answer
     state["final_context"] = f"사용자 정보: {question}\n{previous_user_info}"
@@ -247,6 +248,7 @@ def _generate_bio_answer(state: Dict[str, Any]) -> Dict[str, Any]:
         logger.info(f"[BIO_Q] 사용 모델: {model_name}")
         
         # LLM으로 답변 생성
+        logger.info(f"[BIO_Q] sLLM에 전달되는 최종 프롬프트:\n{prompt}")
         answer = generate_answer_bio_llm(prompt)
         state["final_answer"] = answer
         state["final_context"] = final_context
@@ -325,6 +327,7 @@ def _generate_simulation_answer(state: Dict[str, Any]) -> Dict[str, Any]:
         logger.info(f"[SIMULATION_Q] 사용 모델: {model_name}")
         
         # LLM으로 답변 생성
+        logger.info(f"[SIMULATION_Q] sLLM에 전달되는 최종 프롬프트:\n{prompt}")
         answer = generate_answer_simulation_llm(prompt)
         state["final_answer"] = answer
         state["final_context"] = simulation_tools_info
@@ -444,6 +447,7 @@ def _generate_protocol_answer(state: Dict[str, Any]) -> Dict[str, Any]:
         logger.info(f"[PROTOCOL_Q] 사용 모델: {model_name}")
         
         # LLM으로 답변 생성
+        logger.info(f"[PROTOCOL_Q] sLLM에 전달되는 최종 프롬프트:\n{prompt}")
         answer = generate_answer_protocol_llm(prompt)
         state["final_answer"] = answer
         state["final_context"] = final_context
@@ -455,6 +459,7 @@ def _generate_protocol_answer(state: Dict[str, Any]) -> Dict[str, Any]:
             try:
                 fallback_model_name = get_model_name(generate_answer_protocol_fallback_llm)
                 logger.warning(f"[PROTOCOL_Q] Fallback 모델 사용: {fallback_model_name}")
+                logger.info(f"[PROTOCOL_Q] Fallback 모델에 전달되는 최종 프롬프트:\n{prompt}")
                 answer = generate_answer_protocol_fallback_llm(prompt)
                 state["final_answer"] = answer
             except Exception as fallback_error:
@@ -470,65 +475,214 @@ def _generate_protocol_answer(state: Dict[str, Any]) -> Dict[str, Any]:
 def _generate_inference_answer(state: Dict[str, Any]) -> Dict[str, Any]:
     """
     INFERENCE_Q: 실험 결과 해석 관련 질문
-    사용자 질문을 그대로 SLLM에 전달하여 답변 생성
+    Gemma3-12B-it 기반 파인튜닝 sLLM 모델용
+    이미지 분석 결과(image_analysis_markdown)를 포함하여 답변 생성
+
+    주의: Stage 2, 3은 비활성화되어 있으므로 마크다운만 사용
     """
     question = state.get("question", "")
-    
-    # 이전 대화 컨텍스트 구성
+    image_analysis_markdown = state.get("image_analysis_markdown")
+
+    # 이전 대화 컨텍스트 구성 (영어 프롬프트와 일치)
     previous_context = ""
     relevant_history = state.get("relevant_history", [])
-    
+
     if relevant_history:
-        history_parts = ["\n=== 이전 대화 참고 ==="]
+        history_parts = ["\n=== Previous Conversation Reference ==="]
         for i, hist in enumerate(relevant_history[:3], 1):  # 최근 3개만
-            history_parts.append(f"[대화 {i}] Q: {hist['question'][:60]}")
+            history_parts.append(f"[Conversation {i}] Q: {hist['question'][:60]}")
             history_parts.append(f"        A: {hist['summary'][:100]}\n")
         previous_context = "\n".join(history_parts)
     else:
         # fallback: memory_slot 사용
         memory_slot = state.get("memory_slot", {})
         if memory_slot.get("last_summary"):
-            previous_context = f"\n이전 요약: {memory_slot.get('last_summary')}"
+            previous_context = f"\nPrevious Summary: {memory_slot.get('last_summary')}"
+
+    # Stage 1 마크다운 결과를 image_context로 변환
+    image_context = ""
+
+    # 디버깅 로그
+    logger.info(f"[INFERENCE_Q] image_analysis_markdown 존재 여부: {image_analysis_markdown is not None}")
+    if image_analysis_markdown:
+        logger.info(f"[INFERENCE_Q] image_analysis_markdown 길이: {len(image_analysis_markdown)} chars")
+        logger.info(f"[INFERENCE_Q] image_analysis_markdown 미리보기 (첫 500자):\n{image_analysis_markdown[:500]}")
+
+        # 마크다운을 image_context로 사용 (Stage 2, 3 비활성화)
+        logger.info(f"[INFERENCE_Q] Stage 1 마크다운 사용 - 길이: {len(image_analysis_markdown)} chars")
+        # 영어 프롬프트 (마크다운도 영어로 작성됨)
+        image_context = f"""=== Attached Experimental Image Analysis Results (Markdown Format) ===
+{image_analysis_markdown}
+
+Please refer to the above experimental results data (in markdown format) when answering the question."""
+    else:
+        logger.warning("[INFERENCE_Q] 이미지 분석 결과가 없습니다! state에 image_analysis_markdown이 없음")
+        image_context = "No experimental image data available."
     
-    # 프롬프트 구성 (실험 결과 해석 특화)
-    prompt = f"""다음은 생물학 실험 결과 해석에 관한 질문입니다.
+    # System Prompt: 규칙과 지침 (영어 - 파인튜닝 데이터셋과 일치)
+    # Gemma3-12B-it 기반 파인튜닝 모델은 영어 데이터셋으로 학습되었으므로 영어 프롬프트 사용
+    system_prompt = """You are a grounded interpretation assistant for experimental results.
 
-⚠️ 안전 정책: 위험한 병원체나 독성 물질 관련 결과 해석 시, 악용 가능성이 있는 상세한 메커니즘은 제한적으로 설명하세요.
+    Your role is to:
+    - Organize extracted facts into a coherent scientific summary
+    - Evaluate whether interpretation is possible based only on evidence
+    - Explicitly state when interpretation is NOT possible
 
-질문: {question}{previous_context}
+    Absolute Rules:
+    A) Evidence Restriction (CRITICAL - MOST IMPORTANT):
+    - You MUST NOT introduce any fact not present in the extracted figure data.
+    - You MUST NOT invent time points, concentrations, or experimental conditions.
+    - If a piece of information (e.g., "24 hours", "48 hours", specific concentrations) is NOT explicitly mentioned in the extracted data, DO NOT mention it in your response.
+    - All statements must be directly traceable to the extracted figure facts.
+    - If you cannot find certain information in the data, write "데이터에 명시되지 않음" instead of guessing.
 
-위 질문에 대해 전문적이고 정확한 해석을 제공해주세요.
-- 이전 대화 맥락을 고려하여 답변해주세요
-- 실험 데이터의 의미를 명확히 설명해주세요
-- 가능한 생물학적 메커니즘을 제시해주세요
-- 결과의 한계점이나 추가 검증이 필요한 부분을 언급해주세요
-- 후속 실험이나 분석 방향을 제안해주세요
+    B) Inference Restriction:
+    - You may describe numerical or structural relationships (higher/lower, larger/smaller, present/absent).
+    - You MUST NOT assert causality, function, mechanism, or biological meaning without explicit experimental evidence.
 
-답변:"""
+    C) Language Restriction:
+    - Prohibited: "causes", "leads to", "results in", "because of", "therefore", "suggests mechanism".
+    - Allowed: "higher than", "lower than", "present", "absent", "different", "similar".
+
+    D) Insufficient Evidence Handling:
+    - If a section cannot be filled, explicitly write: "판단 불가 — [구체적 이유]".
+    - Example: If time points are not mentioned in the data, write "판단 불가 — 시간 정보가 데이터에 명시되지 않음"
+
+    E) Mechanism:
+    - Only include if the target, intervention, and system are explicitly specified.
+    - Otherwise omit the section entirely.
+
+    F) Follow-up Experiments:
+    - Only propose experiments that extend what is already present in the extracted data (e.g., more time points, more doses, additional groups).
+    - DO NOT propose experiments based on information you hallucinated.
+
+    G) Data Grounding Verification:
+    - Before writing each statement, verify that it is directly supported by the extracted figure facts.
+    - If you find yourself writing something that is not in the data, STOP and revise.
+
+    Output style:
+    - Structured Markdown
+    - Professional scientific tone in Korean
+    - No speculation, no narrative, no persuasion
+    - No hallucination of experimental conditions
+    """
+
+
+    # User Prompt: 실제 데이터만 (영어 - 파인튜닝 데이터셋과 일치)
+    # 질문은 사용자 입력 그대로 사용 (한글 질문도 가능)
+    user_prompt = f"""Question: {question}
+
+[Extracted Figure Facts]
+{image_context}
+
+[Additional Context]
+{previous_context if previous_context else "No previous context available."}
+
+CRITICAL INSTRUCTION:
+- The [Extracted Figure Facts] section above contains ALL the information available from the experimental figure.
+- You MUST base your entire response ONLY on the facts explicitly stated in [Extracted Figure Facts].
+- DO NOT add any information that is not present in the extracted data (e.g., time points, concentrations, conditions).
+- If the data does not mention specific information (e.g., "24 hours", "48 hours"), DO NOT mention it in your response.
+- If you find yourself about to write something not in the extracted facts, write "데이터에 명시되지 않음" instead.
+- 그래프가 여러개라면, 각각의 그래프를 구분해서 답변하기. 다른 그래프의 값을 섞어서 대답하지 말 것. 
+Please provide a professional and structured interpretation strictly based on the extracted facts.
+
+Response Structure:
+
+## 실험 결과 요약
+- 핵심 관측 사실을 요약 (추출된 데이터에 있는 내용만)
+
+## 확인된 사실
+- 추출된 데이터에서 직접 확인되는 사항만 나열
+- 데이터에 없는 정보는 절대 추가하지 말 것
+
+## 관찰된 수치적 관계
+- higher/lower, present/absent 등 관계만 기술 (의미/원인 금지)
+- 추출된 데이터에 있는 그룹/조건 이름만 사용
+
+## 해석
+- 해석 가능하면 조건부로 작성
+- 불가능하면: "판단 불가 — [이유]"
+
+
+## 메커니즘 가능성
+- 명확히 주어진 경우만 기술
+- 불충분하면 섹션 생략
+
+## 한계점
+- 데이터 자체의 한계만 기술
+- 추출된 데이터에서 누락된 정보가 있으면 명시
+
+## 후속 실험 제안
+- 추출된 데이터에 있는 조건/그룹을 기반으로만 제안
+- 데이터에 없는 조건을 가정하지 말 것
+- 실험을 통해 확인해야한다는 것을 명시
+
+Response (in Korean, Markdown only):
+"""
+
+    # 디버깅: 생성된 프롬프트 길이 확인
+    logger.info(f"[INFERENCE_Q] image_context 길이: {len(image_context)} chars")
+    logger.info(f"[INFERENCE_Q] user_prompt 총 길이: {len(user_prompt)} chars")
+    logger.debug(f"[INFERENCE_Q] user_prompt 전체:\n{user_prompt}")
 
     try:
         # 사용 모델 확인
         model_name = get_model_name(generate_answer_inference_llm)
-        logger.info(f"[INFERENCE_Q] 사용 모델: {model_name}")
+        logger.info(f"[INFERENCE_Q] 사용 모델: {model_name} (Gemma3-12B-it 기반)")
         
-        # LLM으로 답변 생성
-        answer = generate_answer_inference_llm(prompt)
+        # LLM으로 답변 생성 (System/User role 분리, max_tokens 증가)
+        logger.info(f"[INFERENCE_Q] System Prompt 길이: {len(system_prompt)} chars")
+        logger.info(f"[INFERENCE_Q] User Prompt 길이: {len(user_prompt)} chars")
+        logger.debug(f"[INFERENCE_Q] System Prompt:\n{system_prompt}")
+        logger.debug(f"[INFERENCE_Q] User Prompt:\n{user_prompt}")
+        
+        # sllm 함수에 system_prompt 전달 (Gemma3-12B-it 기반 파인튜닝 모델용)
+        # generate_answer_inference_llm은 sllm을 직접 참조하므로 sllm을 직접 호출
+        from graph.nodes.call_llm import sllm
+        answer = sllm(prompt=user_prompt, system_prompt=system_prompt, temperature=0.7, max_tokens=2048)
+        
         state["final_answer"] = answer
         state["final_context"] = f"질문: {question}"
         
     except Exception as e:
-        # 실패 시 fallback 모델 사용 (있는 경우에만)
+        error_msg = str(e)
+        logger.error(f"[INFERENCE_Q] 답변 생성 실패: {error_msg}", exc_info=True)
+        
+        # 사용자 친화적인 에러 메시지 생성
+        user_friendly_message = "죄송합니다. 실험 결과 해석을 생성하는 중에 문제가 발생했습니다."
+        
+        # 특정 에러 타입별 처리
+        if "max_tokens" in error_msg or "max_completion_tokens" in error_msg:
+            user_friendly_message = "죄송합니다. 입력한 이미지 데이터가 너무 커서 처리할 수 없습니다. 더 작은 이미지로 다시 시도해주세요."
+            logger.warning("[INFERENCE_Q] max_tokens 에러 발생 - 입력 데이터가 너무 큼")
+        elif "Pod가 비활성화" in error_msg or "연결" in error_msg:
+            user_friendly_message = "죄송합니다. 현재 서비스를 일시적으로 사용할 수 없습니다. 잠시 후 다시 시도해주세요."
+            logger.warning("[INFERENCE_Q] 서버 연결 에러 발생")
+        elif "timeout" in error_msg.lower():
+            user_friendly_message = "죄송합니다. 응답 시간이 초과되었습니다. 잠시 후 다시 시도해주세요."
+            logger.warning("[INFERENCE_Q] 타임아웃 에러 발생")
+        
+        # 실패 시 fallback 모델 사용 (gpt-5.2)
         if generate_answer_inference_fallback_llm is not None:
             try:
                 fallback_model_name = get_model_name(generate_answer_inference_fallback_llm)
-                logger.warning(f"[INFERENCE_Q] Fallback 모델 사용: {fallback_model_name}")
-                answer = generate_answer_inference_fallback_llm(prompt)
+                logger.warning(f"[INFERENCE_Q] Fallback 모델 사용 시도: {fallback_model_name}")
+                logger.info(f"[INFERENCE_Q] Fallback 모델에 전달되는 User Prompt:\n{user_prompt}")
+                # Fallback 모델 (gpt-5.2) 호출 - system_prompt 지원
+                answer = generate_answer_inference_fallback_llm(
+                    prompt=user_prompt, 
+                    system_prompt=system_prompt, 
+                    temperature=0.7, 
+                    max_tokens=2048
+                )
                 state["final_answer"] = answer
+                logger.info("[INFERENCE_Q] Fallback 모델(gpt-5.2)로 답변 생성 성공")
             except Exception as fallback_error:
                 logger.error(f"[INFERENCE_Q] Fallback 모델도 실패: {fallback_error}", exc_info=True)
-                state["final_answer"] = f"실험 결과 해석 생성 중 오류가 발생했습니다: {str(e)}"
+                state["final_answer"] = user_friendly_message
         else:
             logger.warning("[INFERENCE_Q] Fallback 모델이 설정되지 않음")
-            state["final_answer"] = f"실험 결과 해석 생성 중 오류가 발생했습니다: {str(e)}"
+            state["final_answer"] = user_friendly_message
     
     return state

@@ -1867,6 +1867,22 @@ function renderReferences() {
             linkText = displayLink;
         }
 
+        // PubMed 타입 확인 (web search가 아닌 경우)
+        const isPubMedType = !isWebSource && (ref.source === 'PubMed' || ref.pmid || displayLink.includes('pubmed.ncbi.nlm.nih.gov') || displayLink.startsWith('PubMed :'));
+        
+        // PMID 추출
+        let extractedPmid = null;
+        if (ref.pmid) {
+            extractedPmid = ref.pmid;
+        } else if (displayLink.startsWith('PubMed : ')) {
+            extractedPmid = displayLink.replace('PubMed : ', '').trim();
+        } else if (displayLink.includes('pubmed.ncbi.nlm.nih.gov/')) {
+            const pmidMatch = displayLink.match(/pubmed\.ncbi\.nlm\.nih\.gov\/(\d+)/);
+            if (pmidMatch) {
+                extractedPmid = pmidMatch[1];
+            }
+        }
+
         return `
             <div class="reference-item" data-reference-id="${ref.id}">
                 <button class="reference-bookmark-btn" data-reference-id="${ref.id}" title="북마크에 저장">
@@ -1879,7 +1895,12 @@ function renderReferences() {
                             <span class="reference-source">${sourceIcon}${escapeHtml(ref.source || 'Unknown')}</span>
                             ${ref.badge ? `<span class="reference-badge">${escapeHtml(ref.badge)}</span>` : ''}
                         </div>
-                        <h3 class="reference-title">${escapeHtml(ref.title || '제목 없음')}</h3>
+                        <h3 class="reference-title ${isPubMedType && extractedPmid ? 'pubmed-clickable' : ''}" 
+                            ${isPubMedType && extractedPmid ? `data-pmid="${extractedPmid}"` : ''}
+                            ${isPubMedType && extractedPmid ? `data-title="${escapeHtml(ref.title || '제목 없음')}"` : ''}
+                            ${isPubMedType && extractedPmid ? 'title="초록 보기 (클릭)"' : ''}>
+                            ${escapeHtml(ref.title || '제목 없음')}
+                        </h3>
                         ${ref.description ? `<p class="reference-description">${escapeHtml(ref.description)}</p>` : ''}
                         <div class="reference-info">
                             ${displayLink ? `
@@ -2435,6 +2456,24 @@ function attachReferenceHandlers() {
         });
     }
 
+    // PubMed 타이틀 클릭 이벤트 핸들러 추가
+    const pubmedTitles = referencesList ? referencesList.querySelectorAll('.reference-title.pubmed-clickable') : null;
+    if (pubmedTitles) {
+        pubmedTitles.forEach(title => {
+            // 이벤트 위임을 위해 referencesList에 한 번만 이벤트 리스너 추가
+            // 하지만 각 타이틀에 직접 이벤트를 추가하는 것이 더 명확함
+            title.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const pmid = title.getAttribute('data-pmid');
+                const paperTitle = title.getAttribute('data-title') || title.textContent.trim();
+                if (pmid && window.openPubmedAbstractModal) {
+                    window.openPubmedAbstractModal(pmid, paperTitle);
+                }
+            });
+        });
+    }
+
     if (saveReferencesBtn) {
         saveReferencesBtn.addEventListener('click', handleSaveReferences);
     }
@@ -2616,36 +2655,46 @@ function handlePlusAction(action) {
 // Handle image file selection
 function handleImageSelect(e) {
     const files = e.target.files;
-    if (files && files.length > 0) {
-        Array.from(files).forEach(file => {
-            if (file.type.startsWith('image/')) {
-                // 이미지를 base64로 미리 읽어서 저장
-                const reader = new FileReader();
-                reader.onloadend = () => {
-                    const base64String = reader.result;
-                    const imageData = {
-                        id: Date.now() + Math.random(),
-                        name: file.name,
-                        size: file.size,
-                        url: URL.createObjectURL(file), // 미리보기용 blob URL
-                        file: base64String, // base64 문자열로 저장
-                        type: file.type
-                    };
-                    attachedImages.push(imageData);
-                    renderAttachedItems();
-                };
-                reader.onerror = () => {
-                    console.error('[Chat] 이미지 읽기 실패:', file.name);
-                };
-                reader.readAsDataURL(file);
+    if (!files || files.length === 0) return;
+    
+    const file = files[0]; // 첫 번째 파일만 사용
+    
+    // 이미 이미지가 첨부되어 있으면 새 이미지로 교체
+    if (attachedImages.length > 0) {
+        // 기존 이미지의 blob URL 해제
+        attachedImages.forEach(img => {
+            if (img.url) {
+                URL.revokeObjectURL(img.url);
             }
         });
-        
-        // Show success message (you can use toast library if available)
-        console.log(`${files.length}개의 이미지가 첨부되었습니다`);
+        attachedImages = []; // 기존 이미지 제거
     }
     
-    // Reset input
+    if (file.type.startsWith('image/')) {
+        // 이미지를 base64로 미리 읽어서 저장
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            const base64String = reader.result;
+            const imageData = {
+                id: Date.now() + Math.random(),
+                name: file.name,
+                size: file.size,
+                url: URL.createObjectURL(file), // 미리보기용 blob URL
+                file: base64String, // base64 문자열로 저장
+                type: file.type
+            };
+            attachedImages.push(imageData);
+            renderAttachedItems();
+        };
+        reader.onerror = () => {
+            console.error('[Chat] 이미지 읽기 실패:', file.name);
+        };
+        reader.readAsDataURL(file);
+    } else {
+        console.warn('[Chat] 이미지 파일만 선택 가능합니다.');
+    }
+    
+    // Reset input (같은 파일을 다시 선택할 수 있도록)
     if (e.target) {
         e.target.value = '';
     }
