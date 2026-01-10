@@ -3,7 +3,7 @@ Context processors for dashboard app.
 Provides header_user context to all templates.
 """
 from django.contrib.auth.models import AnonymousUser
-from .models import Notification
+from apps.notification.models import Notification
 
 
 def header_user(request):

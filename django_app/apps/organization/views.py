@@ -215,7 +215,7 @@ def organization_create_api(request):
                 )
                 
                 # 조직 초대 알림 생성
-                from apps.dashboard.notification_utils import create_organization_invitation_notification, get_user_display_name
+                from apps.notification.notification_utils import create_organization_invitation_notification, get_user_display_name
                 try:
                     inviter_name = get_user_display_name(request.user)
                     create_organization_invitation_notification(
@@ -579,7 +579,7 @@ def organization_add_member_api(request, organization_id):
                 )
                 
                 # 조직 초대 알림 생성
-                from apps.dashboard.notification_utils import create_organization_invitation_notification, get_user_display_name
+                from apps.notification.notification_utils import create_organization_invitation_notification, get_user_display_name
                 try:
                     inviter_name = get_user_display_name(request.user)
                     create_organization_invitation_notification(

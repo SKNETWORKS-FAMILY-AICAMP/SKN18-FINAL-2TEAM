@@ -11,7 +11,7 @@ from typing import Optional, List
 from django.utils import timezone
 from django.db import transaction
 from django.conf import settings
-from apps.dashboard.models import Notification
+from apps.notification.models import Notification
 from apps.account.models import CustomUser
 
 logger = logging.getLogger(__name__)
@@ -63,7 +63,7 @@ def create_notification(
     # 비동기 처리 사용 시
     if use_async:
         try:
-            from apps.dashboard.tasks import create_notification_async
+            from apps.notification.tasks import create_notification_async
             task = create_notification_async.delay(
                 user_id=user_id,
                 notification_type=notification_type,

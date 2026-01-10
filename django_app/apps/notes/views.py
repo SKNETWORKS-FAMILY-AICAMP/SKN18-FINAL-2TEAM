@@ -463,7 +463,7 @@ def note_create_api(request):
                 shared_members = []
             
             # 노트 소유자 정보 가져오기 (알림용)
-            from apps.dashboard.notification_utils import create_note_share_notification, get_user_display_name
+            from apps.notification.notification_utils import create_note_share_notification, get_user_display_name
             from apps.account.models import CustomUser
             try:
                 owner = CustomUser.objects.get(user_id=user_identifier)
@@ -1363,7 +1363,7 @@ def note_share_api(request, note_id):
             
             created_count = 0
             # 노트 소유자 정보 가져오기 (알림용)
-            from apps.dashboard.notification_utils import create_note_share_notification, get_user_display_name
+            from apps.notification.notification_utils import create_note_share_notification, get_user_display_name
             from apps.account.models import CustomUser
             try:
                 owner = CustomUser.objects.get(user_id=user_identifier)

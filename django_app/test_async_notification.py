@@ -16,10 +16,10 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 django.setup()
 
-from apps.dashboard.notification_utils import create_notification
-from apps.dashboard.tasks import create_notification_async
+from apps.notification.notification_utils import create_notification
+from apps.notification.tasks import create_notification_async
 from apps.account.models import CustomUser
-from apps.dashboard.models import Notification
+from apps.notification.models import Notification
 
 def test_async_notification():
     """비동기 알림 생성 테스트"""

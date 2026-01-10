@@ -600,7 +600,7 @@ try:
     # DatabaseScheduler 사용 시 이 설정은 무시됩니다 (초기 데이터로만 참고)
     CELERY_BEAT_SCHEDULE = {
         'check-schedule-reminders': {
-            'task': 'apps.dashboard.tasks.check_schedule_reminders',
+            'task': 'apps.notification.tasks.check_schedule_reminders',
             # 방법 1: 초 단위로 지정 (5분 = 300초)
             'schedule': 300.0,
             # 방법 2: crontab 사용 (매 5분마다)
@@ -613,7 +613,7 @@ except ImportError:
     # celery가 설치되어 있지 않으면 기본 스케줄만 설정
     CELERY_BEAT_SCHEDULE = {
         'check-schedule-reminders': {
-            'task': 'apps.dashboard.tasks.check_schedule_reminders',
+            'task': 'apps.notification.tasks.check_schedule_reminders',
             'schedule': 300.0,  # 5분마다 실행
         },
     }

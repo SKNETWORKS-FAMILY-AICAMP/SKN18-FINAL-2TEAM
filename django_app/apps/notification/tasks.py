@@ -1,5 +1,5 @@
 """
-Dashboard 앱의 Celery Tasks
+Notification 앱의 Celery Tasks
 
 일정 리마인더 체크 등의 주기적 작업과 알림 생성을 Celery task로 정의합니다.
 """
@@ -8,7 +8,7 @@ from django.utils import timezone
 from datetime import timedelta
 from typing import Optional, List, Dict
 from apps.schedule.models import Schedule
-from apps.dashboard.notification_utils import (
+from apps.notification.notification_utils import (
     create_schedule_reminder_notification,
     create_notification,
     bulk_create_notifications
@@ -18,7 +18,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-@shared_task(name='apps.dashboard.tasks.check_schedule_reminders')
+@shared_task(name='apps.notification.tasks.check_schedule_reminders')
 def check_schedule_reminders(check_minutes=60):
     """
     일정 리마인더 체크 및 알림 생성 Celery Task
@@ -61,7 +61,7 @@ def check_schedule_reminders(check_minutes=60):
                 # 예: 15분 전 알림은 13분~15분 사이에 생성 (정확도 향상)
                 if minutes_until >= reminder_minutes - 2 and minutes_until <= reminder_minutes:
                     # 이미 해당 리마인더 시간대의 알림이 생성되었는지 확인 (중복 방지)
-                    from apps.dashboard.models import Notification
+                    from apps.notification.models import Notification
                     existing_notification = Notification.objects.filter(
                         user_id=schedule.created_id,
                         notification_type='M',  # 미팅 타입
@@ -127,7 +127,7 @@ def check_schedule_reminders(check_minutes=60):
         }
 
 
-@shared_task(name='apps.dashboard.tasks.create_notification_async', bind=True, max_retries=3)
+@shared_task(name='apps.notification.tasks.create_notification_async', bind=True, max_retries=3)
 def create_notification_async(
     self,
     user_id: str,
@@ -154,7 +154,7 @@ def create_notification_async(
         dict: 생성 결과
     """
     from django.db import transaction
-    from apps.dashboard.models import Notification
+    from apps.notification.models import Notification
     
     try:
         # DB 연결 확인
@@ -198,7 +198,7 @@ def create_notification_async(
         raise self.retry(exc=exc, countdown=60)  # 60초 후 재시도
 
 
-@shared_task(name='apps.dashboard.tasks.bulk_create_notifications_async', bind=True)
+@shared_task(name='apps.notification.tasks.bulk_create_notifications_async', bind=True)
 def bulk_create_notifications_async(
     self,
     notifications_data: List[Dict]
