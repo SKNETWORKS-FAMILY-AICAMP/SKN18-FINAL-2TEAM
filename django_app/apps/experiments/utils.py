@@ -23,7 +23,7 @@ def update_experiment_status(
     
     Args:
         experiment_sid: 실험 ID
-        status: 상태 ('E': 준비, 'R': 진행중, 'C': 완료, 'F': 실패)
+        status: 상태 ('R': 준비, 'E': 활성, 'P': 진행중, 'C': 완료, 'F': 실패)
         progress: 진행률 (0-100, 선택)
         error_message: 에러 메시지 (실패 시, 선택)
     """
@@ -37,8 +37,9 @@ def update_experiment_status(
         
         # 상태 전이 검증
         valid_transitions = {
-            'E': ['R', 'F'],  # 준비 → 진행중/실패
-            'R': ['C', 'F'],  # 진행중 → 완료/실패
+            'R': ['E', 'F'],  # 준비 → 활성/실패
+            'E': ['P', 'F'],  # 활성 → 진행중/실패
+            'P': ['C', 'F'],  # 진행중 → 완료/실패
             'C': [],  # 완료는 최종 상태
             'F': [],  # 실패는 최종 상태
         }

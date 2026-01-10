@@ -234,12 +234,12 @@ def _list_experiments_api(request):
     for exp in experiments:
         # 상태 코드를 한국어로 변환
         status_map = {
-            'E': '활성',
-            'R': '준비',
-            'P': '진행중',
-            'C': '완료',
-            'F': '실패',
-            'D': '비활성',
+            'R': '준비',      # Ready: 파이프라인 생성됨, 아직 시작 안됨
+            'E': '활성',      # Active: 워커가 시작해서 진행이 시작됨
+            'P': '진행중',    # In Progress: 실제로 실행 중
+            'C': '완료',      # Completed
+            'F': '실패',      # Failed
+            'D': '비활성',    # Disabled
         }
         status_display = status_map.get(exp.status, exp.status or '준비')
         
@@ -408,7 +408,7 @@ def _create_experiment_api(request):
         # t_experiment insert
         experiment = Experiment.objects.create(
             pipeline_name=pipeline_name,
-            status="E",  # Ready
+            status="R",  # Ready (준비)
             progress=0,
             protein_sequence=protein_sequence,
             protein_name=protein_name or None,
