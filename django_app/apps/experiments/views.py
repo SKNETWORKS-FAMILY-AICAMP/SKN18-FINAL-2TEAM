@@ -494,6 +494,9 @@ def _create_experiment_api(request):
     # 3) 메시지 큐에 작업 발행
     try:
         task_ids = enqueue_simulation_tasks(experiment, selections, request.user)
+        
+        # 실험 시작 알림은 simulation_consumer.py의 handle_simulation_task에서
+        # 첫 번째 작업이 실제로 처리되기 시작할 때 생성됩니다.
 
     except Exception as e:
         print(f"Failed to publish simulation tasks: {e}")

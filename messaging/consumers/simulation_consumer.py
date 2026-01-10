@@ -418,6 +418,25 @@ def handle_simulation_task(message: Dict[str, Any]):
         update_experiment_status(experiment_sid, 'R', 0)
         publish_status(task_id, experiment_sid, 'R', 0)
         
+        # 실험 시작 알림 생성 (첫 번째 단계일 때만)
+        if current_sort_order == 0:  # 첫 번째 단계
+            try:
+                _ensure_django_setup()
+                from apps.experiments.models import Experiment
+                from apps.dashboard.notification_utils import create_experiment_start_notification
+                
+                experiment = Experiment.objects.get(experiment_sid=experiment_sid)
+                user_id = experiment.created_id
+                
+                create_experiment_start_notification(
+                    experiment_title=experiment.pipeline_name,
+                    user_id=user_id,
+                    experiment_id=experiment_sid
+                )
+                logger.info(f"Created experiment start notification for experiment {experiment_sid}")
+            except Exception as e:
+                logger.error(f"Failed to create experiment start notification: {e}", exc_info=True)
+        
         # 2. 시뮬레이션 실행 준비
         protein_sequence = payload.get("protein_sequence")
         protein_name = payload.get("protein_name", "unknown")
@@ -554,6 +573,29 @@ def handle_simulation_task(message: Dict[str, Any]):
                 requested_by=requested_by,
             )
 
+            # 실험 정보 및 도구 이름 가져오기 (알림용)
+            _ensure_django_setup()
+            from apps.experiments.models import Experiment, ExperimentToolSelection
+            
+            try:
+                experiment = Experiment.objects.get(experiment_sid=experiment_sid)
+                user_id = experiment.created_id
+                pipeline_name = experiment.pipeline_name
+                
+                # 현재 단계의 도구 이름 가져오기
+                tool_selection = ExperimentToolSelection.objects.filter(
+                    experiment_id=experiment_sid,
+                    sort_order=current_sort_order
+                ).select_related('tool').first()
+                
+                tool_name = tool_selection.tool.tool_name if tool_selection and tool_selection.tool else "알 수 없는 도구"
+                
+            except Exception as e:
+                logger.error(f"Failed to get experiment info for notification: {e}", exc_info=True)
+                user_id = None
+                pipeline_name = "알 수 없는 실험"
+                tool_name = "알 수 없는 도구"
+            
             if next_task_id:
                 # 아직 남은 단계가 있으므로 진행 중 상태 유지
                 update_experiment_status(experiment_sid, 'R', pipeline_progress)
@@ -564,6 +606,21 @@ def handle_simulation_task(message: Dict[str, Any]):
                     pipeline_progress,
                     {"next_task_id": next_task_id},
                 )
+                
+                # 중간 단계: 도구 완료 알림만 생성
+                if user_id:
+                    try:
+                        from apps.dashboard.notification_utils import create_experiment_tool_complete_notification
+                        create_experiment_tool_complete_notification(
+                            experiment_title=pipeline_name,
+                            tool_name=tool_name,
+                            user_id=user_id,
+                            experiment_id=experiment_sid
+                        )
+                        logger.info(f"Created tool complete notification for {tool_name} in experiment {experiment_sid}")
+                    except Exception as e:
+                        logger.error(f"Failed to create tool complete notification: {e}", exc_info=True)
+                
                 logger.info(
                     f"Step completed: experiment_sid={experiment_sid}, "
                     f"sort_order={current_sort_order}, next_task_id={next_task_id}"
@@ -578,6 +635,21 @@ def handle_simulation_task(message: Dict[str, Any]):
                     100,
                     {"output_dir": output_dir, "result": result},
                 )
+                
+                # 마지막 단계: 통합 알림 생성 (도구 완료 + 실험 완료)
+                if user_id:
+                    try:
+                        from apps.dashboard.notification_utils import create_experiment_final_tool_complete_notification
+                        create_experiment_final_tool_complete_notification(
+                            experiment_title=pipeline_name,
+                            tool_name=tool_name,
+                            user_id=user_id,
+                            experiment_id=experiment_sid
+                        )
+                        logger.info(f"Created final tool complete notification for {tool_name} (experiment {experiment_sid} completed)")
+                    except Exception as e:
+                        logger.error(f"Failed to create final tool complete notification: {e}", exc_info=True)
+                
                 logger.info(f"Simulation pipeline completed: experiment_sid={experiment_sid}")
         else:
             # 실패 처리

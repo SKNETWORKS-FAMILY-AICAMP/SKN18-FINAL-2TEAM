@@ -1,11 +1,19 @@
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from django.db.models import Count, Q
+from django.http import JsonResponse
+from django.views.decorators.http import require_http_methods
+from django.views.decorators.csrf import csrf_exempt
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework import status
 import logging
 
 from apps.experiments.models import Experiment
 from apps.notes.models import Note
 from apps.chat.models import Chat, ChatMessage
+from apps.dashboard.models import Notification
 
 logger = logging.getLogger(__name__)
 
@@ -82,54 +90,115 @@ def index(request):
         
         chats_with_question.append(chat)
 
-    notifications = [
-        {
-            "id": 1,
-            "title": "PCR 실험 완료",
-            "message": "Customer Support Assistant 파이프라인이 완료되었습니다.",
-            "time": "5분 전",
-            "unread": True,
-        },
-        {
-            "id": 2,
-            "title": "일정 알림",
-            "message": "주간 연구 진행 보고 미팅이 30분 후 시작됩니다.",
-            "time": "25분 전",
-            "unread": True,
-        },
-        {
-            "id": 3,
-            "title": "노트 공유",
-            "message": 'Dr. John이 "CRISPR-Cas9 실험 결과 분석" 노트를 공유했습니다.',
-            "time": "1시간 전",
-            "unread": False,
-        },
-        {
-            "id": 4,
-            "title": "채팅 답변",
-            "message": "EGFR 변이 단백질 질문에 대한 AI 분석이 완료되었습니다.",
-            "time": "2시간 전",
-            "unread": False,
-        },
-        {
-            "id": 5,
-            "title": "시스템 업데이트",
-            "message": "AlphaFold3 모델이 업데이트되었습니다.",
-            "time": "1일 전",
-            "unread": False,
-        },
-    ]
+    # notifications = [
+    #     {
+    #         "id": 1,
+    #         "title": "PCR 실험 완료",
+    #         "message": "Customer Support Assistant 파이프라인이 완료되었습니다.",
+    #         "time": "5분 전",
+    #         "unread": True,
+    #     },
+    #     {
+    #         "id": 2,
+    #         "title": "일정 알림",
+    #         "message": "주간 연구 진행 보고 미팅이 30분 후 시작됩니다.",
+    #         "time": "25분 전",
+    #         "unread": True,
+    #     },
+    #     {
+    #         "id": 3,
+    #         "title": "노트 공유",
+    #         "message": 'Dr. John이 "CRISPR-Cas9 실험 결과 분석" 노트를 공유했습니다.',
+    #         "time": "1시간 전",
+    #         "unread": False,
+    #     },
+    #     {
+    #         "id": 4,
+    #         "title": "채팅 답변",
+    #         "message": "EGFR 변이 단백질 질문에 대한 AI 분석이 완료되었습니다.",
+    #         "time": "2시간 전",
+    #         "unread": False,
+    #     },
+    #     {
+    #         "id": 5,
+    #         "title": "시스템 업데이트",
+    #         "message": "AlphaFold3 모델이 업데이트되었습니다.",
+    #         "time": "1일 전",
+    #         "unread": False,
+    #     },
+    # ]
+
+
+
+    # 알림 조회 (최근 20건) - 현재 사용자의 알림만 조회
+    notifications = Notification.objects.filter(
+        user_id=user_id
+    ).order_by('-created_at')[:20]
+    
+    # 템플릿에서 사용할 수 있도록 딕셔너리 형태로 변환
+    notifications_list = []
+    for notification in notifications:
+        notifications_list.append({
+            "id": notification.notification_sid,
+            "title": notification.title,
+            "message": notification.message,
+            "time": notification.time,  # 모델의 @property 사용
+            "unread": notification.unread,  # 모델의 @property 사용
+        })
+    
+    # 미읽음 알림 개수
+    unread_count = Notification.objects.filter(
+        user_id=user_id,
+        read_yn='N'
+    ).count()
 
     context = {
         "important_schedules": [],  # Schedule.objects.filter(is_important=True).order_by('-start_date')[:5]
         "recent_experiments": recent_experiments,
         "recent_notes": recent_notes,
         "recent_chats": chats_with_question,
-        "notifications": notifications,
-        "unread_notifications_count": sum(
-            1 for notification in notifications if notification["unread"]
-        ),
+        "notifications": notifications_list,
+        "unread_notifications_count": unread_count,
         # header_user is now provided by context processor, no need to pass it here
     }
 
     return render(request, "dashboard/dashboard.html", context)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def notification_read_api(request, notification_id):
+    """
+    알림 읽음 처리 API
+    POST /api/notifications/{notification_id}/read/
+    """
+    try:
+        user = request.user
+        notification = get_object_or_404(
+            Notification,
+            notification_sid=notification_id,
+            user_id=user.user_id  # 본인의 알림만 읽을 수 있도록 검증
+        )
+        
+        # 읽음 처리
+        notification.read_yn = Notification.ReadStatus.READ
+        notification.save()
+        
+        logger.info(f"Notification {notification_id} marked as read by user {user.user_id}")
+        
+        return Response({
+            'success': True,
+            'message': '알림이 읽음 처리되었습니다.'
+        }, status=status.HTTP_200_OK)
+        
+    except Notification.DoesNotExist:
+        return Response({
+            'success': False,
+            'error': '알림을 찾을 수 없습니다.'
+        }, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        logger.error(f"Error marking notification as read: {str(e)}")
+        return Response({
+            'success': False,
+            'error': '알림 읽음 처리 중 오류가 발생했습니다.'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

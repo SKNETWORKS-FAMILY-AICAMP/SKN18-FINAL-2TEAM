@@ -213,6 +213,22 @@ def organization_create_api(request):
                     invited_by_user_id=request.user.user_id,
                     expires_at=timezone.now() + timedelta(days=7)  # 7일 후 만료
                 )
+                
+                # 조직 초대 알림 생성
+                from apps.dashboard.notification_utils import create_organization_invitation_notification, get_user_display_name
+                try:
+                    inviter_name = get_user_display_name(request.user)
+                    create_organization_invitation_notification(
+                        organization_name=organization.organization_name,
+                        invited_user_id=invited_user.user_id,
+                        inviter_name=inviter_name,
+                        organization_id=organization.organization_sid
+                    )
+                except Exception as e:
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.error(f"Failed to create organization invitation notification: {str(e)}", exc_info=True)
+                
                 created_invitations.append({
                     'email': invitation.email,
                     'status': invitation.status
@@ -561,6 +577,22 @@ def organization_add_member_api(request, organization_id):
                     invited_by_user_id=request.user.user_id,
                     expires_at=timezone.now() + timedelta(days=7)
                 )
+                
+                # 조직 초대 알림 생성
+                from apps.dashboard.notification_utils import create_organization_invitation_notification, get_user_display_name
+                try:
+                    inviter_name = get_user_display_name(request.user)
+                    create_organization_invitation_notification(
+                        organization_name=organization.organization_name,
+                        invited_user_id=invited_user.user_id,
+                        inviter_name=inviter_name,
+                        organization_id=organization.organization_sid
+                    )
+                except Exception as e:
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.error(f"Failed to create organization invitation notification: {str(e)}", exc_info=True)
+                
                 created_invitations.append({
                     'email': invitation.email,
                     'status': invitation.status
