@@ -14,6 +14,7 @@
 <link rel="stylesheet" href="{% static 'css/components/modals/table_modal.css' %}">
 <link rel="stylesheet" href="{% static 'css/components/modals/experiment_result_modal.css' %}">
 <link rel="stylesheet" href="{% static 'css/components/modals/chat_dislike_modal.css' %}">
+<link rel="stylesheet" href="{% static 'css/components/modals/pubmed_abstract_modal.css' %}">
 {% endblock %}
 
 {% block content %}
@@ -69,7 +70,6 @@
                                     type="file"
                                     id="fileInput"
                                     accept="image/*"
-                                    multiple
                                     style="display: none;"
                                 />
                             </div>
@@ -93,7 +93,7 @@
                                     <button class="filter-btn" data-filter="paper">논문/임상</button>
                                     <button class="filter-btn" data-filter="protocol">프로토콜</button>
                                     <button class="filter-btn" data-filter="simulation">시뮬레이션</button>
-                                    <!-- <button class="filter-btn" data-filter="interpretation">결과 해석</button> -->
+                                    <button class="filter-btn" data-filter="interpretation">결과 해석</button>
                                 </div>
                             </sl-tooltip>
                         </div>
@@ -192,7 +192,6 @@
                             type="file"
                             id="fileInputBottom"
                             accept="image/*"
-                            multiple
                             style="display: none;"
                         />
                     </div>
@@ -216,7 +215,7 @@
                             <button class="filter-btn" data-filter="paper">논문/임상</button>
                             <button class="filter-btn" data-filter="protocol">프로토콜</button>
                             <button class="filter-btn" data-filter="simulation">시뮬레이션</button>
-                            <!-- <button class="filter-btn" data-filter="interpretation">결과 해석</button> -->
+                            <button class="filter-btn" data-filter="interpretation">결과 해석</button>
                         </div>
                     </sl-tooltip>
                 </div>
@@ -265,6 +264,9 @@
 <!-- 실험 결과 선택 모달 -->
 {% include 'components/modals/experiment_result_modal.html' %}
 
+<!-- PubMed 초록 모달 -->
+{% include 'components/modals/pubmed_abstract_modal.html' %}
+
 {% endblock %}
 
 {% block extra_js %}
@@ -279,4 +281,5 @@
 <script src="{% static 'js/components/modals/save_to_note_modal.js' %}"></script>
 <script src="{% static 'js/components/modals/table_modal.js' %}"></script>
 <script src="{% static 'js/components/modals/experiment_result_modal.js' %}"></script>
+<script src="{% static 'js/components/modals/pubmed_abstract_modal.js' %}"></script>
 {% endblock %}

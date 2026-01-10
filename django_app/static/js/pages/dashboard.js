@@ -24,98 +24,12 @@ const chatQuestionContainer = document.getElementById('chatQuestionContainer');
 
 // Dummy data from React Dashboard
 const dummyExperiments = [
-    {
-        id: 1,
-        pipeline: "Customer Support Assistant",
-        tools: ["RFdiffusion", "ProteinMPNN"],
-        status: "진행중",
-        created: "2일 전",
-    },
-    {
-        id: 2,
-        pipeline: "Legal Document Analyzer",
-        tools: ["AlphaFold", "ColabFold", "DiffDock"],
-        status: "준비",
-        created: "1일 전",
-    },
-    {
-        id: 3,
-        pipeline: "Medical Diagnosis Helper",
-        tools: ["ProteinMPNN", "AlphaFold"],
-        status: "완료",
-        created: "12시간 전",
-    },
 ];
 
 const dummyRecentNotes = [
-    {
-        id: 1,
-        title: "CRISPR-Cas9 실험 결과 분석",
-        date: "2025-11-30",
-        shared: 3,
-        comments: 5,
-        tags: ["CRISPR", "유전자편집", "실험결과"],
-    },
-    {
-        id: 2,
-        title: "단백질 구조 예측 모델 비교",
-        date: "2025-11-29",
-        shared: 2,
-        comments: 3,
-        tags: ["단백질", "AlphaFold", "구조예측", "AI"],
-    },
-    {
-        id: 3,
-        title: "mRNA 백신 안정성 연구",
-        date: "2025-11-28",
-        shared: 5,
-        comments: 8,
-        tags: ["백신", "mRNA", "안정성"],
-    },
-    {
-        id: 4,
-        title: "암세포 증식 억제 메커니즘",
-        date: "2025-11-27",
-        shared: 1,
-        comments: 2,
-        tags: ["암연구", "세포생물학", "메커니즘"],
-    },
-    {
-        id: 5,
-        title: "면역 반응 분석 프로토콜",
-        date: "2025-11-26",
-        shared: 4,
-        comments: 6,
-        tags: ["면역학", "프로토콜", "분석", "실험"],
-    },
 ];
 
 const dummyRecentChats = [
-    {
-        id: 1,
-        question: "BRCA1 유전자의 돌연변이와 유방암 위험도 관계",
-        time: "30분 전",
-    },
-    {
-        id: 2,
-        question: "CRISPR-Cas9의 off-target 효과 최소화 방법",
-        time: "2시간 전",
-    },
-    {
-        id: 3,
-        question: "mRNA 백신의 면역 반응 메커니즘",
-        time: "5시간 전",
-    },
-    {
-        id: 4,
-        question: "단백질 정제 프로토콜 최적화 조건",
-        time: "1일 전",
-    },
-    {
-        id: 5,
-        question: "AlphaFold2 vs RoseTTAFold 정확도 비교",
-        time: "2일 전",
-    },
 ];
 
 // Status 코드 매핑: P: 예정, E: 진행중, F: 완료

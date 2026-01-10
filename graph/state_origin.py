@@ -22,7 +22,8 @@ class BioRAGState(TypedDict, total=False):
     filter_type: NotRequired[str]       # 프론트엔드에서 선택한 필터 타입 (paper, protocol, simulation, interpretation)
     attached_images: NotRequired[List[Dict[str, Any]]]  # 첨부된 이미지 정보 (base64 또는 S3 URL)
     uploaded_image_urls: NotRequired[List[str]]  # S3에 업로드된 이미지 URL 리스트 (DB 저장용)
-    image_analysis_result: NotRequired[Dict[str, Any]]  # 이미지 분석 결과 (JSON)
+    image_analysis_result: NotRequired[Dict[str, Any]]  # 이미지 분석 결과 (JSON) - Stage 2, 3 활성화 시
+    image_analysis_markdown: NotRequired[str]  # 이미지 분석 결과 (Markdown) - Stage 1만 사용
 
     # -----------------------------
     # 🔹 2. Guardrail (Safety Check)
