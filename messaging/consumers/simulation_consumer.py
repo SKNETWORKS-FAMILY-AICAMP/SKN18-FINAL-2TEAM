@@ -101,6 +101,7 @@ def launch_simulation_docker(
     config_path: str,
     output_dir: str,
     options: dict | None = None,
+    progress_callback: callable = None,
     ) -> Dict[str, Any]:
     try:
         base = views_runpod._get_runpod_sims_base_url()
@@ -202,6 +203,13 @@ def launch_simulation_docker(
         last_status = status
 
         logger.info(f"[RunPod] status check: name={run_name}, status={status}, raw={s_data}")
+
+        # 진행률 콜백 호출 (실행 중일 때)
+        if progress_callback:
+            try:
+                progress_callback(status)  # status를 전달하여 콜백에서 상태에 따라 처리
+            except Exception as e:
+                logger.warning(f"Progress callback failed: {e}")
 
         if status == "done":
             # unified/api_server.py 기준:
@@ -413,10 +421,47 @@ def handle_simulation_task(message: Dict[str, Any]):
     experiment_sid = int(experiment_sid_raw)
     
     try:
-        # 1. 시작: 상태 업데이트 + 피드백 발행
+        # 진행률 계산 헬퍼 함수
+        def calculate_step_progress(step_index, total_steps, phase="start"):
+            """
+            단계별 진행률 계산
+            - 각 도구는 동일한 비율(100/total_steps)을 차지
+            - 도구 완료 시: (step_index + 1) * (100 / total_steps)
+            - 도구 시작 시: step_index * (100 / total_steps)
+            phase: "start", "prepared", "running", "complete"
+            """
+            if total_steps <= 0:
+                return 0
+            
+            # 각 단계가 차지하는 진행률 범위
+            step_range = 100 / total_steps
+            
+            if phase == "complete":
+                # 도구 완료 시: (step_index + 1) 단계까지 완료된 진행률
+                # 예: step_index=0 (첫 번째) 완료 → 1 * 33.33 = 33%
+                #     step_index=1 (두 번째) 완료 → 2 * 33.33 = 66%
+                return min(100, int((step_index + 1) * step_range))
+            elif phase == "start":
+                # 도구 시작 시: step_index 단계까지 완료된 진행률
+                # 예: step_index=0 (첫 번째) 시작 → 0 * 33.33 = 0%
+                #     step_index=1 (두 번째) 시작 → 1 * 33.33 = 33%
+                return min(100, int(step_index * step_range))
+            else:
+                # prepared, running: 완료된 단계 + 현재 단계 내 진행률
+                previous_progress = step_index * step_range
+                phase_progress = {
+                    "prepared": 0.2,    # 준비 완료 (20%)
+                    "running": 0.5,     # 실행 중 (50%)
+                }.get(phase, 0.0)
+                current_step_progress = step_range * phase_progress
+                return min(100, int(previous_progress + current_step_progress))
+        
+        # 1. 워커 시작: 상태를 'E' (활성)로 업데이트 + 피드백 발행
         logger.info(f"Processing simulation: tool={tool_name}, experiment_sid={experiment_sid}")
-        update_experiment_status(experiment_sid, 'R', 0)
-        publish_status(task_id, experiment_sid, 'R', 0)
+        step_index = current_sort_order  # 0-based
+        start_progress = calculate_step_progress(step_index, total_steps, "start")
+        update_experiment_status(experiment_sid, 'E', start_progress)  # 워커 시작 → 활성
+        publish_status(task_id, experiment_sid, 'E', start_progress)
         
         # 실험 시작 알림 생성 (첫 번째 단계일 때만)
         if current_sort_order == 0:  # 첫 번째 단계
@@ -464,15 +509,30 @@ def handle_simulation_task(message: Dict[str, Any]):
         output_dir = str(experiment_sid)
         # os.makedirs(output_dir, exist_ok=True)
         
-        # 3. 진행률 업데이트: 25%
-        update_experiment_status(experiment_sid, 'R', 25)
-        publish_status(task_id, experiment_sid, 'R', 25)
+        # 3. 준비 완료: 진행률 업데이트 (단계별 계산)
+        prepared_progress = calculate_step_progress(step_index, total_steps, "prepared")
+        update_experiment_status(experiment_sid, 'E', prepared_progress)  # 활성 상태 유지
+        publish_status(task_id, experiment_sid, 'E', prepared_progress)
+        
+        # 진행률 콜백 함수 (RunPod 상태 폴링 시 진행률 업데이트)
+        def update_running_progress(runpod_status):
+            """RunPod 실행 중 진행률 업데이트"""
+            running_progress = calculate_step_progress(step_index, total_steps, "running")
+            # RunPod 상태가 "running"일 때만 'P' (진행중)로 변경
+            if runpod_status == "running":
+                update_experiment_status(experiment_sid, 'P', running_progress)  # 실행 중 → 진행중
+                publish_status(task_id, experiment_sid, 'P', running_progress)
+            else:
+                # 아직 running이 아니면 활성 상태 유지
+                update_experiment_status(experiment_sid, 'E', running_progress)
+                publish_status(task_id, experiment_sid, 'E', running_progress)
         
         result = launch_simulation_docker(
             tool_name, 
             config_path, 
             output_dir, 
-            options=tool_options
+            options=tool_options,
+            progress_callback=update_running_progress
             )
         
         logger.info(
@@ -562,9 +622,9 @@ def handle_simulation_task(message: Dict[str, Any]):
                     "Failed to register experiment results: %s", e, exc_info=True
                 )
             
-            # 파이프라인 진행률 계산 (0-based sort_order → 1-based 단계)
-            step_index = current_sort_order + 1
-            pipeline_progress = int(100 * step_index / max(total_steps, 1))
+            # 파이프라인 진행률 계산 (현재 단계 완료)
+            # step_index는 0-based이므로 현재 단계 완료 = (step_index + 1) 단계 완료
+            step_complete_progress = calculate_step_progress(step_index, total_steps, "complete")
 
             # 다음 단계 큐잉 시도
             next_task_id = enqueue_next_selection(
@@ -598,12 +658,12 @@ def handle_simulation_task(message: Dict[str, Any]):
             
             if next_task_id:
                 # 아직 남은 단계가 있으므로 진행 중 상태 유지
-                update_experiment_status(experiment_sid, 'R', pipeline_progress)
+                update_experiment_status(experiment_sid, 'P', step_complete_progress)
                 publish_status(
                     task_id,
                     experiment_sid,
-                    'R',
-                    pipeline_progress,
+                    'P',
+                    step_complete_progress,
                     {"next_task_id": next_task_id},
                 )
                 

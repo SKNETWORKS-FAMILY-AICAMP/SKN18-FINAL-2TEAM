@@ -106,7 +106,7 @@
                             </thead>
                             <tbody id="experimentTableBody">
                                 {% for experiment in recent_experiments %}
-                                <tr data-experiment-id="{{ experiment.experiment_sid }}">
+                                <tr data-experiment-id="{{ experiment.experiment_sid }}" data-created-at="{{ experiment.created_at|date:'c' }}">
                                     <td>{{ experiment.pipeline_name }}</td>
                                     <td>
                                         <div class="tool-tags">
@@ -117,14 +117,14 @@
                                     </td>
                                     <td>
                                         {% with status_lower=experiment.status|lower %}
-                                        {% if experiment.status == 'in_progress' or experiment.status == '진행중' %}
-                                            {% include 'components/status_badge.html' with status=status_lower status_display=experiment.get_status_display show_dot=True progress_class=status_lower %}
+                                        {% if experiment.status == 'P' or experiment.status == 'in_progress' or experiment.status == '진행중' %}
+                                            {% include 'components/status_badge.html' with status=status_lower status_display=experiment.get_status_display_korean show_dot=True progress_class=status_lower %}
                                         {% else %}
-                                            {% include 'components/status_badge.html' with status=status_lower status_display=experiment.get_status_display show_dot=True %}
+                                            {% include 'components/status_badge.html' with status=status_lower status_display=experiment.get_status_display_korean show_dot=True %}
                                         {% endif %}
                                         {% endwith %}
                                     </td>
-                                    <td>{{ experiment.created_at|timesince }} 전</td>
+                                    <td class="created-time">{{ experiment.created_at|timesince }} 전</td>
                                 </tr>
                                 {% empty %}
                                 <tr>

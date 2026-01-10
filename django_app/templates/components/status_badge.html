@@ -19,16 +19,18 @@ Status Badge 컴포넌트
     {{ status_display }}
 </span> -->
 {% with status_l=status|lower status_display_l=status_display|lower %}
-<span class="status-badge status-{{ status }}{% if status_l == 'failed' or status_l == 'f' or status_display_l == 'failed' or status_display == '실패' or status_display == 'Failed' %} status-progress{% elif status_l == 'completed' or status_l == 'c' or status_display_l == 'completed' or status_display == '완료' %} status-completed{% elif status_l == 'in_progress' or status_l == 'p' or status_display_l == 'in progress' or status_display_l == 'in_progress' or status_display == '진행중' %} status-progress{% endif %}">
+<span class="status-badge status-{{ status }}{% if status_display == '완료' or status_display == 'Completed' or status_l == 'completed' or status_l == 'c' %} status-completed{% elif status_display == '진행중' or status_display == '진행' or status_display == 'In Progress' or status_l == 'in_progress' or status_l == 'p' %} status-progress{% elif status_display == '준비' or status_display == 'Ready' or status_l == 'ready' or status_l == 'r' %} status-ready{% elif status_display == '실패' or status_display == 'Failed' or status_l == 'failed' or status_l == 'f' %} status-progress{% endif %}">
     {% if show_dot %}
-    <span class="status-dot status-dot-{{ status }}{% if status_l == 'failed' or status_l == 'f' or status_display_l == 'failed' or status_display == '실패' or status_display == 'Failed' %} status-dot-progress{% elif status_l == 'completed' or status_l == 'c' or status_display_l == 'completed' or status_display == '완료' %} status-dot-completed{% elif status_l == 'in_progress' or status_l == 'p' or status_display_l == 'in progress' or status_display_l == 'in_progress' or status_display == '진행중' %} status-dot-progress{% endif %}{% if progress_class %} status-dot-progress{% endif %}"></span>
+    <span class="status-dot status-dot-{{ status }}{% if status_display == '완료' or status_display == 'Completed' or status_l == 'completed' or status_l == 'c' %} status-dot-completed{% elif status_display == '진행중' or status_display == '진행' or status_display == 'In Progress' or status_l == 'in_progress' or status_l == 'p' %} status-dot-progress{% elif status_display == '준비' or status_display == 'Ready' or status_l == 'ready' or status_l == 'r' %} status-dot-ready{% elif status_display == '실패' or status_display == 'Failed' or status_l == 'failed' or status_l == 'f' %} status-dot-progress{% endif %}{% if progress_class %} status-dot-progress{% endif %}"></span>
     {% endif %}
-    {% if status_l == 'failed' or status_l == 'f' or status_display_l == 'failed' or status_display == '실패' or status_display == 'Failed' %}
-        진행
-    {% elif status_display_l == 'completed' or status_l == 'completed' or status_l == 'c' %}
+    {% if status_display == '완료' or status_display == 'Completed' or status_l == 'completed' or status_l == 'c' %}
         완료
-    {% elif status_display_l == 'in progress' or status_display_l == 'in_progress' or status_l == 'in_progress' or status_l == 'p' %}
+    {% elif status_display == '진행중' or status_display == 'In Progress' or status_l == 'in_progress' or status_l == 'p' %}
         진행중
+    {% elif status_display == '준비' or status_display == 'Ready' or status_l == 'ready' or status_l == 'r' %}
+        준비
+    {% elif status_display == '실패' or status_display == 'Failed' or status_l == 'failed' or status_l == 'f' %}
+        진행
     {% else %}
         {{ status_display }}
     {% endif %}

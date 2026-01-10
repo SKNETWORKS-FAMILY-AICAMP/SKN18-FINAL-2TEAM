@@ -1858,19 +1858,33 @@ async function openExperimentResultSidebar(experimentId) {
             console.log('[openExperimentResultSidebar] Final experiment ID:', expId);
             
             // 실험 정보 구성 (파일 목록 API 응답에서 가져온 정보 사용)
+            // API에서 계산된 진행률과 상태 사용 (결과 파일 기반으로 계산됨)
             const experimentData = {
                 id: expId,
                 experiment_sid: expId,
                 pipeline_name: experiment.pipeline_name || 'Unnamed Pipeline',
                 pipeline: experiment.pipeline_name || 'Unnamed Pipeline',
                 status: experiment.status || 'R',
-                progress: 0, // 파일 목록 API에는 progress가 없으므로 0으로 설정
+                progress: experiment.progress !== undefined && experiment.progress !== null ? experiment.progress : 0,
                 tools: [], // 파일 목록 API에는 tools가 없으므로 빈 배열
             };
             
             renderExperimentResult(experimentData);
             experimentResultSidebar.style.display = 'flex';
             document.body.style.overflow = 'hidden';
+            
+            // 실험 상세 상태 주기적 업데이트 (5초마다)
+            // 기존 타이머가 있으면 제거
+            if (window.__experimentDetailPollTimer) {
+                clearInterval(window.__experimentDetailPollTimer);
+            }
+            
+            // 완료되지 않은 실험만 polling
+            if (experiment.status !== 'C' && experiment.progress !== 100) {
+                window.__experimentDetailPollTimer = setInterval(() => {
+                    pollExperimentDetailStatus(expId);
+                }, 5000); // 5초마다 확인
+            }
         } else {
             console.error('[openExperimentResultSidebar] Failed to load experiment files:', response.status, response.statusText);
             const errorText = await response.text();
@@ -1892,6 +1906,99 @@ function closeExperimentResultSidebar() {
     if (!experimentResultSidebar) return;
     experimentResultSidebar.style.display = 'none';
     document.body.style.overflow = '';
+    
+    // Polling 중지
+    if (window.__experimentDetailPollTimer) {
+        clearInterval(window.__experimentDetailPollTimer);
+        window.__experimentDetailPollTimer = null;
+    }
+}
+
+// Poll experiment detail status and update progress
+async function pollExperimentDetailStatus(experimentId) {
+    if (!experimentId || !experimentResultSidebar) return;
+    
+    // 사이드바가 닫혀있으면 polling 중지
+    if (experimentResultSidebar.style.display === 'none') {
+        if (window.__experimentDetailPollTimer) {
+            clearInterval(window.__experimentDetailPollTimer);
+            window.__experimentDetailPollTimer = null;
+        }
+        return;
+    }
+    
+    try {
+        // 실험 파일 목록 API를 통해 최신 상태 가져오기
+        const response = await fetch(`/api/experiments/${experimentId}/files/`, {
+            method: 'GET',
+            headers: {
+                'X-CSRFToken': getCsrfToken(),
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            const experiment = data.experiment || {};
+            
+            // 진행률과 상태 업데이트
+            if (experiment.progress !== undefined && experiment.progress !== null) {
+                const currentProgress = parseInt(experimentResultProgressText?.textContent || '0');
+                const newProgress = experiment.progress;
+                
+                // 진행률이 변경되었으면 UI 업데이트
+                if (newProgress !== currentProgress) {
+                    if (experimentResultProgressFill) {
+                        experimentResultProgressFill.style.width = `${newProgress}%`;
+                    }
+                    if (experimentResultProgressText) {
+                        experimentResultProgressText.textContent = `${newProgress}%`;
+                    }
+                }
+            }
+            
+            // 상태 업데이트
+            if (experiment.status && experimentResultStatus) {
+                const statusCode = experiment.status;
+                let statusDisplay = '';
+                if (statusCode === 'C' || statusCode === 'completed') {
+                    statusDisplay = '완료';
+                } else if (statusCode === 'P' || statusCode === 'in_progress') {
+                    statusDisplay = '진행중';
+                } else if (statusCode === 'R' || statusCode === 'ready') {
+                    statusDisplay = '준비';
+                } else {
+                    statusDisplay = experimentResultStatus.textContent || '진행중';
+                }
+                
+                // 진행률이 100%이고 결과 파일이 있으면 '완료'로 설정
+                const resultFiles = data.results || [];
+                if (experiment.progress === 100 && resultFiles.length > 0) {
+                    statusDisplay = '완료';
+                }
+                
+                if (experimentResultStatus.textContent !== statusDisplay) {
+                    experimentResultStatus.textContent = statusDisplay;
+                }
+            }
+            
+            // 결과 파일 목록도 업데이트 (새 파일이 추가되었을 수 있음)
+            const resultFiles = data.results || [];
+            if (resultFiles.length > 0 && experimentResultFilesList) {
+                renderResultFilesList(resultFiles, experimentId);
+            }
+            
+            // 완료되었으면 polling 중지
+            if (experiment.status === 'C' || experiment.progress === 100) {
+                if (window.__experimentDetailPollTimer) {
+                    clearInterval(window.__experimentDetailPollTimer);
+                    window.__experimentDetailPollTimer = null;
+                }
+            }
+        }
+    } catch (error) {
+        console.error('[pollExperimentDetailStatus] Error:', error);
+    }
 }
 
 // Render experiment result
@@ -2153,8 +2260,46 @@ async function renderExperimentResultFiles(experiment) {
         if (response.ok) {
             const data = await response.json();
             const resultFiles = data.results || data || [];
+            const experimentInfo = data.experiment || {};
             console.log('[renderExperimentResultFiles] API response:', data);
             console.log('[renderExperimentResultFiles] Result files:', resultFiles);
+            console.log('[renderExperimentResultFiles] Experiment info:', experimentInfo);
+            
+            // API에서 계산된 진행률과 상태 사용 (결과 파일 기반으로 계산됨)
+            if (experimentInfo.progress !== undefined && experimentInfo.progress !== null) {
+                const calculatedProgress = experimentInfo.progress;
+                
+                // 진행률 UI 업데이트
+                if (experimentResultProgressFill) {
+                    experimentResultProgressFill.style.width = `${calculatedProgress}%`;
+                }
+                if (experimentResultProgressText) {
+                    experimentResultProgressText.textContent = `${calculatedProgress}%`;
+                }
+                
+                // 상태도 업데이트 (API에서 계산된 상태 사용)
+                if (experimentInfo.status && experimentResultStatus) {
+                    const statusCode = experimentInfo.status;
+                    let statusDisplay = '';
+                    if (statusCode === 'C' || statusCode === 'completed') {
+                        statusDisplay = '완료';
+                    } else if (statusCode === 'P' || statusCode === 'in_progress') {
+                        statusDisplay = '진행중';
+                    } else if (statusCode === 'R' || statusCode === 'ready') {
+                        statusDisplay = '준비';
+                    } else {
+                        statusDisplay = experimentResultStatus.textContent || '진행중';
+                    }
+                    
+                    // 진행률이 100%이고 결과 파일이 있으면 '완료'로 설정
+                    if (calculatedProgress === 100 && resultFiles.length > 0) {
+                        statusDisplay = '완료';
+                    }
+                    
+                    experimentResultStatus.textContent = statusDisplay;
+                }
+            }
+            
             if (resultFiles.length > 0) {
                 renderResultFilesList(resultFiles, experiment.id);
                 return;
