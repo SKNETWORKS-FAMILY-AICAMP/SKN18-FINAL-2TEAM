@@ -4,14 +4,13 @@
     {파일명}_{함수명}_llm
 """
 
-from graph.nodes.call_llm import gpt4_1_nano, gpt4o_mini, gpt5_nano, gpt5_2, sllm
+from graph.nodes.call_llm import gpt4_1_nano, gpt4o_mini, gpt5_nano, sllm
 
 # 모델 이름 매핑 (로깅용)
 MODEL_NAME_MAP = {
     gpt4_1_nano: "gpt-4.1-nano",
     gpt4o_mini: "gpt-4o-mini",
     gpt5_nano: "gpt-5-nano",
-    gpt5_2: "gpt-5.2",
     sllm: "sllm"
 }
 
@@ -63,5 +62,5 @@ generate_answer_simulation_llm = gpt4_1_nano
 generate_answer_protocol_llm = sllm
 #generate_answer_protocol_fallback_llm = gpt4_1_nano
 generate_answer_inference_llm = sllm
-generate_answer_inference_fallback_llm = gpt5_2
+#generate_answer_inference_fallback_llm = gpt5_2  # fallback 설정 안함
 generate_answer_info_llm = gpt4_1_nano

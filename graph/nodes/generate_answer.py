@@ -476,15 +476,17 @@ def _generate_inference_answer(state: Dict[str, Any]) -> Dict[str, Any]:
     """
     INFERENCE_Q: 실험 결과 해석 관련 질문
     Gemma3-12B-it 기반 파인튜닝 sLLM 모델용
-    이미지 분석 결과(image_analysis_result)가 있으면 포함하여 답변 생성
+    이미지 분석 결과(image_analysis_markdown)를 포함하여 답변 생성
+
+    주의: Stage 2, 3은 비활성화되어 있으므로 마크다운만 사용
     """
     question = state.get("question", "")
-    image_analysis_result = state.get("image_analysis_result")
-    
+    image_analysis_markdown = state.get("image_analysis_markdown")
+
     # 이전 대화 컨텍스트 구성 (영어 프롬프트와 일치)
     previous_context = ""
     relevant_history = state.get("relevant_history", [])
-    
+
     if relevant_history:
         history_parts = ["\n=== Previous Conversation Reference ==="]
         for i, hist in enumerate(relevant_history[:3], 1):  # 최근 3개만
@@ -496,66 +498,133 @@ def _generate_inference_answer(state: Dict[str, Any]) -> Dict[str, Any]:
         memory_slot = state.get("memory_slot", {})
         if memory_slot.get("last_summary"):
             previous_context = f"\nPrevious Summary: {memory_slot.get('last_summary')}"
-    
-    # 이미지 분석 결과가 있으면 JSON 문자열로 변환 (TOON은 인식 불확실하므로 JSON 사용)
+
+    # Stage 1 마크다운 결과를 image_context로 변환
     image_context = ""
-    if image_analysis_result:
-        try:
-            experiment_json_str = json.dumps(image_analysis_result, ensure_ascii=False, indent=2)
-            logger.info(f"[INFERENCE_Q] 이미지 분석 결과 포함 - 키: {list(image_analysis_result.keys())}")
-            # 영어 프롬프트 (파인튜닝 데이터셋과 일치)
-            image_context = f"""
 
-=== Attached Experimental Image Analysis Results (Stage 2 Refined JSON) ===
-{experiment_json_str}
+    # 디버깅 로그
+    logger.info(f"[INFERENCE_Q] image_analysis_markdown 존재 여부: {image_analysis_markdown is not None}")
+    if image_analysis_markdown:
+        logger.info(f"[INFERENCE_Q] image_analysis_markdown 길이: {len(image_analysis_markdown)} chars")
+        logger.info(f"[INFERENCE_Q] image_analysis_markdown 미리보기 (첫 500자):\n{image_analysis_markdown[:500]}")
 
-Please refer to the above experimental results data when answering the question.
-"""
-        except Exception as e:
-            logger.error(f"[INFERENCE_Q] 이미지 분석 결과 처리 실패: {e}", exc_info=True)
+        # 마크다운을 image_context로 사용 (Stage 2, 3 비활성화)
+        logger.info(f"[INFERENCE_Q] Stage 1 마크다운 사용 - 길이: {len(image_analysis_markdown)} chars")
+        # 영어 프롬프트 (마크다운도 영어로 작성됨)
+        image_context = f"""=== Attached Experimental Image Analysis Results (Markdown Format) ===
+{image_analysis_markdown}
+
+Please refer to the above experimental results data (in markdown format) when answering the question."""
+    else:
+        logger.warning("[INFERENCE_Q] 이미지 분석 결과가 없습니다! state에 image_analysis_markdown이 없음")
+        image_context = "No experimental image data available."
     
     # System Prompt: 규칙과 지침 (영어 - 파인튜닝 데이터셋과 일치)
     # Gemma3-12B-it 기반 파인튜닝 모델은 영어 데이터셋으로 학습되었으므로 영어 프롬프트 사용
     system_prompt = """You are a grounded interpretation assistant for experimental results.
 
-Absolute Rules:
-A) Evidence Restriction: Never create facts not in Stage 2 JSON. Prioritize Stage 2 JSON.
-B) Inference Restriction: Draw conclusions only when direct evidence exists. No significance conclusions without comparison pairs.
-C) Language Restriction: Prohibited expressions: "change", "increase", "decrease", "causality", "measured", etc.
-D) Insufficient Handling: When judgment is impossible, specify concrete reasons.
-E) Mechanism: Present only as possibilities, omit if evidence is insufficient.
-F) Follow-up Experiments: Propose only within information explicitly stated in Stage 2 JSON.
+    Your role is to:
+    - Organize extracted facts into a coherent scientific summary
+    - Evaluate whether interpretation is possible based only on evidence
+    - Explicitly state when interpretation is NOT possible
 
-Output: Markdown format, structured natural language response in Korean."""
+    Absolute Rules:
+    A) Evidence Restriction (CRITICAL - MOST IMPORTANT):
+    - You MUST NOT introduce any fact not present in the extracted figure data.
+    - You MUST NOT invent time points, concentrations, or experimental conditions.
+    - If a piece of information (e.g., "24 hours", "48 hours", specific concentrations) is NOT explicitly mentioned in the extracted data, DO NOT mention it in your response.
+    - All statements must be directly traceable to the extracted figure facts.
+    - If you cannot find certain information in the data, write "데이터에 명시되지 않음" instead of guessing.
+
+    B) Inference Restriction:
+    - You may describe numerical or structural relationships (higher/lower, larger/smaller, present/absent).
+    - You MUST NOT assert causality, function, mechanism, or biological meaning without explicit experimental evidence.
+
+    C) Language Restriction:
+    - Prohibited: "causes", "leads to", "results in", "because of", "therefore", "suggests mechanism".
+    - Allowed: "higher than", "lower than", "present", "absent", "different", "similar".
+
+    D) Insufficient Evidence Handling:
+    - If a section cannot be filled, explicitly write: "판단 불가 — [구체적 이유]".
+    - Example: If time points are not mentioned in the data, write "판단 불가 — 시간 정보가 데이터에 명시되지 않음"
+
+    E) Mechanism:
+    - Only include if the target, intervention, and system are explicitly specified.
+    - Otherwise omit the section entirely.
+
+    F) Follow-up Experiments:
+    - Only propose experiments that extend what is already present in the extracted data (e.g., more time points, more doses, additional groups).
+    - DO NOT propose experiments based on information you hallucinated.
+
+    G) Data Grounding Verification:
+    - Before writing each statement, verify that it is directly supported by the extracted figure facts.
+    - If you find yourself writing something that is not in the data, STOP and revise.
+
+    Output style:
+    - Structured Markdown
+    - Professional scientific tone in Korean
+    - No speculation, no narrative, no persuasion
+    - No hallucination of experimental conditions
+    """
+
 
     # User Prompt: 실제 데이터만 (영어 - 파인튜닝 데이터셋과 일치)
     # 질문은 사용자 입력 그대로 사용 (한글 질문도 가능)
     user_prompt = f"""Question: {question}
-{image_context}
-{previous_context}
 
-Please provide a professional and accurate interpretation of the above question.
+[Extracted Figure Facts]
+{image_context}
+
+[Additional Context]
+{previous_context if previous_context else "No previous context available."}
+
+CRITICAL INSTRUCTION:
+- The [Extracted Figure Facts] section above contains ALL the information available from the experimental figure.
+- You MUST base your entire response ONLY on the facts explicitly stated in [Extracted Figure Facts].
+- DO NOT add any information that is not present in the extracted data (e.g., time points, concentrations, conditions).
+- If the data does not mention specific information (e.g., "24 hours", "48 hours"), DO NOT mention it in your response.
+- If you find yourself about to write something not in the extracted facts, write "데이터에 명시되지 않음" instead.
+- 그래프가 여러개라면, 각각의 그래프를 구분해서 답변하기. 다른 그래프의 값을 섞어서 대답하지 말 것. 
+Please provide a professional and structured interpretation strictly based on the extracted facts.
 
 Response Structure:
+
 ## 실험 결과 요약
-[Summary of key facts]
+- 핵심 관측 사실을 요약 (추출된 데이터에 있는 내용만)
 
 ## 확인된 사실
-[Facts directly confirmed from Stage 2 JSON]
+- 추출된 데이터에서 직접 확인되는 사항만 나열
+- 데이터에 없는 정보는 절대 추가하지 말 것
+
+## 관찰된 수치적 관계
+- higher/lower, present/absent 등 관계만 기술 (의미/원인 금지)
+- 추출된 데이터에 있는 그룹/조건 이름만 사용
 
 ## 해석
-[Only when evidence exists, otherwise state "판단 불가 - reason"]
+- 해석 가능하면 조건부로 작성
+- 불가능하면: "판단 불가 — [이유]"
+
 
 ## 메커니즘 가능성
-[Only when experimental system/target/treatment is specified, omit if evidence is insufficient]
+- 명확히 주어진 경우만 기술
+- 불충분하면 섹션 생략
 
 ## 한계점
-[Limitations or areas requiring additional verification]
+- 데이터 자체의 한계만 기술
+- 추출된 데이터에서 누락된 정보가 있으면 명시
 
 ## 후속 실험 제안
-[Only within information in Stage 2 JSON, omit if insufficient]
+- 추출된 데이터에 있는 조건/그룹을 기반으로만 제안
+- 데이터에 없는 조건을 가정하지 말 것
+- 실험을 통해 확인해야한다는 것을 명시
 
-Response (in Korean):"""
+Response (in Korean, Markdown only):
+"""
+
+    # 디버깅: 생성된 프롬프트 길이 확인
+    logger.info(f"[INFERENCE_Q] image_context 길이: {len(image_context)} chars")
+    logger.info(f"[INFERENCE_Q] user_prompt 총 길이: {len(user_prompt)} chars")
+    logger.debug(f"[INFERENCE_Q] user_prompt 전체:\n{user_prompt}")
 
     try:
         # 사용 모델 확인
