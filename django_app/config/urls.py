@@ -61,6 +61,7 @@ urlpatterns = [
     path("api/feedback/", include("apps.feedback.api_urls")),
     path("api/profile/", include("apps.account.api_urls")),
     path("api/settings/", settings_api, name="api_settings"),
+    path("api/notifications/", dashboard_views.notification_list_api, name="api_notification_list"),
     path("api/notifications/<int:notification_id>/read/", dashboard_views.notification_read_api, name="api_notification_read"),
     path("api/organization/", include("apps.organization.urls")),
     path("api/calendars/", schedule_views.user_calendars_api, name="user_calendars_api"),

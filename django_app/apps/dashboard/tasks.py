@@ -60,12 +60,18 @@ def check_schedule_reminders(check_minutes=60):
                 # 해당 시간대에 맞는 알림 생성
                 if minutes_until <= reminder_minutes and minutes_until > reminder_minutes - 5:
                     try:
+                        # DB 연결 확인
+                        from django.db import connection
+                        connection.ensure_connection()
+                        
+                        # Task 내부에서는 동기 처리로 알림 생성 (DB 저장 보장)
                         create_schedule_reminder_notification(
                             schedule_title=schedule.title,
                             user_id=schedule.created_id,
                             schedule_id=schedule.schedule_sid,
                             reminder_minutes=minutes_until
                         )
+                        
                         notifications_created += 1
                         logger.info(
                             f"Created reminder for schedule {schedule.schedule_sid} "
@@ -127,22 +133,47 @@ def create_notification_async(
     Returns:
         dict: 생성 결과
     """
+    from django.db import transaction
+    from apps.dashboard.models import Notification
+    
     try:
-        notification = create_notification(
-            user_id=user_id,
-            notification_type=notification_type,
-            title=title,
-            message=message,
-            related_sid=related_sid,
-            read_yn=read_yn
-        )
-        return {
-            'status': 'success',
-            'notification_sid': notification.notification_sid,
-            'user_id': user_id
-        }
+        # DB 연결 확인
+        from django.db import connection
+        connection.ensure_connection()
+        
+        # 트랜잭션 내에서 알림 생성 (atomic 블록이 자동으로 커밋)
+        with transaction.atomic():
+            notification = Notification.objects.create(
+                user_id=user_id,
+                notification_type=notification_type,
+                title=title,
+                message=message,
+                related_sid=related_sid,
+                read_yn=read_yn,
+            )
+            # atomic 블록이 끝나면 자동으로 커밋됨
+            
+            logger.info(
+                f"Notification created via Celery Task: "
+                f"notification_sid={notification.notification_sid}, "
+                f"user_id={user_id}, title={title}"
+            )
+            
+            return {
+                'status': 'success',
+                'notification_sid': notification.notification_sid,
+                'user_id': user_id
+            }
     except Exception as exc:
-        logger.error(f"Failed to create notification asynchronously: {exc}", exc_info=True)
+        logger.error(
+            f"Failed to create notification asynchronously: {exc}",
+            exc_info=True,
+            extra={
+                'user_id': user_id,
+                'notification_type': notification_type,
+                'title': title
+            }
+        )
         # 재시도 (최대 3회)
         raise self.retry(exc=exc, countdown=60)  # 60초 후 재시도
 
