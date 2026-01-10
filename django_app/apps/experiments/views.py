@@ -225,7 +225,7 @@ def _list_experiments_api(request):
     
     experiments = Experiment.objects.filter(
         created_id=user_identifier
-    ).prefetch_related('tool_selections__tool').order_by('-created_at')[:20]  # 최근 20개만
+    ).prefetch_related('tool_selections__tool', 'results').select_related().order_by('-created_at')[:20]  # 최근 20개만
     
     print(f"[Experiments API] Filtered experiments count: {experiments.count()}")
     
@@ -258,14 +258,75 @@ def _list_experiments_api(request):
             tools_list = [tool.tool_name for tool in exp.tools.all()]
             print(f"[Experiments API] Experiment {exp.experiment_sid}: Using exp.tools.all(), found {len(tools_list)} tools")
         
+        # 결과 파일 기반으로 진행률 자동 계산
+        calculated_progress = exp.progress if exp.progress is not None else 0
+        calculated_status = exp.status or 'R'
+        
+        # 결과 파일이 있으면 진행률 재계산
+        if hasattr(exp, 'results') and tools_list:
+            results = list(exp.results.all())
+            if results:
+                # 결과 파일에서 완료된 도구 확인
+                completed_tools = set()
+                for result in results:
+                    result_name_lower = (result.result_name or '').lower()
+                    if 'rfdiffusion' in result_name_lower:
+                        completed_tools.add('RFdiffusion')
+                    elif 'proteinmpnn' in result_name_lower or 'mpnn' in result_name_lower:
+                        completed_tools.add('ProteinMPNN')
+                    elif 'alphafold' in result_name_lower or '_af_' in result_name_lower:
+                        completed_tools.add('AlphaFold3')
+                
+                # 실제 도구 목록과 비교하여 완료된 도구 계산
+                actual_completed = sum(1 for tool in tools_list if tool in completed_tools)
+                total_tools = len(tools_list)
+                
+                if actual_completed > 0 and total_tools > 0:
+                    calculated_progress = min(100, int((actual_completed / total_tools) * 100))
+                    
+                    # 모든 도구가 완료되었으면 진행률 100%, 상태 'C'로 설정
+                    if actual_completed >= total_tools:
+                        calculated_progress = 100
+                        if calculated_status != 'C':
+                            calculated_status = 'C'
+                            status_display = '완료'
+                            # DB 업데이트 (결과 파일 기반으로 자동 업데이트)
+                            try:
+                                from apps.experiments.utils import update_experiment_status
+                                update_experiment_status(exp.experiment_sid, 'C', 100)
+                                # DB에서 최신 정보 다시 가져오기
+                                exp.refresh_from_db()
+                                calculated_progress = exp.progress if exp.progress is not None else 100
+                                calculated_status = exp.status
+                                status_display = status_map.get(calculated_status, '완료')
+                            except Exception as e:
+                                import logging
+                                logger = logging.getLogger(__name__)
+                                logger.warning(f"Failed to update experiment {exp.experiment_sid} status in list API: {e}")
+                    elif actual_completed > 0:
+                        # 일부 도구만 완료되었으면 진행률만 업데이트
+                        calculated_progress = min(100, int((actual_completed / total_tools) * 100))
+                        # 진행률이 현재보다 높으면 DB 업데이트
+                        if calculated_progress > (exp.progress or 0):
+                            try:
+                                from apps.experiments.utils import update_experiment_status
+                                # 상태는 변경하지 않고 진행률만 업데이트
+                                update_experiment_status(exp.experiment_sid, calculated_status, calculated_progress)
+                                exp.refresh_from_db()
+                                calculated_progress = exp.progress if exp.progress is not None else calculated_progress
+                            except Exception as e:
+                                import logging
+                                logger = logging.getLogger(__name__)
+                                logger.warning(f"Failed to update experiment {exp.experiment_sid} progress in list API: {e}")
+        
         exp_data = {
             'id': exp.experiment_sid,  # experiment_sid가 primary key
             'pipeline_name': exp.pipeline_name or 'Unnamed Pipeline',
             'pipeline': exp.pipeline_name or 'Unnamed Pipeline',  # React 호환성
             'created_at': exp.created_at.isoformat() if exp.created_at else None,
-            'status': exp.status or 'R',  # 상태 코드
+            'status': calculated_status,  # 계산된 상태 코드
             'status_display': status_display,  # 한국어 상태
-            'progress': exp.progress if exp.progress is not None else 0,
+            'progress': calculated_progress,  # 계산된 진행률
             'tools': tools_list,  # 도구 이름 배열
         }
         experiments_data.append(exp_data)
@@ -681,7 +742,7 @@ def experiment_viewer_state_detail_api(request, experiment_sid: int, state_sid: 
 def experiment_result_files_api(request, experiment_sid: int):
     user_identifier = _get_user_identifier(request.user)
     try:
-        experiment = Experiment.objects.prefetch_related("results").get(
+        experiment = Experiment.objects.prefetch_related("results", "tool_selections__tool").get(
             experiment_sid=experiment_sid,
             created_id=user_identifier,
         )
@@ -698,13 +759,78 @@ def experiment_result_files_api(request, experiment_sid: int):
             "created_at": result.created_at.isoformat() if result.created_at else None,
             "file_path": result.file_path,
         })
+    
+    # 결과 파일 기반으로 진행률 자동 계산
+    calculated_progress = experiment.progress
+    calculated_status = experiment.status
+    
+    # 도구 목록 가져오기
+    tool_selections = experiment.tool_selections.all().select_related('tool').order_by('sort_order')
+    total_tools = tool_selections.count()
+    
+    if total_tools > 0 and results:
+        # 각 도구별로 결과 파일이 있는지 확인
+        completed_tools = set()
+        for result in results:
+            result_name_lower = (result.get('name') or '').lower()
+            # 결과 파일 이름에서 도구 추출
+            if 'rfdiffusion' in result_name_lower:
+                completed_tools.add('RFdiffusion')
+            elif 'proteinmpnn' in result_name_lower or 'mpnn' in result_name_lower:
+                completed_tools.add('ProteinMPNN')
+            elif 'alphafold' in result_name_lower or '_af_' in result_name_lower:
+                completed_tools.add('AlphaFold3')
+        
+        # 실제 도구 목록과 비교하여 완료된 도구 확인
+        actual_completed = 0
+        for selection in tool_selections:
+            if selection.tool and selection.tool.tool_name in completed_tools:
+                actual_completed += 1
+        
+        # 진행률 계산: 완료된 도구 비율 * 100
+        if actual_completed > 0:
+            calculated_progress = min(100, int((actual_completed / total_tools) * 100))
+            
+        # 모든 도구가 완료되었으면 진행률 100%, 상태 'C'로 설정
+        if actual_completed >= total_tools:
+            calculated_progress = 100
+            if calculated_status != 'C':
+                calculated_status = 'C'
+                # DB 업데이트 (결과 파일 기반으로 자동 업데이트)
+                try:
+                    from apps.experiments.utils import update_experiment_status
+                    update_experiment_status(experiment_sid, 'C', 100)
+                    # DB에서 최신 정보 다시 가져오기
+                    experiment.refresh_from_db()
+                    calculated_progress = experiment.progress if experiment.progress is not None else 100
+                    calculated_status = experiment.status
+                except Exception as e:
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.error(f"Failed to update experiment status: {e}", exc_info=True)
+        elif actual_completed > 0:
+            # 일부 도구만 완료되었으면 진행률만 업데이트 (상태는 유지)
+            calculated_progress = min(100, int((actual_completed / total_tools) * 100))
+            # 진행률이 현재보다 높으면 DB 업데이트
+            if calculated_progress > (experiment.progress or 0):
+                try:
+                    from apps.experiments.utils import update_experiment_status
+                    # 상태는 변경하지 않고 진행률만 업데이트
+                    update_experiment_status(experiment_sid, calculated_status, calculated_progress)
+                    experiment.refresh_from_db()
+                    calculated_progress = experiment.progress if experiment.progress is not None else calculated_progress
+                except Exception as e:
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.warning(f"Failed to update experiment progress: {e}", exc_info=True)
 
     return Response({
         "status": "success",
         "experiment": {
             "id": experiment.experiment_sid,
             "pipeline_name": experiment.pipeline_name,
-            "status": experiment.status,
+            "status": calculated_status,
+            "progress": calculated_progress,
         },
         "results": results,
     }

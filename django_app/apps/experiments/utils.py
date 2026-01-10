@@ -342,8 +342,109 @@ def register_experiment_results_for_step(
         f"Registered {len(results)} result files for experiment {experiment_sid}, "
         f"step={s3_step}"
     )
+    
+    # 결과 파일 등록 후 진행률 자동 계산 및 DB 업데이트
+    if results:
+        _update_experiment_progress_from_results(experiment_sid)
 
     return results
+
+
+def _update_experiment_progress_from_results(experiment_sid: int):
+    """
+    결과 파일을 기반으로 실험 진행률을 자동 계산하고 DB를 업데이트합니다.
+    
+    Args:
+        experiment_sid: 실험 ID
+    """
+    from apps.experiments.models import Experiment
+    
+    try:
+        with transaction.atomic():
+            experiment = Experiment.objects.select_for_update().prefetch_related(
+                'tool_selections__tool', 'results'
+            ).get(experiment_sid=experiment_sid)
+            
+            # 도구 목록 가져오기
+            tool_selections = experiment.tool_selections.all().select_related('tool').order_by('sort_order')
+            tools_list = [selection.tool.tool_name for selection in tool_selections if selection.tool]
+            total_tools = len(tools_list)
+            
+            if total_tools == 0:
+                return
+            
+            # 결과 파일에서 완료된 도구 확인
+            results = list(experiment.results.all())
+            if not results:
+                return
+            
+            completed_tools = set()
+            for result in results:
+                result_name_lower = (result.result_name or '').lower()
+                if 'rfdiffusion' in result_name_lower:
+                    completed_tools.add('RFdiffusion')
+                elif 'proteinmpnn' in result_name_lower or 'mpnn' in result_name_lower:
+                    completed_tools.add('ProteinMPNN')
+                elif 'alphafold' in result_name_lower or '_af_' in result_name_lower:
+                    completed_tools.add('AlphaFold3')
+            
+            # 실제 도구 목록과 비교하여 완료된 도구 계산
+            actual_completed = sum(1 for tool in tools_list if tool in completed_tools)
+            
+            if actual_completed > 0:
+                # 진행률 계산: 완료된 도구 비율 * 100
+                calculated_progress = min(100, int((actual_completed / total_tools) * 100))
+                
+                # 모든 도구가 완료되었으면 진행률 100%, 상태 'C'로 설정
+                if actual_completed >= total_tools:
+                    calculated_progress = 100
+                    new_status = 'C'
+                else:
+                    # 일부 도구만 완료되었으면 진행중 상태 유지
+                    new_status = 'P' if experiment.status != 'C' else 'C'
+                
+                # 진행률이 현재보다 높거나 상태가 변경되어야 하면 업데이트
+                if calculated_progress > (experiment.progress or 0) or new_status != experiment.status:
+                    # 상태 전이 검증
+                    valid_transitions = {
+                        'R': ['E', 'F', 'P'],  # 준비 → 활성/실패/진행중
+                        'E': ['P', 'F', 'C'],  # 활성 → 진행중/실패/완료
+                        'P': ['C', 'F'],  # 진행중 → 완료/실패
+                        'C': [],  # 완료는 최종 상태
+                        'F': [],  # 실패는 최종 상태
+                    }
+                    
+                    # 상태 전이가 유효한 경우에만 업데이트
+                    if new_status in valid_transitions.get(experiment.status, []) or new_status == experiment.status:
+                        experiment.status = new_status
+                        experiment.progress = calculated_progress
+                        experiment.updated_at = timezone.now()
+                        experiment.save(update_fields=['status', 'progress', 'updated_at'])
+                        
+                        logger.info(
+                            f"Auto-updated experiment {experiment_sid} progress: {calculated_progress}%, "
+                            f"status: {new_status} (completed tools: {actual_completed}/{total_tools})"
+                        )
+                    else:
+                        logger.warning(
+                            f"Invalid status transition for experiment {experiment_sid}: "
+                            f"{experiment.status} → {new_status}. Skipping status update."
+                        )
+                        # 상태는 변경하지 않고 진행률만 업데이트
+                        if calculated_progress > (experiment.progress or 0):
+                            experiment.progress = calculated_progress
+                            experiment.updated_at = timezone.now()
+                            experiment.save(update_fields=['progress', 'updated_at'])
+                            logger.info(
+                                f"Auto-updated experiment {experiment_sid} progress only: {calculated_progress}%"
+                            )
+    except Experiment.DoesNotExist:
+        logger.warning(f"Experiment {experiment_sid} not found for progress update")
+    except Exception as e:
+        logger.error(
+            f"Failed to auto-update experiment {experiment_sid} progress: {e}",
+            exc_info=True
+        )
 
 
 # @transaction.atomic
