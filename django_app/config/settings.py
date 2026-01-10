@@ -550,13 +550,29 @@ LOGGING = {
 # 프로젝트에 이미 RabbitMQ가 설정되어 있으므로 RabbitMQ를 사용합니다.
 
 # Celery Broker URL (메시지 브로커)
-# RabbitMQ를 사용 (프로젝트의 messaging/config.py에서 설정된 RabbitMQ 사용)
+# RabbitMQ를 사용 (환경변수에서 직접 구성)
+# 서버 환경: 환경변수에서 RABBITMQ_HOST, RABBITMQ_PORT, RABBITMQ_USER, RABBITMQ_PASSWORD 사용
+# 로컬 환경: messaging/config.py에서 가져오거나 기본값 사용
 try:
     from messaging.config import RABBITMQ_URL
+    # messaging 모듈이 있으면 우선 사용 (로컬 개발 환경)
     CELERY_BROKER_URL = env('CELERY_BROKER_URL', default=RABBITMQ_URL)
 except ImportError:
-    # messaging 모듈을 찾을 수 없으면 환경변수 또는 기본값 사용
-    CELERY_BROKER_URL = env('CELERY_BROKER_URL', default=RABBITMQ_URL)
+    # messaging 모듈이 없으면 환경변수에서 직접 구성 (서버 환경)
+    RABBITMQ_HOST = env('RABBITMQ_HOST')
+    RABBITMQ_PORT = env('RABBITMQ_PORT')
+    RABBITMQ_USER = env('RABBITMQ_USER')
+    RABBITMQ_PASSWORD = env('RABBITMQ_PASSWORD')
+    RABBITMQ_VHOST = env('RABBITMQ_VHOST')
+    
+    # URL 인코딩 (비밀번호와 vhost)
+    from urllib.parse import quote_plus
+    encoded_password = quote_plus(RABBITMQ_PASSWORD)
+    encoded_vhost = quote_plus(RABBITMQ_VHOST)
+    
+    # RabbitMQ URL 구성
+    DEFAULT_RABBITMQ_URL = f'amqp://{RABBITMQ_USER}:{encoded_password}@{RABBITMQ_HOST}:{RABBITMQ_PORT}/{encoded_vhost}'
+    CELERY_BROKER_URL = env('CELERY_BROKER_URL', default=DEFAULT_RABBITMQ_URL)
 
 # Celery Result Backend (작업 결과 저장소)
 # 최신 Celery는 RabbitMQ를 Result Backend로 직접 사용할 수 없습니다.

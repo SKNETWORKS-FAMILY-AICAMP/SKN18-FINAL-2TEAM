@@ -241,6 +241,12 @@ def notification_read_api(request, notification_id):
         notification.read_yn = Notification.ReadStatus.READ
         notification.save()
         
+        # 읽음 처리 후 최신 unread_count 계산
+        unread_count = Notification.objects.filter(
+            user_id=user.user_id,
+            read_yn=Notification.ReadStatus.UNREAD
+        ).count()
+        
         logger.info(f"Notification {notification_id} marked as read by user {user.user_id}")
         
         return Response({

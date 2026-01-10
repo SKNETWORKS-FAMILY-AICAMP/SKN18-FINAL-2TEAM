@@ -57,25 +57,45 @@ def check_schedule_reminders(check_minutes=60):
             reminder_times = [60, 30, 15, 5]  # 1시간 전, 30분 전, 15분 전, 5분 전
             
             for reminder_minutes in reminder_times:
-                # 해당 시간대에 맞는 알림 생성
-                if minutes_until <= reminder_minutes and minutes_until > reminder_minutes - 5:
+                # 해당 시간대에 정확히 맞는 알림 생성 (범위: reminder_minutes-2 ~ reminder_minutes)
+                # 예: 15분 전 알림은 13분~15분 사이에 생성 (정확도 향상)
+                if minutes_until >= reminder_minutes - 2 and minutes_until <= reminder_minutes:
+                    # 이미 해당 리마인더 시간대의 알림이 생성되었는지 확인 (중복 방지)
+                    from apps.dashboard.models import Notification
+                    existing_notification = Notification.objects.filter(
+                        user_id=schedule.created_id,
+                        notification_type='M',  # 미팅 타입
+                        related_sid=schedule.schedule_sid,
+                        title='일정 알림',
+                        created_at__gte=now - timedelta(minutes=10)  # 최근 10분 이내 생성된 알림만 체크
+                    ).first()
+                    
+                    if existing_notification:
+                        # 이미 알림이 생성되었으면 스킵
+                        logger.debug(
+                            f"Skipping reminder for schedule {schedule.schedule_sid} "
+                            f"({minutes_until} minutes before) - notification already exists"
+                        )
+                        break
+                    
                     try:
                         # DB 연결 확인
                         from django.db import connection
                         connection.ensure_connection()
                         
                         # Task 내부에서는 동기 처리로 알림 생성 (DB 저장 보장)
+                        # 실제 남은 시간을 사용하여 알림 메시지 생성
                         create_schedule_reminder_notification(
                             schedule_title=schedule.title,
                             user_id=schedule.created_id,
                             schedule_id=schedule.schedule_sid,
-                            reminder_minutes=minutes_until
+                            reminder_minutes=minutes_until  # 실제 남은 시간 사용
                         )
                         
                         notifications_created += 1
                         logger.info(
                             f"Created reminder for schedule {schedule.schedule_sid} "
-                            f"({minutes_until} minutes before)"
+                            f"({minutes_until} minutes before, target: {reminder_minutes} minutes)"
                         )
                         break  # 하나만 생성
                     except Exception as e:
