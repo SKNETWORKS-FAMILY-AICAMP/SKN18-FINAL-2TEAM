@@ -8,6 +8,7 @@ RUN apt-get update && apt-get install -y \
     postgresql-client \
     curl \
     unzip \
+    git \
     && rm -rf /var/lib/apt/lists/*
 
 # AWS CLI 설치 (Parameter Store 접근용)
