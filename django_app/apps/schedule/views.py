@@ -240,6 +240,13 @@ def _invite_schedule_shared_users(schedule: Schedule, emails, owner_id: str):
     else:
         normalized_emails = emails
 
+    # 일정 소유자 정보 가져오기 (알림용)
+    try:
+        owner = CustomUser.objects.get(user_id=owner_id)
+        owner_name = owner.full_name or owner.email or "알 수 없는 사용자"
+    except CustomUser.DoesNotExist:
+        owner_name = "알 수 없는 사용자"
+
     for raw_email in normalized_emails:
         email = (raw_email or '').strip()
         if not email:
@@ -268,6 +275,21 @@ def _invite_schedule_shared_users(schedule: Schedule, emails, owner_id: str):
             created_id=owner_id,
             status=ScheduleInvitation.Status.PENDING,
         )
+        
+        # 일정 공유 알림 생성
+        from apps.notification.notification_utils import create_schedule_share_notification
+        try:
+            create_schedule_share_notification(
+                schedule_title=schedule.title,
+                shared_user_id=user_id,
+                owner_name=owner_name,
+                schedule_id=schedule.schedule_sid
+            )
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Failed to create schedule share notification: {str(e)}", exc_info=True)
+        
         seen_user_ids.add(user_id)
         results.append({
             'user_id': user_id,
@@ -1333,6 +1355,23 @@ def schedule_shared_users(request, schedule_id):
                 created_id=owner_id,
                 status=ScheduleInvitation.Status.PENDING,
             )
+            
+            # 일정 공유 알림 생성
+            from apps.notification.notification_utils import create_schedule_share_notification, get_user_display_name
+            try:
+                owner = CustomUser.objects.get(user_id=owner_id)
+                owner_name = get_user_display_name(owner)
+                create_schedule_share_notification(
+                    schedule_title=schedule.title,
+                    shared_user_id=user_id,
+                    owner_name=owner_name,
+                    schedule_id=schedule.schedule_sid
+                )
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Failed to create schedule share notification: {str(e)}", exc_info=True)
+            
             created_shares.append({
                 'user_id': invitation.user_id,
                 'email': invitation.user_id,

@@ -1,3 +1,4 @@
 from django.contrib import admin
 
-# Register your models here.
+# Dashboard admin
+# Notification admin has been moved to apps.notification.admin

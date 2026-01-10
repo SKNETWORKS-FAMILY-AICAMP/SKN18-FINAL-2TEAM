@@ -34,6 +34,19 @@ TOOL_NAME_QUEUE_MAP = {
 }
 
 
+def _ensure_django_setup():
+    """Django가 setup되어 있는지 확인하고 필요시 setup"""
+    try:
+        import django
+        if not django.apps.apps.ready:
+            import os
+            os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
+            django.setup()
+    except Exception:
+        # 이미 setup되어 있거나 다른 방식으로 setup된 경우
+        pass
+
+
 def update_experiment_status(
     experiment_sid: int,
     status: str,
@@ -50,11 +63,7 @@ def update_experiment_status(
         error_message: 에러 메시지 (실패 시)
     """
     try:
-        # Django 설정 로드
-        import django
-        import os
-        os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
-        django.setup()
+        _ensure_django_setup()
         
         from django_app.apps.experiments.utils import update_experiment_status as update_status
         update_status(experiment_sid, status, progress, error_message)
@@ -92,6 +101,7 @@ def launch_simulation_docker(
     config_path: str,
     output_dir: str,
     options: dict | None = None,
+    progress_callback: callable = None,
     ) -> Dict[str, Any]:
     try:
         base = views_runpod._get_runpod_sims_base_url()
@@ -194,6 +204,13 @@ def launch_simulation_docker(
 
         logger.info(f"[RunPod] status check: name={run_name}, status={status}, raw={s_data}")
 
+        # 진행률 콜백 호출 (실행 중일 때)
+        if progress_callback:
+            try:
+                progress_callback(status)  # status를 전달하여 콜백에서 상태에 따라 처리
+            except Exception as e:
+                logger.warning(f"Progress callback failed: {e}")
+
         if status == "done":
             # unified/api_server.py 기준:
             # expected_pdb = OUTPUTS_DIR/name_0.pdb
@@ -245,6 +262,34 @@ def launch_simulation_docker(
         status__in=["E", "R", "P"],
     ).exists()
 
+
+def _get_previous_step_options(experiment_sid: int, tool_name: str) -> dict:
+    """
+    이전 단계의 tool_options를 조회
+    
+    Args:
+        experiment_sid: 실험 ID
+        tool_name: 도구 이름 ("RFdiffusion", "ProteinMPNN")
+    
+    Returns:
+        tool_options 딕셔너리
+    """
+    _ensure_django_setup()
+    
+    try:
+        selection = ExperimentToolSelection.objects.filter(
+            experiment_id=experiment_sid,
+            tool__tool_name=tool_name
+        ).select_related("tool").order_by("sort_order").first()
+        
+        if selection and selection.tool_options_json:
+            return json.loads(selection.tool_options_json)
+    except Exception as e:
+        logger.warning(f"Failed to get previous step options for {tool_name}: {e}")
+    
+    return {}
+
+
 def enqueue_next_selection(experiment_sid: int, current_sort_order: int, requested_by: int | None):
     """
     현재 sort_order 이후의 다음 ExperimentToolSelection을 찾아
@@ -252,10 +297,7 @@ def enqueue_next_selection(experiment_sid: int, current_sort_order: int, request
     다음 단계가 없으면 None 반환.
     """
     try:
-        import django
-        import os as _os
-        _os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
-        django.setup()
+        _ensure_django_setup()
 
         qs = (
             ExperimentToolSelection.objects
@@ -379,10 +421,66 @@ def handle_simulation_task(message: Dict[str, Any]):
     experiment_sid = int(experiment_sid_raw)
     
     try:
-        # 1. 시작: 상태 업데이트 + 피드백 발행
+        # 진행률 계산 헬퍼 함수
+        def calculate_step_progress(step_index, total_steps, phase="start"):
+            """
+            단계별 진행률 계산
+            - 각 도구는 동일한 비율(100/total_steps)을 차지
+            - 도구 완료 시: (step_index + 1) * (100 / total_steps)
+            - 도구 시작 시: step_index * (100 / total_steps)
+            phase: "start", "prepared", "running", "complete"
+            """
+            if total_steps <= 0:
+                return 0
+            
+            # 각 단계가 차지하는 진행률 범위
+            step_range = 100 / total_steps
+            
+            if phase == "complete":
+                # 도구 완료 시: (step_index + 1) 단계까지 완료된 진행률
+                # 예: step_index=0 (첫 번째) 완료 → 1 * 33.33 = 33%
+                #     step_index=1 (두 번째) 완료 → 2 * 33.33 = 66%
+                return min(100, int((step_index + 1) * step_range))
+            elif phase == "start":
+                # 도구 시작 시: step_index 단계까지 완료된 진행률
+                # 예: step_index=0 (첫 번째) 시작 → 0 * 33.33 = 0%
+                #     step_index=1 (두 번째) 시작 → 1 * 33.33 = 33%
+                return min(100, int(step_index * step_range))
+            else:
+                # prepared, running: 완료된 단계 + 현재 단계 내 진행률
+                previous_progress = step_index * step_range
+                phase_progress = {
+                    "prepared": 0.2,    # 준비 완료 (20%)
+                    "running": 0.5,     # 실행 중 (50%)
+                }.get(phase, 0.0)
+                current_step_progress = step_range * phase_progress
+                return min(100, int(previous_progress + current_step_progress))
+        
+        # 1. 워커 시작: 상태를 'E' (활성)로 업데이트 + 피드백 발행
         logger.info(f"Processing simulation: tool={tool_name}, experiment_sid={experiment_sid}")
-        update_experiment_status(experiment_sid, 'R', 0)
-        publish_status(task_id, experiment_sid, 'R', 0)
+        step_index = current_sort_order  # 0-based
+        start_progress = calculate_step_progress(step_index, total_steps, "start")
+        update_experiment_status(experiment_sid, 'E', start_progress)  # 워커 시작 → 활성
+        publish_status(task_id, experiment_sid, 'E', start_progress)
+        
+        # 실험 시작 알림 생성 (첫 번째 단계일 때만)
+        if current_sort_order == 0:  # 첫 번째 단계
+            try:
+                _ensure_django_setup()
+                from apps.experiments.models import Experiment
+                from apps.notification.notification_utils import create_experiment_start_notification
+                
+                experiment = Experiment.objects.get(experiment_sid=experiment_sid)
+                user_id = experiment.created_id
+                
+                create_experiment_start_notification(
+                    experiment_title=experiment.pipeline_name,
+                    user_id=user_id,
+                    experiment_id=experiment_sid
+                )
+                logger.info(f"Created experiment start notification for experiment {experiment_sid}")
+            except Exception as e:
+                logger.error(f"Failed to create experiment start notification: {e}", exc_info=True)
         
         # 2. 시뮬레이션 실행 준비
         protein_sequence = payload.get("protein_sequence")
@@ -411,15 +509,30 @@ def handle_simulation_task(message: Dict[str, Any]):
         output_dir = str(experiment_sid)
         # os.makedirs(output_dir, exist_ok=True)
         
-        # 3. 진행률 업데이트: 25%
-        update_experiment_status(experiment_sid, 'R', 25)
-        publish_status(task_id, experiment_sid, 'R', 25)
+        # 3. 준비 완료: 진행률 업데이트 (단계별 계산)
+        prepared_progress = calculate_step_progress(step_index, total_steps, "prepared")
+        update_experiment_status(experiment_sid, 'E', prepared_progress)  # 활성 상태 유지
+        publish_status(task_id, experiment_sid, 'E', prepared_progress)
+        
+        # 진행률 콜백 함수 (RunPod 상태 폴링 시 진행률 업데이트)
+        def update_running_progress(runpod_status):
+            """RunPod 실행 중 진행률 업데이트"""
+            running_progress = calculate_step_progress(step_index, total_steps, "running")
+            # RunPod 상태가 "running"일 때만 'P' (진행중)로 변경
+            if runpod_status == "running":
+                update_experiment_status(experiment_sid, 'P', running_progress)  # 실행 중 → 진행중
+                publish_status(task_id, experiment_sid, 'P', running_progress)
+            else:
+                # 아직 running이 아니면 활성 상태 유지
+                update_experiment_status(experiment_sid, 'E', running_progress)
+                publish_status(task_id, experiment_sid, 'E', running_progress)
         
         result = launch_simulation_docker(
             tool_name, 
             config_path, 
             output_dir, 
-            options=tool_options
+            options=tool_options,
+            progress_callback=update_running_progress
             )
         
         logger.info(
@@ -438,32 +551,80 @@ def handle_simulation_task(message: Dict[str, Any]):
                 step_api = TOOL_NAME_QUEUE_MAP.get(tool_name, tool_name)
                 expected_pdb = result.get("expected_pdb")
 
-                # rfdiffusion 인 경우에만 numSteps → num_designs 로 전달
+                # 각 도구별로 num_designs, num_seqs 추출
                 num_designs = None
                 num_seqs = None
 
                 if step_api == "rfdiffusion":
+                    # rfdiffusion: numSteps → num_designs
                     try:
                         num_designs = int((tool_options or {}).get("numSteps") or 1)
                     except (TypeError, ValueError):
                         num_designs = None
-
-                    if expected_pdb:
-                        register_experiment_results_for_step(
-                            experiment_sid=experiment_sid,
-                            step_api=step_api,
-                            expected_local_path=expected_pdb,
-                            num_designs=num_designs,
-                            num_seqs=num_seqs,
+                
+                elif step_api == "protein_mpnn":
+                    # proteinMPNN: numSequences → num_seqs
+                    try:
+                        num_seqs = int((tool_options or {}).get("numSequences") or 1)
+                    except (TypeError, ValueError):
+                        num_seqs = None
+                
+                elif step_api == "alphafold3":
+                    # alphafold: 
+                    # - num_designs: 이전 단계(RFdiffusion)의 numSteps 값
+                    # - num_seqs: 이전 단계(ProteinMPNN)의 numSequences 값
+                    try:
+                        # 이전 단계의 tool_options 조회
+                        rfdiffusion_options = _get_previous_step_options(experiment_sid, "RFdiffusion")
+                        mpnn_options = _get_previous_step_options(experiment_sid, "ProteinMPNN")
+                        
+                        # RFdiffusion의 numSteps → num_designs
+                        num_designs = int(rfdiffusion_options.get("numSteps") or 1)
+                        
+                        # ProteinMPNN의 numSequences → num_seqs
+                        num_seqs = int(mpnn_options.get("numSequences") or 8)
+                            
+                        logger.info(
+                            f"[alphafold3] Extracted from previous steps: "
+                            f"num_designs={num_designs} (from RFdiffusion), "
+                            f"num_seqs={num_seqs} (from ProteinMPNN)"
                         )
+                    except Exception as e:
+                        logger.warning(
+                            f"Failed to extract previous step values for alphafold3: {e}. "
+                            f"Using defaults: num_designs=1, num_seqs=8",
+                            exc_info=True
+                        )
+                        num_designs = 1
+                        num_seqs = 8
+                # expected_pdb가 있으면 모든 도구에 대해 결과 등록
+                # expected_pdb는 각 도구별로 다른 파일 타입일 수 있지만,
+                # 경로 구조는 동일하므로 이를 기반으로 날짜/step 추출 가능
+                if expected_pdb:
+                    register_experiment_results_for_step(
+                        experiment_sid=experiment_sid,
+                        step_api=step_api,
+                        expected_local_path=expected_pdb,
+                        num_designs=num_designs,
+                        num_seqs=num_seqs,
+                    )
+                    logger.info(
+                        f"Registered results for experiment {experiment_sid}, "
+                        f"step={step_api}, num_designs={num_designs}, num_seqs={num_seqs}"
+                    )
+                else:
+                    logger.warning(
+                        f"No expected_pdb in result for experiment {experiment_sid}, "
+                        f"step={step_api}. Results not registered."
+                    )
             except Exception as e:
                 logger.error(
                     "Failed to register experiment results: %s", e, exc_info=True
                 )
             
-            # 파이프라인 진행률 계산 (0-based sort_order → 1-based 단계)
-            step_index = current_sort_order + 1
-            pipeline_progress = int(100 * step_index / max(total_steps, 1))
+            # 파이프라인 진행률 계산 (현재 단계 완료)
+            # step_index는 0-based이므로 현재 단계 완료 = (step_index + 1) 단계 완료
+            step_complete_progress = calculate_step_progress(step_index, total_steps, "complete")
 
             # 다음 단계 큐잉 시도
             next_task_id = enqueue_next_selection(
@@ -472,16 +633,54 @@ def handle_simulation_task(message: Dict[str, Any]):
                 requested_by=requested_by,
             )
 
+            # 실험 정보 및 도구 이름 가져오기 (알림용)
+            _ensure_django_setup()
+            from apps.experiments.models import Experiment, ExperimentToolSelection
+            
+            try:
+                experiment = Experiment.objects.get(experiment_sid=experiment_sid)
+                user_id = experiment.created_id
+                pipeline_name = experiment.pipeline_name
+                
+                # 현재 단계의 도구 이름 가져오기
+                tool_selection = ExperimentToolSelection.objects.filter(
+                    experiment_id=experiment_sid,
+                    sort_order=current_sort_order
+                ).select_related('tool').first()
+                
+                tool_name = tool_selection.tool.tool_name if tool_selection and tool_selection.tool else "알 수 없는 도구"
+                
+            except Exception as e:
+                logger.error(f"Failed to get experiment info for notification: {e}", exc_info=True)
+                user_id = None
+                pipeline_name = "알 수 없는 실험"
+                tool_name = "알 수 없는 도구"
+            
             if next_task_id:
                 # 아직 남은 단계가 있으므로 진행 중 상태 유지
-                update_experiment_status(experiment_sid, 'R', pipeline_progress)
+                update_experiment_status(experiment_sid, 'P', step_complete_progress)
                 publish_status(
                     task_id,
                     experiment_sid,
-                    'R',
-                    pipeline_progress,
+                    'P',
+                    step_complete_progress,
                     {"next_task_id": next_task_id},
                 )
+                
+                # 중간 단계: 도구 완료 알림만 생성
+                if user_id:
+                    try:
+                        from apps.notification.notification_utils import create_experiment_tool_complete_notification
+                        create_experiment_tool_complete_notification(
+                            experiment_title=pipeline_name,
+                            tool_name=tool_name,
+                            user_id=user_id,
+                            experiment_id=experiment_sid
+                        )
+                        logger.info(f"Created tool complete notification for {tool_name} in experiment {experiment_sid}")
+                    except Exception as e:
+                        logger.error(f"Failed to create tool complete notification: {e}", exc_info=True)
+                
                 logger.info(
                     f"Step completed: experiment_sid={experiment_sid}, "
                     f"sort_order={current_sort_order}, next_task_id={next_task_id}"
@@ -496,6 +695,21 @@ def handle_simulation_task(message: Dict[str, Any]):
                     100,
                     {"output_dir": output_dir, "result": result},
                 )
+                
+                # 마지막 단계: 통합 알림 생성 (도구 완료 + 실험 완료)
+                if user_id:
+                    try:
+                        from apps.notification.notification_utils import create_experiment_final_tool_complete_notification
+                        create_experiment_final_tool_complete_notification(
+                            experiment_title=pipeline_name,
+                            tool_name=tool_name,
+                            user_id=user_id,
+                            experiment_id=experiment_sid
+                        )
+                        logger.info(f"Created final tool complete notification for {tool_name} (experiment {experiment_sid} completed)")
+                    except Exception as e:
+                        logger.error(f"Failed to create final tool complete notification: {e}", exc_info=True)
+                
                 logger.info(f"Simulation pipeline completed: experiment_sid={experiment_sid}")
         else:
             # 실패 처리

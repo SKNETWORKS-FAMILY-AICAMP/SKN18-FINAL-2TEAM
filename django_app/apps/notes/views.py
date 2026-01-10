@@ -462,13 +462,34 @@ def note_create_api(request):
             except json.JSONDecodeError:
                 shared_members = []
             
+            # 노트 소유자 정보 가져오기 (알림용)
+            from apps.notification.notification_utils import create_note_share_notification, get_user_display_name
+            from apps.account.models import CustomUser
+            try:
+                owner = CustomUser.objects.get(user_id=user_identifier)
+                owner_name = get_user_display_name(owner)
+            except CustomUser.DoesNotExist:
+                owner_name = "알 수 없는 사용자"
+            
             for member in shared_members:
                 if member.get('id'):
+                    shared_user_id = str(member['id'])
                     NoteShare.objects.create(
                         note=note,
-                        user_id=str(member['id']),
+                        user_id=shared_user_id,
                         created_id=user_identifier
                     )
+                    
+                    # 노트 공유 알림 생성
+                    try:
+                        create_note_share_notification(
+                            note_title=note.title,
+                            shared_user_id=shared_user_id,
+                            owner_name=owner_name,
+                            note_id=note.note_sid
+                        )
+                    except Exception as e:
+                        logger.error(f'[NoteCreateAPI] Failed to create note share notification: {str(e)}', exc_info=True)
             
             return Response({
                 'status': 'success',
@@ -1341,13 +1362,35 @@ def note_share_api(request, note_id):
             existing_shares.delete()
             
             created_count = 0
+            # 노트 소유자 정보 가져오기 (알림용)
+            from apps.notification.notification_utils import create_note_share_notification, get_user_display_name
+            from apps.account.models import CustomUser
+            try:
+                owner = CustomUser.objects.get(user_id=user_identifier)
+                owner_name = get_user_display_name(owner)
+            except CustomUser.DoesNotExist:
+                owner_name = "알 수 없는 사용자"
+            
             for member in shared_members:
                 if member.get('id'):
+                    shared_user_id = str(member['id'])
                     NoteShare.objects.create(
                         note=note,
-                        user_id=str(member['id']),
+                        user_id=shared_user_id,
                         created_id=user_identifier
                     )
+                    
+                    # 노트 공유 알림 생성
+                    try:
+                        create_note_share_notification(
+                            note_title=note.title,
+                            shared_user_id=shared_user_id,
+                            owner_name=owner_name,
+                            note_id=note.note_sid
+                        )
+                    except Exception as e:
+                        logger.error(f'[NoteShareAPI] Failed to create note share notification: {str(e)}', exc_info=True)
+                    
                     created_count += 1
                     logger.info(f'[NoteShareAPI] Created share for user_id: {member["id"]}')
             

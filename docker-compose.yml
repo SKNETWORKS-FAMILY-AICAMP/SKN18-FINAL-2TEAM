@@ -79,6 +79,75 @@ services:
       start_period: 30s
     restart: unless-stopped
 
+  ########################################
+  # Celery Worker (로컬 개발용 - 선택사항)
+  ########################################
+  celery-worker:
+    build:
+      context: .
+      dockerfile: ./infra/docker/Dockerfile.django
+    container_name: celery-worker-local
+    entrypoint: []  # Dockerfile의 ENTRYPOINT 오버라이드
+    environment:
+      POSTGRES_HOST: db  # Docker Compose 서비스 이름 사용
+      POSTGRES_DB: sknfinaldb
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: root1234
+      POSTGRES_PORT: 5432
+      RABBITMQ_HOST: rabbitmq  # Docker Compose 서비스 이름 사용
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: guest
+      RABBITMQ_PASSWORD: guest
+      DJANGO_SETTINGS_MODULE: config.settings
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-dev-secret-key-change-me}
+    working_dir: /app/django_app
+    command: ["celery", "-A", "config", "worker", "--loglevel=info", "--concurrency=2"]
+    depends_on:
+      - db
+      - rabbitmq
+    volumes:
+      - ./django_app:/app/django_app
+      - ./graph:/app/graph
+      - ./rag:/app/rag
+      - ./kg:/app/kg
+      - ./messaging:/app/messaging
+    restart: unless-stopped
+
+  ########################################
+  # Celery Beat (로컬 개발용 - 일정 리마인더)
+  ########################################
+  celery-beat:
+    build:
+      context: .
+      dockerfile: ./infra/docker/Dockerfile.django
+    container_name: celery-beat-local
+    entrypoint: []  # Dockerfile의 ENTRYPOINT 오버라이드
+    environment:
+      POSTGRES_HOST: db  # Docker Compose 서비스 이름 사용
+      POSTGRES_DB: sknfinaldb
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: root1234
+      POSTGRES_PORT: 5432
+      RABBITMQ_HOST: rabbitmq  # Docker Compose 서비스 이름 사용
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: guest
+      RABBITMQ_PASSWORD: guest
+      DJANGO_SETTINGS_MODULE: config.settings
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-dev-secret-key-change-me}
+    working_dir: /app/django_app
+    command: ["celery", "-A", "config", "beat", "--loglevel=info"]
+    depends_on:
+      - db
+      - rabbitmq
+      - celery-worker
+    volumes:
+      - ./django_app:/app/django_app
+      - ./graph:/app/graph
+      - ./rag:/app/rag
+      - ./kg:/app/kg
+      - ./messaging:/app/messaging
+    restart: unless-stopped
+
 volumes:
   pgvector-data:
   neo4j-data:

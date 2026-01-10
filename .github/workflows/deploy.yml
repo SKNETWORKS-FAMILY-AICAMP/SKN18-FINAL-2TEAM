@@ -654,7 +654,7 @@ jobs:
             OPENAI_API_KEY=\$OPENAI_API_KEY \
             AWS_REGION=\$AWS_REGION \
             STACK_NAME=\$STACK_NAME \
-            docker-compose -f docker-compose.prod.yml up -d web worker
+            docker-compose -f docker-compose.prod.yml up -d web worker celery-worker celery-beat
             
             # Worker 로그 확인
             if [ "\$PULL_WORKER_SUCCESS" == "true" ]; then

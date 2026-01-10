@@ -1,7 +1,11 @@
 import json
+import re
+import requests
+from urllib.parse import unquote
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
+from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from rest_framework.decorators import api_view, permission_classes
@@ -10,7 +14,7 @@ from rest_framework.response import Response
 from rest_framework.authentication import SessionAuthentication
 from rest_framework.views import APIView
 from drf_spectacular.utils import extend_schema, OpenApiParameter
-from .models import ExperimentTool, Experiment, ExperimentToolSelection, ExperimentToolOption
+from .models import ExperimentTool, Experiment, ExperimentToolSelection, ExperimentToolOption, ExperimentResult, ExperimentViewerState
 from django.db import transaction
 from django_app.apps.core.queue import publish_simulation
 from rest_framework.exceptions import NotFound
@@ -221,7 +225,7 @@ def _list_experiments_api(request):
     
     experiments = Experiment.objects.filter(
         created_id=user_identifier
-    ).prefetch_related('tool_selections__tool').order_by('-created_at')[:20]  # 최근 20개만
+    ).prefetch_related('tool_selections__tool', 'results').select_related().order_by('-created_at')[:20]  # 최근 20개만
     
     print(f"[Experiments API] Filtered experiments count: {experiments.count()}")
     
@@ -230,12 +234,12 @@ def _list_experiments_api(request):
     for exp in experiments:
         # 상태 코드를 한국어로 변환
         status_map = {
-            'E': '활성',
-            'R': '준비',
-            'P': '진행중',
-            'C': '완료',
-            'F': '실패',
-            'D': '비활성',
+            'R': '준비',      # Ready: 파이프라인 생성됨, 아직 시작 안됨
+            'E': '활성',      # Active: 워커가 시작해서 진행이 시작됨
+            'P': '진행중',    # In Progress: 실제로 실행 중
+            'C': '완료',      # Completed
+            'F': '실패',      # Failed
+            'D': '비활성',    # Disabled
         }
         status_display = status_map.get(exp.status, exp.status or '준비')
         
@@ -254,14 +258,51 @@ def _list_experiments_api(request):
             tools_list = [tool.tool_name for tool in exp.tools.all()]
             print(f"[Experiments API] Experiment {exp.experiment_sid}: Using exp.tools.all(), found {len(tools_list)} tools")
         
+        # 목록 조회 API에서는 DB 업데이트 없이 현재 저장된 진행률만 사용
+        # 실제 진행률 업데이트는 결과 파일 등록 시점(register_experiment_results_for_step)에만 수행
+        calculated_progress = exp.progress if exp.progress is not None else 0
+        calculated_status = exp.status or 'R'
+        
+        # 완료된 실험은 이미 최종 상태이므로 스킵
+        # 진행 중인 실험만 결과 파일 기반으로 진행률 재계산 (DB 업데이트는 하지 않음)
+        if calculated_status != 'C' and calculated_progress < 100 and hasattr(exp, 'results') and tools_list:
+            results = list(exp.results.all())
+            if results:
+                # 결과 파일에서 완료된 도구 확인
+                completed_tools = set()
+                for result in results:
+                    result_name_lower = (result.result_name or '').lower()
+                    if 'rfdiffusion' in result_name_lower:
+                        completed_tools.add('RFdiffusion')
+                    elif 'proteinmpnn' in result_name_lower or 'mpnn' in result_name_lower:
+                        completed_tools.add('ProteinMPNN')
+                    elif 'alphafold' in result_name_lower or '_af_' in result_name_lower:
+                        completed_tools.add('AlphaFold3')
+                
+                # 실제 도구 목록과 비교하여 완료된 도구 계산
+                actual_completed = sum(1 for tool in tools_list if tool in completed_tools)
+                total_tools = len(tools_list)
+                
+                if actual_completed > 0 and total_tools > 0:
+                    # 진행률만 계산하고 반환 (DB 업데이트는 하지 않음)
+                    # 실제 업데이트는 결과 파일 등록 시점에 수행
+                    calculated_progress = min(100, int((actual_completed / total_tools) * 100))
+                    
+                    # 모든 도구가 완료된 경우에만 상태를 'C'로 표시 (DB 업데이트는 별도로 수행)
+                    if actual_completed >= total_tools:
+                        calculated_progress = 100
+                        calculated_status = 'C'
+                        status_display = '완료'
+                        # 참고: 실제 DB 업데이트는 utils._update_experiment_progress_from_results에서 수행됨
+        
         exp_data = {
             'id': exp.experiment_sid,  # experiment_sid가 primary key
             'pipeline_name': exp.pipeline_name or 'Unnamed Pipeline',
             'pipeline': exp.pipeline_name or 'Unnamed Pipeline',  # React 호환성
             'created_at': exp.created_at.isoformat() if exp.created_at else None,
-            'status': exp.status or 'R',  # 상태 코드
+            'status': calculated_status,  # 계산된 상태 코드
             'status_display': status_display,  # 한국어 상태
-            'progress': exp.progress if exp.progress is not None else 0,
+            'progress': calculated_progress,  # 계산된 진행률
             'tools': tools_list,  # 도구 이름 배열
         }
         experiments_data.append(exp_data)
@@ -404,7 +445,7 @@ def _create_experiment_api(request):
         # t_experiment insert
         experiment = Experiment.objects.create(
             pipeline_name=pipeline_name,
-            status="E",  # Ready
+            status="R",  # Ready (준비)
             progress=0,
             protein_sequence=protein_sequence,
             protein_name=protein_name or None,
@@ -490,6 +531,9 @@ def _create_experiment_api(request):
     # 3) 메시지 큐에 작업 발행
     try:
         task_ids = enqueue_simulation_tasks(experiment, selections, request.user)
+        
+        # 실험 시작 알림은 simulation_consumer.py의 handle_simulation_task에서
+        # 첫 번째 작업이 실제로 처리되기 시작할 때 생성됩니다.
 
     except Exception as e:
         print(f"Failed to publish simulation tasks: {e}")
@@ -530,12 +574,151 @@ def _create_experiment_api(request):
     )
 
 @extend_schema(tags=["Experiments"], summary="실험 결과 데이터 조회",)
+@api_view(["GET", "POST"])
+@permission_classes([IsAuthenticated])
+def experiment_viewer_state_api(request, experiment_sid: int):
+    """뷰어 작업 상태 저장/불러오기 API"""
+    user_identifier = _get_user_identifier(request.user)
+    
+    try:
+        experiment = Experiment.objects.get(
+            experiment_sid=experiment_sid,
+            created_id=user_identifier
+        )
+    except Experiment.DoesNotExist:
+        return Response(
+            {'error': '실험을 찾을 수 없습니다.'},
+            status=404
+        )
+    
+    if request.method == 'GET':
+        # 저장된 상태 목록 조회
+        states = ExperimentViewerState.objects.filter(
+            experiment=experiment
+        ).order_by('-updated_at')
+        
+        states_data = [{
+            'state_sid': state.state_sid,
+            'state_name': state.state_name,
+            'state_data': state.state_data,
+            'created_at': state.created_at.isoformat(),
+            'updated_at': state.updated_at.isoformat()
+        } for state in states]
+        
+        return Response({
+            'experiment_sid': experiment_sid,
+            'states': states_data
+        })
+    
+    elif request.method == 'POST':
+        # 새 상태 저장
+        try:
+            body = json.loads(request.body)
+            state_name = body.get('state_name', '')
+            state_data = body.get('state_data', {})
+            
+            if not state_data:
+                return Response(
+                    {'error': '상태 데이터가 필요합니다.'},
+                    status=400
+                )
+            
+            viewer_state = ExperimentViewerState.objects.create(
+                experiment=experiment,
+                state_name=state_name or None,
+                state_data=state_data,
+                created_id=user_identifier,
+                updated_id=user_identifier
+            )
+            
+            return Response({
+                'state_sid': viewer_state.state_sid,
+                'state_name': viewer_state.state_name,
+                'message': '작업 상태가 저장되었습니다.'
+            }, status=201)
+        except json.JSONDecodeError:
+            return Response(
+                {'error': '잘못된 JSON 형식입니다.'},
+                status=400
+            )
+        except Exception as e:
+            return Response(
+                {'error': f'상태 저장 중 오류가 발생했습니다: {str(e)}'},
+                status=500
+            )
+
+
+@api_view(["GET", "PUT", "DELETE"])
+@permission_classes([IsAuthenticated])
+def experiment_viewer_state_detail_api(request, experiment_sid: int, state_sid: int):
+    """뷰어 작업 상태 상세 API (조회/수정/삭제)"""
+    user_identifier = _get_user_identifier(request.user)
+    
+    try:
+        experiment = Experiment.objects.get(
+            experiment_sid=experiment_sid,
+            created_id=user_identifier
+        )
+        viewer_state = ExperimentViewerState.objects.get(
+            state_sid=state_sid,
+            experiment=experiment
+        )
+    except Experiment.DoesNotExist:
+        return Response(
+            {'error': '실험을 찾을 수 없습니다.'},
+            status=404
+        )
+    except ExperimentViewerState.DoesNotExist:
+        return Response(
+            {'error': '저장된 상태를 찾을 수 없습니다.'},
+            status=404
+        )
+    
+    if request.method == 'GET':
+        # 상태 조회
+        return Response({
+            'state_sid': viewer_state.state_sid,
+            'state_name': viewer_state.state_name,
+            'state_data': viewer_state.state_data,
+            'created_at': viewer_state.created_at.isoformat(),
+            'updated_at': viewer_state.updated_at.isoformat()
+        })
+    
+    elif request.method == 'PUT':
+        # 상태 수정
+        try:
+            body = json.loads(request.body)
+            if 'state_name' in body:
+                viewer_state.state_name = body['state_name']
+            if 'state_data' in body:
+                viewer_state.state_data = body['state_data']
+            viewer_state.updated_id = user_identifier
+            viewer_state.save()
+            
+            return Response({
+                'state_sid': viewer_state.state_sid,
+                'message': '상태가 업데이트되었습니다.'
+            })
+        except json.JSONDecodeError:
+            return Response(
+                {'error': '잘못된 JSON 형식입니다.'},
+                status=400
+            )
+    
+    elif request.method == 'DELETE':
+        # 상태 삭제
+        viewer_state.delete()
+        return Response({
+            'message': '상태가 삭제되었습니다.'
+        })
+
+
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def experiment_result_files_api(request, experiment_sid: int):
     user_identifier = _get_user_identifier(request.user)
     try:
-        experiment = Experiment.objects.prefetch_related("results").get(
+        experiment = Experiment.objects.prefetch_related("results", "tool_selections__tool").get(
             experiment_sid=experiment_sid,
             created_id=user_identifier,
         )
@@ -552,14 +735,186 @@ def experiment_result_files_api(request, experiment_sid: int):
             "created_at": result.created_at.isoformat() if result.created_at else None,
             "file_path": result.file_path,
         })
+    
+    # 상세 조회 API에서는 현재 저장된 진행률 사용 (조회 전용)
+    # DB 업데이트는 결과 파일 등록 시점(register_experiment_results_for_step)에만 수행
+    calculated_progress = experiment.progress if experiment.progress is not None else 0
+    calculated_status = experiment.status or 'R'
+    
+    # 완료된 실험은 이미 최종 상태이므로 추가 계산 스킵
+    # 진행 중인 실험만 결과 파일 기반으로 진행률 재계산 (DB 업데이트는 하지 않음, 표시용)
+    if calculated_status != 'C' and calculated_progress < 100:
+        # 도구 목록 가져오기
+        tool_selections = experiment.tool_selections.all().select_related('tool').order_by('sort_order')
+        total_tools = tool_selections.count()
+        
+        if total_tools > 0 and results:
+            # 각 도구별로 결과 파일이 있는지 확인
+            completed_tools = set()
+            for result in results:
+                result_name_lower = (result.get('name') or '').lower()
+                # 결과 파일 이름에서 도구 추출
+                if 'rfdiffusion' in result_name_lower:
+                    completed_tools.add('RFdiffusion')
+                elif 'proteinmpnn' in result_name_lower or 'mpnn' in result_name_lower:
+                    completed_tools.add('ProteinMPNN')
+                elif 'alphafold' in result_name_lower or '_af_' in result_name_lower:
+                    completed_tools.add('AlphaFold3')
+            
+            # 실제 도구 목록과 비교하여 완료된 도구 확인
+            actual_completed = 0
+            for selection in tool_selections:
+                if selection.tool and selection.tool.tool_name in completed_tools:
+                    actual_completed += 1
+            
+            # 진행률 계산: 완료된 도구 비율 * 100 (표시용, DB 업데이트 없음)
+            if actual_completed > 0:
+                calculated_progress = min(100, int((actual_completed / total_tools) * 100))
+                
+            # 모든 도구가 완료된 경우에만 상태를 'C'로 표시 (DB 업데이트는 별도로 수행)
+            if actual_completed >= total_tools:
+                calculated_progress = 100
+                calculated_status = 'C'
+                # 참고: 실제 DB 업데이트는 utils._update_experiment_progress_from_results에서 수행됨
 
     return Response({
         "status": "success",
         "experiment": {
             "id": experiment.experiment_sid,
             "pipeline_name": experiment.pipeline_name,
-            "status": experiment.status,
+            "status": calculated_status,
+            "progress": calculated_progress,
         },
         "results": results,
     }
     , status=200)
+
+@extend_schema(tags=["Experiments"], summary="실험 결과 파일 프록시 (CORS 우회)",)
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def experiment_result_file_proxy(request, result_sid: int):
+    """
+    실험 결과 파일을 프록시하여 CORS 문제를 해결합니다.
+    """
+    user_identifier = _get_user_identifier(request.user)
+    try:
+        result = ExperimentResult.objects.select_related('experiment').get(
+            result_sid=result_sid,
+            experiment__created_id=user_identifier,
+        )
+    except ExperimentResult.DoesNotExist:
+        raise NotFound("Result not found")
+    
+    if not result.file_path:
+        return Response({"error": "File path not found"}, status=404)
+    
+    try:
+        # S3에서 파일 다운로드
+        response = requests.get(result.file_path, timeout=30)
+        response.raise_for_status()
+        
+        # 파일명 추출 (S3 URL에서 또는 result_name에서)
+        # S3 URL에서 파일명 추출 시도
+        file_name_from_url = None
+        if result.file_path:
+            # s3://bucket/key/path/filename.ext 또는 https://bucket.s3.../filename.ext 패턴
+            url_parts = result.file_path.split('/')
+            if url_parts:
+                potential_filename = unquote(url_parts[-1].split('?')[0])  # 쿼리 파라미터 제거
+                if '.' in potential_filename:
+                    file_name_from_url = potential_filename
+        
+        # result_name에서 파일명 추출 시도
+        file_name_from_result = None
+        if result.result_name:
+            # "RFdiffusion 구조 #0" 같은 경우 확장자가 없으므로 파일 타입에서 추론 필요
+            file_name_from_result = result.result_name
+        
+        # 최종 파일명 결정: URL에서 추출한 것이 우선, 없으면 result_name 사용
+        final_filename = file_name_from_url or file_name_from_result or f"result_{result_sid}"
+        
+        # 파일명에 확장자가 없으면 result_type에서 추론
+        if '.' not in final_filename.split('/')[-1]:
+            result_type_upper = (result.result_type or '').upper()
+            extension_map = {
+                'PDB': '.pdb',
+                'FASTA': '.fasta',
+                'CSV': '.csv',
+                'ZIP': '.zip',
+                'OTHER': '',  # OTHER는 파일명에서 추론 시도
+                'LOG': '.log',
+            }
+            extension = extension_map.get(result_type_upper, '')
+            
+            # OTHER 타입인 경우 파일명이나 URL에서 확장자 추론
+            if not extension and result_type_upper == 'OTHER':
+                # result_name에서 확장자 추론 시도
+                if result.result_name:
+                    if 'trb' in result.result_name.lower() or 'trb' in (file_name_from_url or '').lower():
+                        extension = '.trb'
+                    elif 'zip' in result.result_name.lower() or 'zip' in (file_name_from_url or '').lower():
+                        extension = '.zip'
+                    elif result.file_path and '.trb' in result.file_path.lower():
+                        extension = '.trb'
+                    elif result.file_path and '.zip' in result.file_path.lower():
+                        extension = '.zip'
+            
+            if extension:
+                final_filename = final_filename + extension
+        
+        # Content-Type 매핑 (파일 확장자 기반)
+        content_type_map = {
+            '.pdb': 'chemical/x-pdb',
+            '.fasta': 'text/plain',  # 또는 'application/x-fasta'
+            '.fa': 'text/plain',
+            '.csv': 'text/csv',
+            '.zip': 'application/zip',
+            '.trb': 'application/octet-stream',  # TRB는 바이너리
+            '.json': 'application/json',
+            '.log': 'text/plain',
+        }
+        
+        # 확장자 추출
+        file_ext = ''
+        if '.' in final_filename:
+            file_ext = '.' + final_filename.rsplit('.', 1)[1].lower()
+        
+        # Content-Type 결정: 확장자 우선, 없으면 result_type 기반
+        content_type = content_type_map.get(file_ext, 'application/octet-stream')
+        
+        if content_type == 'application/octet-stream':
+            # result_type으로 재시도
+            result_type_upper = (result.result_type or '').upper()
+            if result_type_upper == 'PDB':
+                content_type = 'chemical/x-pdb'
+            elif result_type_upper == 'FASTA':
+                content_type = 'text/plain'
+            elif result_type_upper == 'CSV':
+                content_type = 'text/csv'
+            elif result_type_upper == 'ZIP':
+                content_type = 'application/zip'
+            elif result_type_upper == 'LOG':
+                content_type = 'text/plain'
+        
+        # 파일 내용을 응답으로 반환
+        http_response = HttpResponse(
+            response.content,
+            content_type=content_type
+        )
+        
+        # Content-Disposition 헤더 추가 (파일명 지정)
+        # RFC 5987에 따라 UTF-8 파일명 지원
+        safe_filename = final_filename.replace('\n', '').replace('\r', '')
+        http_response['Content-Disposition'] = f'attachment; filename="{safe_filename}"; filename*=UTF-8\'\'{safe_filename}'
+        
+        # CORS 헤더 추가
+        http_response['Access-Control-Allow-Origin'] = '*'
+        http_response['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
+        http_response['Access-Control-Allow-Headers'] = 'Content-Type, Content-Disposition'
+        return http_response
+        
+    except requests.RequestException as e:
+        return Response(
+            {"error": f"Failed to fetch file: {str(e)}"},
+            status=500
+        )

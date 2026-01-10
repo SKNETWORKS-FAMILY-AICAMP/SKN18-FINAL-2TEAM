@@ -1,3 +1,4 @@
 from django.db import models
 
-# Create your models here.
+# Dashboard models
+# Notification model has been moved to apps.notification.models

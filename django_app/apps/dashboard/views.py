@@ -1,11 +1,12 @@
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
-from django.db.models import Count, Q
+from django.db.models import Count
 import logging
 
 from apps.experiments.models import Experiment
 from apps.notes.models import Note
 from apps.chat.models import Chat, ChatMessage
+from apps.notification.models import Notification
 
 logger = logging.getLogger(__name__)
 
@@ -82,53 +83,75 @@ def index(request):
         
         chats_with_question.append(chat)
 
-    notifications = [
-        {
-            "id": 1,
-            "title": "PCR 실험 완료",
-            "message": "Customer Support Assistant 파이프라인이 완료되었습니다.",
-            "time": "5분 전",
-            "unread": True,
-        },
-        {
-            "id": 2,
-            "title": "일정 알림",
-            "message": "주간 연구 진행 보고 미팅이 30분 후 시작됩니다.",
-            "time": "25분 전",
-            "unread": True,
-        },
-        {
-            "id": 3,
-            "title": "노트 공유",
-            "message": 'Dr. John이 "CRISPR-Cas9 실험 결과 분석" 노트를 공유했습니다.',
-            "time": "1시간 전",
-            "unread": False,
-        },
-        {
-            "id": 4,
-            "title": "채팅 답변",
-            "message": "EGFR 변이 단백질 질문에 대한 AI 분석이 완료되었습니다.",
-            "time": "2시간 전",
-            "unread": False,
-        },
-        {
-            "id": 5,
-            "title": "시스템 업데이트",
-            "message": "AlphaFold3 모델이 업데이트되었습니다.",
-            "time": "1일 전",
-            "unread": False,
-        },
-    ]
+    # notifications = [
+    #     {
+    #         "id": 1,
+    #         "title": "PCR 실험 완료",
+    #         "message": "Customer Support Assistant 파이프라인이 완료되었습니다.",
+    #         "time": "5분 전",
+    #         "unread": True,
+    #     },
+    #     {
+    #         "id": 2,
+    #         "title": "일정 알림",
+    #         "message": "주간 연구 진행 보고 미팅이 30분 후 시작됩니다.",
+    #         "time": "25분 전",
+    #         "unread": True,
+    #     },
+    #     {
+    #         "id": 3,
+    #         "title": "노트 공유",
+    #         "message": 'Dr. John이 "CRISPR-Cas9 실험 결과 분석" 노트를 공유했습니다.',
+    #         "time": "1시간 전",
+    #         "unread": False,
+    #     },
+    #     {
+    #         "id": 4,
+    #         "title": "채팅 답변",
+    #         "message": "EGFR 변이 단백질 질문에 대한 AI 분석이 완료되었습니다.",
+    #         "time": "2시간 전",
+    #         "unread": False,
+    #     },
+    #     {
+    #         "id": 5,
+    #         "title": "시스템 업데이트",
+    #         "message": "AlphaFold3 모델이 업데이트되었습니다.",
+    #         "time": "1일 전",
+    #         "unread": False,
+    #     },
+    # ]
+
+
+
+    # 알림 조회 (최근 20건) - 현재 사용자의 알림만 조회
+    notifications = Notification.objects.filter(
+        user_id=user_id
+    ).order_by('-created_at')[:20]
+    
+    # 템플릿에서 사용할 수 있도록 딕셔너리 형태로 변환
+    notifications_list = []
+    for notification in notifications:
+        notifications_list.append({
+            "id": notification.notification_sid,
+            "title": notification.title,
+            "message": notification.message,
+            "time": notification.time,  # 모델의 @property 사용
+            "unread": notification.unread,  # 모델의 @property 사용
+        })
+    
+    # 미읽음 알림 개수
+    unread_count = Notification.objects.filter(
+        user_id=user_id,
+        read_yn='N'
+    ).count()
 
     context = {
         "important_schedules": [],  # Schedule.objects.filter(is_important=True).order_by('-start_date')[:5]
         "recent_experiments": recent_experiments,
         "recent_notes": recent_notes,
         "recent_chats": chats_with_question,
-        "notifications": notifications,
-        "unread_notifications_count": sum(
-            1 for notification in notifications if notification["unread"]
-        ),
+        "notifications": notifications_list,
+        "unread_notifications_count": unread_count,
         # header_user is now provided by context processor, no need to pass it here
     }
 

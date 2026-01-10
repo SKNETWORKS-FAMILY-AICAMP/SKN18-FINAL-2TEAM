@@ -21,6 +21,8 @@ from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
 from apps.account.views import index as root_index, settings_api
 from apps.schedule import views as schedule_views
+from apps.dashboard import views as dashboard_views
+from apps.notification import views as notification_views
 from drf_spectacular.views import (
     SpectacularAPIView,
     SpectacularRedocView,
@@ -60,6 +62,8 @@ urlpatterns = [
     path("api/feedback/", include("apps.feedback.api_urls")),
     path("api/profile/", include("apps.account.api_urls")),
     path("api/settings/", settings_api, name="api_settings"),
+    path("api/notifications/", notification_views.notification_list_api, name="api_notification_list"),
+    path("api/notifications/<int:notification_id>/read/", notification_views.notification_read_api, name="api_notification_read"),
     path("api/organization/", include("apps.organization.urls")),
     path("api/calendars/", schedule_views.user_calendars_api, name="user_calendars_api"),
     path("api/calendars/<int:calendar_id>/", schedule_views.user_calendar_detail, name="user_calendar_detail"),

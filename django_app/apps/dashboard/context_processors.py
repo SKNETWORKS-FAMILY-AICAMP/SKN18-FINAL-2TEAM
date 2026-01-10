@@ -3,6 +3,7 @@ Context processors for dashboard app.
 Provides header_user context to all templates.
 """
 from django.contrib.auth.models import AnonymousUser
+from apps.notification.models import Notification
 
 
 def header_user(request):
@@ -57,9 +58,39 @@ def header_user(request):
             except (AttributeError, ValueError):
                 avatar = default_avatar
 
+    # 알림 정보 추가 (헤더에서 사용)
+    unread_notifications_count = 0
+    notifications = []
+    if user.is_authenticated:
+        user_id = getattr(user, 'user_id', None)
+        if user_id:
+            # 미읽음 알림 개수
+            unread_notifications_count = Notification.objects.filter(
+                user_id=user_id,
+                read_yn='N'
+            ).count()
+            
+            # 최근 알림 5건 (헤더 드롭다운용)
+            recent_notifications = Notification.objects.filter(
+                user_id=user_id
+            ).order_by('-created_at')[:5]
+            
+            notifications = [
+                {
+                    "id": notif.notification_sid,
+                    "title": notif.title,
+                    "message": notif.message,
+                    "time": notif.time,
+                    "unread": notif.unread,
+                }
+                for notif in recent_notifications
+            ]
+
     return {
         "name": name,
         "email": email,
         "organization": organization,
         "avatar": avatar,
+        "unread_notifications_count": unread_notifications_count,
+        "notifications": notifications,
     }

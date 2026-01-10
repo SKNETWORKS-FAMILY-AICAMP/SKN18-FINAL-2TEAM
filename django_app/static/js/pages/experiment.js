@@ -163,12 +163,10 @@ function initExperiment() {
         loadAvailableTools();
     }
 
-    // Load experiments
+    // Load experiments (초기 로드만, 자동 업데이트 없음)
     loadExperiments();
-     // ✅ 5초마다 실험 목록 상태 재조회 (폴링)
-    if (!window.__experimentPollTimer) {
-        window.__experimentPollTimer = setInterval(loadExperiments, 30000);
-    }
+    // 사이드바를 열지 않으면 화면 새로고침해야 상태값 반영
+    // 사이드바가 열려있을 때만 해당 실험 정보를 polling
 
     // Event listeners
     if (toolSearchInput) {
@@ -241,6 +239,12 @@ function initExperiment() {
             closeExperimentResultSidebar();
         }
     });
+
+    // Structure view button handler
+    const structureViewBtn = document.getElementById('resultStructureViewBtn');
+    if (structureViewBtn) {
+        structureViewBtn.addEventListener('click', handleStructureViewClick);
+    }
 }
 
 // Load available tools from API
@@ -1633,6 +1637,63 @@ function renderToolsGrid() {
     attachToolCardHandlers();
 }
 
+// Update specific experiment row in table (used for real-time updates)
+function updateExperimentRowInTable(experimentId, experimentData) {
+    if (!experimentTableBody || !experimentId) return;
+    
+    const row = experimentTableBody.querySelector(`tr[data-experiment-id="${experimentId}"]`);
+    if (!row) return;
+    
+    // 상태 코드 변환
+    const statusCode = experimentData.status || 'R';
+    const statusMap = {
+        'C': '완료',
+        'P': '진행중',
+        'R': '준비',
+        'F': '진행',
+        'E': '활성',
+        'D': '비활성'
+    };
+    const statusDisplay = statusMap[statusCode] || experimentData.status_display || '준비';
+    
+    // 상태 클래스 결정
+    const statusClass =
+        statusDisplay === '완료'   ? 'status-completed' :
+        statusDisplay === '진행'   ? 'status-progress' :
+        statusDisplay === '진행중' ? 'status-progress' :
+        statusDisplay === '준비'   ? 'status-ready' :
+        'status-ready';
+    
+    const statusDotClass =
+        statusDisplay === '완료'   ? 'status-dot-completed' :
+        statusDisplay === '진행'   ? 'status-dot-progress' :
+        statusDisplay === '진행중' ? 'status-dot-progress' :
+        statusDisplay === '준비'   ? 'status-dot-ready' :
+        'status-dot-ready';
+    
+    // 진행률 업데이트
+    const progress = experimentData.progress !== undefined ? experimentData.progress : 
+                    (statusCode === 'C' ? 100 : 
+                     statusCode === 'P' ? 65 : 
+                     statusCode === 'R' ? 25 : 0);
+    
+    // 상태 열 업데이트
+    const statusCell = row.querySelector('.status-td-status');
+    if (statusCell) {
+        statusCell.innerHTML = `
+            <span class="status-badge ${statusClass}">
+                <span class="status-dot ${statusDotClass}"></span>
+                ${statusDisplay}
+            </span>
+        `;
+    }
+    
+    // data 속성 업데이트
+    row.setAttribute('data-experiment-progress', progress);
+    
+    console.log(`[updateExperimentRowInTable] Updated experiment ${experimentId}: progress=${progress}%, status=${statusDisplay}`);
+}
+
 // Render experiment table
 function renderExperimentTable(experiments) {
     if (!experimentTableBody) return;
@@ -1824,10 +1885,14 @@ function attachExperimentTableHandlers() {
 // Open experiment result sidebar
 async function openExperimentResultSidebar(experimentId) {
     if (!experimentResultSidebar) return;
+    
+    // 전역 변수에 실험 ID 저장
+    window.currentExperimentId = experimentId;
+    console.log('[openExperimentResultSidebar] Saved experiment ID:', experimentId);
 
     try {
-        // Load experiment detail from API
-        const response = await fetch(`/api/experiments/${experimentId}/`, {
+        // 실험 파일 목록 API를 통해 실험 정보 가져오기
+        const response = await fetch(`/api/experiments/${experimentId}/files/`, {
             method: 'GET',
             headers: {
                 'X-CSRFToken': getCsrfToken(),
@@ -1836,18 +1901,62 @@ async function openExperimentResultSidebar(experimentId) {
         });
 
         if (response.ok) {
-            const experiment = await response.json();
-            renderExperimentResult(experiment);
+            const data = await response.json();
+            console.log('[openExperimentResultSidebar] API response:', data);
+            
+            // API 응답에서 실험 정보 추출
+            const experiment = data.experiment || {};
+            const expId = experiment.id || experiment.experiment_sid || experimentId;
+            
+            // 실험 ID 저장 (확실하게)
+            window.currentExperimentId = expId;
+            console.log('[openExperimentResultSidebar] Final experiment ID:', expId);
+            
+            // 실험 정보 구성 (파일 목록 API 응답에서 가져온 정보 사용)
+            // API에서 계산된 진행률과 상태 사용 (결과 파일 기반으로 계산됨)
+            const experimentData = {
+                id: expId,
+                experiment_sid: expId,
+                pipeline_name: experiment.pipeline_name || 'Unnamed Pipeline',
+                pipeline: experiment.pipeline_name || 'Unnamed Pipeline',
+                status: experiment.status || 'R',
+                progress: experiment.progress !== undefined && experiment.progress !== null ? experiment.progress : 0,
+                tools: [], // 파일 목록 API에는 tools가 없으므로 빈 배열
+            };
+            
+            renderExperimentResult(experimentData);
             experimentResultSidebar.style.display = 'flex';
             document.body.style.overflow = 'hidden';
+            
+            // 실험 상세 상태 주기적 업데이트 (5초마다)
+            // 기존 타이머가 있으면 제거
+            if (window.__experimentDetailPollTimer) {
+                clearInterval(window.__experimentDetailPollTimer);
+                window.__experimentDetailPollTimer = null;
+            }
+            
+            // 완료되지 않은 실험만 polling (상태가 'C'가 아니거나 진행률이 100%가 아닌 경우)
+            // 목록 화면과 동일한 5초 주기로 설정 (더 빠른 반응성을 위해 3초로 단축 가능)
+            const isCompleted = experiment.status === 'C' || experiment.progress === 100;
+            if (!isCompleted) {
+                console.log(`[openExperimentResultSidebar] Starting polling for experiment ${expId} (status: ${experiment.status}, progress: ${experiment.progress}%)`);
+                // 사이드바는 더 빠른 주기로 업데이트하여 목록 화면과의 차이 최소화
+                window.__experimentDetailPollTimer = setInterval(() => {
+                    pollExperimentDetailStatus(expId);
+                }, 3000); // 3초마다 확인 (목록 화면 5초보다 빠르게)
+            } else {
+                console.log(`[openExperimentResultSidebar] Skipping polling for completed experiment ${expId}`);
+            }
         } else {
-            console.error('Failed to load experiment detail');
+            console.error('[openExperimentResultSidebar] Failed to load experiment files:', response.status, response.statusText);
+            const errorText = await response.text();
+            console.error('[openExperimentResultSidebar] Error response:', errorText);
             if (window.notyf) {
                 window.notyf.error('실험 정보를 불러오는데 실패했습니다.');
             }
         }
     } catch (error) {
-        console.error('Error loading experiment detail:', error);
+        console.error('[openExperimentResultSidebar] Error loading experiment files:', error);
         if (window.notyf) {
             window.notyf.error('실험 정보를 불러오는 중 오류가 발생했습니다.');
         }
@@ -1859,10 +1968,244 @@ function closeExperimentResultSidebar() {
     if (!experimentResultSidebar) return;
     experimentResultSidebar.style.display = 'none';
     document.body.style.overflow = '';
+    
+    // Polling 중지
+    if (window.__experimentDetailPollTimer) {
+        clearInterval(window.__experimentDetailPollTimer);
+        window.__experimentDetailPollTimer = null;
+    }
+}
+
+// Poll experiment detail status and update progress
+// 사이드바가 열려있을 때만 사이드바의 진행률을 업데이트 (목록 페이지는 별도로 업데이트됨)
+async function pollExperimentDetailStatus(experimentId) {
+    if (!experimentId) return;
+    
+    // 사이드바가 닫혀있으면 polling 중지 (사이드바 내부 진행률 업데이트만 중지)
+    if (!experimentResultSidebar || experimentResultSidebar.style.display === 'none' || experimentResultSidebar.style.display === '') {
+        if (window.__experimentDetailPollTimer) {
+            clearInterval(window.__experimentDetailPollTimer);
+            window.__experimentDetailPollTimer = null;
+        }
+        return;
+    }
+    
+    try {
+        // 실험 파일 목록 API를 통해 최신 상태 가져오기
+        const response = await fetch(`/api/experiments/${experimentId}/files/`, {
+            method: 'GET',
+            headers: {
+                'X-CSRFToken': getCsrfToken(),
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            const experiment = data.experiment || {};
+            
+            // DOM 요소를 다시 찾아서 업데이트 (동적 렌더링 대응)
+            const progressFill = document.getElementById('experimentResultProgressFill');
+            const progressText = document.getElementById('experimentResultProgressText');
+            const statusElement = document.getElementById('experimentResultStatus');
+            const filesList = document.getElementById('experimentResultFilesList');
+            
+            // 진행률과 상태 업데이트
+            if (experiment.progress !== undefined && experiment.progress !== null) {
+                const currentProgress = parseInt(progressText?.textContent?.replace('%', '') || '0');
+                const newProgress = experiment.progress;
+                
+                // 진행률이 변경되었으면 사이드바 UI 업데이트
+                if (newProgress !== currentProgress) {
+                    if (progressFill) {
+                        progressFill.style.width = `${newProgress}%`;
+                    }
+                    if (progressText) {
+                        progressText.textContent = `${newProgress}%`;
+                    }
+                    console.log(`[pollExperimentDetailStatus] Progress updated: ${currentProgress}% → ${newProgress}%`);
+                    
+                    // 사이드바가 열려있을 때만 목록 화면의 해당 실험 행도 업데이트
+                    // (사이드바를 열지 않으면 화면 새로고침 필요)
+                    updateExperimentRowInTable(experimentId, {
+                        progress: newProgress,
+                        status: experiment.status
+                    });
+                }
+            }
+            
+            // 상태 업데이트
+            if (experiment.status && statusElement) {
+                const statusCode = experiment.status;
+                let statusDisplay = '';
+                if (statusCode === 'C' || statusCode === 'completed') {
+                    statusDisplay = '완료';
+                } else if (statusCode === 'P' || statusCode === 'in_progress') {
+                    statusDisplay = '진행중';
+                } else if (statusCode === 'R' || statusCode === 'ready') {
+                    statusDisplay = '준비';
+                } else if (statusCode === 'E' || statusCode === 'active') {
+                    statusDisplay = '활성';
+                } else if (statusCode === 'F' || statusCode === 'failed') {
+                    statusDisplay = '실패';
+                } else {
+                    statusDisplay = statusElement.textContent || '진행중';
+                }
+                
+                // 진행률이 100%이고 결과 파일이 있으면 '완료'로 설정
+                const resultFiles = data.results || [];
+                if (experiment.progress === 100 && resultFiles.length > 0) {
+                    statusDisplay = '완료';
+                }
+                
+                if (statusElement.textContent !== statusDisplay) {
+                    statusElement.textContent = statusDisplay;
+                    console.log(`[pollExperimentDetailStatus] Status updated: ${statusDisplay}`);
+                    
+                    // 목록 화면의 해당 실험 행도 즉시 업데이트 (상태 변경 반영)
+                    updateExperimentRowInTable(experimentId, {
+                        progress: experiment.progress,
+                        status: experiment.status,
+                        status_display: statusDisplay
+                    });
+                }
+            }
+            
+            // 결과 파일 목록도 업데이트 (새 파일이 추가되었을 수 있음)
+            const resultFiles = data.results || [];
+            if (resultFiles.length > 0 && filesList) {
+                renderResultFilesList(resultFiles, experimentId);
+            }
+            
+            // 사이드바가 열려있을 때 실험 페이지 목록 화면 전체 업데이트
+            if (experimentTableBody) {
+                loadExperiments();
+            }
+            
+            // 완료되었으면 polling 중지
+            if (experiment.status === 'C' || experiment.progress === 100) {
+                if (window.__experimentDetailPollTimer) {
+                    clearInterval(window.__experimentDetailPollTimer);
+                    window.__experimentDetailPollTimer = null;
+                    console.log('[pollExperimentDetailStatus] Polling stopped: experiment completed');
+                }
+            }
+        } else {
+            console.error('[pollExperimentDetailStatus] API request failed:', response.status, response.statusText);
+        }
+    } catch (error) {
+        console.error('[pollExperimentDetailStatus] Error:', error);
+    }
+}
+
+// 알림 수신 시 특정 실험만 상태 조회 및 업데이트
+async function updateExperimentFromNotification(experimentId) {
+    if (!experimentId) {
+        console.warn('[updateExperimentFromNotification] Experiment ID is missing');
+        return;
+    }
+    
+    try {
+        // 실험 파일 목록 API를 통해 최신 상태 가져오기
+        const response = await fetch(`/api/experiments/${experimentId}/files/`, {
+            method: 'GET',
+            headers: {
+                'X-CSRFToken': getCsrfToken(),
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            const experiment = data.experiment || {};
+            
+            console.log(`[updateExperimentFromNotification] Updating experiment ${experimentId}: status=${experiment.status}, progress=${experiment.progress}%`);
+            
+            // 1. 실험 목록의 해당 행 업데이트
+            updateExperimentRowInTable(experimentId, {
+                progress: experiment.progress,
+                status: experiment.status,
+                status_display: getStatusDisplay(experiment.status)
+            });
+            
+            // 2. 사이드바가 열려있고 현재 실험이면 사이드바 진행률 및 상태 업데이트
+            const currentExperimentId = getCurrentExperimentId();
+            if (experimentResultSidebar && 
+                experimentResultSidebar.style.display !== 'none' && 
+                experimentResultSidebar.style.display !== '' &&
+                currentExperimentId && 
+                String(currentExperimentId) === String(experimentId)) {
+                
+                // 사이드바 진행률 업데이트
+                const progressFill = document.getElementById('experimentResultProgressFill');
+                const progressText = document.getElementById('experimentResultProgressText');
+                const statusElement = document.getElementById('experimentResultStatus');
+                
+                if (experiment.progress !== undefined && experiment.progress !== null) {
+                    if (progressFill) {
+                        progressFill.style.width = `${experiment.progress}%`;
+                    }
+                    if (progressText) {
+                        progressText.textContent = `${experiment.progress}%`;
+                    }
+                }
+                
+                // 상태 업데이트
+                if (experiment.status && statusElement) {
+                    const statusDisplay = getStatusDisplay(experiment.status);
+                    const currentStatus = statusElement.textContent;
+                    if (currentStatus !== statusDisplay) {
+                        statusElement.textContent = statusDisplay;
+                        console.log(`[updateExperimentFromNotification] Sidebar status updated: ${currentStatus} → ${statusDisplay}`);
+                    }
+                } else if (!statusElement) {
+                    console.warn(`[updateExperimentFromNotification] Status element not found for experiment ${experimentId}`);
+                }
+                
+                // 결과 파일 목록도 업데이트 (새 파일이 추가되었을 수 있음)
+                const resultFiles = data.results || [];
+                const filesList = document.getElementById('experimentResultFilesList');
+                if (resultFiles.length > 0 && filesList) {
+                    renderResultFilesList(resultFiles, experimentId);
+                }
+                
+                console.log(`[updateExperimentFromNotification] Sidebar updated for experiment ${experimentId}: progress=${experiment.progress}%, status=${getStatusDisplay(experiment.status)}`);
+            }
+        } else {
+            console.error('[updateExperimentFromNotification] API request failed:', response.status, response.statusText);
+        }
+    } catch (error) {
+        console.error('[updateExperimentFromNotification] Error:', error);
+    }
+}
+
+// 상태 코드를 표시 텍스트로 변환하는 헬퍼 함수
+function getStatusDisplay(statusCode) {
+    const statusMap = {
+        'C': '완료',
+        'P': '진행중',
+        'R': '준비',
+        'F': '실패',
+        'E': '활성',
+        'D': '비활성',
+        'completed': '완료',
+        'in_progress': '진행중',
+        'ready': '준비',
+        'failed': '실패',
+        'active': '활성',
+        'inactive': '비활성'
+    };
+    return statusMap[statusCode] || '진행중';
 }
 
 // Render experiment result
 function renderExperimentResult(experiment) {
+    // 실험 ID 저장 (구조 상세보기 버튼에서 사용)
+    if (experiment) {
+        window.currentExperimentId = experiment.id || experiment.experiment_sid || experiment.experiment_id;
+        console.log('[renderExperimentResult] Saved experiment ID:', window.currentExperimentId);
+    }
+    
     // Pipeline name - React uses 'pipeline' field
     if (experimentResultPipelineName) {
         experimentResultPipelineName.textContent = experiment.pipeline || experiment.pipeline_name || 'Unnamed Pipeline';
@@ -1935,15 +2278,170 @@ function renderExperimentResult(experiment) {
         }
     }
     
-    if (experimentResultProgressFill) {
-        experimentResultProgressFill.style.width = `${progress}%`;
+    // DOM 요소를 다시 찾아서 업데이트 (동적 렌더링 대응)
+    const progressFill = document.getElementById('experimentResultProgressFill');
+    const progressText = document.getElementById('experimentResultProgressText');
+    
+    if (progressFill) {
+        progressFill.style.width = `${progress}%`;
     }
-    if (experimentResultProgressText) {
-        experimentResultProgressText.textContent = `${progress}%`;
+    if (progressText) {
+        progressText.textContent = `${progress}%`;
     }
 
     // Result files
     renderExperimentResultFiles(experiment);
+}
+
+// Handle structure view button click
+async function handleStructureViewClick() {
+    if (!experimentResultFilesList) {
+        if (window.notyf) {
+            window.notyf.error('결과 파일 목록을 찾을 수 없습니다.');
+        }
+        return;
+    }
+    
+    // 현재 실험 ID 가져오기
+    let experimentId = getCurrentExperimentId();
+    
+    // 실험 ID가 없으면 디버깅 정보 출력
+    if (!experimentId) {
+        console.error('[handleStructureViewClick] Experiment ID not found. Debug info:', {
+            windowCurrentExperimentId: window.currentExperimentId,
+            sidebar: document.getElementById('experimentResultSidebar'),
+            url: window.location.pathname
+        });
+        if (window.notyf) {
+            window.notyf.error('실험 정보를 찾을 수 없습니다. 실험을 다시 선택해주세요.');
+        }
+        return;
+    }
+    
+    console.log('[handleStructureViewClick] Using experiment ID:', experimentId);
+    
+    // API에서 파일 목록 가져오기
+    let allFiles = [];
+    try {
+        const response = await fetch(`/api/experiments/${experimentId}/files/`, {
+            method: 'GET',
+            headers: {
+                'X-CSRFToken': getCsrfToken(),
+                'Content-Type': 'application/json',
+            },
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            console.log('[handleStructureViewClick] API response:', data);
+            allFiles = data.results || data || [];
+            console.log('[handleStructureViewClick] Extracted files:', allFiles);
+        } else {
+            console.error('[handleStructureViewClick] API response not OK:', response.status, response.statusText);
+            const errorText = await response.text();
+            console.error('[handleStructureViewClick] Error response:', errorText);
+            if (window.notyf) {
+                window.notyf.error('파일 목록을 불러오는데 실패했습니다.');
+            }
+            return;
+        }
+    } catch (error) {
+        console.error('[handleStructureViewClick] Error fetching files:', error);
+        if (window.notyf) {
+            window.notyf.error('파일 목록을 불러오는 중 오류가 발생했습니다.');
+        }
+        return;
+    }
+    
+    // PDB 파일만 필터링하고 도구별로 그룹화
+    const pdbFilesByTool = {};
+    
+    allFiles.forEach(file => {
+        const fileType = (file.type || file.file_type || file.result_type || '').toUpperCase();
+        if (fileType === 'PDB') {
+            const fileName = file.name || file.filename || file.result_name || 'Unknown';
+            const tool = extractToolFromFileName(fileName);
+            
+            if (!pdbFilesByTool[tool]) {
+                pdbFilesByTool[tool] = [];
+            }
+            
+            pdbFilesByTool[tool].push({
+                id: file.id || file.result_sid || file.file_id,
+                name: fileName,
+                url: file.id ? `/api/experiments/results/${file.id}/file/` : (file.file_path || file.url || ''),
+                tool: tool,
+                date: file.date || file.created_at,
+                type: 'PDB'
+            });
+        }
+    });
+    
+    // 모든 도구의 PDB 파일을 하나의 배열로 합치기
+    const allPdbFiles = [];
+    Object.keys(pdbFilesByTool).forEach(tool => {
+        allPdbFiles.push(...pdbFilesByTool[tool]);
+    });
+    
+    if (allPdbFiles.length === 0) {
+        if (window.notyf) {
+            window.notyf.warning('PDB 구조 파일이 없습니다.');
+        }
+        return;
+    }
+    
+    // PDB 선택 모달 열기
+    if (window.PdbSelectionModal && typeof window.PdbSelectionModal.open === 'function') {
+        window.PdbSelectionModal.open(allPdbFiles);
+    } else {
+        console.error('[Experiment] PdbSelectionModal is not available');
+        if (window.notyf) {
+            window.notyf.error('파일 선택 모달을 열 수 없습니다. 페이지를 새로고침해주세요.');
+        }
+    }
+}
+
+// Get current experiment ID from sidebar
+function getCurrentExperimentId() {
+    // 전역 변수에서 가져오기 시도 (가장 확실한 방법)
+    if (window.currentExperimentId) {
+        console.log('[getCurrentExperimentId] Found from window.currentExperimentId:', window.currentExperimentId);
+        return window.currentExperimentId;
+    }
+    
+    // 실험 결과 사이드바에서 실험 ID 추출 시도
+    const sidebar = document.getElementById('experimentResultSidebar');
+    if (sidebar) {
+        const experimentIdAttr = sidebar.getAttribute('data-experiment-id');
+        if (experimentIdAttr) {
+            const id = parseInt(experimentIdAttr);
+            console.log('[getCurrentExperimentId] Found from sidebar data attribute:', id);
+            return id;
+        }
+    }
+    
+    // 렌더링된 파일 목록에서 실험 ID 추출 시도
+    if (experimentResultFilesList) {
+        const firstFileItem = experimentResultFilesList.querySelector('.result-file-item');
+        if (firstFileItem) {
+            const fileId = firstFileItem.getAttribute('data-file-id');
+            if (fileId) {
+                // 파일 ID가 있으면 API를 통해 실험 ID를 찾을 수 있지만, 이건 복잡함
+                // 대신 이미 로드된 파일 데이터에서 찾기
+            }
+        }
+    }
+    
+    // URL에서 추출 시도
+    const urlMatch = window.location.pathname.match(/\/experiments\/(\d+)/);
+    if (urlMatch) {
+        const id = parseInt(urlMatch[1]);
+        console.log('[getCurrentExperimentId] Found from URL:', id);
+        return id;
+    }
+    
+    console.warn('[getCurrentExperimentId] Could not find experiment ID');
+    return null;
 }
 
 // Render experiment result files
@@ -1963,6 +2461,46 @@ async function renderExperimentResultFiles(experiment) {
         if (response.ok) {
             const data = await response.json();
             const resultFiles = data.results || data || [];
+            const experimentInfo = data.experiment || {};
+            console.log('[renderExperimentResultFiles] API response:', data);
+            console.log('[renderExperimentResultFiles] Result files:', resultFiles);
+            console.log('[renderExperimentResultFiles] Experiment info:', experimentInfo);
+            
+            // API에서 계산된 진행률과 상태 사용 (결과 파일 기반으로 계산됨)
+            if (experimentInfo.progress !== undefined && experimentInfo.progress !== null) {
+                const calculatedProgress = experimentInfo.progress;
+                
+                // 진행률 UI 업데이트
+                if (experimentResultProgressFill) {
+                    experimentResultProgressFill.style.width = `${calculatedProgress}%`;
+                }
+                if (experimentResultProgressText) {
+                    experimentResultProgressText.textContent = `${calculatedProgress}%`;
+                }
+                
+                // 상태도 업데이트 (API에서 계산된 상태 사용)
+                if (experimentInfo.status && experimentResultStatus) {
+                    const statusCode = experimentInfo.status;
+                    let statusDisplay = '';
+                    if (statusCode === 'C' || statusCode === 'completed') {
+                        statusDisplay = '완료';
+                    } else if (statusCode === 'P' || statusCode === 'in_progress') {
+                        statusDisplay = '진행중';
+                    } else if (statusCode === 'R' || statusCode === 'ready') {
+                        statusDisplay = '준비';
+                    } else {
+                        statusDisplay = experimentResultStatus.textContent || '진행중';
+                    }
+                    
+                    // 진행률이 100%이고 결과 파일이 있으면 '완료'로 설정
+                    if (calculatedProgress === 100 && resultFiles.length > 0) {
+                        statusDisplay = '완료';
+                    }
+                    
+                    experimentResultStatus.textContent = statusDisplay;
+                }
+            }
+            
             if (resultFiles.length > 0) {
                 renderResultFilesList(resultFiles, experiment.id);
                 return;
@@ -2065,58 +2603,264 @@ function formatResultDate(value) {
     });
 }
 
-// Render result files list
-function renderResultFilesList(files, experimentId) {
-    if (!experimentResultFilesList) return;
+// 파일명에서 도구 추출
+function extractToolFromFileName(fileName) {
+    if (!fileName) {
+        console.warn('[extractToolFromFileName] fileName is empty');
+        return '기타';
+    }
+    
+    const nameLower = fileName.toLowerCase();
+    console.log('[extractToolFromFileName] Processing fileName:', fileName, '→ lower:', nameLower);
+    
+    // AlphaFold 패턴: "AlphaFold", "alphafold", "af_", "af-", "af "
+    // 예: "AlphaFold 베스트 구조", "AlphaFold 전체 구조 ZIP", "AlphaFold 결과 테이블"
+    if (nameLower.includes('alphafold') || nameLower.includes('af_') || nameLower.includes('af-') || nameLower.startsWith('af ')) {
+        console.log('[extractToolFromFileName] → AlphaFold3');
+        return 'AlphaFold3';
+    } 
+    // ProteinMPNN 패턴: "MPNN", "proteinmpnn", "protein_mpnn", "protein mpnn"
+    // 예: "서열 데이터 (MPNN FASTA)", "서열 분석 결과 (MPNN CSV)"
+    else if (nameLower.includes('mpnn') || nameLower.includes('proteinmpnn') || nameLower.includes('protein_mpnn') || nameLower.includes('protein mpnn')) {
+        console.log('[extractToolFromFileName] → ProteinMPNN');
+        return 'ProteinMPNN';
+    } 
+    // RFdiffusion 패턴: "rfdiffusion", "rf_", "rf-", "rf "
+    // 예: "RFdiffusion 전체 결과 ZIP", "RFdiffusion TRB #4", "RFdiffusion 구조 #0"
+    else if (nameLower.includes('rfdiffusion') || nameLower.includes('rf_') || nameLower.includes('rf-') || nameLower.startsWith('rf ')) {
+        console.log('[extractToolFromFileName] → RFdiffusion');
+        return 'RFdiffusion';
+    }
+    
+    console.log('[extractToolFromFileName] → 기타 (no match)');
+    return '기타';
+}
 
-    if (files.length === 0) {
+// 도구별 표시 이름 매핑
+function getToolDisplayName(toolName) {
+    const displayNames = {
+        'AlphaFold3': 'AlphaFold3',
+        'ProteinMPNN': 'ProteinMPNN',
+        'RFdiffusion': 'RFdiffusion',
+        '기타': '기타'
+    };
+    return displayNames[toolName] || toolName;
+}
+
+// 파일들을 도구별로 그룹화
+function groupFilesByTool(files) {
+    const grouped = {};
+    
+    files.forEach((file, index) => {
+        const fileName = file.name || file.filename || file.result_name || 'Unknown';
+        const tool = extractToolFromFileName(fileName);
+        
+        console.log(`[groupFilesByTool] File ${index}: "${fileName}" → Tool: "${tool}"`);
+        
+        if (!grouped[tool]) {
+            grouped[tool] = [];
+        }
+        grouped[tool].push(file);
+    });
+    
+    return grouped;
+}
+
+// 단일 파일 아이템 렌더링
+function renderFileItem(file) {
+    const fileName = file.name || file.filename || file.result_name || 'Unknown';
+    const fileType = file.type || file.file_type || file.result_type || 'FILE';
+    const fileTypeRaw = fileType.toUpperCase();
+    const isPdb = fileTypeRaw === 'PDB';
+    const fileDateRaw = file.date || file.created_at || '신규';
+    const fileDate = formatResultDate(fileDateRaw);
+    // 백엔드 프록시 URL 사용 (CORS 문제 해결)
+    const fileId = file.id || file.result_sid || file.file_id;
+    const fileUrl = fileId ? `/api/experiments/results/${fileId}/file/` : (file.file_path || file.url || file.file_url || '');
+
+    return `
+        <div class="result-file-item" data-file-id="${fileId}">
+            <div class="result-file-header">
+                <p class="result-file-name">${escapeHtml(fileName)}</p>
+                <div class="result-file-actions">
+                    <button class="result-file-download-btn"
+                        data-file-url="${fileUrl}"
+                        data-file-name="${escapeHtml(fileName)}"
+                        data-file-type="${escapeHtml(fileType)}"
+                        title="다운로드">
+                        <i class="fas fa-download"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="result-file-meta">
+                <span class="result-file-type">${escapeHtml(fileType)}</span>
+                <span class="result-file-date">${escapeHtml(fileDate)}</span>
+            </div>
+        </div>
+    `;
+}
+
+// Render result files list with tool grouping and toggles
+function renderResultFilesList(files, experimentId) {
+    console.log('[renderResultFilesList] START - files:', files, 'experimentId:', experimentId);
+    
+    if (!experimentResultFilesList) {
+        console.error('[renderResultFilesList] experimentResultFilesList element not found');
+        console.error('[renderResultFilesList] Available elements:', {
+            sidebar: !!experimentResultSidebar,
+            filesList: !!document.getElementById('experimentResultFilesList')
+        });
+        return;
+    }
+
+    if (!files || files.length === 0) {
+        console.log('[renderResultFilesList] No files, showing empty message');
         experimentResultFilesList.innerHTML = '<p class="result-empty-text">결과 파일이 없습니다</p>';
         return;
     }
 
-    experimentResultFilesList.innerHTML = files.map(file => {
-        const fileId = file.id || file.file_id;
-        const fileName = file.name || file.filename || 'Unknown';
-        const fileType = file.type || file.file_type || 'FILE';
-        const fileTypeRaw = fileType.toUpperCase();
-        const isPdb = fileTypeRaw === 'PDB';
-        const fileDateRaw = file.date || file.created_at || '신규';
-        const fileDate = formatResultDate(fileDateRaw);
-        // file_path를 그대로 사용
-        const fileUrl = file.file_path;
+    console.log('[renderResultFilesList] Processing', files.length, 'files:', files);
 
-
-        return `
-            <div class="result-file-item" data-file-id="${fileId}">
-                <div class="result-file-header">
-                    <p class="result-file-name">${escapeHtml(fileName)}</p>
-                    <div class="result-file-actions">
-                        ${isPdb ? `
-                            <button class="result-file-detail-btn"
-                                data-file-url="${fileUrl}"
-                                title="상세보기">
-                                <i class="fa-solid fa-arrow-up-right-from-square"></i>
-                            </button>
-                        ` : ''}
-                        <button class="result-file-download-btn"
-                            data-file-url="${fileUrl}"
-                            data-file-name="${escapeHtml(fileName)}"
-                            title="다운로드">
-                            <i class="fas fa-download"></i>
-                        </button>
+    // 파일들을 도구별로 그룹화
+    const groupedFiles = groupFilesByTool(files);
+    console.log('[renderResultFilesList] Grouped files:', groupedFiles);
+    console.log('[renderResultFilesList] Group keys:', Object.keys(groupedFiles));
+    
+    // 도구 순서 정의 (PIPELINE_ORDER와 동일한 순서)
+    const toolOrder = ['RFdiffusion', 'ProteinMPNN', 'AlphaFold3', '기타'];
+    
+    // 각 도구별 섹션 생성
+    const sections = [];
+    toolOrder.forEach((toolName, index) => {
+        const toolFiles = groupedFiles[toolName] || [];
+        console.log(`[renderResultFilesList] Tool: ${toolName}, Files: ${toolFiles.length}`);
+        
+        if (toolFiles.length === 0) {
+            return; // 파일이 없는 도구는 표시하지 않음
+        }
+        
+        const displayName = getToolDisplayName(toolName);
+        const sectionId = `tool-section-${toolName.toLowerCase().replace(/\s+/g, '-')}`;
+        const toggleId = `tool-toggle-${toolName.toLowerCase().replace(/\s+/g, '-')}`;
+        
+        // 파일 아이템들 렌더링
+        const filesHtml = toolFiles.map(file => renderFileItem(file)).join('');
+        
+        const sectionHtml = `
+            <div class="result-tool-section" data-tool="${toolName}">
+                <div class="result-tool-section-header" data-toggle-id="${toggleId}">
+                    <div class="result-tool-section-title">
+                        <i class="fas fa-chevron-down result-tool-toggle-icon" data-toggle-id="${toggleId}"></i>
+                        <span class="result-tool-name">${escapeHtml(displayName)}</span>
+                        <span class="result-tool-count">(${toolFiles.length})</span>
                     </div>
+                    <div class="result-tool-section-divider"></div>
                 </div>
-                <div class="result-file-meta">
-                    <span class="result-file-type">${escapeHtml(fileType)}</span>
-                    <span class="result-file-date">${escapeHtml(fileDate)}</span>
+                <div class="result-tool-section-content" id="${sectionId}" data-tool="${toolName}">
+                    ${filesHtml}
                 </div>
             </div>
         `;
-    }).join('');
+        
+        sections.push(sectionHtml);
+        console.log(`[renderResultFilesList] Generated section for ${toolName}:`, sectionHtml.substring(0, 100) + '...');
+    });
+    
+    const sectionsHtml = sections.join('');
 
-    // 이후 download 버튼 핸들러는 기존 handleResultFileDownload를 사용
+    if (!sectionsHtml || sectionsHtml.trim() === '') {
+        console.warn('[renderResultFilesList] No sections generated, falling back to flat list');
+        console.warn('[renderResultFilesList] Grouped files:', groupedFiles);
+        // 폴백: 평평한 리스트로 표시
+        experimentResultFilesList.innerHTML = files.map(file => renderFileItem(file)).join('');
+        attachResultFileDownloadHandlers();
+        return;
+    }
+
+    console.log('[renderResultFilesList] Generated HTML sections, length:', sectionsHtml.length);
+    console.log('[renderResultFilesList] HTML preview:', sectionsHtml.substring(0, 500));
+    
+    experimentResultFilesList.innerHTML = sectionsHtml;
+    
+    // DOM이 업데이트된 후 확인
+    setTimeout(() => {
+        const sections = experimentResultFilesList.querySelectorAll('.result-tool-section');
+        const headers = experimentResultFilesList.querySelectorAll('.result-tool-section-header');
+        console.log('[renderResultFilesList] After DOM update - Sections:', sections.length, 'Headers:', headers.length);
+    }, 100);
+
+    // 토글 핸들러 및 다운로드 핸들러 연결
+    attachToolSectionToggles();
     attachResultFileDownloadHandlers();
-    attachResultFileDetailHandlers();
+    
+    console.log('[renderResultFilesList] END - Handlers attached');
+}
+
+// Attach tool section toggle handlers
+function attachToolSectionToggles() {
+    console.log('[attachToolSectionToggles] START');
+    
+    if (!experimentResultFilesList) {
+        console.error('[attachToolSectionToggles] experimentResultFilesList not found');
+        return;
+    }
+    
+    const sectionHeaders = experimentResultFilesList.querySelectorAll('.result-tool-section-header');
+    console.log('[attachToolSectionToggles] Found', sectionHeaders.length, 'section headers');
+    
+    sectionHeaders.forEach((header, index) => {
+        console.log(`[attachToolSectionToggles] Attaching handler to header ${index}`);
+        
+        // 기존 이벤트 리스너 제거 (중복 방지)
+        const newHeader = header.cloneNode(true);
+        header.parentNode.replaceChild(newHeader, header);
+        
+        newHeader.addEventListener('click', (e) => {
+            e.stopPropagation();
+            console.log('[attachToolSectionToggles] Header clicked');
+            
+            const toggleId = newHeader.getAttribute('data-toggle-id');
+            const section = newHeader.closest('.result-tool-section');
+            const content = section?.querySelector('.result-tool-section-content');
+            const icon = newHeader.querySelector('.result-tool-toggle-icon');
+            
+            console.log('[attachToolSectionToggles] Toggle elements:', {
+                toggleId,
+                section: !!section,
+                content: !!content,
+                icon: !!icon
+            });
+            
+            if (!content) {
+                console.error('[attachToolSectionToggles] Content not found');
+                return;
+            }
+            
+            // 토글 상태 변경
+            const isExpanded = !content.classList.contains('collapsed');
+            console.log('[attachToolSectionToggles] Current state:', isExpanded ? 'expanded' : 'collapsed');
+            
+            if (isExpanded) {
+                // 접기
+                content.classList.add('collapsed');
+                if (icon) {
+                    icon.classList.remove('fa-chevron-down');
+                    icon.classList.add('fa-chevron-right');
+                }
+                console.log('[attachToolSectionToggles] Collapsed');
+            } else {
+                // 펼치기
+                content.classList.remove('collapsed');
+                if (icon) {
+                    icon.classList.remove('fa-chevron-right');
+                    icon.classList.add('fa-chevron-down');
+                }
+                console.log('[attachToolSectionToggles] Expanded');
+            }
+        });
+    });
+    
+    console.log('[attachToolSectionToggles] END');
 }
 
 // Attach result file download handlers
@@ -2127,21 +2871,93 @@ function attachResultFileDownloadHandlers() {
             e.stopPropagation();
             const fileUrl = btn.getAttribute('data-file-url');
             const fileName = btn.getAttribute('data-file-name');
-            await handleResultFileDownload(fileUrl, fileName);
+            
+            // 파일 타입 추출 (result-file-item의 형제 요소에서)
+            const fileItem = btn.closest('.result-file-item');
+            const fileTypeElement = fileItem?.querySelector('.result-file-type');
+            const fileType = fileTypeElement?.textContent?.trim() || '';
+            
+            await handleResultFileDownload(fileUrl, fileName, fileType);
         });
     });
 }
 
 // Attach result file detail view handlers (PDB preview)
 function attachResultFileDetailHandlers() {
-    const detailBtns = experimentResultFilesList?.querySelectorAll('.result-file-detail-btn');
-    detailBtns?.forEach(btn => {
-        btn.addEventListener('click', (e) => {
+    const detailBtns = experimentResultFilesList?.querySelectorAll('.result-file-actions-btn');
+    console.log('[Experiment] Found detail buttons:', detailBtns?.length || 0);
+    
+    if (!detailBtns || detailBtns.length === 0) {
+        console.warn('[Experiment] No detail buttons found');
+        return;
+    }
+    
+    detailBtns.forEach(btn => {
+        // Remove existing listeners to avoid duplicates
+        const newBtn = btn.cloneNode(true);
+        btn.parentNode.replaceChild(newBtn, btn);
+        
+        newBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            const fileUrl = btn.getAttribute('data-file-url');
-            handleResultFileView(fileUrl);
+            e.preventDefault();
+            console.log('[Experiment] Detail button clicked');
+            
+            // Get file URL and name from data attributes
+            const fileUrl = newBtn.getAttribute('data-file-url');
+            const fileName = newBtn.getAttribute('data-file-name') || 'PDB 파일';
+            
+            if (!fileUrl) {
+                console.error('[Experiment] File URL not found');
+                if (window.notyf) {
+                    window.notyf.error('파일 URL을 찾을 수 없습니다.');
+                }
+                return;
+            }
+            
+            // Open molstar modal
+            if (window.MolstarModal && typeof window.MolstarModal.open === 'function') {
+                window.MolstarModal.open(fileUrl, fileName);
+            } else {
+                console.error('[Experiment] MolstarModal is not available');
+                if (window.notyf) {
+                    window.notyf.error('3D 뷰어를 열 수 없습니다. 페이지를 새로고침해주세요.');
+                }
+            }
         });
     });
+}
+
+// Open experiment result modal with retry logic
+function openExperimentResultModalWithRetry(maxAttempts = 20) {
+    console.log('[Experiment] Attempting to open modal, attempts left:', maxAttempts);
+    console.log('[Experiment] ExperimentResultModal available:', !!window.ExperimentResultModal);
+    
+    if (window.ExperimentResultModal && typeof window.ExperimentResultModal.open === 'function') {
+        console.log('[Experiment] Opening modal...');
+        try {
+            window.ExperimentResultModal.open();
+            console.log('[Experiment] Modal open called successfully');
+        } catch (error) {
+            console.error('[Experiment] Error opening modal:', error);
+            if (window.notyf) {
+                window.notyf.error('모달을 여는 중 오류가 발생했습니다.');
+            }
+        }
+        return;
+    }
+    
+    // Retry if modal is not ready yet
+    if (maxAttempts > 0) {
+        setTimeout(() => {
+            openExperimentResultModalWithRetry(maxAttempts - 1);
+        }, 100);
+    } else {
+        console.error('[Experiment] ExperimentResultModal is not available after waiting');
+        console.error('[Experiment] window.ExperimentResultModal:', window.ExperimentResultModal);
+        if (window.notyf) {
+            window.notyf.error('실험 결과 모달을 열 수 없습니다. 페이지를 새로고침해주세요.');
+        }
+    }
 }
 
 // Open file in new tab for quick preview
@@ -2153,8 +2969,60 @@ function handleResultFileView(fileUrl) {
     window.open(fileUrl, '_blank', 'noopener,noreferrer');
 }
 
-// Handle result file download - open the file_path directly
-async function handleResultFileDownload(fileUrl, fileName) {
+// 파일 타입에서 확장자 추론
+function getExtensionFromFileType(fileType) {
+    const typeMap = {
+        'PDB': '.pdb',
+        'FASTA': '.fasta',
+        'CSV': '.csv',
+        'ZIP': '.zip',
+        'OTHER': '',  // OTHER는 파일명이나 URL에서 추론 필요
+        'LOG': '.log',
+    };
+    return typeMap[fileType?.toUpperCase()] || '';
+}
+
+// 파일명에 확장자 추가 (없는 경우)
+function ensureFileExtension(fileName, fileType, fileUrl) {
+    if (!fileName) return fileName;
+    
+    // 이미 확장자가 있으면 그대로 반환
+    if (fileName.includes('.') && /\.\w+$/.test(fileName)) {
+        return fileName;
+    }
+    
+    // 파일 타입에서 확장자 추론
+    let extension = getExtensionFromFileType(fileType);
+    
+    // OTHER 타입인 경우 파일명이나 URL에서 추론
+    if (!extension && fileType?.toUpperCase() === 'OTHER') {
+        const fileNameLower = fileName.toLowerCase();
+        const urlLower = (fileUrl || '').toLowerCase();
+        
+        if (fileNameLower.includes('trb') || urlLower.includes('.trb')) {
+            extension = '.trb';
+        } else if (fileNameLower.includes('zip') || urlLower.includes('.zip')) {
+            extension = '.zip';
+        } else if (urlLower.includes('.trb')) {
+            extension = '.trb';
+        } else if (urlLower.includes('.zip')) {
+            extension = '.zip';
+        }
+    }
+    
+    // URL에서 확장자 추출 시도
+    if (!extension && fileUrl) {
+        const urlMatch = fileUrl.match(/\.([a-z0-9]+)(?:\?|$)/i);
+        if (urlMatch) {
+            extension = '.' + urlMatch[1].toLowerCase();
+        }
+    }
+    
+    return extension ? fileName + extension : fileName;
+}
+
+// Handle result file download - fetch를 통해 Content-Disposition 헤더 처리
+async function handleResultFileDownload(fileUrl, fileName, fileType) {
     if (!fileUrl) {
         if (window.notyf) {
             window.notyf.error('다운로드 URL이 제공되지 않았습니다.');
@@ -2163,24 +3031,74 @@ async function handleResultFileDownload(fileUrl, fileName) {
     }
 
     try {
-        const link = document.createElement('a');
-        link.href = fileUrl;              // 실제 file_path (S3 등)
-        link.target = '_blank';
-        link.rel = 'noopener noreferrer';
-        if (fileName) {
-            link.download = fileName;     // 확장자 포함 파일명 지정 가능
-        }
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        // 백엔드 프록시 URL인 경우 fetch 사용 (Content-Disposition 헤더 처리)
+        if (fileUrl.includes('/api/experiments/results/') && fileUrl.includes('/file/')) {
+            const response = await fetch(fileUrl, {
+                method: 'GET',
+                headers: {
+                    'X-CSRFToken': getCsrfToken(),
+                },
+            });
 
-        if (window.notyf) {
-            window.notyf.success('다운로드가 완료되었습니다.');
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            // Content-Disposition 헤더에서 파일명 추출
+            const contentDisposition = response.headers.get('Content-Disposition');
+            let downloadFileName = fileName;
+            
+            if (contentDisposition) {
+                // filename="..." 또는 filename*=UTF-8''... 패턴 매칭
+                const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+                if (filenameMatch && filenameMatch[1]) {
+                    downloadFileName = filenameMatch[1].replace(/['"]/g, '');
+                    // UTF-8 인코딩된 파일명 처리
+                    if (downloadFileName.startsWith("UTF-8''")) {
+                        downloadFileName = decodeURIComponent(downloadFileName.replace("UTF-8''", ""));
+                    }
+                }
+            }
+            
+            // 파일명에 확장자가 없으면 파일 타입에서 추론
+            downloadFileName = ensureFileExtension(downloadFileName, fileType, fileUrl);
+            
+            // Blob으로 변환하여 다운로드
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = downloadFileName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+
+            if (window.notyf) {
+                window.notyf.success('다운로드가 완료되었습니다.');
+            }
+        } else {
+            // 직접 S3 URL인 경우 (프록시를 거치지 않는 경우)
+            // 파일명에 확장자 보장
+            const finalFileName = ensureFileExtension(fileName, fileType, fileUrl);
+            
+            const link = document.createElement('a');
+            link.href = fileUrl;
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            link.download = finalFileName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            if (window.notyf) {
+                window.notyf.success('다운로드가 완료되었습니다.');
+            }
         }
     } catch (error) {
-        console.error('Error starting download:', error);
+        console.error('Error downloading file:', error);
         if (window.notyf) {
-            window.notyf.error('파일 다운로드를 시작하지 못했습니다.');
+            window.notyf.error('파일 다운로드 중 오류가 발생했습니다.');
         }
     }
 }
@@ -2506,6 +3424,7 @@ if (typeof window !== 'undefined') {
         openExperimentResultSidebar,
         closeExperimentResultSidebar,
         updateProteinSequenceInput, // Add method for modals to update input field
+        updateExperimentFromNotification, // 알림 수신 시 실험 업데이트
         // Setter methods for updating state
         setSequenceQuery,
         setSelectedProtein,
