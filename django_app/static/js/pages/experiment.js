@@ -163,12 +163,10 @@ function initExperiment() {
         loadAvailableTools();
     }
 
-    // Load experiments
+    // Load experiments (초기 로드만, 자동 업데이트 없음)
     loadExperiments();
-     // ✅ 5초마다 실험 목록 상태 재조회 (폴링)
-    if (!window.__experimentPollTimer) {
-        window.__experimentPollTimer = setInterval(loadExperiments, 30000);
-    }
+    // 사이드바를 열지 않으면 화면 새로고침해야 상태값 반영
+    // 사이드바가 열려있을 때만 해당 실험 정보를 polling
 
     // Event listeners
     if (toolSearchInput) {
@@ -1639,6 +1637,63 @@ function renderToolsGrid() {
     attachToolCardHandlers();
 }
 
+// Update specific experiment row in table (used for real-time updates)
+function updateExperimentRowInTable(experimentId, experimentData) {
+    if (!experimentTableBody || !experimentId) return;
+    
+    const row = experimentTableBody.querySelector(`tr[data-experiment-id="${experimentId}"]`);
+    if (!row) return;
+    
+    // 상태 코드 변환
+    const statusCode = experimentData.status || 'R';
+    const statusMap = {
+        'C': '완료',
+        'P': '진행중',
+        'R': '준비',
+        'F': '진행',
+        'E': '활성',
+        'D': '비활성'
+    };
+    const statusDisplay = statusMap[statusCode] || experimentData.status_display || '준비';
+    
+    // 상태 클래스 결정
+    const statusClass =
+        statusDisplay === '완료'   ? 'status-completed' :
+        statusDisplay === '진행'   ? 'status-progress' :
+        statusDisplay === '진행중' ? 'status-progress' :
+        statusDisplay === '준비'   ? 'status-ready' :
+        'status-ready';
+    
+    const statusDotClass =
+        statusDisplay === '완료'   ? 'status-dot-completed' :
+        statusDisplay === '진행'   ? 'status-dot-progress' :
+        statusDisplay === '진행중' ? 'status-dot-progress' :
+        statusDisplay === '준비'   ? 'status-dot-ready' :
+        'status-dot-ready';
+    
+    // 진행률 업데이트
+    const progress = experimentData.progress !== undefined ? experimentData.progress : 
+                    (statusCode === 'C' ? 100 : 
+                     statusCode === 'P' ? 65 : 
+                     statusCode === 'R' ? 25 : 0);
+    
+    // 상태 열 업데이트
+    const statusCell = row.querySelector('.status-td-status');
+    if (statusCell) {
+        statusCell.innerHTML = `
+            <span class="status-badge ${statusClass}">
+                <span class="status-dot ${statusDotClass}"></span>
+                ${statusDisplay}
+            </span>
+        `;
+    }
+    
+    // data 속성 업데이트
+    row.setAttribute('data-experiment-progress', progress);
+    
+    console.log(`[updateExperimentRowInTable] Updated experiment ${experimentId}: progress=${progress}%, status=${statusDisplay}`);
+}
+
 // Render experiment table
 function renderExperimentTable(experiments) {
     if (!experimentTableBody) return;
@@ -1858,19 +1913,40 @@ async function openExperimentResultSidebar(experimentId) {
             console.log('[openExperimentResultSidebar] Final experiment ID:', expId);
             
             // 실험 정보 구성 (파일 목록 API 응답에서 가져온 정보 사용)
+            // API에서 계산된 진행률과 상태 사용 (결과 파일 기반으로 계산됨)
             const experimentData = {
                 id: expId,
                 experiment_sid: expId,
                 pipeline_name: experiment.pipeline_name || 'Unnamed Pipeline',
                 pipeline: experiment.pipeline_name || 'Unnamed Pipeline',
                 status: experiment.status || 'R',
-                progress: 0, // 파일 목록 API에는 progress가 없으므로 0으로 설정
+                progress: experiment.progress !== undefined && experiment.progress !== null ? experiment.progress : 0,
                 tools: [], // 파일 목록 API에는 tools가 없으므로 빈 배열
             };
             
             renderExperimentResult(experimentData);
             experimentResultSidebar.style.display = 'flex';
             document.body.style.overflow = 'hidden';
+            
+            // 실험 상세 상태 주기적 업데이트 (5초마다)
+            // 기존 타이머가 있으면 제거
+            if (window.__experimentDetailPollTimer) {
+                clearInterval(window.__experimentDetailPollTimer);
+                window.__experimentDetailPollTimer = null;
+            }
+            
+            // 완료되지 않은 실험만 polling (상태가 'C'가 아니거나 진행률이 100%가 아닌 경우)
+            // 목록 화면과 동일한 5초 주기로 설정 (더 빠른 반응성을 위해 3초로 단축 가능)
+            const isCompleted = experiment.status === 'C' || experiment.progress === 100;
+            if (!isCompleted) {
+                console.log(`[openExperimentResultSidebar] Starting polling for experiment ${expId} (status: ${experiment.status}, progress: ${experiment.progress}%)`);
+                // 사이드바는 더 빠른 주기로 업데이트하여 목록 화면과의 차이 최소화
+                window.__experimentDetailPollTimer = setInterval(() => {
+                    pollExperimentDetailStatus(expId);
+                }, 3000); // 3초마다 확인 (목록 화면 5초보다 빠르게)
+            } else {
+                console.log(`[openExperimentResultSidebar] Skipping polling for completed experiment ${expId}`);
+            }
         } else {
             console.error('[openExperimentResultSidebar] Failed to load experiment files:', response.status, response.statusText);
             const errorText = await response.text();
@@ -1892,6 +1968,234 @@ function closeExperimentResultSidebar() {
     if (!experimentResultSidebar) return;
     experimentResultSidebar.style.display = 'none';
     document.body.style.overflow = '';
+    
+    // Polling 중지
+    if (window.__experimentDetailPollTimer) {
+        clearInterval(window.__experimentDetailPollTimer);
+        window.__experimentDetailPollTimer = null;
+    }
+}
+
+// Poll experiment detail status and update progress
+// 사이드바가 열려있을 때만 사이드바의 진행률을 업데이트 (목록 페이지는 별도로 업데이트됨)
+async function pollExperimentDetailStatus(experimentId) {
+    if (!experimentId) return;
+    
+    // 사이드바가 닫혀있으면 polling 중지 (사이드바 내부 진행률 업데이트만 중지)
+    if (!experimentResultSidebar || experimentResultSidebar.style.display === 'none' || experimentResultSidebar.style.display === '') {
+        if (window.__experimentDetailPollTimer) {
+            clearInterval(window.__experimentDetailPollTimer);
+            window.__experimentDetailPollTimer = null;
+        }
+        return;
+    }
+    
+    try {
+        // 실험 파일 목록 API를 통해 최신 상태 가져오기
+        const response = await fetch(`/api/experiments/${experimentId}/files/`, {
+            method: 'GET',
+            headers: {
+                'X-CSRFToken': getCsrfToken(),
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            const experiment = data.experiment || {};
+            
+            // DOM 요소를 다시 찾아서 업데이트 (동적 렌더링 대응)
+            const progressFill = document.getElementById('experimentResultProgressFill');
+            const progressText = document.getElementById('experimentResultProgressText');
+            const statusElement = document.getElementById('experimentResultStatus');
+            const filesList = document.getElementById('experimentResultFilesList');
+            
+            // 진행률과 상태 업데이트
+            if (experiment.progress !== undefined && experiment.progress !== null) {
+                const currentProgress = parseInt(progressText?.textContent?.replace('%', '') || '0');
+                const newProgress = experiment.progress;
+                
+                // 진행률이 변경되었으면 사이드바 UI 업데이트
+                if (newProgress !== currentProgress) {
+                    if (progressFill) {
+                        progressFill.style.width = `${newProgress}%`;
+                    }
+                    if (progressText) {
+                        progressText.textContent = `${newProgress}%`;
+                    }
+                    console.log(`[pollExperimentDetailStatus] Progress updated: ${currentProgress}% → ${newProgress}%`);
+                    
+                    // 사이드바가 열려있을 때만 목록 화면의 해당 실험 행도 업데이트
+                    // (사이드바를 열지 않으면 화면 새로고침 필요)
+                    updateExperimentRowInTable(experimentId, {
+                        progress: newProgress,
+                        status: experiment.status
+                    });
+                }
+            }
+            
+            // 상태 업데이트
+            if (experiment.status && statusElement) {
+                const statusCode = experiment.status;
+                let statusDisplay = '';
+                if (statusCode === 'C' || statusCode === 'completed') {
+                    statusDisplay = '완료';
+                } else if (statusCode === 'P' || statusCode === 'in_progress') {
+                    statusDisplay = '진행중';
+                } else if (statusCode === 'R' || statusCode === 'ready') {
+                    statusDisplay = '준비';
+                } else if (statusCode === 'E' || statusCode === 'active') {
+                    statusDisplay = '활성';
+                } else if (statusCode === 'F' || statusCode === 'failed') {
+                    statusDisplay = '실패';
+                } else {
+                    statusDisplay = statusElement.textContent || '진행중';
+                }
+                
+                // 진행률이 100%이고 결과 파일이 있으면 '완료'로 설정
+                const resultFiles = data.results || [];
+                if (experiment.progress === 100 && resultFiles.length > 0) {
+                    statusDisplay = '완료';
+                }
+                
+                if (statusElement.textContent !== statusDisplay) {
+                    statusElement.textContent = statusDisplay;
+                    console.log(`[pollExperimentDetailStatus] Status updated: ${statusDisplay}`);
+                    
+                    // 목록 화면의 해당 실험 행도 즉시 업데이트 (상태 변경 반영)
+                    updateExperimentRowInTable(experimentId, {
+                        progress: experiment.progress,
+                        status: experiment.status,
+                        status_display: statusDisplay
+                    });
+                }
+            }
+            
+            // 결과 파일 목록도 업데이트 (새 파일이 추가되었을 수 있음)
+            const resultFiles = data.results || [];
+            if (resultFiles.length > 0 && filesList) {
+                renderResultFilesList(resultFiles, experimentId);
+            }
+            
+            // 사이드바가 열려있을 때 실험 페이지 목록 화면 전체 업데이트
+            if (experimentTableBody) {
+                loadExperiments();
+            }
+            
+            // 완료되었으면 polling 중지
+            if (experiment.status === 'C' || experiment.progress === 100) {
+                if (window.__experimentDetailPollTimer) {
+                    clearInterval(window.__experimentDetailPollTimer);
+                    window.__experimentDetailPollTimer = null;
+                    console.log('[pollExperimentDetailStatus] Polling stopped: experiment completed');
+                }
+            }
+        } else {
+            console.error('[pollExperimentDetailStatus] API request failed:', response.status, response.statusText);
+        }
+    } catch (error) {
+        console.error('[pollExperimentDetailStatus] Error:', error);
+    }
+}
+
+// 알림 수신 시 특정 실험만 상태 조회 및 업데이트
+async function updateExperimentFromNotification(experimentId) {
+    if (!experimentId) {
+        console.warn('[updateExperimentFromNotification] Experiment ID is missing');
+        return;
+    }
+    
+    try {
+        // 실험 파일 목록 API를 통해 최신 상태 가져오기
+        const response = await fetch(`/api/experiments/${experimentId}/files/`, {
+            method: 'GET',
+            headers: {
+                'X-CSRFToken': getCsrfToken(),
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            const experiment = data.experiment || {};
+            
+            console.log(`[updateExperimentFromNotification] Updating experiment ${experimentId}: status=${experiment.status}, progress=${experiment.progress}%`);
+            
+            // 1. 실험 목록의 해당 행 업데이트
+            updateExperimentRowInTable(experimentId, {
+                progress: experiment.progress,
+                status: experiment.status,
+                status_display: getStatusDisplay(experiment.status)
+            });
+            
+            // 2. 사이드바가 열려있고 현재 실험이면 사이드바 진행률 및 상태 업데이트
+            const currentExperimentId = getCurrentExperimentId();
+            if (experimentResultSidebar && 
+                experimentResultSidebar.style.display !== 'none' && 
+                experimentResultSidebar.style.display !== '' &&
+                currentExperimentId && 
+                String(currentExperimentId) === String(experimentId)) {
+                
+                // 사이드바 진행률 업데이트
+                const progressFill = document.getElementById('experimentResultProgressFill');
+                const progressText = document.getElementById('experimentResultProgressText');
+                const statusElement = document.getElementById('experimentResultStatus');
+                
+                if (experiment.progress !== undefined && experiment.progress !== null) {
+                    if (progressFill) {
+                        progressFill.style.width = `${experiment.progress}%`;
+                    }
+                    if (progressText) {
+                        progressText.textContent = `${experiment.progress}%`;
+                    }
+                }
+                
+                // 상태 업데이트
+                if (experiment.status && statusElement) {
+                    const statusDisplay = getStatusDisplay(experiment.status);
+                    const currentStatus = statusElement.textContent;
+                    if (currentStatus !== statusDisplay) {
+                        statusElement.textContent = statusDisplay;
+                        console.log(`[updateExperimentFromNotification] Sidebar status updated: ${currentStatus} → ${statusDisplay}`);
+                    }
+                } else if (!statusElement) {
+                    console.warn(`[updateExperimentFromNotification] Status element not found for experiment ${experimentId}`);
+                }
+                
+                // 결과 파일 목록도 업데이트 (새 파일이 추가되었을 수 있음)
+                const resultFiles = data.results || [];
+                const filesList = document.getElementById('experimentResultFilesList');
+                if (resultFiles.length > 0 && filesList) {
+                    renderResultFilesList(resultFiles, experimentId);
+                }
+                
+                console.log(`[updateExperimentFromNotification] Sidebar updated for experiment ${experimentId}: progress=${experiment.progress}%, status=${getStatusDisplay(experiment.status)}`);
+            }
+        } else {
+            console.error('[updateExperimentFromNotification] API request failed:', response.status, response.statusText);
+        }
+    } catch (error) {
+        console.error('[updateExperimentFromNotification] Error:', error);
+    }
+}
+
+// 상태 코드를 표시 텍스트로 변환하는 헬퍼 함수
+function getStatusDisplay(statusCode) {
+    const statusMap = {
+        'C': '완료',
+        'P': '진행중',
+        'R': '준비',
+        'F': '실패',
+        'E': '활성',
+        'D': '비활성',
+        'completed': '완료',
+        'in_progress': '진행중',
+        'ready': '준비',
+        'failed': '실패',
+        'active': '활성',
+        'inactive': '비활성'
+    };
+    return statusMap[statusCode] || '진행중';
 }
 
 // Render experiment result
@@ -1974,11 +2278,15 @@ function renderExperimentResult(experiment) {
         }
     }
     
-    if (experimentResultProgressFill) {
-        experimentResultProgressFill.style.width = `${progress}%`;
+    // DOM 요소를 다시 찾아서 업데이트 (동적 렌더링 대응)
+    const progressFill = document.getElementById('experimentResultProgressFill');
+    const progressText = document.getElementById('experimentResultProgressText');
+    
+    if (progressFill) {
+        progressFill.style.width = `${progress}%`;
     }
-    if (experimentResultProgressText) {
-        experimentResultProgressText.textContent = `${progress}%`;
+    if (progressText) {
+        progressText.textContent = `${progress}%`;
     }
 
     // Result files
@@ -2153,8 +2461,46 @@ async function renderExperimentResultFiles(experiment) {
         if (response.ok) {
             const data = await response.json();
             const resultFiles = data.results || data || [];
+            const experimentInfo = data.experiment || {};
             console.log('[renderExperimentResultFiles] API response:', data);
             console.log('[renderExperimentResultFiles] Result files:', resultFiles);
+            console.log('[renderExperimentResultFiles] Experiment info:', experimentInfo);
+            
+            // API에서 계산된 진행률과 상태 사용 (결과 파일 기반으로 계산됨)
+            if (experimentInfo.progress !== undefined && experimentInfo.progress !== null) {
+                const calculatedProgress = experimentInfo.progress;
+                
+                // 진행률 UI 업데이트
+                if (experimentResultProgressFill) {
+                    experimentResultProgressFill.style.width = `${calculatedProgress}%`;
+                }
+                if (experimentResultProgressText) {
+                    experimentResultProgressText.textContent = `${calculatedProgress}%`;
+                }
+                
+                // 상태도 업데이트 (API에서 계산된 상태 사용)
+                if (experimentInfo.status && experimentResultStatus) {
+                    const statusCode = experimentInfo.status;
+                    let statusDisplay = '';
+                    if (statusCode === 'C' || statusCode === 'completed') {
+                        statusDisplay = '완료';
+                    } else if (statusCode === 'P' || statusCode === 'in_progress') {
+                        statusDisplay = '진행중';
+                    } else if (statusCode === 'R' || statusCode === 'ready') {
+                        statusDisplay = '준비';
+                    } else {
+                        statusDisplay = experimentResultStatus.textContent || '진행중';
+                    }
+                    
+                    // 진행률이 100%이고 결과 파일이 있으면 '완료'로 설정
+                    if (calculatedProgress === 100 && resultFiles.length > 0) {
+                        statusDisplay = '완료';
+                    }
+                    
+                    experimentResultStatus.textContent = statusDisplay;
+                }
+            }
+            
             if (resultFiles.length > 0) {
                 renderResultFilesList(resultFiles, experiment.id);
                 return;
@@ -3078,6 +3424,7 @@ if (typeof window !== 'undefined') {
         openExperimentResultSidebar,
         closeExperimentResultSidebar,
         updateProteinSequenceInput, // Add method for modals to update input field
+        updateExperimentFromNotification, // 알림 수신 시 실험 업데이트
         // Setter methods for updating state
         setSequenceQuery,
         setSelectedProtein,

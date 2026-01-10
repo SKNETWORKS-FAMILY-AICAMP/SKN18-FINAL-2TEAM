@@ -118,6 +118,78 @@ services:
     restart: unless-stopped
 
   ########################################
+  # 4) Celery Worker (알림 및 주기적 작업 처리)
+  ########################################
+  celery-worker:
+    # web 이미지와 동일한 이미지 사용 (Django 앱 포함)
+    image: ${ECR_WEB_IMAGE:-helixops_web:latest}
+    container_name: celery-worker
+    # entrypoint를 사용하여 마이그레이션 자동 실행
+    entrypoint: ["/entrypoint.sh"]
+    environment:
+      AWS_REGION: ${AWS_REGION:-ap-northeast-2}
+      STACK_NAME: ${STACK_NAME:-skn18-final-infra}
+      # PostgreSQL 설정 (SSM에서 주입)
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      # RabbitMQ 설정 (SSM에서 주입)
+      RABBITMQ_HOST: ${RABBITMQ_HOST}
+      RABBITMQ_PORT: ${RABBITMQ_PORT:-5672}
+      RABBITMQ_USER: ${RABBITMQ_USER}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+      # Django 설정
+      DJANGO_SETTINGS_MODULE: config.settings
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
+    working_dir: /app/django_app
+    # Celery Worker 실행 - entrypoint.sh가 마이그레이션 후 실행
+    command: ["celery", "-A", "config", "worker", "--loglevel=info", "--concurrency=2"]
+    logging:
+      driver: awslogs
+      options:
+        awslogs-group: /ec2/skn18/celery-worker-service
+        awslogs-region: ap-northeast-2
+    restart: unless-stopped
+
+  ########################################
+  # 5) Celery Beat (스케줄러 - 일정 리마인더 등)
+  ########################################
+  celery-beat:
+    # web 이미지와 동일한 이미지 사용 (Django 앱 포함)
+    image: ${ECR_WEB_IMAGE:-helixops_web:latest}
+    container_name: celery-beat
+    # entrypoint를 사용하여 마이그레이션 자동 실행
+    entrypoint: ["/entrypoint.sh"]
+    environment:
+      AWS_REGION: ${AWS_REGION:-ap-northeast-2}
+      STACK_NAME: ${STACK_NAME:-skn18-final-infra}
+      # PostgreSQL 설정 (SSM에서 주입)
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      # RabbitMQ 설정 (SSM에서 주입)
+      RABBITMQ_HOST: ${RABBITMQ_HOST}
+      RABBITMQ_PORT: ${RABBITMQ_PORT:-5672}
+      RABBITMQ_USER: ${RABBITMQ_USER}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+      # Django 설정
+      DJANGO_SETTINGS_MODULE: config.settings
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
+    working_dir: /app/django_app
+    # Celery Beat 실행 (스케줄러) - entrypoint.sh가 마이그레이션 후 실행
+    command: ["celery", "-A", "config", "beat", "--loglevel=info"]
+    logging:
+      driver: awslogs
+      options:
+        awslogs-group: /ec2/skn18/celery-beat-service
+        awslogs-region: ap-northeast-2
+    restart: unless-stopped
+
+  ########################################
   # 4) sLLM 서버 (옵션: vLLM/Ollama 등)
   ########################################
   sllm-server:

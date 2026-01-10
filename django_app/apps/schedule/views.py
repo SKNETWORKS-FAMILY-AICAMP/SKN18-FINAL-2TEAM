@@ -277,7 +277,7 @@ def _invite_schedule_shared_users(schedule: Schedule, emails, owner_id: str):
         )
         
         # 일정 공유 알림 생성
-        from apps.dashboard.notification_utils import create_schedule_share_notification
+        from apps.notification.notification_utils import create_schedule_share_notification
         try:
             create_schedule_share_notification(
                 schedule_title=schedule.title,
@@ -1357,7 +1357,7 @@ def schedule_shared_users(request, schedule_id):
             )
             
             # 일정 공유 알림 생성
-            from apps.dashboard.notification_utils import create_schedule_share_notification, get_user_display_name
+            from apps.notification.notification_utils import create_schedule_share_notification, get_user_display_name
             try:
                 owner = CustomUser.objects.get(user_id=owner_id)
                 owner_name = get_user_display_name(owner)

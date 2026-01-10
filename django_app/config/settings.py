@@ -49,6 +49,8 @@ INSTALLED_APPS = [
     "apps.codes.apps.CodesConfig",
     "apps.bookmark.apps.BookmarkConfig",
     "apps.feedback.apps.FeedbackConfig",
+    "apps.notification.apps.NotificationConfig",
+    "django_celery_beat",
     
     "django.contrib.admin",
     "django.contrib.auth",
@@ -542,3 +544,96 @@ LOGGING = {
         },
     },
 }
+
+# ───────────────────────────────────
+# Celery Configuration
+# ───────────────────────────────────
+# Celery를 사용하려면 celery 패키지를 설치해야 합니다: pip install celery
+# 프로젝트에 이미 RabbitMQ가 설정되어 있으므로 RabbitMQ를 사용합니다.
+
+# Celery Broker URL (메시지 브로커)
+# RabbitMQ를 사용 (환경변수에서 직접 구성)
+# 서버 환경: 환경변수에서 RABBITMQ_HOST, RABBITMQ_PORT, RABBITMQ_USER, RABBITMQ_PASSWORD 사용
+# 로컬 환경: messaging/config.py에서 가져오거나 기본값 사용
+try:
+    from messaging.config import RABBITMQ_URL
+    # messaging 모듈이 있으면 우선 사용 (로컬 개발 환경)
+    CELERY_BROKER_URL = env('CELERY_BROKER_URL', default=RABBITMQ_URL)
+except ImportError:
+    # messaging 모듈이 없으면 환경변수에서 직접 구성 (서버 환경)
+    RABBITMQ_HOST = env('RABBITMQ_HOST')
+    RABBITMQ_PORT = env('RABBITMQ_PORT')
+    RABBITMQ_USER = env('RABBITMQ_USER')
+    RABBITMQ_PASSWORD = env('RABBITMQ_PASSWORD')
+    RABBITMQ_VHOST = env('RABBITMQ_VHOST')
+    
+    # URL 인코딩 (비밀번호와 vhost)
+    from urllib.parse import quote_plus
+    encoded_password = quote_plus(RABBITMQ_PASSWORD)
+    encoded_vhost = quote_plus(RABBITMQ_VHOST)
+    
+    # RabbitMQ URL 구성
+    DEFAULT_RABBITMQ_URL = f'amqp://{RABBITMQ_USER}:{encoded_password}@{RABBITMQ_HOST}:{RABBITMQ_PORT}/{encoded_vhost}'
+    CELERY_BROKER_URL = env('CELERY_BROKER_URL', default=DEFAULT_RABBITMQ_URL)
+
+# Celery Result Backend (작업 결과 저장소)
+# 최신 Celery는 RabbitMQ를 Result Backend로 직접 사용할 수 없습니다.
+# 알림 생성은 결과를 저장할 필요가 없으므로 None으로 설정합니다.
+# 결과가 필요한 경우 Django DB를 사용: 'db+postgresql://...' 또는 Redis 사용
+CELERY_RESULT_BACKEND = env('CELERY_RESULT_BACKEND', default=None)
+
+# Celery 시간대 설정
+CELERY_TIMEZONE = 'Asia/Seoul'
+CELERY_ENABLE_UTC = True
+
+# Celery Beat 스케줄 설정 (주기적 작업)
+# 주의: CELERY_BEAT_SCHEDULER가 'django_celery_beat.schedulers:DatabaseScheduler'로 설정되어 있으면
+# 아래 CELERY_BEAT_SCHEDULE은 무시됩니다. 스케줄은 Django Admin의 Periodic Tasks에서 관리하거나
+# PeriodicTask 모델을 통해 프로그래밍 방식으로 관리합니다.
+# 
+# DatabaseScheduler를 사용하지 않고 파일 기반 스케줄을 사용하려면:
+# - CELERY_BEAT_SCHEDULER 설정을 제거하거나 주석 처리
+# - 아래 CELERY_BEAT_SCHEDULE 설정을 활성화
+try:
+    from celery.schedules import crontab
+    
+    # DatabaseScheduler 사용 시 이 설정은 무시됩니다 (초기 데이터로만 참고)
+    CELERY_BEAT_SCHEDULE = {
+        'check-schedule-reminders': {
+            'task': 'apps.notification.tasks.check_schedule_reminders',
+            # 방법 1: 초 단위로 지정 (5분 = 300초)
+            'schedule': 300.0,
+            # 방법 2: crontab 사용 (매 5분마다)
+            # 'schedule': crontab(minute='*/5'),
+            # 방법 3: 특정 시간에 실행 (매일 오전 9시)
+            # 'schedule': crontab(hour=9, minute=0),
+        },
+    }
+except ImportError:
+    # celery가 설치되어 있지 않으면 기본 스케줄만 설정
+    CELERY_BEAT_SCHEDULE = {
+        'check-schedule-reminders': {
+            'task': 'apps.notification.tasks.check_schedule_reminders',
+            'schedule': 300.0,  # 5분마다 실행
+        },
+    }
+
+# Celery 작업 설정
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_TRACK_STARTED = True
+CELERY_TASK_TIME_LIMIT = 30 * 60  # 30분
+CELERY_TASK_SOFT_TIME_LIMIT = 25 * 60  # 25분
+
+# Celery Beat 스케줄러를 데이터베이스로 변경
+# DatabaseScheduler를 사용하면 스케줄이 PostgreSQL에 저장되며,
+# Django Admin (/admin/django_celery_beat/)에서 관리할 수 있습니다.
+# 장점: 컨테이너 재시작 시 스케줄 유지, 여러 Beat 인스턴스 실행 가능, 동적 스케줄 변경 가능
+CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
+
+# 알림 시스템 설정
+# 비동기 알림 사용 여부 (Celery를 통한 비동기 처리)
+# 기본값: True (비동기 알림 활성화)
+# False로 설정하려면 환경변수 NOTIFICATION_USE_ASYNC=False 설정
+NOTIFICATION_USE_ASYNC = env.bool('NOTIFICATION_USE_ASYNC', default=True)

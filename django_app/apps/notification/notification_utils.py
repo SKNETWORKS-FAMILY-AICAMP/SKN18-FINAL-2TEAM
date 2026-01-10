@@ -1,15 +1,36 @@
 """
 알림 생성 유틸리티 함수
 각 기능에서 알림을 생성할 때 사용하는 공통 함수들
+
+비동기 처리:
+    - create_notification_async(): Celery task를 통한 비동기 알림 생성
+    - bulk_create_notifications_async(): 대량 알림 비동기 일괄 생성
 """
 import logging
+import json
 from typing import Optional, List
 from django.utils import timezone
 from django.db import transaction
-from apps.dashboard.models import Notification
+from django.conf import settings
+from apps.notification.models import Notification
 from apps.account.models import CustomUser
 
 logger = logging.getLogger(__name__)
+
+
+def _use_async_notifications() -> bool:
+    """
+    비동기 알림 사용 여부 확인
+    
+    Returns:
+        bool: Celery가 설정되어 있고 비동기 알림이 활성화되어 있으면 True
+    """
+    # Celery가 설정되어 있는지 확인
+    if hasattr(settings, 'CELERY_BROKER_URL') and settings.CELERY_BROKER_URL:
+        # 환경변수로 비동기 알림 활성화 여부 제어 (기본값: True)
+        from django.conf import settings as django_settings
+        return getattr(django_settings, 'NOTIFICATION_USE_ASYNC', True)
+    return False
 
 
 def create_notification(
@@ -18,7 +39,8 @@ def create_notification(
     title: str,
     message: str,
     related_sid: Optional[int] = None,
-    read_yn: str = 'N'
+    read_yn: str = 'N',
+    use_async: Optional[bool] = None
 ) -> Notification:
     """
     알림 생성 함수
@@ -30,10 +52,35 @@ def create_notification(
         message: 알림 메시지
         related_sid: 관련 ID (experiment_sid, schedule_sid, note_sid, chat_sid 등)
         read_yn: 읽음 여부 ('Y': 읽음, 'N': 읽지 않음)
+        use_async: 비동기 처리 사용 여부 (None이면 설정값 사용)
     
     Returns:
-        생성된 Notification 객체
+        생성된 Notification 객체 (비동기 사용 시 Task 객체)
     """
+    # 비동기 사용 여부 결정
+    if use_async is None:
+        use_async = _use_async_notifications()
+    
+    # 비동기 처리 사용 시
+    if use_async:
+        try:
+            from apps.notification.tasks import create_notification_async
+            task = create_notification_async.delay(
+                user_id=user_id,
+                notification_type=notification_type,
+                title=title,
+                message=message,
+                related_sid=related_sid,
+                read_yn=read_yn
+            )
+            logger.info(f"Notification creation queued as task {task.id} for user {user_id}")
+            # Task 객체 반환 (결과는 task.result로 조회 가능)
+            return task
+        except Exception as e:
+            logger.warning(f"Failed to queue notification task, falling back to sync: {e}")
+            # 비동기 실패 시 동기 처리로 폴백
+    
+    # 동기 처리 (기본 동작)
     try:
         notification = Notification.objects.create(
             user_id=user_id,
@@ -44,6 +91,14 @@ def create_notification(
             read_yn=read_yn,
         )
         logger.info(f"Notification created: {notification.notification_sid} for user {user_id}")
+        
+        # 실험 알림인 경우 클라이언트에 실시간 이벤트 전송
+        if notification_type == 'E' and related_sid:
+            try:
+                _send_experiment_notification_event(user_id, related_sid, notification)
+            except Exception as e:
+                logger.warning(f"Failed to send experiment notification event: {e}", exc_info=True)
+        
         return notification
     except Exception as e:
         logger.error(f"Failed to create notification: {str(e)}", exc_info=True)
@@ -375,3 +430,35 @@ def get_user_display_name(user: CustomUser) -> str:
     if hasattr(user, 'user_id') and user.user_id:
         return str(user.user_id)
     return "알 수 없는 사용자"
+
+
+def _send_experiment_notification_event(user_id: str, experiment_id: int, notification: Notification):
+    """
+    실험 알림 생성 시 클라이언트에 실시간 이벤트 전송
+    
+    현재는 WebSocket이 없으므로, 클라이언트가 이를 감지할 수 있도록
+    브라우저의 CustomEvent를 통해 전달하는 방식으로 구현.
+    실제로는 서버에서 클라이언트에 직접 이벤트를 보낼 수 없으므로,
+    이 함수는 알림 생성 후 클라이언트가 폴링을 통해 감지할 수 있도록
+    로깅만 수행합니다.
+    
+    향후 WebSocket이나 Server-Sent Events를 구현하면 여기에 추가할 수 있습니다.
+    
+    Args:
+        user_id: 사용자 ID
+        experiment_id: 실험 ID
+        notification: 생성된 알림 객체
+    """
+    logger.info(
+        f"Experiment notification created: "
+        f"user_id={user_id}, experiment_id={experiment_id}, "
+        f"notification_id={notification.notification_sid}, "
+        f"title={notification.title}"
+    )
+    
+    # 향후 WebSocket이나 Server-Sent Events 구현 시 여기에 추가
+    # 예: channels_layer.group_send(f"user_{user_id}", {
+    #     "type": "experiment_notification",
+    #     "experiment_id": experiment_id,
+    #     "notification": {...}
+    # })

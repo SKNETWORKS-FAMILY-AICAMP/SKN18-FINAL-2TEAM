@@ -1,19 +1,12 @@
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import render, get_object_or_404
-from django.db.models import Count, Q
-from django.http import JsonResponse
-from django.views.decorators.http import require_http_methods
-from django.views.decorators.csrf import csrf_exempt
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework import status
+from django.shortcuts import render
+from django.db.models import Count
 import logging
 
 from apps.experiments.models import Experiment
 from apps.notes.models import Note
 from apps.chat.models import Chat, ChatMessage
-from apps.dashboard.models import Notification
+from apps.notification.models import Notification
 
 logger = logging.getLogger(__name__)
 
@@ -163,42 +156,3 @@ def index(request):
     }
 
     return render(request, "dashboard/dashboard.html", context)
-
-
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def notification_read_api(request, notification_id):
-    """
-    알림 읽음 처리 API
-    POST /api/notifications/{notification_id}/read/
-    """
-    try:
-        user = request.user
-        notification = get_object_or_404(
-            Notification,
-            notification_sid=notification_id,
-            user_id=user.user_id  # 본인의 알림만 읽을 수 있도록 검증
-        )
-        
-        # 읽음 처리
-        notification.read_yn = Notification.ReadStatus.READ
-        notification.save()
-        
-        logger.info(f"Notification {notification_id} marked as read by user {user.user_id}")
-        
-        return Response({
-            'success': True,
-            'message': '알림이 읽음 처리되었습니다.'
-        }, status=status.HTTP_200_OK)
-        
-    except Notification.DoesNotExist:
-        return Response({
-            'success': False,
-            'error': '알림을 찾을 수 없습니다.'
-        }, status=status.HTTP_404_NOT_FOUND)
-    except Exception as e:
-        logger.error(f"Error marking notification as read: {str(e)}")
-        return Response({
-            'success': False,
-            'error': '알림 읽음 처리 중 오류가 발생했습니다.'
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

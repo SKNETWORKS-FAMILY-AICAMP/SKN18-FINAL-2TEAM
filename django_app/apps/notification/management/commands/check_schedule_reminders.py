@@ -11,7 +11,7 @@ from django.core.management.base import BaseCommand
 from django.utils import timezone
 from datetime import timedelta
 from apps.schedule.models import Schedule
-from apps.dashboard.notification_utils import create_schedule_reminder_notification
+from apps.notification.notification_utils import create_schedule_reminder_notification
 import logging
 
 logger = logging.getLogger(__name__)

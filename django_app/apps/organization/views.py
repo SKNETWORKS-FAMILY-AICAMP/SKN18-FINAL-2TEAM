@@ -1,4 +1,5 @@
 import json
+import logging
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_http_methods
@@ -7,6 +8,8 @@ from django.utils import timezone
 from django.db.models import Q
 from datetime import timedelta
 from .models import Organization, OrganizationMember, OrganizationInvitation
+
+logger = logging.getLogger(__name__)
 
 
 @login_required
@@ -215,18 +218,19 @@ def organization_create_api(request):
                 )
                 
                 # 조직 초대 알림 생성
-                from apps.dashboard.notification_utils import create_organization_invitation_notification, get_user_display_name
+                from apps.notification.notification_utils import create_organization_invitation_notification, get_user_display_name
                 try:
                     inviter_name = get_user_display_name(request.user)
-                    create_organization_invitation_notification(
+                    # user_id를 문자열로 변환 (UUID 객체일 수 있음)
+                    invited_user_id_str = str(invited_user.user_id)
+                    result = create_organization_invitation_notification(
                         organization_name=organization.organization_name,
-                        invited_user_id=invited_user.user_id,
+                        invited_user_id=invited_user_id_str,
                         inviter_name=inviter_name,
                         organization_id=organization.organization_sid
                     )
+                    logger.info(f"Organization invitation notification created for user {invited_user_id_str}, organization {organization.organization_name}")
                 except Exception as e:
-                    import logging
-                    logger = logging.getLogger(__name__)
                     logger.error(f"Failed to create organization invitation notification: {str(e)}", exc_info=True)
                 
                 created_invitations.append({
@@ -579,18 +583,19 @@ def organization_add_member_api(request, organization_id):
                 )
                 
                 # 조직 초대 알림 생성
-                from apps.dashboard.notification_utils import create_organization_invitation_notification, get_user_display_name
+                from apps.notification.notification_utils import create_organization_invitation_notification, get_user_display_name
                 try:
                     inviter_name = get_user_display_name(request.user)
-                    create_organization_invitation_notification(
+                    # user_id를 문자열로 변환 (UUID 객체일 수 있음)
+                    invited_user_id_str = str(invited_user.user_id)
+                    result = create_organization_invitation_notification(
                         organization_name=organization.organization_name,
-                        invited_user_id=invited_user.user_id,
+                        invited_user_id=invited_user_id_str,
                         inviter_name=inviter_name,
                         organization_id=organization.organization_sid
                     )
+                    logger.info(f"Organization invitation notification created for user {invited_user_id_str}, organization {organization.organization_name}")
                 except Exception as e:
-                    import logging
-                    logger = logging.getLogger(__name__)
                     logger.error(f"Failed to create organization invitation notification: {str(e)}", exc_info=True)
                 
                 created_invitations.append({

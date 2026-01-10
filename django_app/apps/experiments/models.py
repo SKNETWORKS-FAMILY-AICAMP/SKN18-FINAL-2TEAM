@@ -103,7 +103,7 @@ class Experiment(models.Model):
     status = models.CharField(
         max_length=1,
         choices=STATUS_CHOICES,
-        default='E',
+        default='R',  # Ready: 파이프라인 생성 시 기본 상태
         db_column='status'
     )
     progress = models.SmallIntegerField(
@@ -137,12 +137,12 @@ class Experiment(models.Model):
     def get_status_display_korean(self):
         """한국어 상태 표시"""
         status_map = {
-            'E': '활성',
-            'R': '준비',
-            'P': '진행중',
-            'C': '완료',
-            'F': '실패',
-            'D': '비활성',
+            'R': '준비',      # Ready: 파이프라인 생성됨, 아직 시작 안됨
+            'E': '활성',      # Active: 워커가 시작해서 진행이 시작됨
+            'P': '진행중',    # In Progress: 실제로 실행 중
+            'C': '완료',      # Completed
+            'F': '실패',      # Failed
+            'D': '비활성',    # Disabled
         }
         return status_map.get(self.status, self.get_status_display())
 

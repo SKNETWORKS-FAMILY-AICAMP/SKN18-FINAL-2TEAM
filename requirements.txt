@@ -83,5 +83,8 @@ boto3
 # RabbitMQ (Message Queue)
 pika
 
+# shedule reminder
+celery
+django-celery-beat
 ## toon
 git+https://github.com/toon-format/toon-python.git
