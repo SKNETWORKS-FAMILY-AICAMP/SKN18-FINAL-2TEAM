@@ -423,7 +423,7 @@ def handle_simulation_task(message: Dict[str, Any]):
             try:
                 _ensure_django_setup()
                 from apps.experiments.models import Experiment
-                from apps.dashboard.notification_utils import create_experiment_start_notification
+                from apps.notification.notification_utils import create_experiment_start_notification
                 
                 experiment = Experiment.objects.get(experiment_sid=experiment_sid)
                 user_id = experiment.created_id
@@ -610,7 +610,7 @@ def handle_simulation_task(message: Dict[str, Any]):
                 # 중간 단계: 도구 완료 알림만 생성
                 if user_id:
                     try:
-                        from apps.dashboard.notification_utils import create_experiment_tool_complete_notification
+                        from apps.notification.notification_utils import create_experiment_tool_complete_notification
                         create_experiment_tool_complete_notification(
                             experiment_title=pipeline_name,
                             tool_name=tool_name,
@@ -639,7 +639,7 @@ def handle_simulation_task(message: Dict[str, Any]):
                 # 마지막 단계: 통합 알림 생성 (도구 완료 + 실험 완료)
                 if user_id:
                     try:
-                        from apps.dashboard.notification_utils import create_experiment_final_tool_complete_notification
+                        from apps.notification.notification_utils import create_experiment_final_tool_complete_notification
                         create_experiment_final_tool_complete_notification(
                             experiment_title=pipeline_name,
                             tool_name=tool_name,

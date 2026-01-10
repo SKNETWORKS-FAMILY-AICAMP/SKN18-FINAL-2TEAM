@@ -5,34 +5,41 @@ from django.db import migrations
 def create_initial_periodic_task(apps, schema_editor):
     """
     기존 CELERY_BEAT_SCHEDULE 설정을 데이터베이스에 마이그레이션
-    check-schedule-reminders 작업을 5분마다 실행하는 스케줄 생성
+    check-schedule-reminders 작업을 3분마다 실행하는 스케줄 생성
     """
     try:
         # django_celery_beat 모델 가져오기
         IntervalSchedule = apps.get_model('django_celery_beat', 'IntervalSchedule')
         PeriodicTask = apps.get_model('django_celery_beat', 'PeriodicTask')
         
-        # 5분 간격 스케줄 생성 (이미 존재하면 가져오기)
+        # 3분 간격 스케줄 생성 (이미 존재하면 가져오기)
+        # 마이그레이션에서는 문자열 값 'minutes'를 직접 사용
         schedule, created = IntervalSchedule.objects.get_or_create(
-            every=5,
-            period=IntervalSchedule.MINUTES,
+            every=3,
+            period='minutes',
         )
         
-        # 주기적 작업 생성 (이미 존재하면 업데이트하지 않음)
-        task, task_created = PeriodicTask.objects.get_or_create(
-            name='check-schedule-reminders',
-            defaults={
-                'task': 'apps.notification.tasks.check_schedule_reminders',
-                'interval': schedule,
-                'enabled': True,
-                'description': '일정 리마인더 확인 작업 (5분마다 실행)',
-            }
-        )
-        
-        if task_created:
+        # 주기적 작업 생성 또는 업데이트
+        try:
+            task = PeriodicTask.objects.get(name='check-schedule-reminders')
+            # 이미 존재하는 경우 업데이트
+            old_interval = task.interval
+            task.task = 'apps.notification.tasks.check_schedule_reminders'
+            task.interval = schedule
+            task.enabled = True
+            task.description = '일정 리마인더 확인 작업 (3분마다 실행)'
+            task.save()
+            print(f"Updated periodic task: {task.name} (interval: {old_interval.every}분 -> {schedule.every}분)")
+        except PeriodicTask.DoesNotExist:
+            # 새로 생성
+            task = PeriodicTask.objects.create(
+                name='check-schedule-reminders',
+                task='apps.notification.tasks.check_schedule_reminders',
+                interval=schedule,
+                enabled=True,
+                description='일정 리마인더 확인 작업 (3분마다 실행)',
+            )
             print(f"Created periodic task: {task.name}")
-        else:
-            print(f"Periodic task already exists: {task.name}")
             
     except LookupError:
         # django_celery_beat가 아직 마이그레이션되지 않은 경우 무시
@@ -49,8 +56,8 @@ def reverse_initial_periodic_task(apps, schema_editor):
         # 주기적 작업 삭제
         PeriodicTask.objects.filter(name='check-schedule-reminders').delete()
         
-        # 5분 간격 스케줄 삭제 (다른 작업에서 사용하지 않는 경우에만)
-        interval = IntervalSchedule.objects.filter(every=5, period=IntervalSchedule.MINUTES).first()
+        # 3분 간격 스케줄 삭제 (다른 작업에서 사용하지 않는 경우에만)
+        interval = IntervalSchedule.objects.filter(every=3, period='minutes').first()
         if interval and not PeriodicTask.objects.filter(interval=interval).exists():
             interval.delete()
             
