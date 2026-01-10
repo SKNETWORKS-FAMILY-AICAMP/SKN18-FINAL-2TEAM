@@ -78,46 +78,6 @@ function getStatusClass(statusCode) {
 }
 
 const dummyTodaySchedule = [
-    {
-        id: 1,
-        title: "PCR 반응 조건 최적화",
-        status: "E",  // 진행중
-        startDate: "2023/05/11",
-        endDate: "2023/05/17",
-        linkedNote: "PCR 실험 프로토콜",
-    },
-    {
-        id: 2,
-        title: "주간 연구 진행 보고",
-        status: "P",  // 예정
-        startDate: "2023/08/03",
-        endDate: "2023/08/12",
-        linkedNote: null,
-    },
-    {
-        id: 3,
-        title: "세포 배양 관찰",
-        status: "F",  // 완료
-        startDate: "2022/12/01",
-        endDate: "2022/12/13",
-        linkedNote: "세포 배양 기록",
-    },
-    {
-        id: 4,
-        title: "시퀀싱 데이터 검토",
-        status: "E",  // 진행중
-        startDate: "2023/08/22",
-        endDate: "2023/09/01",
-        linkedNote: "NGS 분석 결과",
-    },
-    {
-        id: 5,
-        title: "최신 논문 리뷰",
-        status: "P",  // 예정
-        startDate: "2023/09/19",
-        endDate: "2023/09/25",
-        linkedNote: null,
-    },
 ];
 
 // Initialize dashboard
