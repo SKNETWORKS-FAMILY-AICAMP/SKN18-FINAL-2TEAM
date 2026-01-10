@@ -7,6 +7,7 @@
     - bulk_create_notifications_async(): 대량 알림 비동기 일괄 생성
 """
 import logging
+import json
 from typing import Optional, List
 from django.utils import timezone
 from django.db import transaction
@@ -90,6 +91,14 @@ def create_notification(
             read_yn=read_yn,
         )
         logger.info(f"Notification created: {notification.notification_sid} for user {user_id}")
+        
+        # 실험 알림인 경우 클라이언트에 실시간 이벤트 전송
+        if notification_type == 'E' and related_sid:
+            try:
+                _send_experiment_notification_event(user_id, related_sid, notification)
+            except Exception as e:
+                logger.warning(f"Failed to send experiment notification event: {e}", exc_info=True)
+        
         return notification
     except Exception as e:
         logger.error(f"Failed to create notification: {str(e)}", exc_info=True)
@@ -421,3 +430,35 @@ def get_user_display_name(user: CustomUser) -> str:
     if hasattr(user, 'user_id') and user.user_id:
         return str(user.user_id)
     return "알 수 없는 사용자"
+
+
+def _send_experiment_notification_event(user_id: str, experiment_id: int, notification: Notification):
+    """
+    실험 알림 생성 시 클라이언트에 실시간 이벤트 전송
+    
+    현재는 WebSocket이 없으므로, 클라이언트가 이를 감지할 수 있도록
+    브라우저의 CustomEvent를 통해 전달하는 방식으로 구현.
+    실제로는 서버에서 클라이언트에 직접 이벤트를 보낼 수 없으므로,
+    이 함수는 알림 생성 후 클라이언트가 폴링을 통해 감지할 수 있도록
+    로깅만 수행합니다.
+    
+    향후 WebSocket이나 Server-Sent Events를 구현하면 여기에 추가할 수 있습니다.
+    
+    Args:
+        user_id: 사용자 ID
+        experiment_id: 실험 ID
+        notification: 생성된 알림 객체
+    """
+    logger.info(
+        f"Experiment notification created: "
+        f"user_id={user_id}, experiment_id={experiment_id}, "
+        f"notification_id={notification.notification_sid}, "
+        f"title={notification.title}"
+    )
+    
+    # 향후 WebSocket이나 Server-Sent Events 구현 시 여기에 추가
+    # 예: channels_layer.group_send(f"user_{user_id}", {
+    #     "type": "experiment_notification",
+    #     "experiment_id": experiment_id,
+    #     "notification": {...}
+    # })

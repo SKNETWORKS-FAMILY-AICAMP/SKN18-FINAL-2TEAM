@@ -216,6 +216,8 @@ function initDashboard() {
     
     // Convert server-rendered times to Korean format
     convertServerRenderedTimes();
+    
+    // 대시보드도 자동 업데이트 없음 (화면 새로고침 필요)
 
     // Event listeners
     if (chatQuestionInput) {
@@ -442,7 +444,25 @@ function renderSchedules(container, schedules = null) {
 function renderExperiments(container, experiments = null) {
     if (!container) return;
     
-    container.innerHTML = experimentsData.map(experiment => {
+    // experiments 인자가 없으면 빈 배열 처리
+    const experimentsList = experiments && Array.isArray(experiments) && experiments.length > 0 
+        ? experiments 
+        : [];
+    
+    if (experimentsList.length === 0) {
+        container.innerHTML = `
+            <tr>
+                <td colspan="4" class="empty-state">
+                    <div class="empty-state">
+                        <p class="empty-message">실험 내역이 없습니다</p>
+                    </div>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    container.innerHTML = experimentsList.map(experiment => {
         // Handle both API response format and dummy data format
         const tools = experiment.tools || [];
         const toolsHtml = tools.map(tool => {
@@ -475,6 +495,8 @@ function renderExperiments(container, experiments = null) {
             statusDisplay === '진행'   ? 'status-progress' :
             statusDisplay === '진행중' ? 'status-progress' :
             statusDisplay === '준비'   ? 'status-ready' :
+            statusDisplay === '활성'   ? 'status-ready' :
+            statusDisplay === '비활성' ? 'status-ready' :
             'status-ready';
         
         const statusDotClass =
@@ -482,6 +504,8 @@ function renderExperiments(container, experiments = null) {
             statusDisplay === '진행'   ? 'status-dot-progress' :
             statusDisplay === '진행중' ? 'status-dot-progress' :
             statusDisplay === '준비'   ? 'status-dot-ready' :
+            statusDisplay === '활성'   ? 'status-dot-ready' :
+            statusDisplay === '비활성' ? 'status-dot-ready' :
             'status-dot-ready';
         
         // 생성일 처리 - API 응답 또는 더미 데이터
@@ -508,7 +532,7 @@ function renderExperiments(container, experiments = null) {
                 </td>
                 <td>
                     <span class="status-badge ${statusClass}">
-                        <span class="status-dot status-dot-${statusClass} ${dotClass}"></span>
+                        <span class="status-dot ${statusDotClass}"></span>
                         ${escapeHtml(statusDisplay)}
                     </span>
                 </td>
@@ -799,6 +823,124 @@ if (document.readyState === 'loading') {
     initDashboard();
 }
 
+// 대시보드의 특정 실험 행 업데이트 (알림 수신 시 사용)
+async function updateExperimentRowInDashboard(experimentId, experimentData) {
+    const experimentTableBody = document.getElementById('experimentTableBody');
+    if (!experimentTableBody || !experimentId) return;
+    
+    const row = experimentTableBody.querySelector(`tr[data-experiment-id="${experimentId}"]`);
+    if (!row) return;
+    
+    // 상태 코드 변환
+    const statusCode = experimentData.status || 'R';
+    const statusMap = {
+        'C': '완료',
+        'P': '진행중',
+        'R': '준비',
+        'F': '진행',
+        'E': '활성',
+        'D': '비활성'
+    };
+    const statusDisplay = statusMap[statusCode] || experimentData.status_display || '준비';
+    
+    // 상태 클래스 결정 (실험 페이지와 동일)
+    const statusClass =
+        statusDisplay === '완료'   ? 'status-completed' :
+        statusDisplay === '진행'   ? 'status-progress' :
+        statusDisplay === '진행중' ? 'status-progress' :
+        statusDisplay === '준비'   ? 'status-ready' :
+        statusDisplay === '활성'   ? 'status-ready' :
+        statusDisplay === '비활성' ? 'status-ready' :
+        'status-ready';
+    
+    const statusDotClass =
+        statusDisplay === '완료'   ? 'status-dot-completed' :
+        statusDisplay === '진행'   ? 'status-dot-progress' :
+        statusDisplay === '진행중' ? 'status-dot-progress' :
+        statusDisplay === '준비'   ? 'status-dot-ready' :
+        statusDisplay === '활성'   ? 'status-dot-ready' :
+        statusDisplay === '비활성' ? 'status-dot-ready' :
+        'status-dot-ready';
+    
+    // 진행률 업데이트
+    const progress = experimentData.progress !== undefined ? experimentData.progress : 
+                    (statusCode === 'C' ? 100 : 
+                    statusCode === 'P' ? 65 : 
+                    statusCode === 'R' ? 25 : 0);
+    
+    // 상태 열 업데이트 (3번째 td)
+    const statusCell = row.querySelector('td:nth-child(3)');
+    if (statusCell) {
+        statusCell.innerHTML = `
+            <span class="status-badge ${statusClass}">
+                <span class="status-dot ${statusDotClass}"></span>
+                ${escapeHtml(statusDisplay)}
+            </span>
+        `;
+    }
+    
+    // data 속성 업데이트
+    row.setAttribute('data-experiment-progress', progress);
+    
+    console.log(`[updateExperimentRowInDashboard] Updated experiment ${experimentId}: progress=${progress}%, status=${statusDisplay}`);
+}
+
+// 알림 수신 시 대시보드의 특정 실험 업데이트
+async function updateDashboardExperimentFromNotification(experimentId) {
+    if (!experimentId) {
+        console.warn('[updateDashboardExperimentFromNotification] Experiment ID is missing');
+        return;
+    }
+    
+    try {
+        // 실험 파일 목록 API를 통해 최신 상태 가져오기
+        const response = await fetch(`/api/experiments/${experimentId}/files/`, {
+            method: 'GET',
+            headers: {
+                'X-CSRFToken': getCsrfToken(),
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            const experiment = data.experiment || {};
+            
+            console.log(`[updateDashboardExperimentFromNotification] Updating experiment ${experimentId}: status=${experiment.status}, progress=${experiment.progress}%`);
+            
+            // 대시보드의 실험 목록 행 업데이트
+            updateExperimentRowInDashboard(experimentId, {
+                progress: experiment.progress,
+                status: experiment.status,
+                status_display: getDashboardStatusDisplay(experiment.status)
+            });
+        } else {
+            console.error('[updateDashboardExperimentFromNotification] API request failed:', response.status, response.statusText);
+        }
+    } catch (error) {
+        console.error('[updateDashboardExperimentFromNotification] Error:', error);
+    }
+}
+
+// 대시보드용 상태 코드를 표시 텍스트로 변환하는 헬퍼 함수
+function getDashboardStatusDisplay(statusCode) {
+    const statusMap = {
+        'C': '완료',
+        'P': '진행중',
+        'R': '준비',
+        'F': '진행',
+        'E': '활성',
+        'D': '비활성',
+        'completed': '완료',
+        'in_progress': '진행중',
+        'ready': '준비',
+        'failed': '진행',
+        'active': '활성',
+        'inactive': '비활성'
+    };
+    return statusMap[statusCode] || '진행중';
+}
+
 // Export for use in other modules
 if (typeof window !== 'undefined') {
     window.DashboardPage = {
@@ -807,5 +949,6 @@ if (typeof window !== 'undefined') {
         loadDashboardData,
         showRecommendationsDropdown,
         closeRecommendations,
+        updateDashboardExperimentFromNotification, // 알림 수신 시 실험 업데이트
     };
 }

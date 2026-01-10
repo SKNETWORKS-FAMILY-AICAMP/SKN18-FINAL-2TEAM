@@ -117,6 +117,9 @@ function handleNotificationClick(notificationId) {
     });
 }
 
+// 마지막 알림 ID 추적 (새 알림 감지용)
+let lastFetchedNotificationId = null;
+
 // Fetch notifications from API
 function fetchNotifications() {
     fetch('/api/notifications/', {
@@ -129,6 +132,33 @@ function fetchNotifications() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
+            // 새 실험 알림이 있으면 해당 실험 업데이트
+            if (data.notifications && data.notifications.length > 0) {
+                const latestNotification = data.notifications[0];
+                const isNewNotification = lastFetchedNotificationId === null || 
+                                         latestNotification.id !== lastFetchedNotificationId;
+                
+                if (isNewNotification && latestNotification.notification_type === 'E' && latestNotification.related_sid) {
+                    const experimentId = latestNotification.related_sid;
+                    console.log(`[Header] New experiment notification detected in fetch: experiment ${experimentId}`);
+                    
+                    // 실험 페이지가 있으면 해당 실험 업데이트
+                    if (window.ExperimentPage && window.ExperimentPage.updateExperimentFromNotification) {
+                        window.ExperimentPage.updateExperimentFromNotification(experimentId);
+                    }
+                    
+                    // 대시보드 페이지가 있으면 해당 실험 업데이트
+                    if (window.DashboardPage && window.DashboardPage.updateDashboardExperimentFromNotification) {
+                        window.DashboardPage.updateDashboardExperimentFromNotification(experimentId);
+                    }
+                    
+                    lastFetchedNotificationId = latestNotification.id;
+                } else if (isNewNotification) {
+                    // 실험 알림이 아니어도 마지막 알림 ID 업데이트
+                    lastFetchedNotificationId = latestNotification.id;
+                }
+            }
+            
             updateNotificationUI(data.unread_count, data.notifications);
         }
     })
@@ -202,10 +232,65 @@ function updateUnreadCount() {
 
 // Start periodic notification refresh
 function startNotificationRefresh() {
+    // 마지막 알림 ID 추적 (새 알림 감지용)
+    let lastNotificationId = null;
+    
+    // 실험 알림 감지를 위한 더 빠른 주기 (5초)
+    function checkExperimentNotifications() {
+        fetch('/api/notifications/?limit=10', {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.notifications && data.notifications.length > 0) {
+                // 실험 알림만 필터링
+                const experimentNotifications = data.notifications.filter(notif => 
+                    notif.notification_type === 'E' && notif.related_sid
+                );
+                
+                // 새 실험 알림이 있으면 해당 실험 업데이트
+                experimentNotifications.forEach(notif => {
+                    const isNewNotification = lastNotificationId === null || 
+                                             notif.id > lastNotificationId;
+                    
+                    if (isNewNotification) {
+                        const experimentId = notif.related_sid;
+                        console.log(`[Header] New experiment notification detected: experiment ${experimentId}, notification_id=${notif.id}`);
+                        
+                        // 실험 페이지가 있으면 해당 실험 업데이트
+                        if (window.ExperimentPage && window.ExperimentPage.updateExperimentFromNotification) {
+                            window.ExperimentPage.updateExperimentFromNotification(experimentId);
+                        }
+                        
+                        // 대시보드 페이지가 있으면 해당 실험 업데이트
+                        if (window.DashboardPage && window.DashboardPage.updateDashboardExperimentFromNotification) {
+                            window.DashboardPage.updateDashboardExperimentFromNotification(experimentId);
+                        }
+                        
+                        // 마지막 알림 ID 업데이트
+                        if (lastNotificationId === null || notif.id > lastNotificationId) {
+                            lastNotificationId = notif.id;
+                        }
+                    }
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error checking experiment notifications:', error);
+        });
+    }
+    
+    // 실험 알림은 5초마다 체크 (더 빠른 반응성)
+    window.__experimentNotificationCheckInterval = setInterval(checkExperimentNotifications, 5000);
+    
     // 30초마다 알림 카운트만 업데이트 (드롭다운이 열려있지 않을 때)
     notificationRefreshInterval = setInterval(() => {
         if (!showNotificationDropdown) {
-            // 카운트만 업데이트 (빠른 업데이트)
+            // 최신 알림 1개를 가져와서 카운트만 업데이트
             fetch('/api/notifications/?limit=1', {
                 method: 'GET',
                 headers: {
@@ -236,6 +321,14 @@ function startNotificationRefresh() {
                     } else if (notificationDot) {
                         notificationDot.style.display = 'none';
                     }
+                    
+                    // 마지막 알림 ID 업데이트
+                    if (data.notifications && data.notifications.length > 0) {
+                        const latestNotification = data.notifications[0];
+                        if (lastNotificationId === null || latestNotification.id > lastNotificationId) {
+                            lastNotificationId = latestNotification.id;
+                        }
+                    }
                 }
             })
             .catch(error => {
@@ -250,6 +343,11 @@ function stopNotificationRefresh() {
     if (notificationRefreshInterval) {
         clearInterval(notificationRefreshInterval);
         notificationRefreshInterval = null;
+    }
+    // 실험 알림 체크 인터벌도 정리 (전역 변수로 관리 필요)
+    if (window.__experimentNotificationCheckInterval) {
+        clearInterval(window.__experimentNotificationCheckInterval);
+        window.__experimentNotificationCheckInterval = null;
     }
 }
 
