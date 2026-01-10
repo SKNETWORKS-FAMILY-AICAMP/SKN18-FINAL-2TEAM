@@ -124,6 +124,8 @@ services:
     # web 이미지와 동일한 이미지 사용 (Django 앱 포함)
     image: ${ECR_WEB_IMAGE:-helixops_web:latest}
     container_name: celery-worker
+    # entrypoint를 사용하여 마이그레이션 자동 실행
+    entrypoint: ["/entrypoint.sh"]
     environment:
       AWS_REGION: ${AWS_REGION:-ap-northeast-2}
       STACK_NAME: ${STACK_NAME:-skn18-final-infra}
@@ -142,7 +144,7 @@ services:
       DJANGO_SETTINGS_MODULE: config.settings
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
     working_dir: /app/django_app
-    # Celery Worker 실행
+    # Celery Worker 실행 - entrypoint.sh가 마이그레이션 후 실행
     command: ["celery", "-A", "config", "worker", "--loglevel=info", "--concurrency=2"]
     logging:
       driver: awslogs
@@ -158,6 +160,8 @@ services:
     # web 이미지와 동일한 이미지 사용 (Django 앱 포함)
     image: ${ECR_WEB_IMAGE:-helixops_web:latest}
     container_name: celery-beat
+    # entrypoint를 사용하여 마이그레이션 자동 실행
+    entrypoint: ["/entrypoint.sh"]
     environment:
       AWS_REGION: ${AWS_REGION:-ap-northeast-2}
       STACK_NAME: ${STACK_NAME:-skn18-final-infra}
@@ -176,7 +180,7 @@ services:
       DJANGO_SETTINGS_MODULE: config.settings
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
     working_dir: /app/django_app
-    # Celery Beat 실행 (스케줄러)
+    # Celery Beat 실행 (스케줄러) - entrypoint.sh가 마이그레이션 후 실행
     command: ["celery", "-A", "config", "beat", "--loglevel=info"]
     logging:
       driver: awslogs

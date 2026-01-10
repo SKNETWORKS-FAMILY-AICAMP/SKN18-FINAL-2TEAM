@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     "apps.bookmark.apps.BookmarkConfig",
     "apps.feedback.apps.FeedbackConfig",
     "apps.notification.apps.NotificationConfig",
+    "django_celery_beat",
     
     "django.contrib.admin",
     "django.contrib.auth",
@@ -586,10 +587,17 @@ CELERY_TIMEZONE = 'Asia/Seoul'
 CELERY_ENABLE_UTC = True
 
 # Celery Beat 스케줄 설정 (주기적 작업)
-# crontab을 사용하려면 아래 주석을 해제하고 위의 schedule을 주석 처리하세요
+# 주의: CELERY_BEAT_SCHEDULER가 'django_celery_beat.schedulers:DatabaseScheduler'로 설정되어 있으면
+# 아래 CELERY_BEAT_SCHEDULE은 무시됩니다. 스케줄은 Django Admin의 Periodic Tasks에서 관리하거나
+# PeriodicTask 모델을 통해 프로그래밍 방식으로 관리합니다.
+# 
+# DatabaseScheduler를 사용하지 않고 파일 기반 스케줄을 사용하려면:
+# - CELERY_BEAT_SCHEDULER 설정을 제거하거나 주석 처리
+# - 아래 CELERY_BEAT_SCHEDULE 설정을 활성화
 try:
     from celery.schedules import crontab
     
+    # DatabaseScheduler 사용 시 이 설정은 무시됩니다 (초기 데이터로만 참고)
     CELERY_BEAT_SCHEDULE = {
         'check-schedule-reminders': {
             'task': 'apps.dashboard.tasks.check_schedule_reminders',
@@ -617,6 +625,12 @@ CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 30 * 60  # 30분
 CELERY_TASK_SOFT_TIME_LIMIT = 25 * 60  # 25분
+
+# Celery Beat 스케줄러를 데이터베이스로 변경
+# DatabaseScheduler를 사용하면 스케줄이 PostgreSQL에 저장되며,
+# Django Admin (/admin/django_celery_beat/)에서 관리할 수 있습니다.
+# 장점: 컨테이너 재시작 시 스케줄 유지, 여러 Beat 인스턴스 실행 가능, 동적 스케줄 변경 가능
+CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
 
 # 알림 시스템 설정
 # 비동기 알림 사용 여부 (Celery를 통한 비동기 처리)

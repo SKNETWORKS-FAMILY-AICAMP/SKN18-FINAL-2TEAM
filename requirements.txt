@@ -84,3 +84,4 @@ pika
 
 # shedule reminder
 celery
+django-celery-beat
