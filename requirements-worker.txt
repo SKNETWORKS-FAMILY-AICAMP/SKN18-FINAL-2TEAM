@@ -16,6 +16,9 @@ whitenoise
 libsass
 django-sass-processor
 
+# Django Celery Beat (INSTALLED_APPS에 포함되어 있음)
+django-celery-beat>=2.5.0
+
 # Database
 psycopg[binary, pool]
 
