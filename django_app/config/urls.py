@@ -18,7 +18,9 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import include, path
 from django.views.decorators.csrf import csrf_exempt
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
+from django.conf import settings
+from pathlib import Path
 from apps.account.views import index as root_index, settings_api
 from apps.schedule import views as schedule_views
 from apps.dashboard import views as dashboard_views
@@ -38,9 +40,32 @@ def health_check(request):
     return JsonResponse({"status": "healthy", "service": "django-app"})
 
 
+def google_site_verification(request):
+    """
+    Google Search Console 사이트 검증용 파일 서빙
+    """
+    # 프로젝트 루트 디렉토리 (BASE_DIR의 부모 디렉토리)
+    project_root = Path(settings.BASE_DIR).parent
+    verification_file = project_root / "google52edda1c03988302.html"
+    
+    try:
+        with open(verification_file, 'r', encoding='utf-8') as f:
+            content = f.read()
+        return HttpResponse(content, content_type='text/html')
+    except FileNotFoundError:
+        # 파일이 없으면 기본 검증 텍스트 반환
+        return HttpResponse(
+            "google-site-verification: google52edda1c03988302.html",
+            content_type='text/plain'
+        )
+
+
 urlpatterns = [
     # 헬스체크 엔드포인트 (ALB용, 인증 불필요)
     path("health", health_check, name="health"),
+    
+    # Google 사이트 검증 파일 (인증 불필요)
+    path("google52edda1c03988302.html", google_site_verification, name="google_site_verification"),
     
     # 루트 URL - 인증 상태에 따라 리디렉트
     path("", root_index, name="root"),
