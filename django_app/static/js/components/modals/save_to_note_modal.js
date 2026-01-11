@@ -407,17 +407,69 @@ console.log('[SaveToNoteModal] ===== Script file loading... =====');
         saveNoteBtn.disabled = isDisabled;
     }
 
+    // Format protein data to HTML content
+    function formatProteinContent(protein) {
+        if (!protein) return '';
+        
+        const timestamp = new Date().toLocaleString('ko-KR', { 
+            year: 'numeric', 
+            month: '2-digit', 
+            day: '2-digit', 
+            hour: '2-digit', 
+            minute: '2-digit' 
+        });
+        
+        let html = `<p><strong>[단백질 정보 저장 - ${timestamp}]</strong></p>`;
+        html += '<div style="margin: 15px 0;">';
+        
+        if (protein.proteinId || protein.proteinName) {
+            html += `<h3 style="margin: 10px 0; color: #2563eb;">${escapeHtml(protein.proteinName || protein.proteinId || '단백질 정보')}</h3>`;
+        }
+        
+        if (protein.proteinId) {
+            const uniprotUrl = `https://www.uniprot.org/uniprotkb/${protein.proteinId}/entry`;
+            html += `<p><strong>Protein ID:</strong> <a href="${escapeHtml(uniprotUrl)}" target="_blank" rel="noopener noreferrer" style="color: #2563eb; text-decoration: underline;">${escapeHtml(protein.proteinId)}</a> <a href="${escapeHtml(uniprotUrl)}" target="_blank" rel="noopener noreferrer" style="color: #6b7280; text-decoration: none; font-size: 0.875rem; margin-left: 0.5rem;">(UniProt에서 보기)</a></p>`;
+        }
+        
+        if (protein.description) {
+            html += `<p><strong>설명:</strong> ${escapeHtml(protein.description)}</p>`;
+        }
+        
+        if (protein.gene) {
+            html += `<p><strong>Gene:</strong> ${escapeHtml(protein.gene)}</p>`;
+        }
+        
+        if (protein.organism) {
+            html += `<p><strong>Organism:</strong> ${escapeHtml(protein.organism)}</p>`;
+        }
+        
+        if (protein.length) {
+            html += `<p><strong>Length:</strong> ${protein.length} amino acids</p>`;
+        }
+        
+        if (protein.annotationScore !== undefined) {
+            html += `<p><strong>Annotation Score:</strong> ${protein.annotationScore}/5</p>`;
+        }
+        
+        if (protein.tags && protein.tags.length > 0) {
+            html += `<p><strong>Tags:</strong> ${protein.tags.map(tag => `#${escapeHtml(tag)}`).join(' ')}</p>`;
+        }
+        
+        if (protein.sequence) {
+            html += `<div style="margin-top: 15px;">`;
+            html += `<p><strong>Sequence:</strong></p>`;
+            html += `<pre style="background: #f5f5f5; padding: 10px; border-radius: 4px; overflow-x: auto; font-family: monospace; font-size: 12px;">${escapeHtml(protein.sequence)}</pre>`;
+            html += `</div>`;
+        }
+        
+        html += '</div>';
+        return html;
+    }
+
     // Handle save
     async function handleSave() {
         const messageId = saveToNoteContext?.messageId;
-        
-        if (!messageId) {
-            console.error('[SaveToNoteModal] messageId가 없습니다.');
-            if (window.notyf) {
-                window.notyf.error('메시지 ID를 찾을 수 없습니다.');
-            }
-            return;
-        }
+        const isProteinData = saveToNoteContext && !messageId && (saveToNoteContext.proteinId || saveToNoteContext.proteinName || saveToNoteContext.sequence);
         
         // Save button 비활성화 (중복 요청 방지)
         if (saveNoteBtn) {
@@ -426,7 +478,147 @@ console.log('[SaveToNoteModal] ===== Script file loading... =====');
         }
         
         try {
-        if (saveToNoteOption === 'existing' && selectedNote) {
+            // 단백질 정보를 직접 저장하는 경우
+            if (isProteinData) {
+                const proteinContent = formatProteinContent(saveToNoteContext);
+                
+                if (saveToNoteOption === 'existing' && selectedNote) {
+                    // 기존 노트에 추가 - 노트 내용을 먼저 가져와서 추가
+                    try {
+                        // 기존 노트 내용 가져오기
+                        const getResponse = await fetch(`/api/notes/${selectedNote.id}/`, {
+                            method: 'GET',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            credentials: 'same-origin',
+                        });
+                        
+                        if (!getResponse.ok) {
+                            throw new Error('노트 정보를 불러올 수 없습니다.');
+                        }
+                        
+                        const getData = await getResponse.json();
+                        if (getData.status !== 'success' || !getData.note) {
+                            throw new Error('노트 정보를 불러올 수 없습니다.');
+                        }
+                        
+                        const noteData = getData.note;
+                        const existingContent = noteData.content || '';
+                        
+                        // 구분자와 함께 새 내용 추가
+                        const separator = '<hr style="margin: 20px 0; border: none; border-top: 1px solid #e0e0e0;"/>';
+                        const newContent = existingContent 
+                            ? existingContent + separator + proteinContent
+                            : proteinContent;
+                        
+                        // 노트 업데이트
+                        const formData = new FormData();
+                        formData.append('title', noteData.title || '');
+                        formData.append('content', newContent);
+                        formData.append('tags', JSON.stringify(noteData.tags || []));
+                        
+                        const updateResponse = await fetch(`/api/notes/${selectedNote.id}/update/`, {
+                            method: 'PUT',
+                            headers: {
+                                'X-CSRFToken': getCsrfToken(),
+                            },
+                            credentials: 'same-origin',
+                            body: formData,
+                        });
+                        
+                        if (!updateResponse.ok) {
+                            const errorData = await updateResponse.json().catch(() => ({ error: '알 수 없는 오류가 발생했습니다.' }));
+                            throw new Error(errorData.error || `HTTP error! status: ${updateResponse.status}`);
+                        }
+                        
+                        const data = await updateResponse.json();
+                        
+                        if (data.status === 'success') {
+                            if (window.notyf) {
+                                window.notyf.success(`"${selectedNote.title}" 노트에 저장했습니다.`);
+                            }
+                            
+                            document.dispatchEvent(new CustomEvent('saveToNote:save', { 
+                                detail: {
+                                    option: 'existing',
+                                    noteId: selectedNote.id,
+                                    noteTitle: selectedNote.title,
+                                    data: data
+                                }
+                            }));
+                            
+                            if (saveToNoteContext && typeof saveToNoteContext.onSave === 'function') {
+                                saveToNoteContext.onSave('existing', selectedNote.title);
+                            }
+                            
+                            closeSaveToNoteModal();
+                        } else {
+                            throw new Error(data.error || '저장에 실패했습니다.');
+                        }
+                    } catch (error) {
+                        console.error('[SaveToNoteModal] Failed to save protein to existing note:', error);
+                        throw error;
+                    }
+                    
+                } else if (saveToNoteOption === 'new' && newNoteName.trim()) {
+                    // 신규 노트 생성
+                    const formData = new FormData();
+                    formData.append('title', newNoteName.trim());
+                    formData.append('content', proteinContent);
+                    formData.append('tags', JSON.stringify([]));
+                    
+                    const createResponse = await fetch('/api/notes/create/', {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRFToken': getCsrfToken(),
+                        },
+                        credentials: 'same-origin',
+                        body: formData,
+                    });
+                    
+                    if (!createResponse.ok) {
+                        const errorData = await createResponse.json().catch(() => ({ error: '알 수 없는 오류가 발생했습니다.' }));
+                        throw new Error(errorData.error || `HTTP error! status: ${createResponse.status}`);
+                    }
+                    
+                    const data = await createResponse.json();
+                    
+                    if (data.status === 'success') {
+                        if (window.notyf) {
+                            window.notyf.success(`"${newNoteName.trim()}" 노트를 생성했습니다.`);
+                        }
+                        
+                        document.dispatchEvent(new CustomEvent('saveToNote:save', { 
+                            detail: {
+                                option: 'new',
+                                noteName: newNoteName.trim(),
+                                data: data
+                            }
+                        }));
+                        
+                        if (saveToNoteContext && typeof saveToNoteContext.onSave === 'function') {
+                            saveToNoteContext.onSave('new', newNoteName.trim());
+                        }
+                        
+                        closeSaveToNoteModal();
+                    } else {
+                        throw new Error(data.error || '저장에 실패했습니다.');
+                    }
+                }
+                return;
+            }
+            
+            // 기존 로직: messageId가 있는 경우 (채팅 메시지 저장)
+            if (!messageId) {
+                console.error('[SaveToNoteModal] messageId가 없습니다.');
+                if (window.notyf) {
+                    window.notyf.error('메시지 ID를 찾을 수 없습니다.');
+                }
+                return;
+            }
+            
+            if (saveToNoteOption === 'existing' && selectedNote) {
                 // 기존 노트에 추가
                 const response = await fetch('/api/notes/save-message/', {
                     method: 'POST',
@@ -524,6 +716,22 @@ console.log('[SaveToNoteModal] ===== Script file loading... =====');
                 updateSaveButtonState(); // 상태에 따라 다시 비활성화할 수 있음
             }
         }
+    }
+    
+    // Get CSRF token helper
+    function getCsrfToken() {
+        const cookies = document.cookie.split(';');
+        for (let cookie of cookies) {
+            const [name, value] = cookie.trim().split('=');
+            if (name === 'csrftoken') {
+                return value;
+            }
+        }
+        const metaTag = document.querySelector('meta[name=csrf-token]');
+        if (metaTag) {
+            return metaTag.getAttribute('content');
+        }
+        return '';
     }
 
     // Reset state
