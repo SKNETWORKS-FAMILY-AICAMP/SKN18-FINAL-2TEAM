@@ -61,7 +61,7 @@ const defaultTools = [
         icon: "fas fa-microscope", // Microscope icon
         optionFields: [
             { name: "temperature", label: "Temperature", type: "number", default: 1.0, min: 0.1, max: 2.0, step: 0.1 },
-            { name: "numSteps", label: "Number of Steps", type: "number", default: 50, min: 10, max: 200 },
+            { name: "numSteps", label: "Number of Steps", type: "number", default: 5, min: 10, max: 200 },
             { name: "guidanceScale", label: "Guidance Scale", type: "number", default: 7.5, min: 1, max: 20, step: 0.5 },
         ],
         guide: {
