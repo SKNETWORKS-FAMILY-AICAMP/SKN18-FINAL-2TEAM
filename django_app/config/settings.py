@@ -33,6 +33,17 @@ DEBUG = True
 
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["*"])
 
+# CSRF 신뢰된 Origin 설정 (Django 4.0 이상, HTTPS 사용 시 필수)
+# 환경변수 CSRF_TRUSTED_ORIGINS가 있으면 사용하고, 없으면 기본값 사용
+CSRF_TRUSTED_ORIGINS = env.list(
+    "CSRF_TRUSTED_ORIGINS",
+    default=[
+        "https://helixops.r-e.kr",
+        "https://www.helixops.r-e.kr",
+        "http://localhost:8000",  # 로컬 개발용
+    ]
+)
+
 
 # Application definition
 
