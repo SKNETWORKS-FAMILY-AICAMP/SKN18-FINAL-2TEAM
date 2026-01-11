@@ -2024,6 +2024,12 @@ async function pollExperimentDetailStatus(experimentId) {
         return;
     }
     
+    // 완료된 실험이면 상태 확인 스킵
+    if (window.currentExperimentIsCompleted === true) {
+        console.log(`[pollExperimentDetailStatus] Skipping status check for completed experiment ${experimentId}`);
+        return;
+    }
+    
     try {
         // 실험 파일 목록 API를 통해 최신 상태 가져오기
         const response = await fetch(`/api/experiments/${experimentId}/files/`, {
@@ -2111,11 +2117,6 @@ async function pollExperimentDetailStatus(experimentId) {
                 renderResultFilesList(resultFiles, experimentId);
             }
             
-            // 사이드바가 열려있을 때 실험 페이지 목록 화면 전체 업데이트
-            if (experimentTableBody) {
-                loadExperiments();
-            }
-            
             // 완료되었으면 polling 중지 및 완료 플래그 업데이트
             if (experiment.status === 'C' || experiment.progress === 100) {
                 window.currentExperimentIsCompleted = true;
@@ -2124,6 +2125,13 @@ async function pollExperimentDetailStatus(experimentId) {
                     window.__experimentDetailPollTimer = null;
                     console.log('[pollExperimentDetailStatus] Polling stopped: experiment completed');
                 }
+                // 완료된 실험은 목록 업데이트도 스킵 (불필요한 API 호출 방지)
+                return;
+            }
+            
+            // 사이드바가 열려있을 때 실험 페이지 목록 화면 전체 업데이트 (진행중인 실험만)
+            if (experimentTableBody) {
+                loadExperiments();
             }
         } else {
             console.error('[pollExperimentDetailStatus] API request failed:', response.status, response.statusText);

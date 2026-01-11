@@ -237,23 +237,30 @@ function startNotificationRefresh() {
     
     // 실험 알림 감지를 위한 더 빠른 주기 (5초)
     function checkExperimentNotifications() {
-        // 완료된 실험의 사이드바가 열려있으면 알림 요청 스킵
+        // 완료된 실험의 사이드바가 열려있으면 알림 요청 완전히 스킵
         const sidebar = document.getElementById('experimentResultSidebar');
         const isSidebarOpen = sidebar && 
                              sidebar.style.display !== 'none' && 
                              sidebar.style.display !== '' &&
                              sidebar.style.display !== 'hidden';
-        const isCompleted = window.currentExperimentIsCompleted === true;
         
-        if (isSidebarOpen && isCompleted) {
-            console.log('[Header] Skipping experiment notification check - completed experiment sidebar is open', {
-                sidebarOpen: isSidebarOpen,
-                isCompleted: isCompleted,
-                currentExperimentId: window.currentExperimentId
-            });
-            return;
+        if (isSidebarOpen) {
+            // 사이드바가 열려있으면 실험 상태를 직접 확인
+            const statusElement = document.getElementById('experimentResultStatus');
+            const progressText = document.getElementById('experimentResultProgressText');
+            
+            // 상태가 '완료'이거나 진행률이 100%이면 알림 체크 스킵
+            const statusText = statusElement ? statusElement.textContent.trim() : '';
+            const progressValue = progressText ? parseInt(progressText.textContent.replace('%', '')) : 0;
+            const isCompleted = statusText === '완료' || progressValue === 100 || window.currentExperimentIsCompleted === true;
+            
+            if (isCompleted) {
+                // 완료된 실험의 사이드바가 열려있으면 알림 체크 완전히 스킵
+                return;
+            }
         }
         
+        // 사이드바가 열려있지 않거나 완료되지 않은 경우에만 알림 체크
         fetch('/api/notifications/?limit=10', {
             method: 'GET',
             headers: {
