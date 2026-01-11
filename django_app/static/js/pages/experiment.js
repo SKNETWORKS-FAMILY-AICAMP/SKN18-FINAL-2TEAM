@@ -61,7 +61,7 @@ const defaultTools = [
         icon: "fas fa-microscope", // Microscope icon
         optionFields: [
             { name: "temperature", label: "Temperature", type: "number", default: 1.0, min: 0.1, max: 2.0, step: 0.1 },
-            { name: "numSteps", label: "Number of Steps", type: "number", default: 50, min: 10, max: 200 },
+            { name: "numSteps", label: "Number of Steps", type: "number", default: 5, min: 10, max: 200 },
             { name: "guidanceScale", label: "Guidance Scale", type: "number", default: 7.5, min: 1, max: 20, step: 0.5 },
         ],
         guide: {
@@ -233,18 +233,38 @@ function initExperiment() {
         closeExperimentResultSidebar();
     });
 
-    // Close sidebar on overlay click (if overlay exists)
-    experimentResultSidebar?.addEventListener('click', (e) => {
-        if (e.target === experimentResultSidebar) {
-            closeExperimentResultSidebar();
-        }
-    });
+    // Close sidebar on overlay click (if overlay exists) and handle button clicks
+    if (experimentResultSidebar) {
+        experimentResultSidebar.addEventListener('click', (e) => {
+            // Handle button clicks first (before overlay click check)
+            // Structure view button
+            if (e.target.closest('#resultStructureViewBtn')) {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('[initExperiment] Structure view button clicked');
+                handleStructureViewClick();
+                return;
+            }
 
-    // Structure view button handler
-    const structureViewBtn = document.getElementById('resultStructureViewBtn');
-    if (structureViewBtn) {
-        structureViewBtn.addEventListener('click', handleStructureViewClick);
+            // Save to note button
+            if (e.target.closest('#resultSaveToNoteBtn')) {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('[initExperiment] Save to note button clicked');
+                handleSaveToNoteClick(e);
+                return;
+            }
+
+            // Close sidebar on overlay click (only if clicking directly on sidebar, not on children)
+            if (e.target === experimentResultSidebar) {
+                closeExperimentResultSidebar();
+            }
+        });
+        console.log('[initExperiment] Event delegation attached to sidebar');
     }
+
+    // Also call attachExperimentResultSidebarHandlers for compatibility
+    attachExperimentResultSidebarHandlers();
 }
 
 // Load available tools from API
@@ -1873,6 +1893,8 @@ function attachExperimentTableHandlers() {
                 if (experimentResultSidebar) {
                     experimentResultSidebar.style.display = 'flex';
                     document.body.style.overflow = 'hidden';
+                    // 사이드바 버튼 핸들러 다시 연결
+                    attachExperimentResultSidebarHandlers();
                 }
             } else {
                 // Fallback: Load from API
@@ -1928,6 +1950,9 @@ async function openExperimentResultSidebar(experimentId) {
             experimentResultSidebar.style.display = 'flex';
             document.body.style.overflow = 'hidden';
             
+            // 사이드바 버튼 핸들러 다시 연결
+            attachExperimentResultSidebarHandlers();
+            
             // 실험 상세 상태 주기적 업데이트 (5초마다)
             // 기존 타이머가 있으면 제거
             if (window.__experimentDetailPollTimer) {
@@ -1938,6 +1963,8 @@ async function openExperimentResultSidebar(experimentId) {
             // 완료되지 않은 실험만 polling (상태가 'C'가 아니거나 진행률이 100%가 아닌 경우)
             // 목록 화면과 동일한 5초 주기로 설정 (더 빠른 반응성을 위해 3초로 단축 가능)
             const isCompleted = experiment.status === 'C' || experiment.progress === 100;
+            // 완료 상태를 전역 변수에 저장 (알림 요청 스킵용)
+            window.currentExperimentIsCompleted = isCompleted;
             if (!isCompleted) {
                 console.log(`[openExperimentResultSidebar] Starting polling for experiment ${expId} (status: ${experiment.status}, progress: ${experiment.progress}%)`);
                 // 사이드바는 더 빠른 주기로 업데이트하여 목록 화면과의 차이 최소화
@@ -1945,7 +1972,11 @@ async function openExperimentResultSidebar(experimentId) {
                     pollExperimentDetailStatus(expId);
                 }, 3000); // 3초마다 확인 (목록 화면 5초보다 빠르게)
             } else {
-                console.log(`[openExperimentResultSidebar] Skipping polling for completed experiment ${expId}`);
+                console.log(`[openExperimentResultSidebar] Skipping polling for completed experiment ${expId}`, {
+                    status: experiment.status,
+                    progress: experiment.progress,
+                    isCompleted: isCompleted
+                });
             }
         } else {
             console.error('[openExperimentResultSidebar] Failed to load experiment files:', response.status, response.statusText);
@@ -1969,6 +2000,9 @@ function closeExperimentResultSidebar() {
     experimentResultSidebar.style.display = 'none';
     document.body.style.overflow = '';
     
+    // 완료 상태 플래그 초기화
+    window.currentExperimentIsCompleted = false;
+    
     // Polling 중지
     if (window.__experimentDetailPollTimer) {
         clearInterval(window.__experimentDetailPollTimer);
@@ -1987,6 +2021,12 @@ async function pollExperimentDetailStatus(experimentId) {
             clearInterval(window.__experimentDetailPollTimer);
             window.__experimentDetailPollTimer = null;
         }
+        return;
+    }
+    
+    // 완료된 실험이면 상태 확인 스킵
+    if (window.currentExperimentIsCompleted === true) {
+        console.log(`[pollExperimentDetailStatus] Skipping status check for completed experiment ${experimentId}`);
         return;
     }
     
@@ -2077,18 +2117,21 @@ async function pollExperimentDetailStatus(experimentId) {
                 renderResultFilesList(resultFiles, experimentId);
             }
             
-            // 사이드바가 열려있을 때 실험 페이지 목록 화면 전체 업데이트
-            if (experimentTableBody) {
-                loadExperiments();
-            }
-            
-            // 완료되었으면 polling 중지
+            // 완료되었으면 polling 중지 및 완료 플래그 업데이트
             if (experiment.status === 'C' || experiment.progress === 100) {
+                window.currentExperimentIsCompleted = true;
                 if (window.__experimentDetailPollTimer) {
                     clearInterval(window.__experimentDetailPollTimer);
                     window.__experimentDetailPollTimer = null;
                     console.log('[pollExperimentDetailStatus] Polling stopped: experiment completed');
                 }
+                // 완료된 실험은 목록 업데이트도 스킵 (불필요한 API 호출 방지)
+                return;
+            }
+            
+            // 사이드바가 열려있을 때 실험 페이지 목록 화면 전체 업데이트 (진행중인 실험만)
+            if (experimentTableBody) {
+                loadExperiments();
             }
         } else {
             console.error('[pollExperimentDetailStatus] API request failed:', response.status, response.statusText);
@@ -2291,6 +2334,78 @@ function renderExperimentResult(experiment) {
 
     // Result files
     renderExperimentResultFiles(experiment);
+    
+    // Attach sidebar button handlers after rendering
+    // Use setTimeout to ensure DOM is fully updated
+    setTimeout(() => {
+        attachExperimentResultSidebarHandlers();
+    }, 100);
+}
+
+// Attach experiment result sidebar button handlers
+// Note: This function is kept for compatibility, but event delegation is handled in initExperiment
+function attachExperimentResultSidebarHandlers() {
+    console.log('[attachExperimentResultSidebarHandlers] Called (event delegation already set up in initExperiment)');
+    
+    // Verify buttons exist
+    const structureViewBtn = document.getElementById('resultStructureViewBtn');
+    const saveToNoteBtn = document.getElementById('resultSaveToNoteBtn');
+    
+    if (structureViewBtn) {
+        console.log('[attachExperimentResultSidebarHandlers] Structure view button found');
+    } else {
+        console.warn('[attachExperimentResultSidebarHandlers] Structure view button not found');
+    }
+    
+    if (saveToNoteBtn) {
+        console.log('[attachExperimentResultSidebarHandlers] Save to note button found');
+    } else {
+        console.warn('[attachExperimentResultSidebarHandlers] Save to note button not found');
+        // Try to find it in the sidebar
+        const sidebar = document.getElementById('experimentResultSidebar');
+        if (sidebar) {
+            const btn = sidebar.querySelector('#resultSaveToNoteBtn');
+            console.log('[attachExperimentResultSidebarHandlers] Button search in sidebar:', btn);
+            if (btn) {
+                console.log('[attachExperimentResultSidebarHandlers] Button found via querySelector');
+            }
+        }
+    }
+}
+
+// Handle save to note button click
+async function handleSaveToNoteClick(e) {
+    if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+    
+    console.log('[handleSaveToNoteClick] Function called');
+    
+    // 현재 실험 ID 가져오기
+    let experimentId = getCurrentExperimentId();
+    
+    if (!experimentId) {
+        console.error('[handleSaveToNoteClick] Experiment ID not found');
+        if (window.notyf) {
+            window.notyf.error('실험 정보를 찾을 수 없습니다. 실험을 다시 선택해주세요.');
+        }
+        return;
+    }
+    
+    console.log('[handleSaveToNoteClick] Using experiment ID:', experimentId);
+    
+    // 컨텐츠 선택 모달 열기
+    if (window.ExperimentContentSelectionModal && window.ExperimentContentSelectionModal.open) {
+        console.log('[handleSaveToNoteClick] Opening content selection modal');
+        window.ExperimentContentSelectionModal.open(experimentId);
+    } else {
+        console.error('[handleSaveToNoteClick] ExperimentContentSelectionModal not available');
+        console.error('[handleSaveToNoteClick] window.ExperimentContentSelectionModal:', window.ExperimentContentSelectionModal);
+        if (window.notyf) {
+            window.notyf.error('컨텐츠 선택 모달을 열 수 없습니다. 페이지를 새로고침해주세요.');
+        }
+    }
 }
 
 // Handle structure view button click

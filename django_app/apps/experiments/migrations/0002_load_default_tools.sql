@@ -43,7 +43,7 @@ ON CONFLICT (tool_sid) DO NOTHING;
 INSERT INTO t_experiment_tool_option (tool_sid, field_name, field_label, field_type, default_value, min_value, max_value, step_value, options_json, help_text, sort_order, created_at, created_id, updated_at, updated_id)
 VALUES
 (1, 'temperature', 'Temperature', 'number', '1.0', 1, 20, 1, NULL, '높을수록 다양성 증가, 낮을수록 보수적으로 생성됩니다.', 0, CURRENT_TIMESTAMP, 'system', CURRENT_TIMESTAMP, 'system'),
-(1, 'numSteps', 'Number of Steps', 'number', '50', 10, 200, 1, NULL, '스텝이 많을수록 계산량이 늘지만 더 안정적인 샘플이 나올 수 있습니다.', 1, CURRENT_TIMESTAMP, 'system', CURRENT_TIMESTAMP, 'system'),
+(1, 'numSteps', 'Number of Steps', 'number', '5', 10, 200, 1, NULL, '스텝이 많을수록 계산량이 늘지만 더 안정적인 샘플이 나올 수 있습니다.', 1, CURRENT_TIMESTAMP, 'system', CURRENT_TIMESTAMP, 'system'),
 (1, 'guidanceScale', 'Guidance Scale', 'number', '7.5', 10, 200, 5, NULL, '조건(제약)을 얼마나 강하게 따를지 제어합니다.', 2, CURRENT_TIMESTAMP, 'system', CURRENT_TIMESTAMP, 'system')
 ON CONFLICT DO NOTHING;
 

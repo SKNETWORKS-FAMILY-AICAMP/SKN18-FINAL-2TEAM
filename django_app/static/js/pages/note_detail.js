@@ -215,6 +215,9 @@ function renderNoteDetail(note) {
             noteContentText.innerHTML = processedContent;
         }
         
+        // Attach link click handlers for experiment file downloads
+        attachNoteContentLinkHandlers();
+        
         console.log('[NoteDetail] Content 렌더링 완료');
     }
     
@@ -936,6 +939,148 @@ function handleDownloadAttachment(fileId, filePath) {
     
     if (window.notyf) {
         window.notyf.success('파일 다운로드를 시작합니다.');
+    }
+}
+
+// Attach link click handlers for experiment file downloads
+function attachNoteContentLinkHandlers() {
+    if (!noteContentText) return;
+    
+    // Find all links in note content
+    const links = noteContentText.querySelectorAll('a[href]');
+    links.forEach(link => {
+        const href = link.getAttribute('href');
+        if (!href) return;
+        
+        // Check if it's an experiment file URL (proxy or S3)
+        const isExperimentFileUrl = href.includes('/api/experiments/results/') && href.includes('/file/') ||
+                                    href.includes('s3.ap-northeast-2.amazonaws.com') ||
+                                    href.includes('skn18-file-uploads.s3');
+        
+        if (isExperimentFileUrl) {
+            link.addEventListener('click', async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                console.log('[NoteDetail] Experiment file link clicked:', href);
+                
+                // Proxy URL인 경우 fetch를 통해 다운로드 (리다이렉트로 인한 S3 403 방지)
+                if (href.includes('/api/experiments/results/') && href.includes('/file/')) {
+                    await handleExperimentFileDownload(href, link.textContent || '파일');
+                } else {
+                    // S3 직접 URL인 경우 - 프록시 URL이 필요하다는 메시지 표시
+                    console.warn('[NoteDetail] S3 direct URL detected, cannot download:', href);
+                    if (window.notyf) {
+                        window.notyf.error('이 파일은 다운로드할 수 없습니다. 프록시 URL이 필요합니다.');
+                    }
+                }
+            });
+        }
+    });
+}
+
+// Handle experiment file download
+async function handleExperimentFileDownload(fileUrl, fileName) {
+    if (!fileUrl) {
+        if (window.notyf) {
+            window.notyf.error('다운로드 URL이 제공되지 않았습니다.');
+        }
+        return;
+    }
+    
+    try {
+        // 프록시 URL에 fetch로 접근 (리다이렉트 자동 따라가기)
+        const response = await fetch(fileUrl, {
+            method: 'GET',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+            },
+            credentials: 'same-origin',
+            redirect: 'follow', // 리다이렉트 자동 따라가기
+        });
+        
+        if (!response.ok) {
+            // Try to get error details from response
+            let errorMessage = `HTTP ${response.status}`;
+            let errorDetails = null;
+            let errorData = null;
+            try {
+                errorData = await response.json().catch(() => null);
+                if (errorData && errorData.error) {
+                    errorMessage = errorData.error;
+                    errorDetails = errorData.error;
+                }
+            } catch (e) {
+                // Ignore JSON parse errors
+            }
+            
+            // Log detailed error for debugging
+            console.error('[NoteDetail] Download error details:', {
+                status: response.status,
+                errorMessage,
+                errorData
+            });
+            
+            // Check if it's a 403/Forbidden error (likely S3 access issue)
+            if (response.status === 403 || (errorDetails && errorDetails.includes('403'))) {
+                throw new Error('파일 접근 권한이 없습니다. 파일이 삭제되었거나 접근할 수 없습니다.');
+            }
+            
+            // Check if it's a 404 error
+            if (response.status === 404) {
+                throw new Error('파일을 찾을 수 없습니다. 파일이 삭제되었거나 경로가 잘못되었습니다.');
+            }
+            
+            throw new Error(errorMessage);
+        }
+        
+        // Get filename from Content-Disposition header or use provided name
+        const contentDisposition = response.headers.get('Content-Disposition');
+        let downloadFileName = fileName;
+        
+        if (contentDisposition) {
+            const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+            if (filenameMatch && filenameMatch[1]) {
+                downloadFileName = filenameMatch[1].replace(/['"]/g, '');
+                if (downloadFileName.startsWith("UTF-8''")) {
+                    downloadFileName = decodeURIComponent(downloadFileName.replace("UTF-8''", ""));
+                }
+            }
+        }
+        
+        // Download file
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = downloadFileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        
+        if (window.notyf) {
+            window.notyf.success('다운로드가 완료되었습니다.');
+        }
+    } catch (error) {
+        console.error('[NoteDetail] Error downloading file:', error);
+        if (window.notyf) {
+            // Show user-friendly error message
+            let userMessage = error.message || '알 수 없는 오류';
+            
+            // If error message already contains user-friendly text, use it directly
+            if (userMessage.includes('파일 접근 권한') || userMessage.includes('다운로드할 수 없습니다')) {
+                window.notyf.error(userMessage);
+            } else if (userMessage.includes('403') || userMessage.includes('Forbidden')) {
+                window.notyf.error('파일 접근 권한이 없습니다. 파일이 삭제되었거나 접근할 수 없습니다.');
+            } else if (userMessage.includes('404') || userMessage.includes('Not found')) {
+                window.notyf.error('파일을 찾을 수 없습니다. 파일이 삭제되었을 수 있습니다.');
+            } else if (userMessage.includes('500') || userMessage.includes('Internal Server Error')) {
+                window.notyf.error('서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+            } else {
+                window.notyf.error('파일 다운로드 중 오류가 발생했습니다: ' + userMessage);
+            }
+        }
     }
 }
 
