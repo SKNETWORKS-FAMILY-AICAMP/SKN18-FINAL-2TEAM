@@ -237,6 +237,23 @@ function startNotificationRefresh() {
     
     // 실험 알림 감지를 위한 더 빠른 주기 (5초)
     function checkExperimentNotifications() {
+        // 완료된 실험의 사이드바가 열려있으면 알림 요청 스킵
+        const sidebar = document.getElementById('experimentResultSidebar');
+        const isSidebarOpen = sidebar && 
+                             sidebar.style.display !== 'none' && 
+                             sidebar.style.display !== '' &&
+                             sidebar.style.display !== 'hidden';
+        const isCompleted = window.currentExperimentIsCompleted === true;
+        
+        if (isSidebarOpen && isCompleted) {
+            console.log('[Header] Skipping experiment notification check - completed experiment sidebar is open', {
+                sidebarOpen: isSidebarOpen,
+                isCompleted: isCompleted,
+                currentExperimentId: window.currentExperimentId
+            });
+            return;
+        }
+        
         fetch('/api/notifications/?limit=10', {
             method: 'GET',
             headers: {
@@ -289,6 +306,23 @@ function startNotificationRefresh() {
     
     // 30초마다 알림 카운트만 업데이트 (드롭다운이 열려있지 않을 때)
     notificationRefreshInterval = setInterval(() => {
+        // 완료된 실험의 사이드바가 열려있으면 알림 요청 스킵
+        const sidebar = document.getElementById('experimentResultSidebar');
+        const isSidebarOpen = sidebar && 
+                             sidebar.style.display !== 'none' && 
+                             sidebar.style.display !== '' &&
+                             sidebar.style.display !== 'hidden';
+        const isCompleted = window.currentExperimentIsCompleted === true;
+        
+        if (isSidebarOpen && isCompleted) {
+            console.log('[Header] Skipping notification count update - completed experiment sidebar is open', {
+                sidebarOpen: isSidebarOpen,
+                isCompleted: isCompleted,
+                currentExperimentId: window.currentExperimentId
+            });
+            return;
+        }
+        
         if (!showNotificationDropdown) {
             // 최신 알림 1개를 가져와서 카운트만 업데이트
             fetch('/api/notifications/?limit=1', {

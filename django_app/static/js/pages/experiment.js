@@ -1963,6 +1963,8 @@ async function openExperimentResultSidebar(experimentId) {
             // 완료되지 않은 실험만 polling (상태가 'C'가 아니거나 진행률이 100%가 아닌 경우)
             // 목록 화면과 동일한 5초 주기로 설정 (더 빠른 반응성을 위해 3초로 단축 가능)
             const isCompleted = experiment.status === 'C' || experiment.progress === 100;
+            // 완료 상태를 전역 변수에 저장 (알림 요청 스킵용)
+            window.currentExperimentIsCompleted = isCompleted;
             if (!isCompleted) {
                 console.log(`[openExperimentResultSidebar] Starting polling for experiment ${expId} (status: ${experiment.status}, progress: ${experiment.progress}%)`);
                 // 사이드바는 더 빠른 주기로 업데이트하여 목록 화면과의 차이 최소화
@@ -1970,7 +1972,11 @@ async function openExperimentResultSidebar(experimentId) {
                     pollExperimentDetailStatus(expId);
                 }, 3000); // 3초마다 확인 (목록 화면 5초보다 빠르게)
             } else {
-                console.log(`[openExperimentResultSidebar] Skipping polling for completed experiment ${expId}`);
+                console.log(`[openExperimentResultSidebar] Skipping polling for completed experiment ${expId}`, {
+                    status: experiment.status,
+                    progress: experiment.progress,
+                    isCompleted: isCompleted
+                });
             }
         } else {
             console.error('[openExperimentResultSidebar] Failed to load experiment files:', response.status, response.statusText);
@@ -1993,6 +1999,9 @@ function closeExperimentResultSidebar() {
     if (!experimentResultSidebar) return;
     experimentResultSidebar.style.display = 'none';
     document.body.style.overflow = '';
+    
+    // 완료 상태 플래그 초기화
+    window.currentExperimentIsCompleted = false;
     
     // Polling 중지
     if (window.__experimentDetailPollTimer) {
@@ -2107,8 +2116,9 @@ async function pollExperimentDetailStatus(experimentId) {
                 loadExperiments();
             }
             
-            // 완료되었으면 polling 중지
+            // 완료되었으면 polling 중지 및 완료 플래그 업데이트
             if (experiment.status === 'C' || experiment.progress === 100) {
+                window.currentExperimentIsCompleted = true;
                 if (window.__experimentDetailPollTimer) {
                     clearInterval(window.__experimentDetailPollTimer);
                     window.__experimentDetailPollTimer = null;
