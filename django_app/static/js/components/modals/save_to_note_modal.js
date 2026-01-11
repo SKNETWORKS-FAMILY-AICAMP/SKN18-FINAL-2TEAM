@@ -402,7 +402,7 @@ console.log('[SaveToNoteModal] ===== Script file loading... =====');
         if (!saveNoteBtn) return;
 
         const isDisabled = (saveToNoteOption === 'existing' && !selectedNote) ||
-                           (saveToNoteOption === 'new' && !newNoteName.trim());
+                        (saveToNoteOption === 'new' && !newNoteName.trim());
 
         saveNoteBtn.disabled = isDisabled;
     }
@@ -470,6 +470,7 @@ console.log('[SaveToNoteModal] ===== Script file loading... =====');
     async function handleSave() {
         const messageId = saveToNoteContext?.messageId;
         const isProteinData = saveToNoteContext && !messageId && (saveToNoteContext.proteinId || saveToNoteContext.proteinName || saveToNoteContext.sequence);
+        const isExperimentContent = saveToNoteContext && !messageId && !isProteinData && saveToNoteContext.content;
         
         // Save button 비활성화 (중복 요청 방지)
         if (saveNoteBtn) {
@@ -478,6 +479,134 @@ console.log('[SaveToNoteModal] ===== Script file loading... =====');
         }
         
         try {
+            // 실험 결과 컨텐츠를 직접 저장하는 경우
+            if (isExperimentContent) {
+                const contentHtml = saveToNoteContext.content;
+                
+                if (saveToNoteOption === 'existing' && selectedNote) {
+                    // 기존 노트에 추가
+                    try {
+                        const getResponse = await fetch(`/api/notes/${selectedNote.id}/`, {
+                            method: 'GET',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            credentials: 'same-origin',
+                        });
+                        
+                        if (!getResponse.ok) {
+                            throw new Error('노트 정보를 불러올 수 없습니다.');
+                        }
+                        
+                        const getData = await getResponse.json();
+                        if (getData.status !== 'success' || !getData.note) {
+                            throw new Error('노트 정보를 불러올 수 없습니다.');
+                        }
+                        
+                        const noteData = getData.note;
+                        const existingContent = noteData.content || '';
+                        
+                        const separator = '<hr style="margin: 20px 0; border: none; border-top: 1px solid #e0e0e0;"/>';
+                        const newContent = existingContent 
+                            ? existingContent + separator + contentHtml
+                            : contentHtml;
+                        
+                        const formData = new FormData();
+                        formData.append('title', noteData.title || '');
+                        formData.append('content', newContent);
+                        formData.append('tags', JSON.stringify(noteData.tags || []));
+                        
+                        const updateResponse = await fetch(`/api/notes/${selectedNote.id}/update/`, {
+                            method: 'PUT',
+                            headers: {
+                                'X-CSRFToken': getCsrfToken(),
+                            },
+                            credentials: 'same-origin',
+                            body: formData,
+                        });
+                        
+                        if (!updateResponse.ok) {
+                            const errorData = await updateResponse.json().catch(() => ({ error: '알 수 없는 오류가 발생했습니다.' }));
+                            throw new Error(errorData.error || `HTTP error! status: ${updateResponse.status}`);
+                        }
+                        
+                        const data = await updateResponse.json();
+                        
+                        if (data.status === 'success') {
+                            if (window.notyf) {
+                                window.notyf.success(`"${selectedNote.title}" 노트에 저장했습니다.`);
+                            }
+                            
+                            document.dispatchEvent(new CustomEvent('saveToNote:save', { 
+                                detail: {
+                                    option: 'existing',
+                                    noteId: selectedNote.id,
+                                    noteTitle: selectedNote.title,
+                                    data: data
+                                }
+                            }));
+                            
+                            if (saveToNoteContext && typeof saveToNoteContext.onSave === 'function') {
+                                saveToNoteContext.onSave('existing', selectedNote.title);
+                            }
+                            
+                            closeSaveToNoteModal();
+                        } else {
+                            throw new Error(data.error || '저장에 실패했습니다.');
+                        }
+                    } catch (error) {
+                        console.error('[SaveToNoteModal] Failed to save experiment content to existing note:', error);
+                        throw error;
+                    }
+                    
+                } else if (saveToNoteOption === 'new' && newNoteName.trim()) {
+                    // 신규 노트 생성
+                    const formData = new FormData();
+                    formData.append('title', newNoteName.trim());
+                    formData.append('content', contentHtml);
+                    formData.append('tags', JSON.stringify([]));
+                    
+                    const createResponse = await fetch('/api/notes/create/', {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRFToken': getCsrfToken(),
+                        },
+                        credentials: 'same-origin',
+                        body: formData,
+                    });
+                    
+                    if (!createResponse.ok) {
+                        const errorData = await createResponse.json().catch(() => ({ error: '알 수 없는 오류가 발생했습니다.' }));
+                        throw new Error(errorData.error || `HTTP error! status: ${createResponse.status}`);
+                    }
+                    
+                    const data = await createResponse.json();
+                    
+                    if (data.status === 'success') {
+                        if (window.notyf) {
+                            window.notyf.success(`"${newNoteName.trim()}" 노트를 생성했습니다.`);
+                        }
+                        
+                        document.dispatchEvent(new CustomEvent('saveToNote:save', { 
+                            detail: {
+                                option: 'new',
+                                noteName: newNoteName.trim(),
+                                data: data
+                            }
+                        }));
+                        
+                        if (saveToNoteContext && typeof saveToNoteContext.onSave === 'function') {
+                            saveToNoteContext.onSave('new', newNoteName.trim());
+                        }
+                        
+                        closeSaveToNoteModal();
+                    } else {
+                        throw new Error(data.error || '저장에 실패했습니다.');
+                    }
+                }
+                return;
+            }
+            
             // 단백질 정보를 직접 저장하는 경우
             if (isProteinData) {
                 const proteinContent = formatProteinContent(saveToNoteContext);

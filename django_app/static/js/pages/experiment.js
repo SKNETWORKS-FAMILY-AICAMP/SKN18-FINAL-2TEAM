@@ -233,18 +233,38 @@ function initExperiment() {
         closeExperimentResultSidebar();
     });
 
-    // Close sidebar on overlay click (if overlay exists)
-    experimentResultSidebar?.addEventListener('click', (e) => {
-        if (e.target === experimentResultSidebar) {
-            closeExperimentResultSidebar();
-        }
-    });
+    // Close sidebar on overlay click (if overlay exists) and handle button clicks
+    if (experimentResultSidebar) {
+        experimentResultSidebar.addEventListener('click', (e) => {
+            // Handle button clicks first (before overlay click check)
+            // Structure view button
+            if (e.target.closest('#resultStructureViewBtn')) {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('[initExperiment] Structure view button clicked');
+                handleStructureViewClick();
+                return;
+            }
 
-    // Structure view button handler
-    const structureViewBtn = document.getElementById('resultStructureViewBtn');
-    if (structureViewBtn) {
-        structureViewBtn.addEventListener('click', handleStructureViewClick);
+            // Save to note button
+            if (e.target.closest('#resultSaveToNoteBtn')) {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('[initExperiment] Save to note button clicked');
+                handleSaveToNoteClick(e);
+                return;
+            }
+
+            // Close sidebar on overlay click (only if clicking directly on sidebar, not on children)
+            if (e.target === experimentResultSidebar) {
+                closeExperimentResultSidebar();
+            }
+        });
+        console.log('[initExperiment] Event delegation attached to sidebar');
     }
+
+    // Also call attachExperimentResultSidebarHandlers for compatibility
+    attachExperimentResultSidebarHandlers();
 }
 
 // Load available tools from API
@@ -1873,6 +1893,8 @@ function attachExperimentTableHandlers() {
                 if (experimentResultSidebar) {
                     experimentResultSidebar.style.display = 'flex';
                     document.body.style.overflow = 'hidden';
+                    // 사이드바 버튼 핸들러 다시 연결
+                    attachExperimentResultSidebarHandlers();
                 }
             } else {
                 // Fallback: Load from API
@@ -1927,6 +1949,9 @@ async function openExperimentResultSidebar(experimentId) {
             renderExperimentResult(experimentData);
             experimentResultSidebar.style.display = 'flex';
             document.body.style.overflow = 'hidden';
+            
+            // 사이드바 버튼 핸들러 다시 연결
+            attachExperimentResultSidebarHandlers();
             
             // 실험 상세 상태 주기적 업데이트 (5초마다)
             // 기존 타이머가 있으면 제거
@@ -2291,6 +2316,78 @@ function renderExperimentResult(experiment) {
 
     // Result files
     renderExperimentResultFiles(experiment);
+    
+    // Attach sidebar button handlers after rendering
+    // Use setTimeout to ensure DOM is fully updated
+    setTimeout(() => {
+        attachExperimentResultSidebarHandlers();
+    }, 100);
+}
+
+// Attach experiment result sidebar button handlers
+// Note: This function is kept for compatibility, but event delegation is handled in initExperiment
+function attachExperimentResultSidebarHandlers() {
+    console.log('[attachExperimentResultSidebarHandlers] Called (event delegation already set up in initExperiment)');
+    
+    // Verify buttons exist
+    const structureViewBtn = document.getElementById('resultStructureViewBtn');
+    const saveToNoteBtn = document.getElementById('resultSaveToNoteBtn');
+    
+    if (structureViewBtn) {
+        console.log('[attachExperimentResultSidebarHandlers] Structure view button found');
+    } else {
+        console.warn('[attachExperimentResultSidebarHandlers] Structure view button not found');
+    }
+    
+    if (saveToNoteBtn) {
+        console.log('[attachExperimentResultSidebarHandlers] Save to note button found');
+    } else {
+        console.warn('[attachExperimentResultSidebarHandlers] Save to note button not found');
+        // Try to find it in the sidebar
+        const sidebar = document.getElementById('experimentResultSidebar');
+        if (sidebar) {
+            const btn = sidebar.querySelector('#resultSaveToNoteBtn');
+            console.log('[attachExperimentResultSidebarHandlers] Button search in sidebar:', btn);
+            if (btn) {
+                console.log('[attachExperimentResultSidebarHandlers] Button found via querySelector');
+            }
+        }
+    }
+}
+
+// Handle save to note button click
+async function handleSaveToNoteClick(e) {
+    if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+    
+    console.log('[handleSaveToNoteClick] Function called');
+    
+    // 현재 실험 ID 가져오기
+    let experimentId = getCurrentExperimentId();
+    
+    if (!experimentId) {
+        console.error('[handleSaveToNoteClick] Experiment ID not found');
+        if (window.notyf) {
+            window.notyf.error('실험 정보를 찾을 수 없습니다. 실험을 다시 선택해주세요.');
+        }
+        return;
+    }
+    
+    console.log('[handleSaveToNoteClick] Using experiment ID:', experimentId);
+    
+    // 컨텐츠 선택 모달 열기
+    if (window.ExperimentContentSelectionModal && window.ExperimentContentSelectionModal.open) {
+        console.log('[handleSaveToNoteClick] Opening content selection modal');
+        window.ExperimentContentSelectionModal.open(experimentId);
+    } else {
+        console.error('[handleSaveToNoteClick] ExperimentContentSelectionModal not available');
+        console.error('[handleSaveToNoteClick] window.ExperimentContentSelectionModal:', window.ExperimentContentSelectionModal);
+        if (window.notyf) {
+            window.notyf.error('컨텐츠 선택 모달을 열 수 없습니다. 페이지를 새로고침해주세요.');
+        }
+    }
 }
 
 // Handle structure view button click

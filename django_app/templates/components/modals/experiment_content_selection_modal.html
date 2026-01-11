@@ -1,0 +1,92 @@
+{% load static %}
+<div class="modal-overlay" id="experimentContentSelectionModal" role="dialog" aria-labelledby="experimentContentSelectionModalTitle" aria-modal="true" style="display: none;">
+    <div class="modal-container modal-large">
+        <div class="modal-header">
+            <div>
+                <h2 class="modal-title" id="experimentContentSelectionModalTitle">저장할 컨텐츠 선택</h2>
+                <p class="modal-subtitle">노트에 저장할 컨텐츠를 선택하세요</p>
+            </div>
+            <button class="modal-close-btn" aria-label="닫기" data-action="close">
+                <i class="fa-solid fa-times"></i>
+            </button>
+        </div>
+        
+        <!-- Tabs -->
+        <div class="content-modal-tabs">
+            <button class="content-tab-btn active" data-tab="content-files">
+                <i class="fa-solid fa-file"></i>
+                <span>컨텐츠 파일</span>
+            </button>
+            <button class="content-tab-btn" data-tab="note-selection">
+                <i class="fa-solid fa-bookmark"></i>
+                <span>노트 선택</span>
+            </button>
+        </div>
+        
+        <!-- Content Files Tab -->
+        <div class="content-tab-content active" id="content-files-tab">
+            <!-- Select All Checkbox -->
+            <div class="content-modal-select-all">
+                <label class="content-select-all-label">
+                    <input type="checkbox" id="selectAllContentFiles" class="content-select-all-checkbox">
+                    <span>전체 선택</span>
+                </label>
+            </div>
+            
+            <div class="modal-body content-modal-body-with-sidebar">
+                <!-- Tool Sidebar -->
+                <div class="content-tool-sidebar" id="contentToolSidebar">
+                    <!-- Tool list will be loaded dynamically -->
+                </div>
+                
+                <!-- Content Files -->
+                <div class="content-files-area">
+                    <div class="content-selection-list" id="contentSelectionList">
+                        <!-- Content files will be loaded dynamically -->
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Note Selection Tab -->
+        <div class="content-tab-content" id="note-selection-tab">
+            <div class="modal-body">
+                <div class="note-selection-options">
+                    <div class="note-option-group">
+                        <label class="note-option-label">
+                            <input type="radio" name="noteOption" value="existing" checked class="note-option-radio">
+                            <span>기존 노트에 추가</span>
+                        </label>
+                        <div class="note-selection-dropdown-wrapper" id="existingNoteSection">
+                            <select id="existingNoteSelect" class="note-selection-dropdown">
+                                <option value="">노트를 선택하세요</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="note-option-group">
+                        <label class="note-option-label">
+                            <input type="radio" name="noteOption" value="new" class="note-option-radio">
+                            <span>새 노트로 만들기</span>
+                        </label>
+                        <div class="note-input-wrapper" id="newNoteSection" style="display: none;">
+                            <input 
+                                type="text" 
+                                id="newNoteNameInput"
+                                placeholder="새 노트의 제목을 입력하세요" 
+                                class="note-name-input"
+                            />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="modal-footer">
+            <span class="content-selected-count">선택된 항목: <span id="selectedContentCount">0</span>개</span>
+            <div class="content-footer-actions">
+                <button class="modal-btn modal-btn-secondary" data-action="close">취소</button>
+                <button class="modal-btn modal-btn-primary" id="confirmContentSelectionBtn" disabled>확인</button>
+            </div>
+        </div>
+    </div>
+</div>

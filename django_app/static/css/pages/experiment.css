@@ -1589,11 +1589,18 @@
     flex: 1;
 }
 
-.result-structure-view-btn {
+.result-files-actions {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    padding: 0.5rem 0.75rem;
+    flex-shrink: 0;
+}
+
+.result-structure-view-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.5rem 0.625rem;
     background: #2563eb; /* bg-blue-600 */
     color: white;
     border: none;

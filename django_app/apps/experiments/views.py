@@ -1,7 +1,8 @@
 import json
 import re
 import requests
-from urllib.parse import unquote
+import logging
+from urllib.parse import unquote, urlparse
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse, HttpResponse
@@ -19,6 +20,8 @@ from django.db import transaction
 from django_app.apps.core.queue import publish_simulation
 from rest_framework.exceptions import NotFound
 from drf_spectacular.utils import extend_schema
+
+logger = logging.getLogger(__name__)
 
 def _get_user_identifier(user):
     return str(user.user_id) if hasattr(user, 'user_id') else str(user.pk)
@@ -789,12 +792,13 @@ def experiment_result_files_api(request, experiment_sid: int):
     }
     , status=200)
 
-@extend_schema(tags=["Experiments"], summary="실험 결과 파일 프록시 (CORS 우회)",)
+@extend_schema(tags=["Experiments"], summary="실험 결과 파일 프록시 (HTTP 프록시)",)
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def experiment_result_file_proxy(request, result_sid: int):
     """
-    실험 결과 파일을 프록시하여 CORS 문제를 해결합니다.
+    실험 결과 파일을 HTTP 프록시를 통해 전달합니다.
+    requests를 사용하여 URL에서 파일을 가져와 프록시합니다.
     """
     user_identifier = _get_user_identifier(request.user)
     try:
@@ -809,31 +813,23 @@ def experiment_result_file_proxy(request, result_sid: int):
         return Response({"error": "File path not found"}, status=404)
     
     try:
-        # S3에서 파일 다운로드
-        response = requests.get(result.file_path, timeout=30)
-        response.raise_for_status()
+        # HTTP 요청을 통해 파일 가져오기 (boto3 없이 URL만 사용)
+        file_response = requests.get(result.file_path, timeout=30, stream=True)
+        file_response.raise_for_status()
         
-        # 파일명 추출 (S3 URL에서 또는 result_name에서)
-        # S3 URL에서 파일명 추출 시도
+        # 파일명 추출
         file_name_from_url = None
         if result.file_path:
-            # s3://bucket/key/path/filename.ext 또는 https://bucket.s3.../filename.ext 패턴
             url_parts = result.file_path.split('/')
             if url_parts:
-                potential_filename = unquote(url_parts[-1].split('?')[0])  # 쿼리 파라미터 제거
+                from urllib.parse import unquote
+                potential_filename = unquote(url_parts[-1].split('?')[0])
                 if '.' in potential_filename:
                     file_name_from_url = potential_filename
         
-        # result_name에서 파일명 추출 시도
-        file_name_from_result = None
-        if result.result_name:
-            # "RFdiffusion 구조 #0" 같은 경우 확장자가 없으므로 파일 타입에서 추론 필요
-            file_name_from_result = result.result_name
+        final_filename = file_name_from_url or result.result_name or f"result_{result_sid}"
         
-        # 최종 파일명 결정: URL에서 추출한 것이 우선, 없으면 result_name 사용
-        final_filename = file_name_from_url or file_name_from_result or f"result_{result_sid}"
-        
-        # 파일명에 확장자가 없으면 result_type에서 추론
+        # 확장자가 없으면 result_type에서 추론
         if '.' not in final_filename.split('/')[-1]:
             result_type_upper = (result.result_type or '').upper()
             extension_map = {
@@ -841,69 +837,35 @@ def experiment_result_file_proxy(request, result_sid: int):
                 'FASTA': '.fasta',
                 'CSV': '.csv',
                 'ZIP': '.zip',
-                'OTHER': '',  # OTHER는 파일명에서 추론 시도
                 'LOG': '.log',
             }
             extension = extension_map.get(result_type_upper, '')
-            
-            # OTHER 타입인 경우 파일명이나 URL에서 확장자 추론
-            if not extension and result_type_upper == 'OTHER':
-                # result_name에서 확장자 추론 시도
-                if result.result_name:
-                    if 'trb' in result.result_name.lower() or 'trb' in (file_name_from_url or '').lower():
-                        extension = '.trb'
-                    elif 'zip' in result.result_name.lower() or 'zip' in (file_name_from_url or '').lower():
-                        extension = '.zip'
-                    elif result.file_path and '.trb' in result.file_path.lower():
-                        extension = '.trb'
-                    elif result.file_path and '.zip' in result.file_path.lower():
-                        extension = '.zip'
-            
             if extension:
                 final_filename = final_filename + extension
         
-        # Content-Type 매핑 (파일 확장자 기반)
-        content_type_map = {
-            '.pdb': 'chemical/x-pdb',
-            '.fasta': 'text/plain',  # 또는 'application/x-fasta'
-            '.fa': 'text/plain',
-            '.csv': 'text/csv',
-            '.zip': 'application/zip',
-            '.trb': 'application/octet-stream',  # TRB는 바이너리
-            '.json': 'application/json',
-            '.log': 'text/plain',
-        }
-        
-        # 확장자 추출
+        # Content-Type 결정
         file_ext = ''
         if '.' in final_filename:
             file_ext = '.' + final_filename.rsplit('.', 1)[1].lower()
         
-        # Content-Type 결정: 확장자 우선, 없으면 result_type 기반
+        content_type_map = {
+            '.pdb': 'chemical/x-pdb',
+            '.fasta': 'text/plain',
+            '.fa': 'text/plain',
+            '.csv': 'text/csv',
+            '.zip': 'application/zip',
+            '.json': 'application/json',
+            '.log': 'text/plain',
+        }
         content_type = content_type_map.get(file_ext, 'application/octet-stream')
-        
-        if content_type == 'application/octet-stream':
-            # result_type으로 재시도
-            result_type_upper = (result.result_type or '').upper()
-            if result_type_upper == 'PDB':
-                content_type = 'chemical/x-pdb'
-            elif result_type_upper == 'FASTA':
-                content_type = 'text/plain'
-            elif result_type_upper == 'CSV':
-                content_type = 'text/csv'
-            elif result_type_upper == 'ZIP':
-                content_type = 'application/zip'
-            elif result_type_upper == 'LOG':
-                content_type = 'text/plain'
         
         # 파일 내용을 응답으로 반환
         http_response = HttpResponse(
-            response.content,
+            file_response.content,
             content_type=content_type
         )
         
-        # Content-Disposition 헤더 추가 (파일명 지정)
-        # RFC 5987에 따라 UTF-8 파일명 지원
+        # Content-Disposition 헤더 추가
         safe_filename = final_filename.replace('\n', '').replace('\r', '')
         http_response['Content-Disposition'] = f'attachment; filename="{safe_filename}"; filename*=UTF-8\'\'{safe_filename}'
         
@@ -914,6 +876,7 @@ def experiment_result_file_proxy(request, result_sid: int):
         return http_response
         
     except requests.RequestException as e:
+        logger.error(f"[experiment_result_file_proxy] Failed to fetch file from URL: {result.file_path}, error: {str(e)}")
         return Response(
             {"error": f"Failed to fetch file: {str(e)}"},
             status=500
