@@ -766,3 +766,11 @@ def settings_api(request):
                 'notes_view_mode': getattr(user_settings, 'notes_view_mode', 'card'),
             }
         }, status=status.HTTP_200_OK)
+
+def privacy_view(request):
+    '''개인정보처리방침 페이지'''
+    return render(request, "privacy.html")
+
+def terms_view(request):
+    '''서비스 이용약관 페이지'''
+    return render(request, "terms.html")

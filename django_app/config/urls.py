@@ -16,6 +16,7 @@ Including another URLconf
 """
 
 from django.contrib import admin
+from apps.account.views import privacy_view, terms_view
 from django.urls import include, path
 from django.views.decorators.csrf import csrf_exempt
 from django.http import HttpResponse, JsonResponse
@@ -100,6 +101,10 @@ urlpatterns = [
     
     # 관리자
     path("admin/", admin.site.urls),
+
+    # google ouaht2 인증을 위한 개인정보처리 및 서비스 약관 페이지
+    path("privacy/", privacy_view, name="privacy"),
+    path("terms/", terms_view, name="terms"),
 ]
 
 # WhiteNoise가 정적 파일을 자동으로 서빙하므로 별도 설정 불필요
