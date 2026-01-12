@@ -207,6 +207,12 @@
                     <span>Google로 로그인</span>
                 </a>
 
+                <div class="auth-footer">
+                    <a href="{% url 'privacy' %}">개인정보처리방침</a>
+                    <span>·</span>
+                    <a href="{% url 'terms' %}">서비스 이용약관</a>
+                </div>
+
                 {% comment %} <div class="form-footer">
                     <p>계정이 없으신가요? <a href="{% url 'accounts:signup' %}">회원가입</a></p>
                 </div> {% endcomment %}

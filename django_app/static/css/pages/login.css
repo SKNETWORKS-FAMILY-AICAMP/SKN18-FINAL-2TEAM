@@ -549,3 +549,16 @@
         font-size: 1rem;
     }
 }
+
+/* 서비스 약관 */
+.auth-footer {
+  margin-top: 16px;
+  text-align: center;
+  font-size: 12px;
+  color: #7a7a7a;
+}
+
+.auth-footer a {
+  color: inherit;
+  text-decoration: underline;
+}
