@@ -769,8 +769,8 @@ def settings_api(request):
 
 def privacy_view(request):
     '''개인정보처리방침 페이지'''
-    return render(request, "privacy.html")
+    return render(request, "accounts/privacy.html")
 
 def terms_view(request):
     '''서비스 이용약관 페이지'''
-    return render(request, "terms.html")
+    return render(request, "accounts/terms.html")
