@@ -34,6 +34,7 @@ class BaseProducer:
             message: 메시지 딕셔너리
             priority: 우선순위 (기본값: 큐 설정값)
         """
+        channel = None
         try:
             connection = self.connection_manager.get_connection()
             channel = connection.channel()
@@ -91,6 +92,13 @@ class BaseProducer:
         except Exception as e:
             logger.error(f"Failed to publish message: {e}", exc_info=True)
             raise
+        finally:
+            # Channel을 닫아 메모리 누수 방지
+            if channel and not channel.is_closed:
+                try:
+                    channel.close()
+                except Exception:
+                    pass  # 이미 닫혀있을 수 있음
 
 
 class TopicProducer:
@@ -113,6 +121,7 @@ class TopicProducer:
             message: 메시지 딕셔너리
             priority: 우선순위
         """
+        channel = None
         try:
             connection = self.connection_manager.get_connection()
             channel = connection.channel()
@@ -144,4 +153,11 @@ class TopicProducer:
         except Exception as e:
             logger.error(f"Failed to publish message: {e}", exc_info=True)
             raise
+        finally:
+            # Channel을 닫아 메모리 누수 방지
+            if channel and not channel.is_closed:
+                try:
+                    channel.close()
+                except Exception:
+                    pass  # 이미 닫혀있을 수 있음
 
