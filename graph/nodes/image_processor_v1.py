@@ -34,7 +34,7 @@ def _get_chandra_client():
     """chandra 모델용 OpenAI 클라이언트 생성 (vLLM 서빙)"""
     from openai import OpenAI
     return OpenAI(
-        base_url="https://j8pr82uxpeizpc-8000.proxy.runpod.net/v1",
+        base_url="https://n28venq2by8mzh-8000.proxy.runpod.net/v1",
         api_key="EMPTY",
         http_client=httpx.Client(timeout=300.0),
     )
