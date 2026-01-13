@@ -644,7 +644,7 @@ sequenceDiagram
 ```
 
 #### [주요 특징]
-##### (1) Query Rewrite (`query_rewrite_node.py`)
+#### (1) Query Rewrite (`query_rewrite_node.py`)
 
 **목적**: 사용자 질문을 분석하고 검색에 최적화된 형태로 변환
 
@@ -681,7 +681,7 @@ sequenceDiagram
 }
 ```
 
-##### (2) Query Router (`query_router.py`)
+#### (2) Query Router (`query_router.py`)
 
 **목적**: Track/Intent/Domain에 따라 검색 계획(Retrieval Plan) 수립
 
@@ -714,7 +714,7 @@ sequenceDiagram
 ]
 ```
 
-##### (3) Embedding Router (`embedding_router.py`)
+#### (3) Embedding Router (`embedding_router.py`)
 
 **목적**: 검색 계획에 필요한 임베딩 생성
 
@@ -724,7 +724,7 @@ sequenceDiagram
 
 **Lazy Loading**: Protocol 임베딩은 최초 호출 시에만 Hugging Face API 연결
 
-##### (4) Retriever Executor (`retriever_runner.py`)
+#### (4) Retriever Executor (`retriever_runner.py`)
 
 **목적**: 검색 계획을 실행하여 컨텍스트 수집
 
@@ -734,11 +734,11 @@ sequenceDiagram
 3. 결과 중복 제거 (chunk_id 기반)
 4. 최종 contexts 반환
 
-##### (5) RAG Orchestrator (`rag_orchestrator.py`)
+#### (5) RAG Orchestrator (`rag_orchestrator.py`)
 
 **목적**: Neo4j에서 실제 검색 쿼리 실행 및 결과 조립
 
-###### (5.1) Hybrid Search (`route_by_hybrid_search`)
+#### (5.1) Hybrid Search (`route_by_hybrid_search`)
 
 **RRF (Reciprocal Rank Fusion) 알고리즘**:
 ```
@@ -754,7 +754,7 @@ hy_score = vec_score + ft_score
 
 **Fallback 전략**: `must_terms`로 결과가 없으면 조건 완화 후 재검색
 
-###### (5.2) Entity Search (`route_by_entity`)
+#### (5.2) Entity Search (`route_by_entity`)
 
 **흐름**:
 1. Fulltext로 Entity 해석 (Entity ID 획득)
@@ -763,7 +763,7 @@ hy_score = vec_score + ft_score
    - T3: PAPER_T3 / PROTOCOL_T3 / CLINICAL_T3
    - T4: PAPER_T4 / PROTOCOL_T4 / CLINICAL_T4
 
-##### (6) Cross-Encoder Rerank (`rerank.py`)
+#### (6) Cross-Encoder Rerank (`rerank.py`)
 
 **목적**: 검색 결과의 관련성을 정밀하게 재평가
 
@@ -1090,7 +1090,7 @@ HybridRAG는 **Neo4j**를 단일 데이터베이스로 사용합니다:
 ## [이슈]
 - Github Issues
   - https://github.com/SKNETWORKS-FAMILY-AICAMP/SKN18-FINAL-2TEAM/issues?q=is%3Aissue
-  
+
 # [느낀점]
 - 황혜진(PM) : AI Camp 부트캠프의 마지막을 장식하는 이번 프로젝트를 통해, 단순한 학습을 넘어 실제 서비스 수준의 AI 시스템을 설계하고 구현하는 경험을 할 수 있었습니다. 짧은 기간 동안 기술을 연결하고 팀과 함께 완성도를 끌어올리는 과정이, 개발자로서 한 단계 성장했음을 느끼게 해준 의미 있는 마무리였습니다.
 - 황민우(APM) : 부트캠프의 마지막을 장식한 HelixOps 프로젝트를 통해, 단순한 학습을 넘어 실제 서비스 수준의 AI 플랫폼을 설계하고 구현하는 전반적인 개발 경험을 할 수 있었습니다. 저는 웹 개발과 QA, AI 단백질 설계 자동화 파이프라인 구축을 담당하며, 서로 다른 기술과 시스템을 하나의 흐름으로 연결하는 역할을 수행했습니다. 특히 단백질 설계 과정을 자동화하고 이를 서비스 구조 안에 통합하면서, AI가 연구자의 실험 과정을 실질적으로 보조할 수 있는 시스템을 구현해본 점이 인상 깊었습니다. 짧은 기간 동안 팀과 협업하며 완성도를 끌어올리는 과정에서 문제 해결 능력과 설계 역량이 향상되었고, 이를 통해 개발자로서 한 단계 성장했음을 느낀 의미 있는 프로젝트였습니다.
