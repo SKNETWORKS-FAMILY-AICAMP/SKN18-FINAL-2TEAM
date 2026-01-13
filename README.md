@@ -1055,23 +1055,9 @@ HybridRAG는 **Neo4j**를 단일 데이터베이스로 사용합니다:
 #### 알림 유형별 기능
 
 **1. 실험 알림 (Experiment Notifications)**
-- **실험 시작 알림**: 실험이 시작되었을 때 알림
-- **도구 완료 알림**: RFdiffusion, ProteinMPNN, AlphaFold3 등 각 도구 완료 시 알림
-- **실험 완료 알림**: 마지막 도구 완료 시 실험 완료 통합 알림
-- **발생 위치**: `messaging/consumers/simulation_consumer.py`
-
 **2. 일정 알림 (Schedule Notifications)**
-- **일정 공유 알림**: 일정이 공유되었을 때 초대받은 사용자에게 알림
-- **일정 리마인더 알림**: 설정된 시간 전에 일정 시작 알림 (Django 관리 명령어로 주기적 실행)
-- **발생 위치**: `django_app/apps/schedule/views.py`
-
 **3. 조직 알림 (Organization Notifications)**
-- **조직 초대 알림**: 조직에 초대되었을 때 알림
-- **발생 위치**: `django_app/apps/organization/views.py`
-
 **4. 노트 알림 (Note Notifications)**
-- **노트 공유 알림**: 노트가 공유되었을 때 알림
-- **발생 위치**: `django_app/apps/notes/views.py`
 
 #### 기술 구현
 - **비동기 처리**:
@@ -1083,7 +1069,6 @@ HybridRAG는 **Neo4j**를 단일 데이터베이스로 사용합니다:
   - `user_id` + `created_at` 복합 인덱스 (최신 알림 조회 최적화)
   - `user_id` + `read_yn` 복합 인덱스 (읽지 않은 알림 조회 최적화)
   - 대량 알림 일괄 생성 지원 (`bulk_create_notifications`)
-
 
 ## [이슈]
 - Github Issues
