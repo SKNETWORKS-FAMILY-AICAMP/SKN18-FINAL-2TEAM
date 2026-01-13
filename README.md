@@ -573,11 +573,293 @@ sequenceDiagram
 <img width="406" height="276" alt="Image" src="https://github.com/user-attachments/assets/4dcf6eca-e104-42f5-8003-112e62ae0c37" />  
 
 #### 1-3) retriver(검색)  
-- **역할**:
-- **검색방식**:
+- **역할**: 사용자 질문을 분석하고, Neo4j에서 하이브리드 검색을 수행하여 관련 컨텍스트를 추출하는 RAG 검색 파이프라인
+- **검색방식**: 
+  - **Query Rewrite**: LLM이 질문을 정규화하고 Track(T1~T4), Intent, Domain을 결정하며 MUST/SHOULD/MUST_NOT 키워드를 추출
+  - **Query Router**: Track/Intent/Domain에 따라 검색 계획(Retrieval Plan) 수립 (Entity 검색 vs Hybrid 검색)
+  - **Embedding Router**: 도메인별 임베딩 생성 (Paper/Clinical: OpenAI text-embedding-3-small 1536차원, Protocol: BAAI/bge-m3 1024차원)
+  - **Hybrid Search**: Neo4j에서 벡터 검색과 키워드 검색을 RRF(Reciprocal Rank Fusion)로 결합하여 하이브리드 점수 계산
+  - **Entity Search**: Fulltext로 Entity 해석 후 Track별 Cell 쿼리로 Paper/Protocol/Clinical/KG 정보 조립
+  - **Cross-Encoder Rerank**: ms-marco-MiniLM-L-6-v2 모델로 검색 결과의 관련성을 재평가하여 상위 K개 선택
+  - **다중 도메인 지원**: Paper, Protocol, Clinical, KG를 통합 검색하며 Track 기반으로 최적화된 검색 전략 적용
+
+#### [RAG 시스템 아키텍처]
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    사용자 질문 (Question)               │
+└──────────────────────────┬──────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│  1. Query Rewrite Node                                      │
+│     - LLM 기반 질문 정규화 및 분석                          │
+│     - Track/Intent/Domain 결정                              │
+│     - MUST/SHOULD/MUST_NOT 키워드 추출                      │
+└──────────────────────────┬──────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│  2. Query Router Node                                       │
+│     - Track/Intent 기반 검색 계획 수립                      │
+│     - 도메인별 우선순위 결정                                │
+│     - Retrieval Plan 생성                                   │
+└──────────────────────────┬──────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│  3. Embedding Router Node                                   │
+│     - Paper/Clinical: OpenAI text-embedding-3-small (1536)  │
+│     - Protocol: BAAI/bge-m3 (1024)                          │
+└──────────────────────────┬──────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│  4. Retriever Executor                                      │
+│     - RAG Orchestrator 호출                                 │
+│     - 도메인별 Hybrid Search 실행                           │
+│     - Entity 기반 검색 실행                                 │
+└──────────────────────────┬──────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│  5. RAG Orchestrator                                        │
+│     - Neo4j Hybrid Search 쿼리 실행                         │
+│     - RRF 기반 점수 통합                                    │
+│     - Cell 쿼리로 결과 조립                                 │
+└──────────────────────────┬──────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│  6. Cross-Encoder Rerank                                    │
+│     - ms-marco-MiniLM-L-6-v2 모델 사용                      │
+│     - Query-Document 관련성 재평가                          │
+│     - 상위 K개 선택                                         │
+└──────────────────────────┬──────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    최종 검색 결과 (Contexts)                │
+└─────────────────────────────────────────────────────────────┘
+```
+
+#### [주요 특징]
+##### (1) Query Rewrite (`query_rewrite_node.py`)
+
+**목적**: 사용자 질문을 분석하고 검색에 최적화된 형태로 변환
+
+**주요 기능**:
+- **Track 분류**: T1(정의), T2(근거 검색), T3(비교/추천), T4(종합)
+- **Intent 분류**: evidence_search, protocol_search, clinical_search, multi_domain
+- **Domain 감지**: paper, protocol, clinical, kg
+- **키워드 추출**:
+  - `must`: 필수 키워드 (1~3개, 고유명사/타겟/약물 등)
+  - `should`: 보조 키워드 (5~15개, 동의어/약어 확장)
+  - `must_not`: 제외 키워드 (0~5개, 동음이의어 제거)
+- **Entity 추출**: 생물의학 엔티티 (단백질, 유전자, 질병, 약물 등)
+
+**출력 예시**:
+```json
+{
+  "track": "T2",
+  "intent": "evidence_search",
+  "domains": ["paper"],
+  "normalized_question": "What is the efficacy of pembrolizumab in NSCLC?",
+  "entities": [
+    {"name": "pembrolizumab", "type": "drug"},
+    {"name": "NSCLC", "type": "disease"}
+  ],
+  "must": ["pembrolizumab", "NSCLC"],
+  "should": ["PD-1", "non-small cell lung cancer", "Keytruda"],
+  "must_not": [],
+  "retrieval": {
+    "k_seed": 300,
+    "k_final": 40,
+    "hop_limit": 2,
+    "fanout_limit": 200
+  }
+}
+```
+
+##### (2) Query Router (`query_router.py`)
+
+**목적**: Track/Intent/Domain에 따라 검색 계획(Retrieval Plan) 수립
+
+**라우팅 규칙**:
+
+| Track | Intent | 우선순위 | 검색 전략 |
+|-------|--------|---------|----------|
+| T1 | - | 10 | Entity 검색 → Fulltext → Hybrid (fallback) |
+| T2 | evidence_search | 15 | Hybrid Search (도메인별) |
+| T3 | - | - | Entity 기반 비교/추천 검색 |
+| T4 | multi_domain | 5 | Entity → KG → Paper/Protocol/Clinical Hybrid |
+
+**Retrieval Plan 예시**:
+```json
+[
+  {
+    "domain": "paper",
+    "mode": "HY",
+    "embedder": "main_1536",
+    "priority": 15,
+    "why": "default paper hybrid"
+  },
+  {
+    "domain": "protocol",
+    "mode": "HY",
+    "embedder": "protocol_1024",
+    "priority": 17,
+    "why": "T4: protocol hybrid (1024)"
+  }
+]
+```
+
+##### (3) Embedding Router (`embedding_router.py`)
+
+**목적**: 검색 계획에 필요한 임베딩 생성
+
+**임베딩 모델**:
+- **Paper/Clinical**: `text-embedding-3-small` (OpenAI, 1536차원)
+- **Protocol**: `BAAI/bge-m3` (Hugging Face, 1024차원)
+
+**Lazy Loading**: Protocol 임베딩은 최초 호출 시에만 Hugging Face API 연결
+
+##### (4) Retriever Executor (`retriever_runner.py`)
+
+**목적**: 검색 계획을 실행하여 컨텍스트 수집
+
+**실행 흐름**:
+1. Retrieval Plan의 각 단계를 순차 실행
+2. 도메인별 Orchestrator 메서드 호출
+3. 결과 중복 제거 (chunk_id 기반)
+4. 최종 contexts 반환
+
+##### (5) RAG Orchestrator (`rag_orchestrator.py`)
+
+**목적**: Neo4j에서 실제 검색 쿼리 실행 및 결과 조립
+
+###### (5.1) Hybrid Search (`route_by_hybrid_search`)
+
+**RRF (Reciprocal Rank Fusion) 알고리즘**:
+```
+hy_score = vec_score + ft_score
+```
+
+**파라미터**:
+- `k_seed`: 초기 검색 후보 수 (기본 150)
+- `k_final`: 최종 반환 개수 (기본 100)
+- `k_vec`: RRF용 벡터 후보 (기본 80)
+- `k_ft`: RRF용 키워드 후보 (기본 80)
+- `rrf_k0`: RRF 상수 (기본 60)
+
+**Fallback 전략**: `must_terms`로 결과가 없으면 조건 완화 후 재검색
+
+###### (5.2) Entity Search (`route_by_entity`)
+
+**흐름**:
+1. Fulltext로 Entity 해석 (Entity ID 획득)
+2. Track에 따라 Cell 쿼리 선택:
+   - T1: PAPER_T1 / PROTOCOL_T1 / CLINICAL_T1
+   - T3: PAPER_T3 / PROTOCOL_T3 / CLINICAL_T3
+   - T4: PAPER_T4 / PROTOCOL_T4 / CLINICAL_T4
+
+##### (6) Cross-Encoder Rerank (`rerank.py`)
+
+**목적**: 검색 결과의 관련성을 정밀하게 재평가
+
+**모델**: `cross-encoder/ms-marco-MiniLM-L-6-v2`
+- Query와 Document를 동시에 입력하여 관련성 점수 계산
+- Bi-Encoder보다 정확하지만 느림 (재순위화 단계에서만 사용)
+
+속도와 정확도 트레이드오프:
+
+| 모델 | 속도 | 정확도 | 권장 용도 |
+|------|------|--------|----------|
+| ms-marco-TinyBERT-L-2-v2 | ⚡⚡⚡ | ⭐⭐ | 빠른 프로토타입 |
+| ms-marco-MiniLM-L-6-v2 | ⚡⚡ | ⭐⭐⭐ | **현재 사용** (균형) |
+| ms-marco-electra-base | ⚡ | ⭐⭐⭐⭐ | 높은 정확도 필요 |
+| ms-marco-MiniLM-L-12-v2 | ⚡ | ⭐⭐⭐⭐⭐ | 최고 정확도 |
+
+**사용 위치**: `graph/nodes/retriver.py`의 `retriever_bio_node`에서 호출
+
+---
+
+#### [데이터베이스 구조]
+
+#### Neo4j 통합 데이터베이스
+
+HybridRAG는 **Neo4j**를 단일 데이터베이스로 사용합니다:
+- **Graph DB**: 엔티티, 관계, 메타데이터 저장
+- **Vector DB**: pgvector 대신 Neo4j Vector Index 사용
+- **Fulltext Index**: Lucene 기반 키워드 검색
+
+#### 주요 노드 타입
+
+##### Paper 도메인
+- `Article`: 논문 메타데이터 (pmid, title, year, abstract)
+- `Section`: 논문 섹션 (Introduction, Methods, Results 등)
+- `Chunk`: 논문 텍스트 청크 (벡터 임베딩 포함, 1536차원)
+- `Entity`: 생물의학 엔티티 (단백질, 유전자, 질병 등)
+- `Mention`: 텍스트에서 추출된 엔티티 언급
+
+##### Protocol 도메인
+- `Protocol`: 프로토콜 메타데이터 (title, usage_degree)
+- `ProtocolChunk`: 프로토콜 텍스트 청크 (벡터 임베딩 포함, 1024차원)
+- `Experiment`: 실험 방법 및 설정
+- `ExpMaterial`: 실험 재료
+- `ExpEquipment`: 실험 장비
+
+##### Clinical 도메인
+- `ClinicalTrial`: 임상시험 메타데이터 (nct_id, phase, title)
+- `ClinicalChunk`: 임상시험 텍스트 청크 (벡터 임베딩 포함, 1536차원)
+
+##### Knowledge Graph
+- `BaseNode`: PrimeKG 노드 (유전자, 단백질, 질병 등)
+- 관계: `MAPS_TO_PRIMEKG`, `REFERS_TO`
 
 #### 1-4) evaluation
-- **역할**:
+- **역할**: HybridRAG 시스템의 검색 품질과 신뢰성을 평가하여 기존 RAG 대비 개선 효과를 측정
+
+- **Golden Dataset 구축 및 신뢰성**:
+  
+  - **데이터셋 구축 방법**:
+    - **RAGAS의 합성 데이터 생성(Synthetic Test Data Generation) 모듈** 활용
+    - 보유한 전문 문서를 입력하여, 단순 질문뿐만 아니라 추론이 필요한 복합 질문까지 포함된 고품질의 '질문-정답(Ground Truth) 쌍'을 자동 생성
+    - 인간의 편향(Bias)을 배제한 객관적인 Golden Dataset 확보
+  - **평가 방법**:
+    - 생성된 데이터셋을 기반으로 RAGAS와 G-Eval을 통해 정량적·정성적 평가 수행
+    - Context Recall(재현율)과 Answer Correctness(정답 일치율)가 획기적으로 개선됨을 수치로 확인
+    - **AI가 문제를 내고(데이터 생성), AI가 채점하는(평가)** 고도화된 검증 시스템 구축
+
+- **평가 지표 및 결과**:
+  **1. Hallucination 감소** (평가 도구: RAGAS Framework)
+  - **근거 없는 문장 비율 (Faithfulness)**:
+    - 일반 RAG: 32% → HelixOps: 8%
+    - RAGAS의 Faithfulness 지표로 측정: 생성된 답변이 검색된 문서(Context)에 있는 내용만으로 구성되었는지(Hallucination 여부)를 수치화
+  - **출처 누락 (Context Recall)**:
+    - 일반 RAG: 41% → HelixOps: 5%
+    - RAGAS의 Context Recall 지표와 연관: 정답(Golden Set)을 생성하기 위해 필요한 핵심 문구가 검색 결과에 포함되었는지 평가
+
+  **2. Answer Consistency** (평가 도구: G-Eval (LLM-as-a-Judge))
+  - **5회 질문 결론 유지율**:
+    - 일반 RAG: 62% → HelixOps: 91%
+    - 같은 질문을 5번 던진 뒤, 나온 5개의 답변을 G-Eval(GPT-4)에게 주고 "이 답변들의 핵심 결론이 논리적으로 일치하는가?"를 채점
+    - 단순 텍스트 유사도(Similarity)보다 훨씬 정확한 '논리적 일관성(Logical Consistency)' 평가 방식
+
+  **3. Evidence Coverage** (평가 도구: System Trace (로그 분석) & Graph Metrics)
+  - **평균 인용 문서 수**:
+    - 일반 RAG: 1.2개 → HelixOps: 3.6개
+    - 시스템 로그(Trace Log)를 분석하여 1회 답변 생성 시 Retriever가 가져온 Chunk의 개수를 평균 낸 수치
+
+  - **그래프 경로 수**:
+    - 일반 RAG: 0개 → HelixOps: 3-5개
+    - Graph DB에서 탐색한 Hop의 깊이(Depth) 및 경로(Path) 수를 평균 낸 수치
+
+  **4. Re-rank 효과** (평가 도구: Golden Dataset 기반 IR(정보검색) 평가)
+  - **Top-3 Precision**:
+    - Before: 40% → After: 76%
+    - 구축한 Golden Dataset(정답지)을 기준으로, Re-ranker를 거친 후 상위 3개 문서 안에 실제 정답 문서가 포함되어 있는지를 계산
+    - RAGAS의 Context Precision과 동일한 개념
 
 
 ### 2. LangGraph
@@ -668,8 +950,22 @@ sequenceDiagram
   - 연구 노트 및 실험 관리 (Notes & Experiments)
     - AI 대화 내용 기반 연구 노트 작성 및 저장
     - 실험 시뮬레이션(AlphaFold3 등) 설정 및 결과 관리
+    
+- **주요 모델** :   
+  - **Account**: `User` (커스텀 사용자), `UserActivityLog` (활동 로그)
+  - **Chat**: `Chat` (대화 세션), `ChatMessage` (메시지), `ChatReference` (참고문헌), `ChatMessageFeedback` (피드백), `PaperGraph` (논문 그래프)
+  - **Note**: `Note` (연구 노트 본문/메타데이터)
+  - **Experiment**: `Experiment` (실험 설정 및 결과)
+  - **Schedule**: `Event` (일정 이벤트)
 
-### 4. sllm
+- **주요 API**   
+  - **Accounts**: `/accounts/login/`, `/accounts/register/`, `/accounts/profile/`
+  - **Chat**: 
+    - `/chat/api/conversations/` (대화 목록/생성)
+    - `/chat/api/messages/` (메시지 전송/조회)
+    - `/chat/api/feedback/` (피드백 등록)
+  - **Dashboard**: `/dashboard/` (통계 데이터 렌더링)
+  - **Note**: `/notes/` (노트 CRUD)### 4. sllm
 - **역할** : **생물의학 도메인 특화 근거 기반 응답 및 실험 결과 해석을 담당하는 핵심 생성 모델**
 - **목적** :
   생물의학 논문, 임상시험, 실험 프로토콜 및 결과 데이터를 대상으로 **관찰 기반·근거 중심** 응답을 생성하여 연구자의 판단을 보조하는 분석 엔진 역할을 수행
@@ -700,25 +996,85 @@ sequenceDiagram
   - 학습 데이터: 논문 섹션 기반으로 1차 생성 후, 구조 및 의미 검증을 거쳐 고품질 데이터만 2차적으로 선별하여 사용
   - 모델: Gemma-3 모델군을 대상으로 1B / 4B / 12B 크기별 base 모델과 fine-tuned 모델을 비교 평가한 후 최종 SLLM 모델 선정
 
+### 5. 단백질 AI 시뮬레이션 자동화 파이프라인
+
+- **목적**: 최신 딥러닝 기술을 활용하여 연구자가 원하는 단백질을 새롭게 설계하고 검증할 수 있는 자동화된 시스템 구축
+- **핵심 기능**: AlphaFold, RFdiffusion, ProteinMPNN과 같은 고성능 AI 모델들을 하나의 파이프라인으로 연결하여 구조 예측, 서열 생성, 단백질 디자인 과정을 자동화
+
+#### 단백질 서열 검색 (UniProt API 연동)
+- **편의성 개선**: 외부 데이터베이스 사이트를 별도로 띄울 필요 없이 플랫폼 내에서 즉시 검색 가능
+- **UniProt API 연동**: 화면 이동 없이 단백질 서열 검색 및 조회
+- **워크플로우 최적화**: 검색 결과를 리스트 형태로 조회하며, 필요한 서열을 바로 복사하여 사용 가능 (불필요한 작업 동선 최소화)
+
+#### 자동화 및 비동기 처리 기술
+- **큐 시스템**: RabbitMQ와 Celery를 활용한 대기열 시스템으로 사용자 요청을 순차 처리
+- **파이프라인 실행 순서**:
+  1. **RFdiffusion**: 단백질 디자인 (diffusion 기반 de novo 디자인)
+  2. **ProteinMPNN**: 서열 생성 (구조 기반 아미노산 서열 디자인)
+  3. **AlphaFold3**: 구조 예측 (단백질 3D 구조 예측)
+- **비동기 처리**: 연구자는 로딩 화면을 지켜볼 필요 없이 다른 작업 진행 가능
+- **실시간 진행 상황 표시**: 사이드바에 실시간 진행 상황 표시, 완료 시 알림 제공
+- **효율성**: 여러 실험을 동시에 등록하고 시간을 효율적으로 사용 가능
+- **결과 저장**: 모든 분석 결과는 클라우드 스토리지(S3)에 안전하게 저장
+
+#### 웹 3D 뷰어 및 시각화
+- **웹 기반 뷰어**: 무거운 3D 프로그램 설치 없이 웹 브라우저에서 즉시 단백질 구조 확인
+- **정밀 분석 기능**:
+  - 생성된 구조와 원본 구조를 정렬(Alignment)하여 비교
+  - 마우스로 자유롭게 회전하며 전체적인 형태 파악
+  - 점선으로 아미노산 간 상호작용 표시 (구조적 변화 직관적 분석)
+  - 단백질의 표면(Surface)이나 부피 정보를 클릭 한 번으로 시각화
+
+#### 기술 스택
+- **AI 모델**: AlphaFold3, RFdiffusion, ProteinMPNN
+- **비동기 처리**: RabbitMQ (메시지 큐), Celery (작업 큐)
+- **스토리지**: AWS S3 (결과 저장)
+- **시각화**: 웹 기반 3D 뷰어 (MolStar 등)
+- **API 연동**: UniProt API
 
 
-- **주요 모델** :   
-  - **Account**: `User` (커스텀 사용자), `UserActivityLog` (활동 로그)
-  - **Chat**: `Chat` (대화 세션), `ChatMessage` (메시지), `ChatReference` (참고문헌), `ChatMessageFeedback` (피드백), `PaperGraph` (논문 그래프)
-  - **Note**: `Note` (연구 노트 본문/메타데이터)
-  - **Experiment**: `Experiment` (실험 설정 및 결과)
-  - **Schedule**: `Event` (일정 이벤트)
+### 6. Notification(알림)
 
-- **주요 API**   
-  - **Accounts**: `/accounts/login/`, `/accounts/register/`, `/accounts/profile/`
-  - **Chat**: 
-    - `/chat/api/conversations/` (대화 목록/생성)
-    - `/chat/api/messages/` (메시지 전송/조회)
-    - `/chat/api/feedback/` (피드백 등록)
-  - **Dashboard**: `/dashboard/` (통계 데이터 렌더링)
-  - **Note**: `/notes/` (노트 CRUD)
-  
-- **향후 개선 방향**:  
+- **목적**: 사용자에게 다양한 이벤트에 대한 실시간 알림을 제공하여 플랫폼 내 활동을 효율적으로 관리
+- **주요 기능**:
+  - **다양한 알림 타입 지원**: 실험(E), 미팅(M), 분석(A), 세미나(S), 노트(N), 채팅(C), 시스템(SYS)
+  - **비동기 처리**: Celery와 RabbitMQ를 활용한 비동기 알림 생성으로 시스템 부하 최소화
+  - **실시간 이벤트 전송**: 실험 알림의 경우 클라이언트에 실시간 이벤트 전송
+  - **인덱스 최적화**: 사용자별 최신 알림 및 읽지 않은 알림 조회 성능 최적화
+
+#### 알림 유형별 기능
+
+**1. 실험 알림 (Experiment Notifications)**
+- **실험 시작 알림**: 실험이 시작되었을 때 알림
+- **도구 완료 알림**: RFdiffusion, ProteinMPNN, AlphaFold3 등 각 도구 완료 시 알림
+- **실험 완료 알림**: 마지막 도구 완료 시 실험 완료 통합 알림
+- **발생 위치**: `messaging/consumers/simulation_consumer.py`
+
+**2. 일정 알림 (Schedule Notifications)**
+- **일정 공유 알림**: 일정이 공유되었을 때 초대받은 사용자에게 알림
+- **일정 리마인더 알림**: 설정된 시간 전에 일정 시작 알림 (Django 관리 명령어로 주기적 실행)
+- **발생 위치**: `django_app/apps/schedule/views.py`
+
+**3. 조직 알림 (Organization Notifications)**
+- **조직 초대 알림**: 조직에 초대되었을 때 알림
+- **발생 위치**: `django_app/apps/organization/views.py`
+
+**4. 노트 알림 (Note Notifications)**
+- **노트 공유 알림**: 노트가 공유되었을 때 알림
+- **발생 위치**: `django_app/apps/notes/views.py`
+
+#### 기술 구현
+- **비동기 처리**:
+  - Celery Task를 통한 비동기 알림 생성 (`apps.notification.tasks.create_notification_async`)
+  - RabbitMQ 메시지 큐를 통한 작업 분산
+  - 동기 처리 폴백 지원 (Celery 미사용 시)
+
+- **성능 최적화**:
+  - `user_id` + `created_at` 복합 인덱스 (최신 알림 조회 최적화)
+  - `user_id` + `read_yn` 복합 인덱스 (읽지 않은 알림 조회 최적화)
+  - 대량 알림 일괄 생성 지원 (`bulk_create_notifications`)
+
+- **향후 개선 방향**:
   - 2차 개발 예정
     - 소셜 인증/가입/비밀번호 찾기
     - 알림 시스템 (Notification 도입)
@@ -734,9 +1090,7 @@ sequenceDiagram
 ## [이슈]
 - Github Issues
   - https://github.com/SKNETWORKS-FAMILY-AICAMP/SKN18-FINAL-2TEAM/issues?q=is%3Aissue
-
-
-
+  
 # [느낀점]
 - 황혜진(PM) : AI Camp 부트캠프의 마지막을 장식하는 이번 프로젝트를 통해, 단순한 학습을 넘어 실제 서비스 수준의 AI 시스템을 설계하고 구현하는 경험을 할 수 있었습니다. 짧은 기간 동안 기술을 연결하고 팀과 함께 완성도를 끌어올리는 과정이, 개발자로서 한 단계 성장했음을 느끼게 해준 의미 있는 마무리였습니다.
 - 황민우(APM) : 부트캠프의 마지막을 장식한 HelixOps 프로젝트를 통해, 단순한 학습을 넘어 실제 서비스 수준의 AI 플랫폼을 설계하고 구현하는 전반적인 개발 경험을 할 수 있었습니다. 저는 웹 개발과 QA, AI 단백질 설계 자동화 파이프라인 구축을 담당하며, 서로 다른 기술과 시스템을 하나의 흐름으로 연결하는 역할을 수행했습니다. 특히 단백질 설계 과정을 자동화하고 이를 서비스 구조 안에 통합하면서, AI가 연구자의 실험 과정을 실질적으로 보조할 수 있는 시스템을 구현해본 점이 인상 깊었습니다. 짧은 기간 동안 팀과 협업하며 완성도를 끌어올리는 과정에서 문제 해결 능력과 설계 역량이 향상되었고, 이를 통해 개발자로서 한 단계 성장했음을 느낀 의미 있는 프로젝트였습니다.
