@@ -401,7 +401,7 @@ def sllm(prompt: str, system_prompt: Optional[str] = None, temperature: float = 
         logger.debug("[SLLM] tiktoken을 사용할 수 없어 근사치로 계산")
 
     # 모델 최대 컨텍스트 길이 (Gemma3-12B-it 기반, 일반적으로 4096)
-    MAX_CONTEXT_LENGTH = 4096
+    MAX_CONTEXT_LENGTH = 8192
     # 안전 마진 (시스템 메시지, 응답 형식 등 고려)
     SAFETY_MARGIN = 100
     
