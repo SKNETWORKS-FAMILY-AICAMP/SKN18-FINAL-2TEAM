@@ -340,8 +340,6 @@ SKN18-FINAL-2TEAM/
 <img width="1335" height="637" alt="스크린샷 2025-12-19 14 47 37" src="https://github.com/user-attachments/assets/aab05fa8-5214-4453-8981-eb2332b2045d" />
 
 
----
-
 # [설계]
 
 ## 1. ETL
@@ -554,7 +552,6 @@ sequenceDiagram
     %% 8. 백그라운드 ETL (참고 흐름)
     EXT-->>LG: ETL triggers not shown<br/>(handled by Lambda / ETL pipeline)
 ```
----
 
 ## [구현]
 
@@ -1087,12 +1084,10 @@ HybridRAG는 **Neo4j**를 단일 데이터베이스로 사용합니다:
   - `user_id` + `read_yn` 복합 인덱스 (읽지 않은 알림 조회 최적화)
   - 대량 알림 일괄 생성 지원 (`bulk_create_notifications`)
 
----
 
 ## [이슈]
 - Github Issues
   - https://github.com/SKNETWORKS-FAMILY-AICAMP/SKN18-FINAL-2TEAM/issues?q=is%3Aissue
----
 
 # [느낀점]
 - 황혜진(PM) : AI Camp 부트캠프의 마지막을 장식하는 이번 프로젝트를 통해, 단순한 학습을 넘어 실제 서비스 수준의 AI 시스템을 설계하고 구현하는 경험을 할 수 있었습니다. 짧은 기간 동안 기술을 연결하고 팀과 함께 완성도를 끌어올리는 과정이, 개발자로서 한 단계 성장했음을 느끼게 해준 의미 있는 마무리였습니다.
