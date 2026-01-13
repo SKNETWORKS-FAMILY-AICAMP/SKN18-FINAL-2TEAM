@@ -782,7 +782,6 @@ hy_score = vec_score + ft_score
 
 **사용 위치**: `graph/nodes/retriver.py`의 `retriever_bio_node`에서 호출
 
----
 
 #### [데이터베이스 구조]
 
@@ -861,6 +860,7 @@ HybridRAG는 **Neo4j**를 단일 데이터베이스로 사용합니다:
     - 구축한 Golden Dataset(정답지)을 기준으로, Re-ranker를 거친 후 상위 3개 문서 안에 실제 정답 문서가 포함되어 있는지를 계산
     - RAGAS의 Context Precision과 동일한 개념
 
+---
 
 ### 2. LangGraph
 - **역할** : **전체 AI 파이프라인을 오케스트레이션(orchestration)** 하는 핵심 엔진 (운영, 실험, 안전, 재시도 등)
@@ -1074,12 +1074,6 @@ HybridRAG는 **Neo4j**를 단일 데이터베이스로 사용합니다:
   - `user_id` + `read_yn` 복합 인덱스 (읽지 않은 알림 조회 최적화)
   - 대량 알림 일괄 생성 지원 (`bulk_create_notifications`)
 
-- **향후 개선 방향**:
-  - 2차 개발 예정
-    - 소셜 인증/가입/비밀번호 찾기
-    - 알림 시스템 (Notification 도입)
-    - 실험 데이터 시각화 도구(3D MolStar 등) 웹 통합 강화
-    - 관리자 페이지(Admin) 대시보드 고도화
 
 ## [평가/결과]
 - 최종 발표 예정
