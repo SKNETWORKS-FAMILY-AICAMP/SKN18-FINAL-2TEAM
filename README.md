@@ -340,7 +340,7 @@ SKN18-FINAL-2TEAM/
 <img width="1335" height="637" alt="스크린샷 2025-12-19 14 47 37" src="https://github.com/user-attachments/assets/aab05fa8-5214-4453-8981-eb2332b2045d" />
 
 
-
+---
 
 # [설계]
 
@@ -421,6 +421,7 @@ flowchart TB
     %% Connect Stages
     Extract ==> Transform ==> Load
 ```
+---
 
 ## 2. **시스템 구성 및 흐름도**
 
@@ -553,6 +554,7 @@ sequenceDiagram
     %% 8. 백그라운드 ETL (참고 흐름)
     EXT-->>LG: ETL triggers not shown<br/>(handled by Lambda / ETL pipeline)
 ```
+---
 
 ## [구현]
 
@@ -920,7 +922,7 @@ HybridRAG는 **Neo4j**를 단일 데이터베이스로 사용합니다:
   - **구현**
     - <img width="784" alt="Image" src="https://github.com/user-attachments/assets/f9a9c695-8787-48f8-a687-edf41de7a600" />
 
-
+---
 
 ### 3. WEB
 
@@ -965,7 +967,11 @@ HybridRAG는 **Neo4j**를 단일 데이터베이스로 사용합니다:
     - `/chat/api/messages/` (메시지 전송/조회)
     - `/chat/api/feedback/` (피드백 등록)
   - **Dashboard**: `/dashboard/` (통계 데이터 렌더링)
-  - **Note**: `/notes/` (노트 CRUD)### 4. sllm
+  - **Note**: `/notes/` (노트 CRUD)
+  
+---
+
+### 4. sllm
 - **역할** : **생물의학 도메인 특화 근거 기반 응답 및 실험 결과 해석을 담당하는 핵심 생성 모델**
 - **목적** :
   생물의학 논문, 임상시험, 실험 프로토콜 및 결과 데이터를 대상으로 **관찰 기반·근거 중심** 응답을 생성하여 연구자의 판단을 보조하는 분석 엔진 역할을 수행
@@ -995,6 +1001,13 @@ HybridRAG는 **Neo4j**를 단일 데이터베이스로 사용합니다:
 - **단계적 선별 및 검증 (Staged Selection & Validation)**
   - 학습 데이터: 논문 섹션 기반으로 1차 생성 후, 구조 및 의미 검증을 거쳐 고품질 데이터만 2차적으로 선별하여 사용
   - 모델: Gemma-3 모델군을 대상으로 1B / 4B / 12B 크기별 base 모델과 fine-tuned 모델을 비교 평가한 후 최종 SLLM 모델 선정
+
+- **[평가/결과]**
+  - 최종 발표 예정
+
+- **[인사이트]**
+  - 최종 발표 예정
+---
 
 ### 5. 단백질 AI 시뮬레이션 자동화 파이프라인
 
@@ -1031,7 +1044,7 @@ HybridRAG는 **Neo4j**를 단일 데이터베이스로 사용합니다:
 - **스토리지**: AWS S3 (결과 저장)
 - **시각화**: 웹 기반 3D 뷰어 (MolStar 등)
 - **API 연동**: UniProt API
-
+---
 
 ### 6. Notification(알림)
 
@@ -1074,16 +1087,12 @@ HybridRAG는 **Neo4j**를 단일 데이터베이스로 사용합니다:
   - `user_id` + `read_yn` 복합 인덱스 (읽지 않은 알림 조회 최적화)
   - 대량 알림 일괄 생성 지원 (`bulk_create_notifications`)
 
-
-## [평가/결과]
-- 최종 발표 예정
-
-## [인사이트]
-- 최종 발표 예정
+---
 
 ## [이슈]
 - Github Issues
   - https://github.com/SKNETWORKS-FAMILY-AICAMP/SKN18-FINAL-2TEAM/issues?q=is%3Aissue
+---
 
 # [느낀점]
 - 황혜진(PM) : AI Camp 부트캠프의 마지막을 장식하는 이번 프로젝트를 통해, 단순한 학습을 넘어 실제 서비스 수준의 AI 시스템을 설계하고 구현하는 경험을 할 수 있었습니다. 짧은 기간 동안 기술을 연결하고 팀과 함께 완성도를 끌어올리는 과정이, 개발자로서 한 단계 성장했음을 느끼게 해준 의미 있는 마무리였습니다.
