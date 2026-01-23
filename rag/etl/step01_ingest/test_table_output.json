@@ -1,0 +1,910 @@
+{
+  "title": "Unraveling the Catalytic Mechanism of β‑Cyclodextrin\nin the Vitamin D Formation",
+  "abstract": "Previous experimental studies have shown that the isomerization\nreaction of previtamin D3 (PreD3) to vitamin D3 (VitD3) is accelerated\n40-fold when it takes place within a β-cyclodextrin dimer, in\ncomparison to the reaction occurring in conventional isotropic solutions.\nIn this study, we employ quantum mechanics-based molecular dynamics\n(MD) simulations and statistical multistructural variational transition\nstate theory to unveil the origin of this acceleration. We find that\nthe conformational landscape in the PreD3 isomerization is highly\ndependent on whether the system is encapsulated. In isotropic media,\nthe triene moiety of the PreD3 exhibits a rich torsional flexibility.\nHowever, when encapsulated, such a flexibility is limited to a more\nconfined conformational space. In both scenarios, our calculated rate\nconstants are in close agreement with experimental results and allow\nus to identify the PreD3 flexibility restriction as the primary catalytic\nfactor. These findings enhance our understanding of VitD3 isomerization\nand underscore the significance of MD and environmental factors in\nbiochemical modeling.",
+  "journal": "Journal of Chemical Information and Modeling",
+  "year": "2024",
+  "pmcid": "PMC12529775",
+  "pmid": "38598310",
+  "doi": "10.1021/acs.jcim.3c02049",
+  "article_category": "research",
+  "article_type_raw": "research-article",
+  "figure_captions": [
+    {
+      "fig_id": 765565218443,
+      "label": "fig1",
+      "caption": "Reactions in the synthesis of VitD3: (i) electrocyclic ring opening\nand (ii) antarafacial sigmatropic hydrogen shift. Dihedral angles\nassociated with the triene moiety in PreD3 are also shown: ϕ 1 (1–2–3–4) and ϕ 2 (3–4–5–6).",
+      "page_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12529775/#fig1",
+      "urls": [
+        "https://pmc.ncbi.nlm.nih.gov/articles/PMC12529775/bin/ci3c02049_0001.jpg"
+      ]
+    },
+    {
+      "fig_id": 716597567501,
+      "label": "fig2",
+      "caption": "Transition states for the antarafacial H-exchanges in the thermal\nsigmatropic reaction. The H transfer is highlighted with green dotted\nlines.",
+      "page_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12529775/#fig2",
+      "urls": [
+        "https://pmc.ncbi.nlm.nih.gov/articles/PMC12529775/bin/ci3c02049_0002.jpg"
+      ]
+    },
+    {
+      "fig_id": 553740501774,
+      "label": "fig3",
+      "caption": "Examples of nonreactive (NR) +t−c and reactive +c+c and\n−c−c triene configurations. Atoms associated with the\ntriene moiety are highlighted.",
+      "page_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12529775/#fig3",
+      "urls": [
+        "https://pmc.ncbi.nlm.nih.gov/articles/PMC12529775/bin/ci3c02049_0003.jpg"
+      ]
+    },
+    {
+      "fig_id": 486398093899,
+      "label": "fig4",
+      "caption": "Molecule of PreD encapsulated inside the β-CD dimer.",
+      "page_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12529775/#fig4",
+      "urls": [
+        "https://pmc.ncbi.nlm.nih.gov/articles/PMC12529775/bin/ci3c02049_0004.jpg"
+      ]
+    },
+    {
+      "fig_id": 10718416096,
+      "label": "fig5",
+      "caption": "Upper plots are bidimensional histograms representing the triene\ntorsional space explored during the MD simulation for PreD in both\nits free [f] and encapsulated [e] forms. Dihedral angles ϕ 1 and ϕ 2 are defined in Figure . The colors indicate the density of data\npoints, with darker and warmer colors representing lower and higher\ndensities, respectively. The initial −c−c geometry of\nthe MD simulations is highlighted with a red circle. Conformers identified\nby TorsiFlex for the free system are marked with ‘x’.\nThe lower plot illustrates the triene configuration relative to its\ndihedral angle values. The reactive −c−c and +c+c configuration\nare highlighted in blue and green, respectively. The D ring has been omitted (see Figure ).",
+      "page_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12529775/#fig5",
+      "urls": [
+        "https://pmc.ncbi.nlm.nih.gov/articles/PMC12529775/bin/ci3c02049_0005.jpg"
+      ]
+    },
+    {
+      "fig_id": 559331761048,
+      "label": "fig6",
+      "caption": "Energy distribution of PreD and TS conformers for both the free\n[f] and encapsulated [e] situations. Plot (a) corresponds to gas phase\ncalculations, whereas plot (b) corresponds to SMD calculations. Black\nlines indicate NR configurations of reactants. Green and blue lines\nrepresent the energy of +c+c and −c−c reactants [PreD­(+),\nPreD(−)] and transition states [TS­(+) and TS(−)], respectively.",
+      "page_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12529775/#fig6",
+      "urls": [
+        "https://pmc.ncbi.nlm.nih.gov/articles/PMC12529775/bin/ci3c02049_0006.jpg"
+      ]
+    },
+    {
+      "fig_id": 487219843245,
+      "label": "fig7",
+      "caption": "Contour plot illustrating the 2D-PES for the triene moiety of PreD,\ncomputed using the MPWB1K/6-31+G­(d,p) level of theory. The calculations\nwere performed with the remaining proper torsions constrained to the\nvalues of the most stable conformer. Dihedral angles ϕ 1 and ϕ 2 are defined in Figure .",
+      "page_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12529775/#fig7",
+      "urls": [
+        "https://pmc.ncbi.nlm.nih.gov/articles/PMC12529775/bin/ci3c02049_0007.jpg"
+      ]
+    },
+    {
+      "fig_id": 679068265156,
+      "label": "fig8",
+      "caption": "Contribution to the catalytic effect associated with the partition\nfunction of the PreD atoms, in bold blue, and its factorization by\nconsidering different intermediate reactions.",
+      "page_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12529775/#fig8",
+      "urls": [
+        "https://pmc.ncbi.nlm.nih.gov/articles/PMC12529775/bin/ci3c02049_0008.jpg"
+      ]
+    }
+  ],
+  "table_captions": [
+    {
+      "table_id": 56981612275,
+      "id": "tbl1",
+      "label": "table1",
+      "caption": "Ratio Between the Rate Constant for\nthe Encapsulated System, [e], and the Free System, [f]",
+      "page_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12529775/#tbl1",
+      "href": null,
+      "binary_url": null,
+      "content": {
+        "headers": [
+          [
+            {
+              "text": "",
+              "colspan": 1,
+              "rowspan": 1,
+              "align": "center"
+            },
+            {
+              "text": "φ",
+              "colspan": 1,
+              "rowspan": 1,
+              "align": "center"
+            },
+            {
+              "text": "φ _{γ0}",
+              "colspan": 1,
+              "rowspan": 1,
+              "align": "center"
+            },
+            {
+              "text": "φ _{V\n0}",
+              "colspan": 1,
+              "rowspan": 1,
+              "align": "center"
+            },
+            {
+              "text": "φ _{PreD}",
+              "colspan": 1,
+              "rowspan": 1,
+              "align": "center"
+            },
+            {
+              "text": "φ _{β‑CD}",
+              "colspan": 1,
+              "rowspan": 1,
+              "align": "center"
+            },
+            {
+              "text": "φ _{coup}",
+              "colspan": 1,
+              "rowspan": 1,
+              "align": "center"
+            }
+          ]
+        ],
+        "rows": [
+          [
+            {
+              "text": "experimental",
+              "colspan": 1,
+              "rowspan": 1,
+              "align": "left"
+            },
+            {
+              "text": "45.10",
+              "colspan": 1,
+              "rowspan": 1,
+              "align": "char"
+            },
+            {
+              "text": "",
+              "colspan": 1,
+              "rowspan": 1,
+              "align": "left"
+            },
+            {
+              "text": "",
+              "colspan": 1,
+              "rowspan": 1,
+              "align": "left"
+            },
+            {
+              "text": "",
+              "colspan": 1,
+              "rowspan": 1,
+              "align": "left"
+            },
+            {
+              "text": "",
+              "colspan": 1,
+              "rowspan": 1,
+              "align": "left"
+            },
+            {
+              "text": "",
+              "colspan": 1,
+              "rowspan": 1,
+              "align": "left"
+            }
+          ],
+          [
+            {
+              "text": "theoretical",
+              "colspan": 1,
+              "rowspan": 1,
+              "align": "left"
+            },
+            {
+              "text": "59.79",
+              "colspan": 1,
+              "rowspan": 1,
+              "align": "char"
+            },
+            {
+              "text": "1.19",
+              "colspan": 1,
+              "rowspan": 1,
+              "align": "left"
+            },
+            {
+              "text": "0.46",
+              "colspan": 1,
+              "rowspan": 1,
+              "align": "left"
+            },
+            {
+              "text": "19.58",
+              "colspan": 1,
+              "rowspan": 1,
+              "align": "left"
+            },
+            {
+              "text": "3.38",
+              "colspan": 1,
+              "rowspan": 1,
+              "align": "left"
+            },
+            {
+              "text": "1.64",
+              "colspan": 1,
+              "rowspan": 1,
+              "align": "left"
+            }
+          ]
+        ]
+      }
+    }
+  ],
+  "sections": [
+    {
+      "title": "Introduction",
+      "text": "The “sunshine vitamin”, vitamin D3 (VitD3), is a\nsteroid hormone hailing from cholesterol that holds a crucial place\nin the maintenance of calcium homeostasis and the enhancement of normal\nbone mineralization within the human anatomy. This vital nutrient is also intricately involved in several other\nindispensable biological processes, − and its insufficiency\nhas been identified as a contributing factor to various health conditions,\nsuch as rickets and osteoporosis in children and adults, autoimmune diseases, − and even to\nthe onset of depression in later life. , Despite its\nfundamental significance, hypovitaminosis D is a widespread global\nchallenge, affecting approximately one billion individuals across\nthe world, even in regions boasting high levels of sun exposure. VitD3 can be obtained by humans through two sources, namely, endogenous\nproduction and dietary intake, with the former serving as the principal\nsource for the vast majority of individuals. Regarding the latter,\nthe utilization of VitD3 supplements has witnessed an unprecedented\nsurge in recent years. For example, their sales reached a staggering\n$936 million in the United States alone in the year 2017, a 9-fold\nincrease from the previous decade. Given\nthe growing demand for VitD3, an in-depth comprehension of the mechanism\nbehind its formation holds immense significance for both the pharmaceutical\nand food industries, as it holds the potential to pave the way for\nthe creation of more efficient and economically viable synthetic procedures. The endogenous biosynthesis of VitD3 within the skin involves a\ntwo-step process, as depicted in Figure . The first\nstep is the UV-induced 6π electrocyclic ring opening of 7-dehydrocholesterol,\notherwise known as provitamin D3 (ProD3), resulting in the formation\nof the secosteroid previtamin D3 (PreD3). The second step entails\nthe thermal antarafacial [1,7]-sigmatropic hydrogen shift reaction,\nculminating in the formation of the much-coveted VitD3. In order for\nthis second step of the biosynthesis of VitD3 to occur, it is necessary\nfor the single bonds of the triene moiety, which connect rings A and C , to be in the s-cis conformation (−c\nor +c, depending on whether the corresponding dihedral angle is between\n−90 and 0° or between 0 and 90°, respectively). As\na result, this reaction manifests two potential antarafacial hydrogen\nexchange pathways: +c+c and −c−c, or just (+) and (−),\nas illustrated in Figure . The nomenclature for these arrangements is derived from\nthe torsion angles about the two single bonds of the triene moiety\n(ϕ _{1} and ϕ _{2} , see Figure ). According to the nonadiabatic molecular dynamics (MD) simulations\ncarried out by Furche and co-workers, the UV-induced ring opening results in PreD3 in the −c−c\narrangement (we refer to Figure 11 of their work). However, the small\ninterconversion barriers in PreD3 allows the thermal isomerization\nto take place through the +c+c configuration, which is known to be\nabout 10 times faster than the −c−c pathway. It is also important to note that the most stable\nconformer of PreD3, which has been found , to present a +t−c triene configuration, does not correspond\nto either of the two reactive triene arrangements (+t implies that\nthe corresponding dihedral angle, in this case ϕ _{1} , is between +90 and +180°). Examples of these triene configurations\ncan be found in Figure . Holick and co-workers have delved into the thermal isomerization\nof PreD3 in a range of media. Their findings show that the thermal\nreaction necessitates a substantial amount of time, spanning several\ndays, in an isotropic organic solution, such as n -hexane, at a temperature equivalent to that of the human body. However, they have uncovered that this transformation\noccurs at a 10-fold faster pace when taking place inside different\nskin types, including human and even\nreptilian skin. Their experiments show a remarkable acceleration in the rate of\nthis thermal isomerizationby 40 timeswhen PreD3 remains\nencapsulated within a β-cyclodextrin dimer (β-CD dimer), compared to its rate in an isotropic medium.\nIn this specific experiment, ProD3 was first encapsulated inside the\nβ-CD dimer and then irradiated to produce PreD3. Subsequently,\nthe thermal isomerization of PreD3 to VitD3 was studied. Given the\nhigh excess of β-CD and the insolubility of free ProD3 in water,\nHolick and co-workers reported that the system (ProD3, PreD3, and\nVitD3) remained fully complexed throughout the experiment. Therefore,\nthe observed 40-fold increase in the reaction is exclusively due to\nthe isomerization reaction and is unaffected by the encapsulation\nand decapsulation processes. To explain the catalytic effect of the β-CD dimer, Holick\nand co-workers proposed that the reactive conformers of PreD3 are\nstabilized upon complexation, thereby elevating the isomerization\nrate constant. On the other hand, Meana-Pañeda and Fernández-Ramos\nposited that this increase is a result of the diminutive cavity of\nthe β-CD dimer, which restricts rotations about the single bonds\nof the triene moiety connecting the A and C rings in PreD3, thus isolating the reactive conformers. Regrettably, a lack of quantitative computational\nevidence has prevented either of these hypotheses from being supported,\nand the catalytic mechanism remains an open question. With the intention of illuminating the catalytic mechanism, we\nconducted a comprehensive analysis of the dynamics of the isomerization\nreaction of PreD3 when encapsulated within the β-CD dimer. To\nachieve this, we utilized the statistical multistructural variational\ntransition state theory (MS-VTST) in\ncombination with MD simulations.",
+      "level": 1,
+      "path": [
+        "Introduction"
+      ],
+      "figure_info": {
+        "fig_ids": [
+          553740501774,
+          716597567501,
+          765565218443
+        ],
+        "table_ids": [],
+        "orig_fig_ids": [
+          "fig1",
+          "fig2",
+          "fig3"
+        ]
+      }
+    },
+    {
+      "title": "Calculation Method",
+      "text": "It has been demonstrated that the lateral chain ( R in Figure ) is not\ndirectly involved in the thermal isomerization and that, therefore,\nit can be safely replaced by a methyl group when studying this reaction\nin both gas-phase and n -hexane environments. We assume that this approximation also holds\ntrue within the β-CD dimer, and for this reason, we have also\nsubstituted this fragment by a methyl group. Hereinafter, we will\nreplace the PreD3 name by PreD to refer to the modified reactant.",
+      "level": 1,
+      "path": [
+        "Calculation Method"
+      ],
+      "figure_info": {
+        "fig_ids": [],
+        "table_ids": [],
+        "orig_fig_ids": []
+      }
+    },
+    {
+      "title": "Molecular Dynamics Simulations",
+      "text": "MD simulations were\nconducted for both the free [f] and encapsulated [e] versions of PreD,\nin order to compare the accessible torsional space of the triene moiety\nin each case. The most stable HL conformer of PreD exhibiting a −c−c\ntriene arrangement was selected as the initial configuration for the\nsimulation. For the encapsulated version, this conformer was manually\ninserted inside the β-CD dimer cavity and optimized at the HF/6-31G\nlevel of theory before the MD simulation. The xTB software (version\n6.4.1), developed by Grimme et al., was\nused, in combination with the semiempirical GFN2-xTB methodology, to calculate the forces throughout the simulation.\nEach system was propagated for 1 μs in five independent simulations\nwith a time step of 2 ps at 310.15 K in an NVT ensemble\n(total simulation time per system of 5 μs). A Berendsen thermostat\nwas used for keeping constant the temperature of the system, and the\nSHAKE algorithm was applied to all bonds.",
+      "level": 2,
+      "path": [
+        "Calculation Method",
+        "Molecular Dynamics Simulations"
+      ],
+      "figure_info": {
+        "fig_ids": [],
+        "table_ids": [],
+        "orig_fig_ids": []
+      }
+    },
+    {
+      "title": "Conformational Search",
+      "text": "All stationary-point geometries\n(equilibrium configurations and transition state structures) for the\nfree system were located with the TorsiFlex software , at the MPWB1K density functional method with the 6-31+G­(d,p) basis set, a combination\nwhich has previously demonstrated reliability for this system. Regarding the encapsulated system, each located\nconformer of interest for the free system was placed inside the β-CD\ndimer (see Figure ) and optimized. The electronic structure calculations for the encapsulated\nsystem were carried out using the ONIOM hybrid method, where the high layer, consisting of PreD atoms,\nwas computed at the MPWB1K/6-31+G­(d,p) level, and the low layer, reserved\nfor the β-CD dimer atoms, was studied using the density-functional-based\ntight-binding semiempirical level with analytic expressions for the\nmatrix elements (DFTBA). Finally, the\nabsolute energy of each conformer, considering both the free and the\nencapsulated scenarios, was refined by means of single-point calculations\nwith the MPWB1K/6-31+G­(d,p) level utilizing Truhlar and co-workers’\nSMD variation of the integral equation\nformalism variant of the polarizable continuum model (IEFPCM). All electronic structure calculations were automatically\nmanaged by TorsiFlex and carried out with the Gaussian 09 package.",
+      "level": 2,
+      "path": [
+        "Calculation Method",
+        "Conformational Search"
+      ],
+      "figure_info": {
+        "fig_ids": [
+          486398093899
+        ],
+        "table_ids": [],
+        "orig_fig_ids": [
+          "fig4"
+        ]
+      }
+    },
+    {
+      "title": "MS-VTST Rate Constants",
+      "text": "We have calculated the multistructural\n(MS) partition functions , , for PreD by considering their thermically accessible conformers\n(based on the MD results). We notice that this partition function\neffectively weighs the contribution of each conformer of reactants\nbased on its stability. Thus, even if the lowest-energy reactant conformer\nis not directly involved in the reaction, its influence on the overall\nreaction kinetics is fully considered in the calculations. The same\napplies to the two types of transition states, TS­(+) and TS(−). The calculation of the MS partitions functions was performed with\nthe aid of Pilgrim. With this information,\nPilgrim is also able to estimate the unimolecular reaction rate constant\nthrough MS-TST as [EQ:EQ9] where Q _{R} ^{MS} and Q ^{MS,‡} are, respectively, the MS ro-vibrational partition functions for\nthe reactant (PreD) and the transition state, either TS­(+) or TS(−).\nThe energy difference between the most stable conformer of the reactant\nand the transition state is denoted by V _{0} . Vibrational frequencies, required for the calculation of the ro-vibrational\npartition functions, were determined applying the recommended parametrized\nscaling factor of 0.951 for the MPWB1K/6-31+G­(d,p) level. k _{B} and h are Boltzmann and Planck constants. T is the temperature,\nwhich was set to 37 °C (human body temperature). MS-TST rate constants for both the (+) and (−) reactions\nwere corrected, by considering variational effects and quantum tunneling,\nas follows [EQ:EQ10] with Γ _{0} ^{CVT} being the variational coefficient that accounts\nfor recrossing effects (calculated within the canonical variational\ntransition state theory, CVT), , and κ _{0} ^{SCT} being the tunneling\ntransmission coefficient calculated by the small curvature tunneling\n(SCT) approximation. , − The 0 subscript\nindicates that these effects are calculated by employing the transition\nstate conformation with the lowest energy for each reaction channel.\nThe product of these two coefficients, γ _{0} ^{CVT/SCT} , is the total transmission\ncoefficient. In order to obtain γ _{0} ^{CVT/SCT} , minimum energy path (MEP) calculations\nwere performed for the most stable conformers of TS­(+) and TS(−)\nof the free previtamin and for the most stable conformer of TS(−)\nin the encapsulated scenario. Each MEP was followed using the Page-McIver algorithm with steps of 0.010 bohr with Hessian\ncalculations every nine steps and automatically extended until κ _{0} ^{SCT} converged within\nan error smaller than 0.5%. The magnitude of the catalytic effect can be estimated by the ratio\nbetween the MS-VTST rate constants for the encapsulated and free systems [EQ:EQ11] Notice that both eq and Holick’s experimental findings assess the isomerization\nrate constant of the system under encapsulated conditions compared\nto its free state, neglecting the influence of the encapsulation and\nthe decapsulation processes. In this context, the experimental and\ncomputational catalytic ratios might not accurately capture the magnitude\nof the catalytic effect if the free form of PreD were considered to\nbe the common starting point.",
+      "level": 2,
+      "path": [
+        "Calculation Method",
+        "MS-VTST Rate Constants"
+      ],
+      "figure_info": {
+        "fig_ids": [],
+        "table_ids": [],
+        "orig_fig_ids": []
+      }
+    },
+    {
+      "title": "Factorization of the Catalytic Ratio",
+      "text": "For the encapsulated\nsystems, the rovibrational partition function includes contributions\nfrom both PreD and the β-CD dimer. The Hessian matrix for the\nencapsulated system, denoted as F _{[e]} ,\ncomprises four distinct blocks [EQ:EQ12] Here, F _{PreD} represents part of the matrix for PreD, while F _{β‑CD} is for the β-CD dimer. The F _{coup} parts show how these two components interact\nwith each other. The F _{PreD} submatrix in conjunction\nwith the corresponding geometry of the PreD molecule allows estimating\nthe contribution of PreD to the ro-vibrational partition function\nof the encapsulated system, Q _{PreD} ^{[e]} . Similarly, F _{β‑CD} together with the geometric parameters\nof the β-CD dimer facilitates the estimation of the contribution\nassociated with the β-CD dimer, Q _{β‑CD} ^{[e]} . This allows factorizing the partition function into three distinct\nterms [EQ:EQ13] were the last term accounts for the coupling\nbetween PreD and the β-CD dimer and is calculated from Q ^{[e]} and two previous contributions. Considering the previous decomposition, the catalytic ratio (φ)\ncan be easily factored as a product of five terms [EQ:EQ14] The first term, φ _{γ0} , accounts for the change in the total CVT/SCT transmission\ncoefficient. φ _{V\n0} measures\nthe modification of the energy barrier upon encapsulation. The third\nterm examines the impact of encapsulation, specifically on the PreD\natoms, in both the reactant and the transition state [EQ:EQ15] where Q ^{[f]} represents the rovibrational partition function of the\nfree previtamin D. The fourth term assesses the change in the β-CD\ndimer when transitioning from the reactant to the transition state. [EQ:EQ16] Meanwhile, φ _{coup} delves into the coupling between\nthe PreD atoms and the dimer during the same process.",
+      "level": 2,
+      "path": [
+        "Calculation Method",
+        "Factorization of the Catalytic Ratio"
+      ],
+      "figure_info": {
+        "fig_ids": [],
+        "table_ids": [],
+        "orig_fig_ids": []
+      }
+    },
+    {
+      "title": "Results and Discussion",
+      "text": "In this section, we study and compare the dynamics of the thermal\nisomerization of PreD in its free [f] and its encapsulated version\n[e]. First, we inspect the outcome of the MD in order to understand\nhow the β-CD dimer restricts the torsional space of PreD (subsection Accessible Conformers ). Second, we explore the\nresults of the conformational analysis (subsection Conformational Analysis ). Finally, we estimate the reaction\nrate constants for thermal isomerization under both the free and the\nencapsulated conditions to determine the catalytic effect and comprehend\nits underlying causes ( Thermal Rate Constants and\nCatalytic Effect ).",
+      "level": 1,
+      "path": [
+        "Results and Discussion"
+      ],
+      "figure_info": {
+        "fig_ids": [],
+        "table_ids": [],
+        "orig_fig_ids": []
+      }
+    },
+    {
+      "title": "Accessible Conformers",
+      "text": "Based on the findings from Furche\nand co-workers’ nonadiabatic MD simulations, it is clear that\nthe UV-induced ring–opening reaction in ProD3 directly produces\nPreD3 in the −c−c reactive arrangement. For this reason,\nthe −c−c triene configuration was used as the starting\npoint for the MD simulations. These were carried out for both free\nand encapsulated PreD in order to determine the accessible domain\nwithin the triene subspace. As anticipated, PreD is capable\nof attaining all stable triene arrangements in the free scenario,\nas evidenced in Figure (top left panel). This clearly suggests an “unrestricted”\nmolecular flexibility when PreD is not encapsulated. In other words,\nall PreD conformers are accessible at the reaction temperature and,\nthus, must be taken into account when estimating its partition function\nand, consequently, when estimating the rate constant of the thermal\nsigmatropic reaction. In contrast, MD simulations for the encapsulated\nsystem reveal a restricted torsional movement of the triene moiety\n( Figure , top right\npanel). Simulations initiated from the reactive −c−c\nconfiguration become trapped in the torsional space associated with\nthe starting conformer, leaving the torsional space associated with\nthe +c+c reactive arrangement, and to the nonreactive (NR) ones, unexplored. Hence, in accordance with Meana-Pañeda and Fernández-Ramos’\npredictions, the β-CD dimer cavity impedes rotations about the\nsingle bonds in the triene moiety, rendering a fraction of the system’s\nconformers inaccessible at the temperature at which the reaction takes\nplace. Consequently, only the −c−c pathway will lead\nto VitD when the system is encapsulated inside the β-CD dimer.",
+      "level": 2,
+      "path": [
+        "Results and Discussion",
+        "Accessible Conformers"
+      ],
+      "figure_info": {
+        "fig_ids": [
+          10718416096
+        ],
+        "table_ids": [],
+        "orig_fig_ids": [
+          "fig5"
+        ]
+      }
+    },
+    {
+      "title": "Conformational Analysis",
+      "text": "The conformational exploration\nusing TorsiFlex identified a total of 103 conformers for PreD and\n24 conformers for each transition state. This is nearly 3 times the\ncount from an earlier study, primarily\nbecause it omitted conformers derived from OH group rotation. The\ndistribution of these conformers by energy is shown in Figure a, and their Cartesian coordinates\nare provided in the Supporting Information . Echoing prior findings, , the prevalent configuration\nof free PreD in the gas phase is the NR +t−c ( Figure , top) with angles (ϕ _{1} , ϕ _{2} ) = (123, −48°). The first\nreactive conformation stands at an energy 1.58 kcal/mol higher, corresponding\nto the +c+c triene with angles (ϕ _{1} , ϕ _{2} ) = (+54, +43°), which is depicted in the center of Figure . The energy of the\noptimal −c−c conformation is marginally higher at 1.67\nkcal/mol ( Figure ,\nbottom). Concerning the interconversion between triene conformations,\nwe conducted a 2D potential energy surface (2D-PES) calculation at\nthe MPWB1K/6-31+G­(d,p) level, as illustrated in Figure . This 2D-PES was generated by maintaining\nthe remaining proper torsional angles of PreD at the values found\nin the most stable conformer. We observe that a direct interconversion\nbetween reactive conformers, specifically from −c−c\nto +c+c, is hindered due to a high energy barrier. However, it is\nfeasible to transition between these conformers by passing through\nother conformations with distinct triene configurations, leading to\ninterconversion barriers that are less than 6 kcal/mol. These results\nare congruent with those obtained from the MD simulation, which deliberately\navoided triene configurations where ϕ _{1} approaches\nzero, but effectively explored regions associated with all system\nconformers. Regarding the thermal reaction, its barrier height ( V _{0} ), which represents the energy difference between the\nmost stable conformer of the reactant and the transition state, is\n28.07 kcal/mol for the (+) pathway. Comparatively, the first transition\nstate conformer for the (−) pathway is at 29.61 kcal/mol. This\nenergy difference of 1.54 kcal/mol between the barriers of the two\npathways aligns with the observation that the (+) channel exhibits\na reaction rate approximately ten times faster than the (−)\none. Encapsulation within the β-CD dimer dramatically alters this\nconformational energy distribution ( Figure a). MD simulations reveal that the NR and\n+c+c triene configurations become inaccessible and, hence, the reactant\nand transition state are now restricted to the −c−c\ntriene setup, bringing the reaction energy barrier down to V _{0} = 27.63 kcal/mol. This decrease of Δ V _{0} = −0.44 kcal/mol in the reaction barrier\nsuggests a 2-fold augmentation of the rate constant upon encapsulation,\nestimated using φ ∼ exp­(−Δ V _{0} /( k _{B} T )).\nYet, this would fall short of experimental observations. When the solvent environment is considered, Figure b, the results seem to contrast with experiments.\nSpecifically, the energy barrier rises from V _{0} = 27.40 to V _{0} = 27.88 kcal/mol\nupon encapsulation, implying that the rate constant would actually\nhalve at 37 °C. This indicates that the catalytic effect does\nnot arise from alterations in the energy barrier. In conclusion, the encapsulation and solvent environment significantly\ninfluence the conformational energy distribution and reaction barriers.\nHowever, the primary catalytic effect cannot be ascribed to these\nenergy barrier alterations, pointing to other factors at play.",
+      "level": 2,
+      "path": [
+        "Results and Discussion",
+        "Conformational Analysis"
+      ],
+      "figure_info": {
+        "fig_ids": [
+          487219843245,
+          559331761048
+        ],
+        "table_ids": [],
+        "orig_fig_ids": [
+          "fig6",
+          "fig7"
+        ]
+      }
+    },
+    {
+      "title": "Thermal Rate Constants and Catalytic Effect",
+      "text": "Our MD\nsimulations show that all conformers must be considered for the free\nscenario when computing partition functions and, hence, when calculating\nthe rate constants. However, in the encapsulated scenario, only those\nwith a −c−c triene arrangement should be incorporated.\nResulting rate constants are 1.01×10 ^{–5} s ^{–1} for the free system in n -hexane\nand 6.07×10 ^{–4} s ^{–1} for the\nencapsulated system in water. While both values align closely with\nthe experimental outcome reported by Holick and co-workers (0.68×10 ^{–5} and 3.07×10 ^{–4} s ^{–1} ), they are slightly overestimated.\nIt is worth noting that our rate constant for the free system closely\nagrees with the estimate from a previous computational study, which reported a value of 0.90×10 ^{–5} s ^{–1} . Notably, and as previously indicated, this\nprior study did not consider conformations resulting from OH group\nrotations, potentially explaining minor observed differences. With the previous rate constants, the computed catalytic effect approximates\n60, which closely aligns with the experimentally observed value of\n45. When we dissect this ratio as per eq , it is evident that every component, except the reaction\nbarrier, plays a role in influencing the catalytic effect (refer to Table ). Notably, φ _{PreD} stands out as the contribution that is the most significant\ncontributor. As expected, this underscores that the true essence of\nthe catalytic effect is intricately tied to how the encapsulation\nmodifies the PreD moiety. Several factors may influence φ _{PreD} , including\nthe reduction of conformational space; the impact of the β-CD\ndimer on encapsulated PreD conformers; and the solvent environment.\nTo quantify these factors, we considered several hypothetical intermediate\nreactions, as depicted in Figure . For naming conventions, we employ f and e to denote reactions in the free and encapsulated systems,\nrespectively. The subscripts g , nh , and w are utilized to estimate conditions in the gas phase, n -hexane, and water. Additionally, superscript (−) signifies that our focus is solely on the −c−c conformations\nfor both reactants and transition state conformers. (i) Reduction of the conformational\nspace . The singular effect of conformational restriction\nimposed by the β-CD dimer can be appraised by analyzing two\nversions of the reaction within the free scenario in n -hexane: the real reaction incorporating all conformations, denoted\nas f _{nh} , and a hypothetical one\ninvolving only the −c−c conformations, denoted as f _{nh} ^{(−)} . Under the consideration of these two reactions, φ _{PreD} ∼ 5. This value accounts for the reduction in the number\nof conformers to be considered, which notably affects the reactant,\nsince reactive +c+c and NR arrangements are no longer accessible upon\nencapsulation (the number of conformers is reduced from 103 to 22).\nConversely, the impact on the transition state is less pronounced,\nas only the reactive +c+c configurations are rendered unavailable. (ii) Impact of the β -CD dimer on encapsulated PreD conformers . Upon consideration\nof the gas-phase reaction, solely encompassing reactive −c−c\nconformers, for both the free system, denoted as f _{g} ^{(−)} , and the encapsulated counterpart, e _{g} ^{(−)} , it is\npossible to isolate the effect of the encapsulation from the conformational\nrestriction previously measured. This effect also contributes to the\ncatalytic effect, but only with a factor of φ _{PreD} ∼ 2. The origin of this acceleration can be found on the\nlow-frequency vibrations of PreD. These low-frequency movements are\nmore restricted upon encapsulation, leading to an increase of their\nvibrational frequencies and, consequently, to a decrease in the rovibrational\npartition function. For instance, the first three vibrational frequencies\nfor the −c−c conformers of the reactant in gas phase\nare 24 ± 5, 31 ± 5, and 46 ± 5 cm ^{–1} , whereas these frequencies are, for the encapsulated system, 42 ± 5, 54 ± 4, and 64 ± 3 cm ^{–1} . This significant variation (more than 10%) takes\nplace in the first six vibrational frequencies, where the value always\nincreases upon encapsulation. This effect is less significant in the\ntransition state structures, basically because the transferred H links\nring A to ring C , already restricting these\nmovements. As the increase of these low-frequencies is more significant\nin the reactant, the whole effect contributes to φ _{PreD} with a factor greater than 1. (iii) Effect of the solvent environment . Ultimately, the impact of solvent alteration can be gauged through\nthe analysis of two sets of reactions: f _{nh} ^{(−)} to f _{g} ^{(−)} and e _{g} ^{(−)} to e _{w} ^{(−)} . Although the change in solvent significantly contributes to the\ncatalytic mechanism, it represents the least influential effect in\nφ _{PreD} , as it only imparts a factor of approximately\n1.7. Drawing from our computational chemistry findings, it is apparent\nthat the dominant factor driving the catalytic effect is the constrained\nrotation of single bonds in the triene moiety, resulting from the\nsmall cavity of the β-CD dimer. This conformational restriction\nleads to the seclusion of reactive −c−c conformers,\nmanifested as a pronounced reduction in the number of conformers to\nbe considered. Notably, this primarily affects the reactant, thereby\nelevating the rate constant. However, it should be acknowledged that\nthis is not the sole effect contributing to the observed acceleration\nof Vitamin D’s thermal isomerization.",
+      "level": 2,
+      "path": [
+        "Results and Discussion",
+        "Thermal Rate Constants and Catalytic Effect"
+      ],
+      "figure_info": {
+        "fig_ids": [
+          679068265156
+        ],
+        "table_ids": [
+          "tbl1"
+        ],
+        "orig_fig_ids": [
+          "fig8"
+        ]
+      }
+    },
+    {
+      "title": "Conclusions",
+      "text": "Our computational results revealed a richer conformational landscape\nthan previously documented in the PreD isomerization, emphasizing\nthe importance of thorough conformational studies for molecular understanding. Notably, the relevance of specific conformers varied dramatically\nbetween free and encapsulated conditions. In the encapsulated scenario,\nonly the −c−c triene conformers are accessible. Our\ncomputed rate constants for both scenarios aligned closely with experimental\nobservations, reinforcing the accuracy and reliability of our approach. The crux of our findings is that the catalytic enhancement is primarily\nan entropic phenomenon rather than an enthalpic one. While enthalpic\nfactors, such as the reaction barrier, would predict a slowdown in\nthe reaction, it is the entropic factors, particularly the reduction\nin conformer variety and an upswing in low vibrational frequencies,\nthat exert dominance. More specifically, the restricted rotation of the triene moiety\nwithin the β-CD dimer emerged as the primary factor enhancing\nthe catalytic effect. This pivotal observation resonates with the\nhypothesis of Meana-Pañeda and Fernández-Ramos, highlighting\nthe relationship between conformational restraint and catalysis in\nVitamin d isomerization. Overall, our findings refine our understanding of Vitamin d isomerization catalysis and advocate for incorporating MD and environmental\nfactors in biochemical modeling.",
+      "level": 1,
+      "path": [
+        "Conclusions"
+      ],
+      "figure_info": {
+        "fig_ids": [],
+        "table_ids": [],
+        "orig_fig_ids": []
+      }
+    },
+    {
+      "title": "Supplementary Material",
+      "text": "",
+      "level": 1,
+      "path": [
+        "Supplementary Material"
+      ],
+      "figure_info": {
+        "fig_ids": [],
+        "table_ids": [],
+        "orig_fig_ids": []
+      }
+    }
+  ],
+  "equations": [
+    {
+      "id": "EQ1",
+      "latex": "$ k^{MS-TST}=\\frac{k_{B}T}{h}\\frac{Q^{MS,‡}}{Q_{R}^{MS}}e^{-V_{0}/(k_{B}T)} $",
+      "display": true,
+      "path": []
+    },
+    {
+      "id": "EQ2",
+      "latex": "$ k^{MS-VTST}=Γ_{0}^{CVT}\\cdotκ_{0}^{SCT}\\cdotk^{MS-TST}=γ_{0}^{CVT/SCT}\\cdotk^{MS-TST} $",
+      "display": true,
+      "path": []
+    },
+    {
+      "id": "EQ3",
+      "latex": "$ φ=k_{[e]}^{MS-VTST}/k_{[f]}^{MS-VTST} $",
+      "display": true,
+      "path": []
+    },
+    {
+      "id": "EQ4",
+      "latex": "4",
+      "display": true,
+      "path": []
+    },
+    {
+      "id": "EQ5",
+      "latex": "$ Q^{[e]}=Q_{PreD}^{[e]}\\cdotQ_{β-CD}^{[e]}\\cdotf_{coup} $",
+      "display": true,
+      "path": []
+    },
+    {
+      "id": "EQ6",
+      "latex": "$ φ=φ_{γ_{0}}\\cdotφ_{V_{0}}\\cdotφ_{PreD}\\cdotφ_{β-CD}\\cdotφ_{coup} $",
+      "display": true,
+      "path": []
+    },
+    {
+      "id": "EQ7",
+      "latex": "$ φ_{PreD}=(\\frac{Q_{PreD}^{[e]}}{Q^{[f]}})^{‡}\\cdot(\\frac{Q_{PreD}^{[e]}}{Q^{[f]}})_{R}^{-1} $",
+      "display": true,
+      "path": []
+    },
+    {
+      "id": "EQ8",
+      "latex": "$ φ_{β-CD}=\\frac{(Q_{β-CD}^{[e]})^{‡}}{(Q_{β-CD}^{[e]})_{R}} $",
+      "display": true,
+      "path": []
+    },
+    {
+      "id": "EQ9",
+      "latex": "$ k^{MS-TST}=\\frac{k_{B}T}{h}\\frac{Q^{MS,‡}}{Q_{R}^{MS}}e^{-V_{0}/(k_{B}T)} $",
+      "display": true,
+      "path": [
+        "Calculation Method",
+        "MS-VTST Rate Constants"
+      ]
+    },
+    {
+      "id": "EQ10",
+      "latex": "$ k^{MS-VTST}=Γ_{0}^{CVT}\\cdotκ_{0}^{SCT}\\cdotk^{MS-TST}=γ_{0}^{CVT/SCT}\\cdotk^{MS-TST} $",
+      "display": true,
+      "path": [
+        "Calculation Method",
+        "MS-VTST Rate Constants"
+      ]
+    },
+    {
+      "id": "EQ11",
+      "latex": "$ φ=k_{[e]}^{MS-VTST}/k_{[f]}^{MS-VTST} $",
+      "display": true,
+      "path": [
+        "Calculation Method",
+        "MS-VTST Rate Constants"
+      ]
+    },
+    {
+      "id": "EQ12",
+      "latex": "4",
+      "display": true,
+      "path": [
+        "Calculation Method",
+        "Factorization of the Catalytic Ratio"
+      ]
+    },
+    {
+      "id": "EQ13",
+      "latex": "$ Q^{[e]}=Q_{PreD}^{[e]}\\cdotQ_{β-CD}^{[e]}\\cdotf_{coup} $",
+      "display": true,
+      "path": [
+        "Calculation Method",
+        "Factorization of the Catalytic Ratio"
+      ]
+    },
+    {
+      "id": "EQ14",
+      "latex": "$ φ=φ_{γ_{0}}\\cdotφ_{V_{0}}\\cdotφ_{PreD}\\cdotφ_{β-CD}\\cdotφ_{coup} $",
+      "display": true,
+      "path": [
+        "Calculation Method",
+        "Factorization of the Catalytic Ratio"
+      ]
+    },
+    {
+      "id": "EQ15",
+      "latex": "$ φ_{PreD}=(\\frac{Q_{PreD}^{[e]}}{Q^{[f]}})^{‡}\\cdot(\\frac{Q_{PreD}^{[e]}}{Q^{[f]}})_{R}^{-1} $",
+      "display": true,
+      "path": [
+        "Calculation Method",
+        "Factorization of the Catalytic Ratio"
+      ]
+    },
+    {
+      "id": "EQ16",
+      "latex": "$ φ_{β-CD}=\\frac{(Q_{β-CD}^{[e]})^{‡}}{(Q_{β-CD}^{[e]})_{R}} $",
+      "display": true,
+      "path": [
+        "Calculation Method",
+        "Factorization of the Catalytic Ratio"
+      ]
+    }
+  ],
+  "references": [
+    {
+      "raw": "Feldman , D. ; Krishnan , A. V. ; Swami , S. Osteoporosis ; Elsevier , 2013 , pp 283 – 328 .",
+      "journal": "Osteoporosis",
+      "year": "2013",
+      "title": "Feldman , D. ; Krishnan , A. V. ; Swami , S. Osteoporosis ; Elsevier , 2013 , pp 283 – 328 ."
+    },
+    {
+      "raw": "Zdrenghea M. T. Makrinioti H. Bagacean C. Bush A. Johnston S. L. Stanciu L. A. Vitamin D modulation of innate immune responses to\nrespiratory viral infections Rev. Med. Virol. 2017 27 e1909 10.1002/rmv.1909 27714929",
+      "title": "Vitamin D modulation of innate immune responses to\nrespiratory viral infections",
+      "journal": "Rev. Med. Virol.",
+      "year": "2017",
+      "pmid": "27714929",
+      "doi": "10.1002/rmv.1909",
+      "url": "https://doi.org/10.1002/rmv.1909"
+    },
+    {
+      "raw": "Grant W. B. Lahore H. McDonnell S. L. Baggerly C. A. French C. B. Aliano J. L. Bhattoa H. P. Evidence that vitamin D supplementation\ncould reduce risk of influenza and COVID-19 infections and deaths Nutrients 2020 12 988 10.3390/nu12040988 32252338 PMC7231123",
+      "title": "Evidence that vitamin D supplementation\ncould reduce risk of influenza and COVID-19 infections and deaths",
+      "journal": "Nutrients",
+      "year": "2020",
+      "pmid": "32252338",
+      "doi": "10.3390/nu12040988",
+      "url": "https://doi.org/10.3390/nu12040988"
+    },
+    {
+      "raw": "Pusceddu I. Farrell C.-J. L. Di Pierro A. M. Jani E. Herrmann W. Herrmann M. The role of telomeres and vitamin D in cellular aging\nand age-related diseases Clin. Chem. Lab. Med. 2015 53 1661 1678 10.1515/cclm-2014-1184 25803084",
+      "title": "The role of telomeres and vitamin D in cellular aging\nand age-related diseases",
+      "journal": "Clin. Chem. Lab. Med.",
+      "year": "2015",
+      "pmid": "25803084",
+      "doi": "10.1515/cclm-2014-1184",
+      "url": "https://doi.org/10.1515/cclm-2014-1184"
+    },
+    {
+      "raw": "Prietl B. Treiber G. Pieber T. R. Amrein K. Vitamin D and immune\nfunction Nutrients 2013 5 2502 2521 10.3390/nu5072502 23857223 PMC3738984",
+      "title": "Vitamin D and immune\nfunction",
+      "journal": "Nutrients",
+      "year": "2013",
+      "pmid": "23857223",
+      "doi": "10.3390/nu5072502",
+      "url": "https://doi.org/10.3390/nu5072502"
+    },
+    {
+      "raw": "Trochoutsou A. Kloukina V. Samitas K. Xanthou G. Vitamin-D in the immune\nsystem: genomic and non-genomic actions Mini-Rev.\nMed. Chem. 2015 15 953 963 10.2174/1389557515666150519110830 25985946",
+      "title": "Vitamin-D in the immune\nsystem: genomic and non-genomic actions",
+      "journal": "Mini-Rev.\nMed. Chem.",
+      "year": "2015",
+      "pmid": "25985946",
+      "doi": "10.2174/1389557515666150519110830",
+      "url": "https://doi.org/10.2174/1389557515666150519110830"
+    },
+    {
+      "raw": "Bizzaro G. Antico A. Fortunato A. Bizzaro N. Vitamin D and autoimmune\ndiseases: is vitamin D receptor (VDR) polymorphism the culprit Isr. Med. Assoc. J. 2017 19 438 443 28786260",
+      "title": "Vitamin D and autoimmune\ndiseases: is vitamin D receptor (VDR) polymorphism the culprit",
+      "journal": "Isr. Med. Assoc. J.",
+      "year": "2017",
+      "pmid": "28786260"
+    },
+    {
+      "raw": "Okereke O. I. Singh A. The role of vitamin D in the prevention of late-life depression J. Affective Disord. 2016 198 1 14 10.1016/j.jad.2016.03.022 PMC4844780 26998791",
+      "title": "The role of vitamin D in the prevention of late-life depression",
+      "journal": "J. Affective Disord.",
+      "year": "2016",
+      "pmid": "26998791",
+      "doi": "10.1016/j.jad.2016.03.022",
+      "url": "https://doi.org/10.1016/j.jad.2016.03.022"
+    },
+    {
+      "raw": "Tuohimaa P. Keisala T. Minasyan A. Cachat J. Kalueff A. Vitamin D,\nnervous system and aging Psychoneuroendocrinology 2009 34 278 286 10.1016/j.psyneuen.2009.07.003 19660871",
+      "title": "Vitamin D,\nnervous system and aging",
+      "journal": "Psychoneuroendocrinology",
+      "year": "2009",
+      "pmid": "19660871",
+      "doi": "10.1016/j.psyneuen.2009.07.003",
+      "url": "https://doi.org/10.1016/j.psyneuen.2009.07.003"
+    },
+    {
+      "raw": "Podd D. Hypovitaminosis\nD: a common deficiency with pervasive consequences JAAPA 2015 28 20 26 10.1097/01.JAA.0000459810.95512.14 25594293",
+      "title": "Hypovitaminosis\nD: a common deficiency with pervasive consequences",
+      "journal": "JAAPA",
+      "year": "2015",
+      "pmid": "25594293",
+      "doi": "10.1097/01.JAA.0000459810.95512.14",
+      "url": "https://doi.org/10.1097/01.JAA.0000459810.95512.14"
+    },
+    {
+      "raw": "Szabo , L. Vitamin D, the Sunshine\nSupplement, Has Shadowy Money behind it ; The New York Times , 2018 . https://www.nytimes.com/2018/08/18/business/vitamin-d-michael-holick.html (accessed December 14, 2023).",
+      "journal": "Vitamin D, the Sunshine\nSupplement, Has Shadowy Money behind it",
+      "year": "2018",
+      "title": "Szabo , L. Vitamin D, the Sunshine\nSupplement, Has Shadowy Money behind it ; The New York Times , 2018 . https://www.nytimes.com/2018/08/18/business/vitamin-d-michael-holick.html (accessed December 14, 2023)."
+    },
+    {
+      "raw": "Wacker M. Holick M. F. Sunlight and Vitamin D: A global perspective for health Dermatoendocrinol 2013 5 51 108 10.4161/derm.24494 24494042 PMC3897598",
+      "title": "Sunlight and Vitamin D: A global perspective for health",
+      "journal": "Dermatoendocrinol",
+      "year": "2013",
+      "pmid": "24494042",
+      "doi": "10.4161/derm.24494",
+      "url": "https://doi.org/10.4161/derm.24494"
+    },
+    {
+      "raw": "Tapavicza E. Meyer A. M. Furche F. Unravelling the details of vitamin\nD photosynthesis by non-adiabatic molecular dynamics simulations Phys. Chem. Chem. Phys. 2011 13 20986 20998 10.1039/c1cp21292c 22020179",
+      "title": "Unravelling the details of vitamin\nD photosynthesis by non-adiabatic molecular dynamics simulations",
+      "journal": "Phys. Chem. Chem. Phys.",
+      "year": "2011",
+      "pmid": "22020179",
+      "doi": "10.1039/c1cp21292c",
+      "url": "https://doi.org/10.1039/c1cp21292c"
+    },
+    {
+      "raw": "Meana-Pañeda R. Fernández-Ramos A. Tunneling and conformational flexibility\nplay critical roles in the isomerization mechanism of vitamin D J. Am. Chem. Soc. 2012 134 346 354 10.1021/ja2077075 22118472",
+      "title": "Tunneling and conformational flexibility\nplay critical roles in the isomerization mechanism of vitamin D",
+      "journal": "J. Am. Chem. Soc.",
+      "year": "2012",
+      "pmid": "22118472",
+      "doi": "10.1021/ja2077075",
+      "url": "https://doi.org/10.1021/ja2077075"
+    },
+    {
+      "raw": "Dauben W. G. Funhoff D. J. Theoretical evaluation of the conformations of previtamin\nD3 J. Org. Chem. 1988 53 5070 5075 10.1021/jo00256a031",
+      "title": "Theoretical evaluation of the conformations of previtamin\nD3",
+      "journal": "J. Org. Chem.",
+      "year": "1988",
+      "doi": "10.1021/jo00256a031",
+      "url": "https://doi.org/10.1021/jo00256a031"
+    },
+    {
+      "raw": "Tian X. Q. Chen T. C. Matsuoka L. Y. Wortsman J. Holick M. F. Kinetic\nand thermodynamic studies of the conversion of previtamin D3 to vitamin\nD3 in human skin J. Biol. Chem. 1993 268 14888 14892 10.1016/S0021-9258(18)82416-4 8392061",
+      "title": "Kinetic\nand thermodynamic studies of the conversion of previtamin D3 to vitamin\nD3 in human skin",
+      "journal": "J. Biol. Chem.",
+      "year": "1993",
+      "pmid": "8392061",
+      "doi": "10.1016/S0021-9258(18)82416-4",
+      "url": "https://doi.org/10.1016/S0021-9258(18)82416-4"
+    },
+    {
+      "raw": "Holick M. F. Tian X. Q. Allen M. Evolutionary importance for the membrane\nenhancement of the production of vitamin D3 in the skin of poikilothermic\nanimals Proc. Natl. Acad. Sci. U.S.A. 1995 92 3124 3126 10.1073/pnas.92.8.3124 7724526 PMC42117",
+      "title": "Evolutionary importance for the membrane\nenhancement of the production of vitamin D3 in the skin of poikilothermic\nanimals",
+      "journal": "Proc. Natl. Acad. Sci. U.S.A.",
+      "year": "1995",
+      "pmid": "7724526",
+      "doi": "10.1073/pnas.92.8.3124",
+      "url": "https://doi.org/10.1073/pnas.92.8.3124"
+    },
+    {
+      "raw": "Tian X. Q. Holick M. F. Catalyzed Thermal Isomerization between Previtamin\nD 3 and Vitamin D 3 via β–Cyclodextrin\nComplexation J. Biol. Chem. 1995 270 8706 8711 10.1074/jbc.270.15.8706 7721775",
+      "title": "Catalyzed Thermal Isomerization between Previtamin\nD3 and Vitamin D3 via β–Cyclodextrin\nComplexation",
+      "journal": "J. Biol. Chem.",
+      "year": "1995",
+      "pmid": "7721775",
+      "doi": "10.1074/jbc.270.15.8706",
+      "url": "https://doi.org/10.1074/jbc.270.15.8706"
+    },
+    {
+      "raw": "Bakirova R. Nukhuly A. Iskineyeva A. Fazylov S. Burkeyev M. Mustafayeva A. Minayeva Y. Sarsenbekova A. Obtaining\nand Investigation of the β-Cyclodextrin Inclusion Complex with\nVitamin D 3 Oil Solution Scientifica 2020 2020 1 8 10.1155/2020/6148939 PMC7450341 32908782",
+      "title": "Obtaining\nand Investigation of the β-Cyclodextrin Inclusion Complex with\nVitamin D\n3 Oil Solution",
+      "journal": "Scientifica",
+      "year": "2020",
+      "pmid": "32908782",
+      "doi": "10.1155/2020/6148939",
+      "url": "https://doi.org/10.1155/2020/6148939"
+    },
+    {
+      "raw": "Yu T. Zheng J. Truhlar D. G. Multi-structural variational transition\nstate theory. Kinetics of the 1,4-hydrogen shift isomerization of\nthe pentyl radical with torsional anharmonicity Chem. Sci. 2011 2 2199 2213 10.1039/c1sc00225b",
+      "title": "Multi-structural variational transition\nstate theory. Kinetics of the 1,4-hydrogen shift isomerization of\nthe pentyl radical with torsional anharmonicity",
+      "journal": "Chem. Sci.",
+      "year": "2011",
+      "doi": "10.1039/c1sc00225b",
+      "url": "https://doi.org/10.1039/c1sc00225b"
+    },
+    {
+      "raw": "Bannwarth C. Caldeweyher E. Ehlert S. Hansen A. Pracht P. Seibert J. Spicher S. Grimme S. Extended tight-binding\nquantum chemistry methods Wiley Interdiscip.\nRev.: Comput. Mol. Sci. 2020 11 e01493 10.1002/wcms.1493",
+      "title": "Extended tight-binding\nquantum chemistry methods",
+      "journal": "Wiley Interdiscip.\nRev.: Comput. Mol. Sci.",
+      "year": "2020",
+      "doi": "10.1002/wcms.1493",
+      "url": "https://doi.org/10.1002/wcms.1493"
+    },
+    {
+      "raw": "Bannwarth C. Ehlert S. Grimme S. GFN2-xTB - An Accurate and Broadly\nParametrized Self-Consistent Tight-Binding Quantum Chemical Method\nwith Multipole Electrostatics and Density-Dependent Dispersion Contributions J. Chem. Theory Comput. 2019 15 1652 1671 10.1021/acs.jctc.8b01176 30741547",
+      "title": "GFN2-xTB - An Accurate and Broadly\nParametrized Self-Consistent Tight-Binding Quantum Chemical Method\nwith Multipole Electrostatics and Density-Dependent Dispersion Contributions",
+      "journal": "J. Chem. Theory Comput.",
+      "year": "2019",
+      "pmid": "30741547",
+      "doi": "10.1021/acs.jctc.8b01176",
+      "url": "https://doi.org/10.1021/acs.jctc.8b01176"
+    },
+    {
+      "raw": "Ferro-Costas D. Fernández-Ramos A. A Combined Systematic-Stochastic\nAlgorithm for the Conformational Search in Flexible Acyclic Molecules Front. Chem. 2020 8 16 10.3389/fchem.2020.00016 32047738 PMC6997476",
+      "title": "A Combined Systematic-Stochastic\nAlgorithm for the Conformational Search in Flexible Acyclic Molecules",
+      "journal": "Front. Chem.",
+      "year": "2020",
+      "pmid": "32047738",
+      "doi": "10.3389/fchem.2020.00016",
+      "url": "https://doi.org/10.3389/fchem.2020.00016"
+    },
+    {
+      "raw": "Ferro-Costas D. Mosquera-Lois I. Fernández-Ramos A. TorsiFlex: an automatic\ngenerator of torsional conformers. Application to the twenty proteinogenic\namino acids J. Cheminf. 2021 13 100 10.1186/s13321-021-00578-0 PMC8710030 34952644",
+      "title": "TorsiFlex: an automatic\ngenerator of torsional conformers. Application to the twenty proteinogenic\namino acids",
+      "journal": "J. Cheminf.",
+      "year": "2021",
+      "pmid": "34952644",
+      "doi": "10.1186/s13321-021-00578-0",
+      "url": "https://doi.org/10.1186/s13321-021-00578-0"
+    },
+    {
+      "raw": "Zhao Y. Truhlar D. G. Hybrid meta density functional theory methods for thermochemistry,\nthermochemical kinetics, and noncovalent interactions: the MPW1B95\nand MPWB1K models and comparative assessments for hydrogen bonding\nand van der Waals interactions J. Phys. Chem.\nA 2004 108 6908 6918 10.1021/jp048147q",
+      "title": "Hybrid meta density functional theory methods for thermochemistry,\nthermochemical kinetics, and noncovalent interactions: the MPW1B95\nand MPWB1K models and comparative assessments for hydrogen bonding\nand van der Waals interactions",
+      "journal": "J. Phys. Chem.\nA",
+      "year": "2004",
+      "doi": "10.1021/jp048147q",
+      "url": "https://doi.org/10.1021/jp048147q"
+    },
+    {
+      "raw": "Hehre W. J. Ditchfield R. Pople J. A. Self-consistent molecular orbital\nmethods. XII. Further extensions of Gaussian-type basis sets for use\nin molecular orbital studies of organic molecules J. Chem. Phys. 1972 56 2257 2261 10.1063/1.1677527",
+      "title": "Self-consistent molecular orbital\nmethods. XII. Further extensions of Gaussian-type basis sets for use\nin molecular orbital studies of organic molecules",
+      "journal": "J. Chem. Phys.",
+      "year": "1972",
+      "doi": "10.1063/1.1677527",
+      "url": "https://doi.org/10.1063/1.1677527"
+    },
+    {
+      "raw": "Dapprich S. Komáromi I. Byun K. S. Morokuma K. Frisch M. J. A new ONIOM\nimplementation in Gaussian98. Part I. The calculation of energies,\ngradients, vibrational frequencies and electric field derivatives J. Mol. Struct. Theochem. 1999 461–462 1 21 10.1016/S0166-1280(98)00475-8",
+      "title": "A new ONIOM\nimplementation in Gaussian98. Part I. The calculation of energies,\ngradients, vibrational frequencies and electric field derivatives",
+      "journal": "J. Mol. Struct. Theochem.",
+      "year": "1999",
+      "doi": "10.1016/S0166-1280(98)00475-8",
+      "url": "https://doi.org/10.1016/S0166-1280(98)00475-8"
+    },
+    {
+      "raw": "Zheng G. Witek H. A. Bobadova-Parvanova P. Irle S. Musaev D. G. Prabhakar R. Morokuma K. Lundberg M. Elstner M. Köhler C. Frauenheim T. Parameter calibration of transition-metal\nelements for the spin-polarized self-consistent-charge density-functional\ntight-binding (DFTB) method: Sc, Ti, Fe, Co, and Ni J. Chem. Theory Comput. 2007 3 1349 1367 10.1021/ct600312f 26633208",
+      "title": "Parameter calibration of transition-metal\nelements for the spin-polarized self-consistent-charge density-functional\ntight-binding (DFTB) method: Sc, Ti, Fe, Co, and Ni",
+      "journal": "J. Chem. Theory Comput.",
+      "year": "2007",
+      "pmid": "26633208",
+      "doi": "10.1021/ct600312f",
+      "url": "https://doi.org/10.1021/ct600312f"
+    },
+    {
+      "raw": "Marenich A. V. Cramer C. J. Truhlar D. G. Universal Solvation Model Based on\nSolute Electron Density and on a Continuum Model of the Solvent Defined\nby the Bulk Dielectric Constant and Atomic Surface Tensions J. Phys. Chem. B 2009 113 6378 6396 10.1021/jp810292n 19366259",
+      "title": "Universal Solvation Model Based on\nSolute Electron Density and on a Continuum Model of the Solvent Defined\nby the Bulk Dielectric Constant and Atomic Surface Tensions",
+      "journal": "J. Phys. Chem. B",
+      "year": "2009",
+      "pmid": "19366259",
+      "doi": "10.1021/jp810292n",
+      "url": "https://doi.org/10.1021/jp810292n"
+    },
+    {
+      "raw": "Tomasi J. Mennucci B. Cammi R. Quantum mechanical continuum solvation\nmodels Chem. Rev. 2005 105 2999 3094 10.1021/cr9904009 16092826",
+      "title": "Quantum mechanical continuum solvation\nmodels",
+      "journal": "Chem. Rev.",
+      "year": "2005",
+      "pmid": "16092826",
+      "doi": "10.1021/cr9904009",
+      "url": "https://doi.org/10.1021/cr9904009"
+    },
+    {
+      "raw": "Frisch , M. J. ; Trucks , G. W. ; Schlegel , H. B. ; Scuseria , G. E. ; Robb , M. A. ; Cheeseman , J. R. ; Scalmani , G. ; Barone , V. ; Mennucci , B. ; Petersson , G. A. ; Nakatsuji , H. ; Caricato , M. ; Li , X. ; Hratchian , H. P. ; Izmaylov , A. F. ; Bloino , J. ; Zheng , G. ; Sonnenberg , J. L. ; Hada , M. ; Ehara , M. ; Toyota , K. ; Fukuda , R. ; Hasegawa , J. ; Ishida , M. ; Nakajima , T. ; Honda , Y. ; Kitao , O. ; Nakai , H. ; Vreven , T. ; Montgomery , J. A. ; Peralta , J. E. ; Ogliaro , F. ; Bearpark , M. ; Heyd , J. J. ; Brothers , E. ; Kudin , K.\nN. ; Staroverov , V. N. ; Kobayashi , R. ; Normand , J. ; Raghavachari , K. ; Rendell , A. ; Burant , J. C. ; Iyengar , S. S. ; Tomasi , J. ; Cossi , M. ; Rega , N. ; Millam , J. M. ; Klene , M. ; Knox , J. E. ; Cross , J. B. ; Bakken , V. ; Adamo , C. ; Jaramillo , J. ; Gomperts , R. ; Stratmann , R. E. ; Yazyev , O. ; Austin , A. J. ; Cammi , R. ; Pomelli , C. ; Ochterski , J. W. ; Martin , R. L. ; Morokuma , K. ; Zakrzewski , V. G. ; Voth , G. A. ; Salvador , P. ; Dannenberg , J. J. ; Dapprich , S. ; Daniels , A. D. ; Farkas , O. ; Foresman , J. B. ; Ortiz , J. V. ; Cioslowski , J. ; Fox , D. J. Gaussian 09 . Revision E.01; Gaussian Inc. : Wallingford CT , 2009 .",
+      "journal": "Gaussian 09",
+      "year": "2009",
+      "title": "Frisch , M. J. ; Trucks , G. W. ; Schlegel , H. B. ; Scuseria , G. E. ; Robb , M. A. ; Cheeseman , J. R. ; Scalmani , G. ; Barone , V. ; Mennucci , B. ; Petersson , G. A. ; Nakatsuji , H. ; Caricato , M. ; Li , X. ; Hratchian , H. P. ; Izmaylov , A. F. ; Bloino , J. ; Zheng , G. ; Sonnenberg , J. L. ; Hada , M. ; Ehara , M. ; Toyota , K. ; Fukuda , R. ; Hasegawa , J. ; Ishida , M. ; Nakajima , T. ; Honda , Y. ; Kitao , O. ; Nakai , H. ; Vreven , T. ; Montgomery , J. A. ; Peralta , J. E. ; Ogliaro , F. ; Bearpark , M. ; Heyd , J. J. ; Brothers , E. ; Kudin , K.\nN. ; Staroverov , V. N. ; Kobayashi , R. ; Normand , J. ; Raghavachari , K. ; Rendell , A. ; Burant , J. C. ; Iyengar , S. S. ; Tomasi , J. ; Cossi , M. ; Rega , N. ; Millam , J. M. ; Klene , M. ; Knox , J. E. ; Cross , J. B. ; Bakken , V. ; Adamo , C. ; Jaramillo , J. ; Gomperts , R. ; Stratmann , R. E. ; Yazyev , O. ; Austin , A. J. ; Cammi , R. ; Pomelli , C. ; Ochterski , J. W. ; Martin , R. L. ; Morokuma , K. ; Zakrzewski , V. G. ; Voth , G. A. ; Salvador , P. ; Dannenberg , J. J. ; Dapprich , S. ; Daniels , A. D. ; Farkas , O. ; Foresman , J. B. ; Ortiz , J. V. ; Cioslowski , J. ; Fox , D. J. Gaussian 09 . Revision E.01; Gaussian Inc. : Wallingford CT , 2009 ."
+    },
+    {
+      "raw": "Zheng J. Yu T. Papajak E. Alecu I. M. Mielke S. L. Truhlar D. G. Practical\nmethods for including torsional anharmonicity in thermochemical calculations\non complex molecules: The internal-coordinate multi-structural approximation Phys. Chem. Chem. Phys. 2011 13 10885 10907 10.1039/c0cp02644a 21562655",
+      "title": "Practical\nmethods for including torsional anharmonicity in thermochemical calculations\non complex molecules: The internal-coordinate multi-structural approximation",
+      "journal": "Phys. Chem. Chem. Phys.",
+      "year": "2011",
+      "pmid": "21562655",
+      "doi": "10.1039/c0cp02644a",
+      "url": "https://doi.org/10.1039/c0cp02644a"
+    },
+    {
+      "raw": "Zheng J. Yu T. Truhlar D. G. Multi-structural thermodynamics of C-H bond dissociation\nin hexane and isohexane yielding seven isomeric hexyl radicals Phys. Chem. Chem. Phys. 2011 13 19318 19324 10.1039/c1cp21829h 21984114",
+      "title": "Multi-structural thermodynamics of C-H bond dissociation\nin hexane and isohexane yielding seven isomeric hexyl radicals",
+      "journal": "Phys. Chem. Chem. Phys.",
+      "year": "2011",
+      "pmid": "21984114",
+      "doi": "10.1039/c1cp21829h",
+      "url": "https://doi.org/10.1039/c1cp21829h"
+    },
+    {
+      "raw": "Ferro-Costas D. Truhlar D. G. Fernández-Ramos A. Pilgrim: A thermal\nrate constant calculator and a chemical kinetics simulator Comput. Phys. Commun. 2020 256 107457 10.1016/j.cpc.2020.107457",
+      "title": "Pilgrim: A thermal\nrate constant calculator and a chemical kinetics simulator",
+      "journal": "Comput. Phys. Commun.",
+      "year": "2020",
+      "doi": "10.1016/j.cpc.2020.107457",
+      "url": "https://doi.org/10.1016/j.cpc.2020.107457"
+    },
+    {
+      "raw": "Alecu I. M. Zheng J. Zhao Y. Truhlar D. G. Computational thermochemistry:\nscale factor databases and scale factors for vibrational frequencies\nobtained from electronic model chemistries J. Chem. Theory Comput. 2010 6 2872 2887 10.1021/ct100326h 26616087",
+      "title": "Computational thermochemistry:\nscale factor databases and scale factors for vibrational frequencies\nobtained from electronic model chemistries",
+      "journal": "J. Chem. Theory Comput.",
+      "year": "2010",
+      "pmid": "26616087",
+      "doi": "10.1021/ct100326h",
+      "url": "https://doi.org/10.1021/ct100326h"
+    },
+    {
+      "raw": "Garrett B. C. Truhlar D. G. Criterion of minimum state density in the transition\nstate theory of bimolecular reactions J. Chem.\nPhys. 1979 70 1593 1598 10.1063/1.437698",
+      "title": "Criterion of minimum state density in the transition\nstate theory of bimolecular reactions",
+      "journal": "J. Chem.\nPhys.",
+      "year": "1979",
+      "doi": "10.1063/1.437698",
+      "url": "https://doi.org/10.1063/1.437698"
+    },
+    {
+      "raw": "Garrett B. C. Truhlar D. G. Generalized transition-state theory. Classical mechanical\ntheory and applications to collinear reactions of hydrogen molecules J. Phys. Chem. 1979 83 1052 1079 10.1021/j100471a031",
+      "title": "Generalized transition-state theory. Classical mechanical\ntheory and applications to collinear reactions of hydrogen molecules",
+      "journal": "J. Phys. Chem.",
+      "year": "1979",
+      "doi": "10.1021/j100471a031",
+      "url": "https://doi.org/10.1021/j100471a031"
+    },
+    {
+      "raw": "Yu T. Zheng J. Truhlar D. G. Multipath variational transition\nstate theory: rate constant of the 1,4-hydrogen shift isomerization\nof the 2-cyclohexylethyl radical J. Phys. Chem.\nA 2012 116 297 308 10.1021/jp209146b 22126663",
+      "title": "Multipath variational transition\nstate theory: rate constant of the 1,4-hydrogen shift isomerization\nof the 2-cyclohexylethyl radical",
+      "journal": "J. Phys. Chem.\nA",
+      "year": "2012",
+      "pmid": "22126663",
+      "doi": "10.1021/jp209146b",
+      "url": "https://doi.org/10.1021/jp209146b"
+    },
+    {
+      "raw": "Skodje R. T. Truhlar D. G. Garrett B. C. A general small-curvature approximation\nfor transition-state-theory transmission coefficients J. Phys. Chem. 1981 85 3019 3023 10.1021/j150621a001",
+      "title": "A general small-curvature approximation\nfor transition-state-theory transmission coefficients",
+      "journal": "J. Phys. Chem.",
+      "year": "1981",
+      "doi": "10.1021/j150621a001",
+      "url": "https://doi.org/10.1021/j150621a001"
+    },
+    {
+      "raw": "Liu Y.-P. Lynch G. C. Truong T. N. Lu D.-H. Truhlar D. G. Garrett B. C. Molecular modeling of the kinetic isotope effect for\nthe [1,5]-sigmatropic rearrangement of cis-1,3-pentadiene J. Am. Chem. Soc. 1993 115 2408 2415 10.1021/ja00059a041",
+      "title": "Molecular modeling of the kinetic isotope effect for\nthe [1,5]-sigmatropic rearrangement of cis-1,3-pentadiene",
+      "journal": "J. Am. Chem. Soc.",
+      "year": "1993",
+      "doi": "10.1021/ja00059a041",
+      "url": "https://doi.org/10.1021/ja00059a041"
+    },
+    {
+      "raw": "Page M. McIver J. W. On evaluating the reaction path Hamiltonian J. Chem. Phys. 1988 88 922 935 10.1063/1.454172",
+      "title": "On evaluating the reaction path Hamiltonian",
+      "journal": "J. Chem. Phys.",
+      "year": "1988",
+      "doi": "10.1063/1.454172",
+      "url": "https://doi.org/10.1063/1.454172"
+    },
+    {
+      "raw": "Ferro-Costas D. Fernández-Ramos A. New computational tools for chemical\nkinetics: the Cathedral Package Theor. Chem.\nAcc. 2023 142 76 10.1007/s00214-023-03012-w",
+      "title": "New computational tools for chemical\nkinetics: the Cathedral Package",
+      "journal": "Theor. Chem.\nAcc.",
+      "year": "2023",
+      "doi": "10.1007/s00214-023-03012-w",
+      "url": "https://doi.org/10.1007/s00214-023-03012-w"
+    },
+    {
+      "raw": "Ferro-Costas , D. ; Fernández-Ramos , A. GitHub:\nThe Cathedral Package , 2021 . https://github.com/cathedralpkg (accessed January 24, 2024).",
+      "title": "GitHub:\nThe Cathedral Package",
+      "year": "2021"
+    }
+  ]
+}
