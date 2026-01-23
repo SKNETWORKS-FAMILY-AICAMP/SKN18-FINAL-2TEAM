@@ -10,7 +10,7 @@
   "article_type_raw": "research-article",
   "figure_captions": [
     {
-      "fig_id": 765565218443,
+      "fig_id": "12529775_fig1",
       "label": "fig1",
       "caption": "Reactions in the synthesis of VitD3: (i) electrocyclic ring opening\nand (ii) antarafacial sigmatropic hydrogen shift. Dihedral angles\nassociated with the triene moiety in PreD3 are also shown: ϕ 1 (1–2–3–4) and ϕ 2 (3–4–5–6).",
       "page_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12529775/#fig1",
@@ -19,7 +19,7 @@
       ]
     },
     {
-      "fig_id": 716597567501,
+      "fig_id": "12529775_fig2",
       "label": "fig2",
       "caption": "Transition states for the antarafacial H-exchanges in the thermal\nsigmatropic reaction. The H transfer is highlighted with green dotted\nlines.",
       "page_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12529775/#fig2",
@@ -28,7 +28,7 @@
       ]
     },
     {
-      "fig_id": 553740501774,
+      "fig_id": "12529775_fig3",
       "label": "fig3",
       "caption": "Examples of nonreactive (NR) +t−c and reactive +c+c and\n−c−c triene configurations. Atoms associated with the\ntriene moiety are highlighted.",
       "page_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12529775/#fig3",
@@ -37,7 +37,7 @@
       ]
     },
     {
-      "fig_id": 486398093899,
+      "fig_id": "12529775_fig4",
       "label": "fig4",
       "caption": "Molecule of PreD encapsulated inside the β-CD dimer.",
       "page_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12529775/#fig4",
@@ -46,7 +46,7 @@
       ]
     },
     {
-      "fig_id": 10718416096,
+      "fig_id": "12529775_fig5",
       "label": "fig5",
       "caption": "Upper plots are bidimensional histograms representing the triene\ntorsional space explored during the MD simulation for PreD in both\nits free [f] and encapsulated [e] forms. Dihedral angles ϕ 1 and ϕ 2 are defined in Figure . The colors indicate the density of data\npoints, with darker and warmer colors representing lower and higher\ndensities, respectively. The initial −c−c geometry of\nthe MD simulations is highlighted with a red circle. Conformers identified\nby TorsiFlex for the free system are marked with ‘x’.\nThe lower plot illustrates the triene configuration relative to its\ndihedral angle values. The reactive −c−c and +c+c configuration\nare highlighted in blue and green, respectively. The D ring has been omitted (see Figure ).",
       "page_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12529775/#fig5",
@@ -55,7 +55,7 @@
       ]
     },
     {
-      "fig_id": 559331761048,
+      "fig_id": "12529775_fig6",
       "label": "fig6",
       "caption": "Energy distribution of PreD and TS conformers for both the free\n[f] and encapsulated [e] situations. Plot (a) corresponds to gas phase\ncalculations, whereas plot (b) corresponds to SMD calculations. Black\nlines indicate NR configurations of reactants. Green and blue lines\nrepresent the energy of +c+c and −c−c reactants [PreD­(+),\nPreD(−)] and transition states [TS­(+) and TS(−)], respectively.",
       "page_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12529775/#fig6",
@@ -64,7 +64,7 @@
       ]
     },
     {
-      "fig_id": 487219843245,
+      "fig_id": "12529775_fig7",
       "label": "fig7",
       "caption": "Contour plot illustrating the 2D-PES for the triene moiety of PreD,\ncomputed using the MPWB1K/6-31+G­(d,p) level of theory. The calculations\nwere performed with the remaining proper torsions constrained to the\nvalues of the most stable conformer. Dihedral angles ϕ 1 and ϕ 2 are defined in Figure .",
       "page_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12529775/#fig7",
@@ -73,7 +73,7 @@
       ]
     },
     {
-      "fig_id": 679068265156,
+      "fig_id": "12529775_fig8",
       "label": "fig8",
       "caption": "Contribution to the catalytic effect associated with the partition\nfunction of the PreD atoms, in bold blue, and its factorization by\nconsidering different intermediate reactions.",
       "page_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12529775/#fig8",
@@ -84,7 +84,7 @@
   ],
   "table_captions": [
     {
-      "table_id": 56981612275,
+      "table_id": "12529775_table1",
       "id": "tbl1",
       "label": "table1",
       "caption": "Ratio Between the Rate Constant for\nthe Encapsulated System, [e], and the Free System, [f]",
@@ -241,9 +241,9 @@
       ],
       "figure_info": {
         "fig_ids": [
-          553740501774,
-          716597567501,
-          765565218443
+          "12529775_fig1",
+          "12529775_fig2",
+          "12529775_fig3"
         ],
         "table_ids": [],
         "orig_fig_ids": [
@@ -290,7 +290,7 @@
       ],
       "figure_info": {
         "fig_ids": [
-          486398093899
+          "12529775_fig4"
         ],
         "table_ids": [],
         "orig_fig_ids": [
@@ -349,7 +349,7 @@
       ],
       "figure_info": {
         "fig_ids": [
-          10718416096
+          "12529775_fig5"
         ],
         "table_ids": [],
         "orig_fig_ids": [
@@ -367,8 +367,8 @@
       ],
       "figure_info": {
         "fig_ids": [
-          487219843245,
-          559331761048
+          "12529775_fig6",
+          "12529775_fig7"
         ],
         "table_ids": [],
         "orig_fig_ids": [
@@ -387,7 +387,7 @@
       ],
       "figure_info": {
         "fig_ids": [
-          679068265156
+          "12529775_fig8"
         ],
         "table_ids": [
           "tbl1"
