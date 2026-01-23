@@ -227,6 +227,172 @@ def extract_body_components(
     return body_text, caption_data, sections, equations
 
 
+# -------------------- Table Content Parsing -------------------- #
+
+def _extract_cell_text(cell_elem: ET.Element) -> str:
+    """
+    테이블 셀에서 텍스트를 추출합니다. sup, sub 등 특수 태그 처리 포함.
+    """
+    parts = []
+
+    def walk(node: ET.Element):
+        tag = _local_name(node.tag)
+
+        # sup, sub 처리
+        if tag == "sup":
+            inner = "".join(node.itertext()).strip()
+            parts.append(f"^{{{inner}}}")
+            _append_clean(node.tail, parts)
+            return
+        elif tag == "sub":
+            inner = "".join(node.itertext()).strip()
+            parts.append(f"_{{{inner}}}")
+            _append_clean(node.tail, parts)
+            return
+
+        # 텍스트 추가
+        _append_clean(node.text, parts)
+
+        # 자식 순회
+        for child in list(node):
+            walk(child)
+
+        # tail 추가
+        _append_clean(node.tail, parts)
+
+    walk(cell_elem)
+    return " ".join(parts).strip()
+
+
+def parse_table_content(table_wrap_elem: ET.Element, ns: Dict[str, str]) -> Optional[Dict[str, Any]]:
+    """
+    JATS table-wrap 요소에서 실제 테이블 데이터를 추출합니다.
+
+    Returns:
+        dict: {
+            "headers": List[List[Dict]],  # 헤더 행들 (text, colspan, rowspan, align 포함)
+            "rows": List[List[Dict]]      # 데이터 행들 (text, colspan, rowspan, align 포함)
+        }
+    """
+    # table 요소 찾기 - 자식 요소를 순회하면서 local name으로 찾기
+    table_elem = None
+    for child in table_wrap_elem:
+        if _local_name(child.tag) == "table":
+            table_elem = child
+            break
+
+    if table_elem is None:
+        return None
+
+    headers = []
+    rows = []
+
+    # thead 찾기
+    thead = None
+    for child in table_elem:
+        if _local_name(child.tag) == "thead":
+            thead = child
+            break
+
+    if thead is not None:
+        # tr 요소 찾기
+        for tr in thead:
+            if _local_name(tr.tag) != "tr":
+                continue
+
+            header_row = []
+            # th, td 요소 찾기
+            for cell in tr:
+                tag = _local_name(cell.tag)
+                if tag not in ["th", "td"]:
+                    continue
+
+                cell_text = _extract_cell_text(cell)
+                colspan = int(cell.get("colspan", 1))
+                rowspan = int(cell.get("rowspan", 1))
+                align = cell.get("align", "left")
+                header_row.append({
+                    "text": cell_text,
+                    "colspan": colspan,
+                    "rowspan": rowspan,
+                    "align": align
+                })
+            if header_row:
+                headers.append(header_row)
+
+    # tbody 찾기
+    tbody = None
+    for child in table_elem:
+        if _local_name(child.tag) == "tbody":
+            tbody = child
+            break
+
+    if tbody is not None:
+        # tr 요소 찾기
+        for tr in tbody:
+            if _local_name(tr.tag) != "tr":
+                continue
+
+            data_row = []
+            # td, th 요소 찾기
+            for cell in tr:
+                tag = _local_name(cell.tag)
+                if tag not in ["td", "th"]:
+                    continue
+
+                cell_text = _extract_cell_text(cell)
+                colspan = int(cell.get("colspan", 1))
+                rowspan = int(cell.get("rowspan", 1))
+                align = cell.get("align", "left")
+                data_row.append({
+                    "text": cell_text,
+                    "colspan": colspan,
+                    "rowspan": rowspan,
+                    "align": align
+                })
+            if data_row:
+                rows.append(data_row)
+
+    # thead/tbody가 없는 경우, table 바로 아래 tr 처리
+    if not headers and not rows:
+        for tr in table_elem:
+            if _local_name(tr.tag) != "tr":
+                continue
+
+            row_data = []
+            has_th = False
+
+            for cell in tr:
+                tag = _local_name(cell.tag)
+                if tag not in ["td", "th"]:
+                    continue
+
+                if tag == "th":
+                    has_th = True
+
+                cell_text = _extract_cell_text(cell)
+                colspan = int(cell.get("colspan", 1))
+                rowspan = int(cell.get("rowspan", 1))
+                align = cell.get("align", "left")
+                row_data.append({
+                    "text": cell_text,
+                    "colspan": colspan,
+                    "rowspan": rowspan,
+                    "align": align
+                })
+            if row_data:
+                # 첫 번째 행이거나 th 태그가 있으면 헤더로 간주
+                if (not headers and len(rows) == 0) or has_th:
+                    headers.append(row_data)
+                else:
+                    rows.append(row_data)
+
+    return {
+        "headers": headers,
+        "rows": rows
+    }
+
+
 # -------------------- figure / table 메타 + URL -------------------- #
 
 def extract_figures_and_tables(
@@ -369,6 +535,9 @@ def extract_figures_and_tables(
                         filename += ".jpg"
                     binary_url = f"https://pmc.ncbi.nlm.nih.gov/articles/{pmcid}/bin/{filename}"
 
+        # 테이블 실제 데이터 파싱
+        table_content = parse_table_content(tw, ns)
+
         table_id = gen_random_table_id()
 
         tables.append({
@@ -378,8 +547,9 @@ def extract_figures_and_tables(
             "label": normalized_label,
             "caption": caption,
             "page_url": page_url,
-            "href": href,
-            "binary_url": binary_url,
+            "href": href, # 테이블 이미지로 제공시  이미지 파일명
+            "binary_url": binary_url, # 실제 이미지를 다운로드 할 수 있는 완전한 url
+            "content": table_content,  # 테이블 실제 내용 추가
         })
 
     return figures, tables
@@ -517,7 +687,7 @@ def extract_article_info(record) -> Optional[Dict[str, Any]]:
             }
         )
 
-    # table_captions: table_id(정수) + XML id + caption
+    # table_captions: table_id(정수) + XML id + caption + content
     table_captions = [
         {
             "table_id": t.get("table_id"),  # 정수형 UUID 기반 ID
@@ -527,6 +697,7 @@ def extract_article_info(record) -> Optional[Dict[str, Any]]:
             "page_url": t.get("page_url"),
             "href": t.get("href"),
             "binary_url": t.get("binary_url"),
+            "content": t.get("content"),  # 테이블 실제 내용
         }
         for t in tables_meta
     ]
