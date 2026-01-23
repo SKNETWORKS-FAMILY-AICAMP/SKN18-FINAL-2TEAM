@@ -10,8 +10,9 @@ from rag.etl.step01_ingest.pmc_ingest_common.pmc_utils import (
     _dedup_preserve,
     _append_clean,
     _extract_caption_text,
-    gen_random_fig_id,
-    gen_random_table_id,
+    gen_fig_id,
+    gen_table_id,
+    natural_sort_key,
     parse_fig_label,
     normalize_fig_label,
     parse_table_label,
@@ -212,8 +213,8 @@ def extract_body_components(
                     "level": level,
                     "path": current_path,
                     "figure_info": {
-                        "fig_ids": sorted(fig_ids),
-                        "table_ids": sorted(table_ids),
+                        "fig_ids": sorted(fig_ids, key=natural_sort_key),
+                        "table_ids": sorted(table_ids, key=natural_sort_key),
                     },
                 }
             )
@@ -434,7 +435,6 @@ def extract_figures_and_tables(
         if orig_id and re.match(r"^ga[_\-]?\d+$", orig_id.lower()):
             is_ga = True
 
-        fig_id = gen_random_fig_id()
         page_url = f"{base_article_url}#{orig_id}" if (base_article_url and orig_id) else None
 
         graphics_meta: List[Dict[str, Any]] = []
@@ -482,6 +482,9 @@ def extract_figures_and_tables(
             m_id = re.search(r"(\d+)", orig_id)
             if m_id:
                 normalized_label = f"fig{m_id.group(1)}"
+
+        # fig_id 생성: pmcid + normalized_label
+        fig_id = gen_fig_id(pmcid, normalized_label)
 
         image_urls = _dedup_preserve([url for gm in graphics_meta for url in (gm.get("image_urls") or [])])
         image_hrefs = _dedup_preserve([gm.get("href") for gm in graphics_meta])
@@ -538,11 +541,12 @@ def extract_figures_and_tables(
         # 테이블 실제 데이터 파싱
         table_content = parse_table_content(tw, ns)
 
-        table_id = gen_random_table_id()
+        # table_id 생성: pmcid + normalized_label
+        table_id = gen_table_id(pmcid, normalized_label)
 
         tables.append({
             "id": tw_id,             # XML 원본 id
-            "table_id": table_id,    # 정수형 UUID 기반 ID
+            "table_id": table_id,    # pmcid + label 조합 문자열 ID
             "orig_id": tw_id,
             "label": normalized_label,
             "caption": caption,
@@ -642,25 +646,25 @@ def extract_article_info(record) -> Optional[Dict[str, Any]]:
     figures_meta, tables_meta = extract_figures_and_tables(article, pmcid)
 
     # fig orig_id -> fig_id 매핑
-    fig_id_map: Dict[str, int] = {}
+    fig_id_map: Dict[str, str] = {}
     for f in figures_meta:
         orig_id = f.get("orig_id") or f.get("id")
         fid = f.get("fig_id")
         if orig_id and fid is not None:
             fig_id_map[str(orig_id)] = fid
 
-    # 섹션 figure_info에 fig_ids(정규화된 숫자 ID) 반영
+    # 섹션 figure_info에 fig_ids(pmcid+label 조합 문자열 ID) 반영
     for sec in sections:
         finfo = sec.get("figure_info") or {}
         orig_fig_ids = list(finfo.get("fig_ids") or [])
-        new_fig_ids: List[int] = []
+        new_fig_ids: List[str] = []
         for oid in orig_fig_ids:
             mid = fig_id_map.get(str(oid))
             if mid is not None:
                 new_fig_ids.append(mid)
 
         finfo["orig_fig_ids"] = orig_fig_ids
-        finfo["fig_ids"] = sorted(new_fig_ids)
+        finfo["fig_ids"] = sorted(new_fig_ids, key=natural_sort_key)
         sec["figure_info"] = finfo
 
     def build_figure_urls(fig: Dict[str, Any]) -> List[str]:

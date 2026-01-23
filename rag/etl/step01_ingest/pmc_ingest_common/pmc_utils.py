@@ -54,14 +54,48 @@ def _extract_caption_text(node) -> Optional[str]:
     return " ".join(parts) if parts else None
 
 
-def gen_random_fig_id() -> int:
-    """figure용 UUID 기반 숫자 ID (12자리 정수)."""
-    return uuid.uuid4().int % 10**12
+def natural_sort_key(s):
+    """
+    문자열 내 숫자를 인식하여 자연스럽게 정렬
+    예: fig1 < fig2 < fig10
+    예: 12312312fig1 < 12312312fig2 < 12312312fig10
+    """
+    return [int(text) if text.isdigit() else text.lower()
+            for text in re.split(r'(\d+)', str(s))]
 
 
-def gen_random_table_id() -> int:
-    """table용 UUID 기반 숫자 ID (12자리 정수)."""
-    return uuid.uuid4().int % 10**12
+def gen_fig_id(pmcid: Optional[str], label: Optional[str]) -> str:
+    """
+    pmcid + label 조합으로 fig_id 생성
+    - pmcid: "PMC12312312", label: "fig8" -> "12312312_fig8" (PMC 제거)
+    - label에서 공백/특수문자 제거
+    - pmcid 또는 label이 없으면 UUID 기반 fallback
+    """
+    if not pmcid or not label:
+        # fallback: UUID 기반
+        return str(uuid.uuid4().int % 10**12)
+    # pmcid에서 PMC 접두사 제거
+    clean_pmcid = pmcid.upper().replace("PMC", "")
+    # label에서 공백/특수문자 제거
+    clean_label = re.sub(r'[^a-z0-9]', '', label.lower())
+    return f"{clean_pmcid}_{clean_label}"
+
+
+def gen_table_id(pmcid: Optional[str], label: Optional[str]) -> str:
+    """
+    pmcid + label 조합으로 table_id 생성
+    - pmcid: "PMC12312312", label: "table1" -> "12312312_table1" (PMC 제거)
+    - label에서 공백/특수문자 제거
+    - pmcid 또는 label이 없으면 UUID 기반 fallback
+    """
+    if not pmcid or not label:
+        # fallback: UUID 기반
+        return str(uuid.uuid4().int % 10**12)
+    # pmcid에서 PMC 접두사 제거
+    clean_pmcid = pmcid.upper().replace("PMC", "")
+    # label에서 공백/특수문자 제거
+    clean_label = re.sub(r'[^a-z0-9]', '', label.lower())
+    return f"{clean_pmcid}_{clean_label}"
 
 
 
