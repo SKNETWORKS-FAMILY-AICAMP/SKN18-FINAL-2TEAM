@@ -75,7 +75,7 @@ def load_exclusion_ids(path: str) -> tuple[Set[str], Set[str]]:
 
 
 # -------------------- 2. 검색 및 OAI 클라이언트 -------------------- #
-
+# PubMed E-utilities API로 PMC ID 검색 
 def search_pmc_ids_for_category(category, keywords, max_ids=100, retstart=0):
     term = build_pubmed_term_for_category(
         keywords,
@@ -104,7 +104,7 @@ def search_pmc_ids_for_category(category, keywords, max_ids=100, retstart=0):
         logger.error(f"Search API Error (Category: {category}): {e}")
         return []
 
-
+# PubMed Central OAI-PMH API로 논문 상세 정보 가져오기
 def fetch_single_pmc_record(pmcid: str):
     numeric_id = pmcid.replace("PMC", "")
     params = {
