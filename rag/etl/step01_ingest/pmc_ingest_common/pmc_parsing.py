@@ -111,19 +111,34 @@ def extract_body_components(
                 return
 
             if tag in FORMULA_TAGS:
+                eq_id = f"EQ{eq_counter[0]}"
+                eq_counter[0] += 1
+                
+                # 1) LaTeX/MathML 추출 시도
                 try:
                     latex = extract_formula_text(n) or ""
                 except Exception:
                     latex = ""
-
-                if latex:
-                    eq_id = f"EQ{eq_counter[0]}"
-                    eq_counter[0] += 1
-
+                
+                # 2) 이미지로 된 수식 확인 (<graphic> 태그)
+                image_urls = []
+                for graphic in n.findall(".//jats:graphic", ns):
+                    href = (
+                        graphic.get(XLINK_NS + "href")
+                        or graphic.get("xlink:href")
+                        or graphic.get("{http://www.w3.org/1999/xlink}href")
+                    )
+                    if href:
+                        # 이미지 URL 구성 (실제 blob URL은 나중에 real_url_map에서 가져올 수 있음)
+                        image_urls.append(href)
+                
+                # LaTeX가 있거나 이미지가 있으면 equations에 추가
+                if latex or image_urls:
                     equations.append(
                         {
                             "id": eq_id,
-                            "latex": latex,
+                            "latex": latex if latex else None,
+                            "image_urls": image_urls if image_urls else None,
                             "display": (tag == "disp-formula"),
                             "path": list(current_path) if current_path else [],
                         }
@@ -478,10 +493,31 @@ def extract_figures_and_tables(
             # GA는 무조건 "graphical abstract"로 통일
             normalized_label = "graphical abstract"
         elif not normalized_label and orig_id:
-            # GA가 아니고, 아직 라벨 없으면 orig_id 기반 fig 번호 추출
-            m_id = re.search(r"(\d+)", orig_id)
-            if m_id:
-                normalized_label = f"fig{m_id.group(1)}"
+            # GA가 아니고, 아직 라벨 없으면 orig_id 기반 라벨 생성
+            
+            # 1) undfig로 시작하면 graphic으로 처리
+            if orig_id.lower().startswith("undfig"):
+                m_id = re.search(r"(\d+)", orig_id)
+                if m_id:
+                    normalized_label = f"graphic{m_id.group(1)}"
+                else:
+                    normalized_label = "graphic"
+            
+            # 2) 파일명에 'fx'가 포함되어 있으면 formula로 처리
+            elif any(re.search(r"fx\d+", gm.get("href", "").lower()) for gm in graphics_meta):
+                nums = [
+                    re.search(r"fx(\d+)", gm.get("href", "").lower()).group(1)
+                    for gm in graphics_meta
+                    if re.search(r"fx(\d+)", gm.get("href", "").lower())
+                ]
+                num = nums[0] if nums else ""
+                normalized_label = f"formula{num}"
+            
+            # 3) 그 외: orig_id 기반 fig 번호 추출
+            else:
+                m_id = re.search(r"(\d+)", orig_id)
+                if m_id:
+                    normalized_label = f"fig{m_id.group(1)}"
 
         # fig_id 생성: pmcid + normalized_label
         fig_id = gen_fig_id(pmcid, normalized_label)
@@ -644,6 +680,35 @@ def extract_article_info(record) -> Optional[Dict[str, Any]]:
     body_text, caption_info, sections, equations = extract_body_components(body_elem)
 
     figures_meta, tables_meta = extract_figures_and_tables(article, pmcid)
+    
+    # HTML에서 blob 이미지 매핑 (equations의 이미지 URL 업데이트용)
+    real_url_map = {}
+    if pmcid:
+        real_url_map = get_html_image_map(pmcid)
+    
+    # equations의 이미지 URL을 real_url_map으로 업데이트
+    for eq in equations:
+        if eq.get("image_urls"):
+            updated_urls = []
+            for href in eq["image_urls"]:
+                # href에서 파일명 추출 (예: "ci3c02049_0012.jpg" -> "ci3c02049_0012")
+                href_basename = href.split("/")[-1].rsplit(".", 1)[0]
+                
+                # real_url_map에서 실제 blob URL 찾기
+                if href_basename in real_url_map:
+                    updated_urls.append(real_url_map[href_basename])
+                else:
+                    # 찾지 못하면 원본 href 사용 (또는 backup URL 구성)
+                    if pmcid:
+                        filename = href
+                        if not filename.lower().endswith(('.jpg', '.png', '.gif', '.jpeg')):
+                            filename += ".jpg"
+                        backup_url = f"https://pmc.ncbi.nlm.nih.gov/articles/{pmcid}/bin/{filename}"
+                        updated_urls.append(backup_url)
+                    else:
+                        updated_urls.append(href)
+            
+            eq["image_urls"] = _dedup_preserve(updated_urls)
 
     # fig orig_id -> fig_id 매핑
     fig_id_map: Dict[str, str] = {}
