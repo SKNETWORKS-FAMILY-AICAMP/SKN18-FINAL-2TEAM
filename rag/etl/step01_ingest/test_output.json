@@ -15,7 +15,7 @@
       "caption": "Reactions in the synthesis of VitD3: (i) electrocyclic ring opening\nand (ii) antarafacial sigmatropic hydrogen shift. Dihedral angles\nassociated with the triene moiety in PreD3 are also shown: ϕ 1 (1–2–3–4) and ϕ 2 (3–4–5–6).",
       "page_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12529775/#fig1",
       "urls": [
-        "https://pmc.ncbi.nlm.nih.gov/articles/PMC12529775/bin/ci3c02049_0001.jpg"
+        "https://cdn.ncbi.nlm.nih.gov/pmc/blobs/039c/12529775/6a7425f55cb4/ci3c02049_0001.jpg"
       ]
     },
     {
@@ -24,7 +24,7 @@
       "caption": "Transition states for the antarafacial H-exchanges in the thermal\nsigmatropic reaction. The H transfer is highlighted with green dotted\nlines.",
       "page_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12529775/#fig2",
       "urls": [
-        "https://pmc.ncbi.nlm.nih.gov/articles/PMC12529775/bin/ci3c02049_0002.jpg"
+        "https://cdn.ncbi.nlm.nih.gov/pmc/blobs/039c/12529775/9bf9062c48d6/ci3c02049_0002.jpg"
       ]
     },
     {
@@ -33,7 +33,7 @@
       "caption": "Examples of nonreactive (NR) +t−c and reactive +c+c and\n−c−c triene configurations. Atoms associated with the\ntriene moiety are highlighted.",
       "page_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12529775/#fig3",
       "urls": [
-        "https://pmc.ncbi.nlm.nih.gov/articles/PMC12529775/bin/ci3c02049_0003.jpg"
+        "https://cdn.ncbi.nlm.nih.gov/pmc/blobs/039c/12529775/2bce5d7bd0a6/ci3c02049_0003.jpg"
       ]
     },
     {
@@ -42,7 +42,7 @@
       "caption": "Molecule of PreD encapsulated inside the β-CD dimer.",
       "page_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12529775/#fig4",
       "urls": [
-        "https://pmc.ncbi.nlm.nih.gov/articles/PMC12529775/bin/ci3c02049_0004.jpg"
+        "https://cdn.ncbi.nlm.nih.gov/pmc/blobs/039c/12529775/a8da6c783f06/ci3c02049_0004.jpg"
       ]
     },
     {
@@ -51,7 +51,7 @@
       "caption": "Upper plots are bidimensional histograms representing the triene\ntorsional space explored during the MD simulation for PreD in both\nits free [f] and encapsulated [e] forms. Dihedral angles ϕ 1 and ϕ 2 are defined in Figure . The colors indicate the density of data\npoints, with darker and warmer colors representing lower and higher\ndensities, respectively. The initial −c−c geometry of\nthe MD simulations is highlighted with a red circle. Conformers identified\nby TorsiFlex for the free system are marked with ‘x’.\nThe lower plot illustrates the triene configuration relative to its\ndihedral angle values. The reactive −c−c and +c+c configuration\nare highlighted in blue and green, respectively. The D ring has been omitted (see Figure ).",
       "page_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12529775/#fig5",
       "urls": [
-        "https://pmc.ncbi.nlm.nih.gov/articles/PMC12529775/bin/ci3c02049_0005.jpg"
+        "https://cdn.ncbi.nlm.nih.gov/pmc/blobs/039c/12529775/7defdc47c8b5/ci3c02049_0005.jpg"
       ]
     },
     {
@@ -60,7 +60,7 @@
       "caption": "Energy distribution of PreD and TS conformers for both the free\n[f] and encapsulated [e] situations. Plot (a) corresponds to gas phase\ncalculations, whereas plot (b) corresponds to SMD calculations. Black\nlines indicate NR configurations of reactants. Green and blue lines\nrepresent the energy of +c+c and −c−c reactants [PreD­(+),\nPreD(−)] and transition states [TS­(+) and TS(−)], respectively.",
       "page_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12529775/#fig6",
       "urls": [
-        "https://pmc.ncbi.nlm.nih.gov/articles/PMC12529775/bin/ci3c02049_0006.jpg"
+        "https://cdn.ncbi.nlm.nih.gov/pmc/blobs/039c/12529775/b840c29c4b48/ci3c02049_0006.jpg"
       ]
     },
     {
@@ -69,7 +69,7 @@
       "caption": "Contour plot illustrating the 2D-PES for the triene moiety of PreD,\ncomputed using the MPWB1K/6-31+G­(d,p) level of theory. The calculations\nwere performed with the remaining proper torsions constrained to the\nvalues of the most stable conformer. Dihedral angles ϕ 1 and ϕ 2 are defined in Figure .",
       "page_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12529775/#fig7",
       "urls": [
-        "https://pmc.ncbi.nlm.nih.gov/articles/PMC12529775/bin/ci3c02049_0007.jpg"
+        "https://cdn.ncbi.nlm.nih.gov/pmc/blobs/039c/12529775/439313b3569e/ci3c02049_0007.jpg"
       ]
     },
     {
@@ -78,7 +78,7 @@
       "caption": "Contribution to the catalytic effect associated with the partition\nfunction of the PreD atoms, in bold blue, and its factorization by\nconsidering different intermediate reactions.",
       "page_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12529775/#fig8",
       "urls": [
-        "https://pmc.ncbi.nlm.nih.gov/articles/PMC12529775/bin/ci3c02049_0008.jpg"
+        "https://cdn.ncbi.nlm.nih.gov/pmc/blobs/039c/12529775/b287d3427253/ci3c02049_0008.jpg"
       ]
     }
   ],
@@ -446,6 +446,9 @@
     {
       "id": "EQ4",
       "latex": "4",
+      "image_urls": [
+        "https://cdn.ncbi.nlm.nih.gov/pmc/blobs/039c/12529775/091c40d9be26/ci3c02049_0012.jpg"
+      ],
       "display": true,
       "path": []
     },
@@ -503,6 +506,9 @@
     {
       "id": "EQ12",
       "latex": "4",
+      "image_urls": [
+        "https://cdn.ncbi.nlm.nih.gov/pmc/blobs/039c/12529775/091c40d9be26/ci3c02049_0012.jpg"
+      ],
       "display": true,
       "path": [
         "Calculation Method",
