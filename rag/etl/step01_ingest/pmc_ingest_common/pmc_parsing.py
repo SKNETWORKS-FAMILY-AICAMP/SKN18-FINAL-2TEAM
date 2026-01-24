@@ -685,30 +685,27 @@ def extract_article_info(record) -> Optional[Dict[str, Any]]:
     real_url_map = {}
     if pmcid:
         real_url_map = get_html_image_map(pmcid)
-    
+
     # equations의 이미지 URL을 real_url_map으로 업데이트
+    # - real_url_map에 존재하는 경우에만 실제 CDN URL로 치환
+    # - 매핑이 안 되면 image_urls 필드는 제거하여 latex만 남기도록 함
     for eq in equations:
         if eq.get("image_urls"):
             updated_urls = []
             for href in eq["image_urls"]:
                 # href에서 파일명 추출 (예: "ci3c02049_0012.jpg" -> "ci3c02049_0012")
                 href_basename = href.split("/")[-1].rsplit(".", 1)[0]
-                
-                # real_url_map에서 실제 blob URL 찾기
+
+                # real_url_map에서 실제 blob URL 찾기 (없으면 무시)
                 if href_basename in real_url_map:
                     updated_urls.append(real_url_map[href_basename])
-                else:
-                    # 찾지 못하면 원본 href 사용 (또는 backup URL 구성)
-                    if pmcid:
-                        filename = href
-                        if not filename.lower().endswith(('.jpg', '.png', '.gif', '.jpeg')):
-                            filename += ".jpg"
-                        backup_url = f"https://pmc.ncbi.nlm.nih.gov/articles/{pmcid}/bin/{filename}"
-                        updated_urls.append(backup_url)
-                    else:
-                        updated_urls.append(href)
-            
-            eq["image_urls"] = _dedup_preserve(updated_urls)
+
+            updated_urls = _dedup_preserve(updated_urls)
+            if updated_urls:
+                eq["image_urls"] = updated_urls
+            else:
+                # 매핑된 URL이 하나도 없으면 이미지 정보 제거 (latex만 사용)
+                eq.pop("image_urls", None)
 
     # fig orig_id -> fig_id 매핑
     fig_id_map: Dict[str, str] = {}
