@@ -13,6 +13,10 @@ from datetime import datetime
 import sys
 import requests
 
+# 프로젝트 루트 경로를 sys.path에 추가
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
+
 # -------------------- CONFIG IMPORT -------------------- #
 from rag.etl.common.pmc_config import (
     PMC_OAI_ENDPOINT,
@@ -29,6 +33,10 @@ from rag.etl.step01_ingest.pmc_ingest_common.pmc_parsing import extract_article_
 
 TARGET_NEW_COUNT = int(os.getenv("PUBMED_TARGET_NEW_COUNT", "10"))
 BATCH_SIZE = int(os.getenv("PUBMED_BATCH_SIZE", "50"))
+
+# 기본 파일 경로 설정
+DEFAULT_PREVIOUS_FILE = str(PROJECT_ROOT / "data" / "raw" / "pmc" / "api_extract" / "pmc_articles_by_category.json")
+DEFAULT_NEW_FILE = str(PROJECT_ROOT / "data" / "raw" / "pmc" / "api_extract" / "pmc_articles_by_category_new.json")
 
 
 # -------------------- 0. 로깅 설정 -------------------- #
