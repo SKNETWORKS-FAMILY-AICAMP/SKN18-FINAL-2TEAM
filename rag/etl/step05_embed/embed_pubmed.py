@@ -60,14 +60,20 @@ def run_for_files(
 
 
 
-def run(chunks_dir: str, embeddings_dir: str, processed_dir: str = None) -> None:
+def run(chunks_dir: str, embeddings_dir: str, processed_dir: str = None, enable_table_embedding: bool = True) -> None:
     """
     pipeline_runner.run_embed 에서 사용하는 엔트리포인트.
 
     - 입력:  {chunks_dir}/pubmed/pmc_chunks.csv
     - 출력:  {embeddings_dir}/pubmed/pmc_vector.csv
     
-    테이블 임베딩도 함께 실행합니다.
+    테이블 임베딩도 함께 실행합니다 (선택적).
+    
+    Args:
+        chunks_dir: 청크 CSV 디렉터리
+        embeddings_dir: 임베딩 출력 디렉터리
+        processed_dir: 처리된 데이터 디렉터리 (테이블 임베딩에 필요)
+        enable_table_embedding: 테이블 임베딩 활성화 여부 (기본값: True)
     """
     chunks_base = Path(chunks_dir)
     embeds_base = Path(embeddings_dir)
@@ -76,9 +82,11 @@ def run(chunks_dir: str, embeddings_dir: str, processed_dir: str = None) -> None
     output_csv = embeds_base / "pubmed" / "pmc_vector.csv"
 
     logger.info(
-        "[EMBED:PubMed] run() called with chunks_dir=%s, embeddings_dir=%s",
+        "[EMBED:PubMed] run() called with chunks_dir=%s, embeddings_dir=%s, processed_dir=%s, enable_table_embedding=%s",
         chunks_dir,
         embeddings_dir,
+        processed_dir,
+        enable_table_embedding,
     )
     logger.info(
         "[EMBED:PubMed] resolved paths: chunk_csv=%s, output_csv=%s",
@@ -90,7 +98,8 @@ def run(chunks_dir: str, embeddings_dir: str, processed_dir: str = None) -> None
         logger.error("[EMBED:PubMed] chunk CSV not found: %s", chunk_csv)
         return
 
-    # 1) 섹션 청크 임베딩
+    # 1) 섹션 청크 임베딩 (필수)
+    logger.info("▶ [EMBED:PubMed] section chunk embedding start")
     run_for_files(
         chunks=str(chunk_csv),
         output=str(output_csv),
@@ -99,25 +108,50 @@ def run(chunks_dir: str, embeddings_dir: str, processed_dir: str = None) -> None
         write_csv=True,
         pg_batch_size=500,
     )
+    logger.info("✔ [EMBED:PubMed] section chunk embedding done")
 
-    # 2) 테이블 캡션 임베딩
+    # 2) 테이블 캡션 임베딩 (선택적)
+    if not enable_table_embedding:
+        logger.info("⏭  [EMBED:PubMed] table embedding disabled (enable_table_embedding=False)")
+        return
+
+    if not processed_dir:
+        logger.warning(
+            "⚠ [EMBED:PubMed] processed_dir가 제공되지 않아 테이블 임베딩을 스킵합니다. "
+            "테이블 임베딩을 사용하려면 processed_dir를 제공하세요."
+        )
+        return
+
+    # 테이블 임베딩 모듈 의존성 체크 및 실행
     try:
         from rag.etl.step05_embed.pmc_embed_common.embed_tables import run as run_table_embedding
-        
-        if processed_dir:
-            logger.info("▶ [EMBED:PubMed] table caption embedding start")
-            run_table_embedding(
-                processed_dir=processed_dir,
-                embeddings_dir=embeddings_dir,
-                resume=True,
-            )
-            logger.info("✔ [EMBED:PubMed] table caption embedding done")
-        else:
-            logger.warning("⚠ [EMBED:PubMed] processed_dir가 제공되지 않아 테이블 임베딩을 스킵합니다.")
     except ImportError as e:
-        logger.warning("⏭  [EMBED:PubMed] embed_tables 모듈을 찾을 수 없습니다. 스킵합니다: %s", e)
+        logger.warning(
+            "⏭  [EMBED:PubMed] embed_tables 모듈을 찾을 수 없습니다. 테이블 임베딩을 스킵합니다. "
+            "섹션 임베딩은 정상적으로 완료되었습니다. "
+            "에러: %s", e
+        )
+        return
+
+    try:
+        logger.info("▶ [EMBED:PubMed] table caption embedding start")
+        run_table_embedding(
+            processed_dir=processed_dir,
+            embeddings_dir=embeddings_dir,
+            resume=True,
+        )
+        logger.info("✔ [EMBED:PubMed] table caption embedding done")
     except Exception as e:
-        logger.error("❌ [EMBED:PubMed] table caption embedding 실패: %s", e, exc_info=True)
+        # 테이블 임베딩 실패는 경고로 처리하되, 섹션 임베딩은 이미 성공했으므로 전체 프로세스는 계속 진행
+        logger.error(
+            "❌ [EMBED:PubMed] table caption embedding 실패 (섹션 임베딩은 정상 완료됨): %s",
+            e,
+            exc_info=True
+        )
+        logger.warning(
+            "⚠ [EMBED:PubMed] 테이블 임베딩 실패로 인해 article_table_emb.csv가 생성되지 않았습니다. "
+            "섹션 임베딩 결과(pmc_vector.csv)는 정상적으로 생성되었습니다."
+        )
 
 
 def main(argv=None) -> None:
