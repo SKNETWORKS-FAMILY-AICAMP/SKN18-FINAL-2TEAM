@@ -311,16 +311,13 @@ def run_embed(source: SourceType, cfg: PipelineConfig, limit: int | None = None)
 
         try:
             if s == "pubmed":
-                mod = import_module("rag.etl.step05_embed.embed_pubmed")
+                # 섹션 청크 임베딩 + 테이블 캡션 임베딩 (embed_pubmed.run() 내부에서 처리)
                 mod = import_module("rag.etl.step05_embed.embed_pubmed")
                 if hasattr(mod, 'run'):
                     mod.run(
                         chunks_dir=cfg.chunks_dir,
                         embeddings_dir=cfg.embeddings_dir,
-                    )
-                    mod.run(
-                        chunks_dir=cfg.chunks_dir,
-                        embeddings_dir=cfg.embeddings_dir,
+                        processed_dir=cfg.processed_dir,
                     )
                 elif hasattr(mod, 'main'):
                     mod.main()
