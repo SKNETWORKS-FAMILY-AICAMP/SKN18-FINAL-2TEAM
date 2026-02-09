@@ -201,27 +201,33 @@ def json_to_csv(input_json: str, out_dir: str) -> None:
         # 5. Tables CSV
         # ------------------------------------------------
         for idx, tbl in enumerate(tables):
-            tbl_unique_id = f"{pmid}_tbl{idx + 1}"
             if isinstance(tbl, dict):
+                # JSON의 table_id 사용 (CSV에서 새로 조합하지 않음)
+                json_table_id = tbl.get("table_id") or f"{pmid}_tbl{idx + 1}"  # fallback
                 table_url = tbl.get("binary_url") or tbl.get("url") or tbl.get("href")
+                # table_content: 테이블 구조 데이터(headers, rows)를 JSON 문자열로 직렬화
+                raw_content = tbl.get("content")
+                table_content_str = json.dumps(raw_content, ensure_ascii=False) if raw_content else ""
                 table_rows.append({
-                    "table_id": tbl_unique_id,
-                    "pmid": pmid,
                     "table_index": idx,
-                    "original_label_id": tbl.get("table_id") or tbl.get("id"),
+                    "table_id": json_table_id,
+                    "pmcid": pmcid,
+                    "pmid": pmid,
                     "table_label": normalize_title_spacing(clean_content(tbl.get("label"))),
                     "table_caption": normalize_title_spacing(clean_content(tbl.get("caption"))),
                     "table_url": table_url,
+                    "table_content": table_content_str,
                 })
             else:
                 table_rows.append({
-                    "table_id": tbl_unique_id,
-                    "pmid": pmid,
                     "table_index": idx,
-                    "original_label_id": None,
+                    "table_id": f"{pmid}_tbl{idx + 1}",
+                    "pmcid": pmcid,
+                    "pmid": pmid,
                     "table_label": None,
                     "table_caption": normalize_title_spacing(clean_content(str(tbl))),
                     "table_url": "",
+                    "table_content": "",
                 })
 
         # ------------------------------------------------
@@ -302,7 +308,7 @@ def json_to_csv(input_json: str, out_dir: str) -> None:
 
     # 5) Tables
     write_csv("tables.csv", [
-        "table_id", "pmid", "table_index", "original_label_id", "table_label", "table_caption", "table_url"
+        "table_index", "table_id", "pmcid", "pmid", "table_label", "table_caption", "table_url", "table_content"
     ], table_rows)
 
     # 6) References
