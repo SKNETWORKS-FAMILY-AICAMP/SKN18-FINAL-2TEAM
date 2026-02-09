@@ -60,12 +60,14 @@ def run_for_files(
 
 
 
-def run(chunks_dir: str, embeddings_dir: str) -> None:
+def run(chunks_dir: str, embeddings_dir: str, processed_dir: str = None) -> None:
     """
     pipeline_runner.run_embed 에서 사용하는 엔트리포인트.
 
     - 입력:  {chunks_dir}/pubmed/pmc_chunks.csv
     - 출력:  {embeddings_dir}/pubmed/pmc_vector.csv
+    
+    테이블 임베딩도 함께 실행합니다.
     """
     chunks_base = Path(chunks_dir)
     embeds_base = Path(embeddings_dir)
@@ -88,6 +90,7 @@ def run(chunks_dir: str, embeddings_dir: str) -> None:
         logger.error("[EMBED:PubMed] chunk CSV not found: %s", chunk_csv)
         return
 
+    # 1) 섹션 청크 임베딩
     run_for_files(
         chunks=str(chunk_csv),
         output=str(output_csv),
@@ -96,6 +99,25 @@ def run(chunks_dir: str, embeddings_dir: str) -> None:
         write_csv=True,
         pg_batch_size=500,
     )
+
+    # 2) 테이블 캡션 임베딩
+    try:
+        from rag.etl.step05_embed.pmc_embed_common.embed_tables import run as run_table_embedding
+        
+        if processed_dir:
+            logger.info("▶ [EMBED:PubMed] table caption embedding start")
+            run_table_embedding(
+                processed_dir=processed_dir,
+                embeddings_dir=embeddings_dir,
+                resume=True,
+            )
+            logger.info("✔ [EMBED:PubMed] table caption embedding done")
+        else:
+            logger.warning("⚠ [EMBED:PubMed] processed_dir가 제공되지 않아 테이블 임베딩을 스킵합니다.")
+    except ImportError as e:
+        logger.warning("⏭  [EMBED:PubMed] embed_tables 모듈을 찾을 수 없습니다. 스킵합니다: %s", e)
+    except Exception as e:
+        logger.error("❌ [EMBED:PubMed] table caption embedding 실패: %s", e, exc_info=True)
 
 
 def main(argv=None) -> None:
