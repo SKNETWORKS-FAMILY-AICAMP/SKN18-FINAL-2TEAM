@@ -14,8 +14,12 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-# Add embedding directory to path for imports
-sys.path.insert(0, str(Path(__file__).parent))
+# 프로젝트 루트를 Python path에 추가 (rag 모듈을 찾기 위해)
+# embed_pubmed.py 위치: rag/etl/step05_embed/embed_pubmed.py
+# 프로젝트 루트: SKN18-FINAL-2TEAM/ (상위 4단계)
+_project_root = Path(__file__).resolve().parent.parent.parent.parent
+if str(_project_root) not in sys.path:
+    sys.path.insert(0, str(_project_root))
 
 # Now import local modules
 from rag.etl.step05_embed.pmc_embed_common.chunk_embedder_v2 import ChunkEmbedder
@@ -204,9 +208,15 @@ def main(argv=None) -> None:
     )
 
     args = ap.parse_args(argv)
-    cmd = args.cmd or "embed"  # 기본 명령을 embed로 설정
+    cmd = args.cmd
+
+    # 인자 없이 실행하면 cmd가 None이므로 도움말 표시
+    if cmd is None:
+        ap.print_help()
+        return
 
     if cmd == "embed":
+        # cmd == "embed"인 경우 서브파서가 파싱되었으므로 args에 모든 속성이 있음
         write_csv = not args.no_csv
 
         logger.info(

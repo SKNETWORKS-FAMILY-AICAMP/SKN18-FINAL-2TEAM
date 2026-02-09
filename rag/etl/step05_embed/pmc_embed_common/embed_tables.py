@@ -30,6 +30,7 @@ from rag.etl.step04_chunk.pmc_chunk_common.chunking import (
     DEFAULT_EMBED_DIM,
     DEFAULT_EMBED_MODEL,
     OPENAI_API_KEY,
+    AZURE_OPENAI_ENDPOINT,
     RATE_LIMIT_DELAY,
     to_pgvector_literal,
 )
@@ -114,7 +115,18 @@ def run(processed_dir: str, embeddings_dir: str, resume: bool = True) -> None:
     if not OPENAI_API_KEY:
         raise RuntimeError("OPENAI_API_KEY가 설정되어 있지 않습니다 (.env 확인).")
 
-    client = OpenAI(api_key=OPENAI_API_KEY)
+    # Azure OpenAI 또는 표준 OpenAI 클라이언트 초기화
+    if AZURE_OPENAI_ENDPOINT:
+        # Azure OpenAI 사용
+        client = OpenAI(
+            base_url=AZURE_OPENAI_ENDPOINT,
+            api_key=OPENAI_API_KEY
+        )
+        logger.info(f"[EMBED:Tables] Azure OpenAI 사용: {AZURE_OPENAI_ENDPOINT}")
+    else:
+        # 표준 OpenAI 사용
+        client = OpenAI(api_key=OPENAI_API_KEY)
+        logger.info("[EMBED:Tables] 표준 OpenAI 사용")
 
     # resume: 기존 임베딩된 table_id 건너뛰기
     output_csv.parent.mkdir(parents=True, exist_ok=True)

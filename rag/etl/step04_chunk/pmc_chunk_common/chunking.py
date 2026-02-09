@@ -59,6 +59,8 @@ else:
     load_dotenv()
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+# Azure OpenAI 설정 (선택사항)
+AZURE_OPENAI_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT")
 
 
 # -------------------
