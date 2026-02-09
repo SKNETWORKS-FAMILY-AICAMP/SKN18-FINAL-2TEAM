@@ -6,6 +6,7 @@ pgvector 임베딩 로더.
 
 - article_section_embedding.csv
 - protocol_embedding.csv
+- article_table_emb.csv
 
 두 CSV를 읽어서 Postgres(pgvector) 테이블에 업서트한다.
 
@@ -253,8 +254,115 @@ def load_article_section_embedding(csv_path: Path, expected_dim: int, batch_size
         conn.close()
 
 
+
 # ─────────────────────────────────────
-# 3) protocol_embedding 로더
+# 3) article_table_emb 로더
+# ─────────────────────────────────────
+
+def load_article_table_embedding(csv_path: Path, expected_dim: int, batch_size: int = 1000):
+    """
+    CSV (pmcid, pmid, table_id, table_content, table_caption, table_url, table_caption_emb)
+    → article_table_emb 테이블로 적재
+    """
+    required_cols = [
+        "pmcid",
+        "pmid",
+        "table_id",
+        "table_content",
+        "table_caption",
+        "table_url",
+        "table_caption_emb",
+    ]
+
+    conn = get_pg_conn()
+    cur = conn.cursor()
+
+    try:
+        rows_buffer = []
+        row_idx = 0
+
+        for row in iter_chunk_csv_rows(csv_path, required_cols):
+            row_idx += 1
+
+            embedding_str = row["table_caption_emb"]
+            vec_len = infer_vector_dim_from_str(embedding_str)
+            if vec_len != expected_dim:
+                raise ValueError(
+                    f"[article_table_emb] embedding vector length({vec_len}) != expected_dim({expected_dim}) "
+                    f"at row {row_idx} (table_id={row.get('table_id')})"
+                )
+
+            # table_content는 이미 JSON 문자열 → PostgreSQL JSONB로 캐스팅
+            table_content_str = row.get("table_content") or None
+
+            rows_buffer.append((
+                row["table_id"],
+                row["pmcid"],
+                row["pmid"],
+                table_content_str,
+                row["table_caption"],
+                row["table_url"],
+                embedding_str,
+            ))
+
+            if len(rows_buffer) >= batch_size:
+                execute_batch(
+                    cur,
+                    """
+                    INSERT INTO article_table_emb (
+                        table_id,
+                        pmcid,
+                        pmid,
+                        table_content,
+                        table_caption,
+                        table_url,
+                        table_caption_emb
+                    )
+                    VALUES (
+                        %s, %s, %s, %s::jsonb, %s, %s, %s::vector
+                    )
+                    ON CONFLICT (table_id) DO NOTHING
+                    """,
+                    rows_buffer,
+                )
+                rows_buffer.clear()
+
+        if rows_buffer:
+            execute_batch(
+                cur,
+                """
+                INSERT INTO article_table_emb (
+                    table_id,
+                    pmcid,
+                    pmid,
+                    table_content,
+                    table_caption,
+                    table_url,
+                    table_caption_emb
+                )
+                VALUES (
+                    %s, %s, %s, %s::jsonb, %s, %s, %s::vector
+                )
+                ON CONFLICT (table_id) DO NOTHING
+                """,
+                rows_buffer,
+            )
+
+        conn.commit()
+        print(f"[article_table_emb] Load complete from {csv_path} (expected_dim={expected_dim})")
+
+    except Exception as e:
+        conn.rollback()
+        print(f"[article_table_emb] ERROR: {e}")
+        raise
+    finally:
+        cur.close()
+        conn.close()
+
+
+
+# ─────────────────────────────────────
+# 4) protocol_embedding 로더
 # ─────────────────────────────────────
 
 def load_protocol_embedding(csv_path: Path, expected_dim: int, batch_size: int = 1000):
@@ -353,33 +461,34 @@ def load_protocol_embedding(csv_path: Path, expected_dim: int, batch_size: int =
         conn.close()
 
 
+
 # ─────────────────────────────────────
-# 4) 외부에서 호출할 엔트리 포인트
+# 5) 외부에서 호출할 엔트리 포인트
 # ─────────────────────────────────────
 
 def run(embeddings_dir: str) -> None:
     """
     ETL 파이프라인용 엔트리 포인트.
 
-    현재는 embeddings_dir 인자를 실제로 쓰지 않고,
-    고정된 CSV 경로를 사용한다.
+    embeddings_dir 기반으로 CSV 경로를 결정한다.
     """
+    embed_base = Path(embeddings_dir)
 
-    # 네가 하드코딩해 둔 CSV 경로들
-    article_csv = Path(
-        r"C:\dev\study\skn18_fianl-2team\final_2team\SKN18-FINAL-2TEAM\data\embeddings\article_embeddig_v2.csv"
-    )
-    protocol_csv = Path(
-        r"C:\dev\study\skn18_fianl-2team\final_2team\SKN18-FINAL-2TEAM\data\embeddings\protocol_embedding.csv"
-    )
+    # 기존 article / protocol CSV
+    article_csv = embed_base / "pubmed" / "pmc_vector.csv"
+    protocol_csv = embed_base / "protocol_embedding.csv"
+    # 신규 table caption embedding CSV
+    table_emb_csv = embed_base / "pubmed" / "article_table_emb.csv"
 
     # 각 CSV마다 dim 지정 (필요하면 환경변수로도 오버라이드 가능)
     expected_article_dim = int(os.getenv("ARTICLE_EMB_DIM", "1536"))
     expected_protocol_dim = int(os.getenv("PROTOCOL_EMB_DIM", "1024"))
+    expected_table_dim = int(os.getenv("TABLE_EMB_DIM", "1536"))
 
-    print(f"[pgvector.run] embeddings_dir(arg)={embeddings_dir}")
-    print(f"  - article CSV:  {article_csv} (dim={expected_article_dim})")
-    print(f"  - protocol CSV: {protocol_csv} (dim={expected_protocol_dim})")
+    print(f"[pgvector.run] embeddings_dir={embeddings_dir}")
+    print(f"  - article CSV:    {article_csv} (dim={expected_article_dim})")
+    print(f"  - protocol CSV:   {protocol_csv} (dim={expected_protocol_dim})")
+    print(f"  - table emb CSV:  {table_emb_csv} (dim={expected_table_dim})")
 
     if article_csv.exists():
         load_article_section_embedding(article_csv, expected_dim=expected_article_dim)
@@ -390,6 +499,11 @@ def run(embeddings_dir: str) -> None:
         load_protocol_embedding(protocol_csv, expected_dim=expected_protocol_dim)
     else:
         print(f"[WARN] protocol_embedding CSV not found at {protocol_csv}, skip.")
+
+    if table_emb_csv.exists():
+        load_article_table_embedding(table_emb_csv, expected_dim=expected_table_dim)
+    else:
+        print(f"[WARN] article_table_emb CSV not found at {table_emb_csv}, skip.")
 
 
 # ─────────────────────────────────────

@@ -46,3 +46,30 @@ CREATE INDEX IF NOT EXISTS idx_protocol_embedding_hnsw
     ON protocol_embedding
     USING hnsw (embedding vector_cosine_ops)
     WITH (m = 16, ef_construction = 64);
+
+-- ===========================
+-- 5. article_table_emb (테이블 캡션 임베딩)
+-- ===========================
+CREATE TABLE IF NOT EXISTS article_table_emb (
+    table_id            TEXT PRIMARY KEY,
+    pmcid               TEXT,
+    pmid                TEXT,
+    table_content       JSONB,
+    table_caption       TEXT,
+    table_url           TEXT,
+    table_caption_emb   vector(1536)
+);
+
+-- pmcid 조회용 인덱스
+CREATE INDEX IF NOT EXISTS idx_article_table_emb_pmcid
+    ON article_table_emb (pmcid);
+
+-- pmid 조회용 인덱스
+CREATE INDEX IF NOT EXISTS idx_article_table_emb_pmid
+    ON article_table_emb (pmid);
+
+-- 벡터 검색용 HNSW 인덱스 (cosine)
+CREATE INDEX IF NOT EXISTS idx_article_table_emb_hnsw
+    ON article_table_emb
+    USING hnsw (table_caption_emb vector_cosine_ops)
+    WITH (m = 16, ef_construction = 64);
