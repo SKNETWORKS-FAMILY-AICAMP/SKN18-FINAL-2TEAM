@@ -1,6 +1,44 @@
 import logging
+import sys
 from pathlib import Path
 from typing import Optional
+
+# 직접 실행 시 프로젝트 루트를 path에 추가 (rag 모듈 인식)
+_SCRIPT_DIR = Path(__file__).resolve().parent
+
+
+def _find_project_root() -> Path:
+    """data/raw/pubmed 이 존재하는 디렉터리를 프로젝트 루트로 사용 (python -m 등 경로 이슈 방지)."""
+    def has_pubmed_data(d: Path) -> bool:
+        return (d / "data" / "raw" / "pubmed").exists()
+
+    # 1) __file__ 기준으로 상위 디렉터리에서 data/raw/pubmed 찾기
+    candidate = _SCRIPT_DIR
+    for _ in range(10):
+        if has_pubmed_data(candidate):
+            return candidate
+        parent = candidate.parent
+        if parent == candidate:
+            break
+        candidate = parent
+
+    # 2) 실행 시 cwd(또는 cwd 상위)에서 찾기 — 프로젝트 루트에서 python -m 실행 시 대부분 여기서 찾음
+    cwd = Path.cwd()
+    for _ in range(10):
+        if has_pubmed_data(cwd):
+            return cwd
+        parent = cwd.parent
+        if parent == cwd:
+            break
+        cwd = parent
+
+    # 3) fallback: step02_normalize -> etl -> rag -> 루트
+    return _SCRIPT_DIR.parents[3]
+
+
+_PROJECT_ROOT = _find_project_root()
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
 
 from rag.etl.step02_normalize.pmc_nomalize_common.pmc_json_to_csv_main import (
     json_to_csv,
@@ -44,6 +82,11 @@ def run(raw_dir: str, processed_dir: str, csv_out_dir: Optional[str] = None) -> 
     """
     raw_base = Path(raw_dir)
     proc_base = Path(processed_dir)
+    # 상대 경로면 프로젝트 루트 기준으로 해석 (어디서 실행해도 동일하게 동작)
+    if not raw_base.is_absolute():
+        raw_base = _PROJECT_ROOT / raw_base
+    if not proc_base.is_absolute():
+        proc_base = _PROJECT_ROOT / proc_base
 
     logger.info(
         "[NORMALIZE:PubMed] run() called with raw_dir=%s, processed_dir=%s, csv_out_dir=%s",
@@ -101,3 +144,14 @@ def run(raw_dir: str, processed_dir: str, csv_out_dir: Optional[str] = None) -> 
         logger.info("[NORMALIZE:PubMed] DONE (json_to_csv + split_sections)")
     else:
         logger.error("[NORMALIZE:PubMed] ERROR in split_sections")
+
+
+if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(levelname)s [%(name)s] %(message)s",
+    )
+    run(
+        raw_dir="data/raw",
+        processed_dir="data/processed",
+    )
