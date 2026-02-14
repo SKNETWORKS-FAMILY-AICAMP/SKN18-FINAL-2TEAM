@@ -22,6 +22,7 @@ from tqdm import tqdm
 from rag.etl.step04_chunk.pmc_chunk_common.chunking import (
     sentence_chunks,
     make_chunk_id,
+    split_chunk_if_over_max,
     DEFAULT_CHUNK_SIZE,
     DEFAULT_OVERLAP,
     process_section_text_for_chunking,
@@ -157,6 +158,37 @@ class ChunkGenerator:
             if not csv_text:
                 continue
 
+            # 2000자 초과 시 문장 n/2씩 재분할 후 한 줄씩 저장 (오버랩은 sentence_chunks와 동일)
+            if len(csv_text) > 2000:
+                parts = split_chunk_if_over_max(
+                    csv_text, max_chars=2000, overlap=self.overlap
+                )
+                for part_idx, part_text in enumerate(parts, start=1):
+                    if not part_text:
+                        continue
+                    part_chunk_id = f"{chunk_id}_p{part_idx}"
+                    if resume and part_chunk_id in existing_chunk_ids:
+                        continue
+                    writer.writerow(
+                        {
+                            "chunk_id": part_chunk_id,
+                            "section_id": section_id,
+                            "chunk_seq": seq,
+                            "path": path_str,
+                            "start_char": 0,
+                            "end_char": 0,
+                            "text_chunk": part_text,
+                            "fig_ref_markers": processed["fig_ref_markers"],
+                            "ref_ids": processed["ref_ids"],
+                        }
+                    )
+                    existing_chunk_ids.add(part_chunk_id)
+                    new_count += 1
+                    if pbar:
+                        pbar.update(1)
+                out_f.flush()
+                continue
+
             writer.writerow(
                 {
                     "chunk_id": chunk_id,
@@ -166,15 +198,14 @@ class ChunkGenerator:
                     "start_char": start,
                     "end_char": end,
                     "text_chunk": csv_text,
-                    "fig_ref_markers": processed["fig_ref_markers"], 
-                    "ref_ids": processed["ref_ids"],                 
+                    "fig_ref_markers": processed["fig_ref_markers"],
+                    "ref_ids": processed["ref_ids"],
                 }
             )
             existing_chunk_ids.add(chunk_id)
             new_count += 1
-            
+
             if pbar:
                 pbar.update(1)
-        
-        out_f.flush()
+            out_f.flush()
         return new_count

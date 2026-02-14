@@ -42,10 +42,10 @@ from rag.etl.step04_chunk.pmc_chunk_common.pmc_chunk_csv_utils import load_exist
 # -------------------
 DEFAULT_EMBED_MODEL = "text-embedding-3-small"
 DEFAULT_EMBED_DIM = 1536
-DEFAULT_CHUNK_SIZE = 600
+DEFAULT_CHUNK_SIZE = 600 # 글자수 기준으로 600자 청크 
 DEFAULT_OVERLAP = 120
 RATE_LIMIT_DELAY = float(os.getenv("EMBED_RATE_DELAY", "0.2"))
-# 임베딩 시 최소 문장 개수 (예: 2문장)
+# 임베딩 시 최소 문장 개수 (예: 2문장) -> 폴백 필요할 수도 있음. 
 MIN_SENTENCES = 2
 
 # .env 로드
@@ -232,6 +232,63 @@ def split_into_sentences(text: str) -> List[Tuple[int, int]]:
             i += 1
             
     return sentences
+
+
+# 임베딩 전 청크 최대 글자수 (이 길이 초과 시 문장 n/2씩 재분할)
+MAX_CHUNK_CHARS = 2000
+
+
+def split_chunk_if_over_max(
+    text: str,
+    max_chars: int = MAX_CHUNK_CHARS,
+    overlap: int = DEFAULT_OVERLAP,
+) -> List[str]:
+    """
+    텍스트가 max_chars를 넘으면 문장 단위로 n/2씩 나눠 재귀적으로 분할.
+    part1 끝과 part2 시작에 overlap(글자 수)만큼 겹치게 함 (sentence_chunks와 동일).
+    반환: 각 원소가 max_chars 이하인 문자열 리스트 (한 줄씩 CSV에 쓸 대상).
+    """
+    if not text or len(text) <= max_chars:
+        return [text] if text else []
+
+    sents = split_into_sentences(text)
+    if not sents:
+        # 문장 경계를 못 찾으면 글자 수로만 자름 (fallback, 정상 경로와 동일하게 오버랩 적용)
+        out = []
+        start = 0
+        while start < len(text):
+            end = min(start + max_chars, len(text))
+            chunk = text[start:end].strip()
+            if chunk:
+                out.append(chunk)
+            if end >= len(text):
+                break
+            start = end - overlap
+        return out
+
+    n = len(sents)
+    mid = max(1, n // 2)
+    part1 = text[sents[0][0] : sents[mid - 1][1]].strip()
+
+    # 오버랩: part2가 part1 끝과 겹치도록, part1 끝에서 overlap 글자 이상 되는 문장 경계에서 part2 시작
+    # → part1 끝 [overlap_start..mid-1] 구간 = part2 앞부분 [overlap_start..mid-1] 와 동일 (겹침)
+    part2_start_sent = mid - 1
+    for j in range(mid - 1, -1, -1):
+        overlap_span_len = sents[mid - 1][1] - sents[j][0]
+        if overlap_span_len >= overlap:
+            part2_start_sent = j
+            break
+    part2 = text[sents[part2_start_sent][0] : sents[-1][1]].strip()
+
+    result: List[str] = []
+    for part in (part1, part2):
+        if not part:
+            continue
+        if len(part) <= max_chars:
+            result.append(part)
+        else:
+            result.extend(split_chunk_if_over_max(part, max_chars, overlap))
+    return result
 
 
 def sentence_chunks(
