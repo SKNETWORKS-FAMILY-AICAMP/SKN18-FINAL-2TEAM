@@ -26,12 +26,13 @@ def _run_internal(
     overlap: int,
     batch_size: int,
     resume: bool,
+    output_csv: Optional[str] = None,
 ) -> None:
     """실제 청킹 실행 헬퍼 (입력 CSV 경로를 직접 받음)."""
     input_path = Path(input_csv)
     chunks_base = Path(chunks_dir)
 
-    chunk_csv = chunks_base / "pubmed" / "pmc_chunks.csv"
+    chunk_csv = Path(output_csv) if output_csv else chunks_base / "pubmed" / "pmc_chunks.csv"
 
     logger.info(
         "[CHUNK:PubMed] input_csv=%s, chunk_csv=%s, chunk_size=%d, overlap=%d, "
@@ -69,6 +70,7 @@ def run(
     processed_dir: str,
     chunks_dir: str,
     input_csv: Optional[str] = None,
+    output_csv: Optional[str] = None,
 ) -> None:
     """pipeline_runner 에서 사용하는 엔트리포인트.
 
@@ -76,17 +78,19 @@ def run(
         processed_dir: 정규화된 데이터 루트 (`data/processed`)
         chunks_dir: 청크 결과 루트 (`data/chunks`)
         input_csv: (선택) 섹션 CSV 경로.
-        - None 이면 processed_dir/pubmed/pmc_csv/sections_for_chunk.csv 사용
+                   None 이면 processed_dir/pubmed/pmc_csv/sections_for_chunk.csv 사용
+        output_csv: (선택) 청크 결과 CSV 경로.
+                    None 이면 chunks_dir/pubmed/pmc_chunks.csv 사용
     """
     logger.info(
-        "[CHUNK:PubMed] run() called with processed_dir=%s, chunks_dir=%s, input_csv=%s",
+        "[CHUNK:PubMed] run() called with processed_dir=%s, chunks_dir=%s, input_csv=%s, output_csv=%s",
         processed_dir,
         chunks_dir,
         input_csv,
+        output_csv,
     )
 
     if input_csv is None:
-        # 기본 경로: processed_dir/pubmed/pmc_csv/sections_for_chunk.csv
         input_path = Path(processed_dir) / "pubmed" / "pmc_csv" / "sections_for_chunk.csv"
     else:
         input_path = Path(input_csv)
@@ -98,6 +102,7 @@ def run(
         overlap=DEFAULT_OVERLAP,
         batch_size=100,
         resume=True,
+        output_csv=output_csv,
     )
 
 
