@@ -267,11 +267,25 @@ def split_chunk_if_over_max(
         return out
 
     n = len(sents)
+
+    # 문장이 1개뿐이면 문장 단위로 더 이상 쪼갤 수 없음 → 글자 수 기준 fallback
+    if n <= 1:
+        out = []
+        start = 0
+        while start < len(text):
+            end = min(start + max_chars, len(text))
+            chunk = text[start:end].strip()
+            if chunk:
+                out.append(chunk)
+            if end >= len(text):
+                break
+            start = end - overlap
+        return out
+
     mid = max(1, n // 2)
     part1 = text[sents[0][0] : sents[mid - 1][1]].strip()
 
     # 오버랩: part2가 part1 끝과 겹치도록, part1 끝에서 overlap 글자 이상 되는 문장 경계에서 part2 시작
-    # → part1 끝 [overlap_start..mid-1] 구간 = part2 앞부분 [overlap_start..mid-1] 와 동일 (겹침)
     part2_start_sent = mid - 1
     for j in range(mid - 1, -1, -1):
         overlap_span_len = sents[mid - 1][1] - sents[j][0]
@@ -284,7 +298,18 @@ def split_chunk_if_over_max(
     for part in (part1, part2):
         if not part:
             continue
-        if len(part) <= max_chars:
+        # 분할 후에도 원문과 동일한 크기면 무한 재귀 방지 → 글자 수 기준 fallback
+        if len(part) >= len(text):
+            start = 0
+            while start < len(part):
+                end = min(start + max_chars, len(part))
+                chunk = part[start:end].strip()
+                if chunk:
+                    result.append(chunk)
+                if end >= len(part):
+                    break
+                start = end - overlap
+        elif len(part) <= max_chars:
             result.append(part)
         else:
             result.extend(split_chunk_if_over_max(part, max_chars, overlap))
