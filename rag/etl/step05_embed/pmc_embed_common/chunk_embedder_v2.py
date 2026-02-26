@@ -22,7 +22,8 @@ from rag.etl.step04_chunk.pmc_chunk_common.chunking import (
     to_pgvector_literal,
     DEFAULT_EMBED_DIM,
     DEFAULT_EMBED_MODEL,
-    OPENAI_API_KEY,
+    OPENAI_AZURE_API_KEY,
+    OPENAI_AZURE_BASE_URL,
     RATE_LIMIT_DELAY,
 )
 
@@ -78,9 +79,9 @@ class ChunkEmbedder:
         self.pg_cur = None
         self._pg_batch_buffer = []
 
-        if not OPENAI_API_KEY:
-            raise RuntimeError("OPENAI_API_KEY 가 설정되어 있지 않습니다 (.env 확인).")
-        self.client = OpenAI(api_key=OPENAI_API_KEY)
+        if not OPENAI_AZURE_API_KEY:
+            raise RuntimeError("OPENAI_AZURE_API_KEY 가 설정되어 있지 않습니다 (.env 확인).")
+        self.client = OpenAI(api_key=OPENAI_AZURE_API_KEY, base_url=OPENAI_AZURE_BASE_URL)
 
         # initialize Postgres connection if connection info provided
         if self.pg_connect:
